@@ -59,7 +59,8 @@ namespace KMPServer
 
             foreach (var kvp in ServerSettings.GetCurrentValues(settings))
             {
-                Log.Info("{0}\t: {1}", kvp.Key, kvp.Value);
+                var tabs = (kvp.Key.Length > 12) ? "\t" : "\t\t";
+                Log.Info("{0}{2}: {1}", kvp.Key, kvp.Value, tabs);
             }
 
             Log.Info("");

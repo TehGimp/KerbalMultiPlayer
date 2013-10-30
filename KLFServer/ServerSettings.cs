@@ -12,18 +12,6 @@ namespace KMPServer
 	public class ServerSettings
 	{
 		public const String SERVER_CONFIG_FILENAME = "KMPServerConfig.txt";
-		public const String PORT_LABEL = "port";
-		public const String HTTP_PORT_LABEL = "httpPort";
-		public const String MAX_CLIENTS_LABEL = "maxClients";
-		public const String JOIN_MESSAGE_LABEL = "joinMessage";
-		public const String SERVER_INFO_LABEL = "serverInfo";
-		public const String UPDATES_PER_SECOND_LABEL = "updatesPerSecond";
-		public const String SCREENSHOT_INTERVAL_LABEL = "screenshotInterval";
-		public const String SAVE_SCREENSHOTS_LABEL = "saveScreenshots";
-		public const String AUTO_RESTART_LABEL = "autoRestart";
-		public const String AUTO_HOST_LABEL = "autoHost";
-		public const String TOTAL_INACTIVE_SHIPS_LABEL = "totalInactiveShips";
-		public const String SCREENSHOT_HEIGHT_LABEL = "screenshotHeight";
 
         public class ConfigStore
         {
