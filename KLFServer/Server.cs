@@ -91,7 +91,7 @@ namespace KMPServer
 		public ServerClient[] clients;
 		public Queue<ClientMessage> clientMessageQueue;
 
-		public ServerSettings settings;
+		public ServerSettings.ConfigStore settings;
 
 		public Stopwatch stopwatch = new Stopwatch();
 		
@@ -161,7 +161,7 @@ namespace KMPServer
 
 		//Methods
 
-		public Server(ServerSettings settings)
+		public Server(ServerSettings.ConfigStore settings)
 		{
 			this.settings = settings;
 		}

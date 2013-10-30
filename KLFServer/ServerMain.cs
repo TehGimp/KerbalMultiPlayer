@@ -22,8 +22,9 @@ namespace KMPServer
 			Console.WriteLine("    Based on Kerbal LiveFeed created by Alfred Lam");
 			Console.WriteLine();
 
-			ServerSettings settings = new ServerSettings();
-			settings.readConfigFile();
+            ServerSettings.ConfigStore settings = new ServerSettings.ConfigStore();
+            ServerSettings.readFromFile(settings);
+			
 			bool firstLoop = true;
 
 			while (true)
@@ -133,7 +134,7 @@ namespace KMPServer
 					if (int.TryParse(Console.ReadLine(), out new_port) && ServerSettings.validPort(new_port))
 					{
 						settings.port = new_port;
-						settings.writeConfigFile();
+                        ServerSettings.writeToFile(settings);
 					}
 					else
 					{
@@ -150,7 +151,7 @@ namespace KMPServer
 					if (int.TryParse(Console.ReadLine(), out new_port) && ServerSettings.validPort(new_port))
 					{
 						settings.httpPort = new_port;
-						settings.writeConfigFile();
+                        ServerSettings.writeToFile(settings);
 					}
 					else
 					{
@@ -167,7 +168,7 @@ namespace KMPServer
 					if (int.TryParse(Console.ReadLine(), out new_value) && new_value > 0)
 					{
 						settings.maxClients = new_value;
-						settings.writeConfigFile();
+                        ServerSettings.writeToFile(settings);
 					}
 					else
 						Console.WriteLine("Invalid number of clients");
@@ -176,13 +177,13 @@ namespace KMPServer
 				{
 					Console.Write("Enter the join message: ");
 					settings.joinMessage = Console.ReadLine();
-					settings.writeConfigFile();
+                    ServerSettings.writeToFile(settings);
 				}
 				else if (in_string == "if")
 				{
 					Console.Write("Enter the server info message: ");
 					settings.serverInfo = Console.ReadLine();
-					settings.writeConfigFile();
+                    ServerSettings.writeToFile(settings);
 				}
 				else if (in_string == "u")
 				{
@@ -191,7 +192,7 @@ namespace KMPServer
 					if (float.TryParse(Console.ReadLine(), out new_value) && ServerSettings.validUpdatesPerSecond(new_value))
 					{
 						settings.updatesPerSecond = new_value;
-						settings.writeConfigFile();
+                        ServerSettings.writeToFile(settings);
 					}
 					else
 					{
@@ -207,7 +208,7 @@ namespace KMPServer
 					if (int.TryParse(Console.ReadLine(), out new_value))
 					{
 						settings.screenshotSettings.maxHeight = new_value;
-						settings.writeConfigFile();
+                        ServerSettings.writeToFile(settings);
 					}
 					else
 					{
@@ -221,7 +222,7 @@ namespace KMPServer
 					if (int.TryParse(Console.ReadLine(), out new_value) && ServerSettings.validScreenshotInterval(new_value))
 					{
 						settings.screenshotInterval = new_value;
-						settings.writeConfigFile();
+                        ServerSettings.writeToFile(settings);
 					}
 					else
 					{
@@ -249,17 +250,17 @@ namespace KMPServer
 				else if (in_string == "sv")
 				{
 					settings.saveScreenshots = !settings.saveScreenshots;
-					settings.writeConfigFile();
+                    ServerSettings.writeToFile(settings);
 				}
 				else if (in_string == "ar")
 				{
 					settings.autoRestart = !settings.autoRestart;
-					settings.writeConfigFile();
+                    ServerSettings.writeToFile(settings);
 				}
 				else if (in_string == "ah")
 				{
 					settings.autoHost = !settings.autoHost;
-					settings.writeConfigFile();
+                    ServerSettings.writeToFile(settings);
 				}
 				else if (in_string == "h")
 				{
@@ -287,9 +288,8 @@ namespace KMPServer
 
 		}
 
-		static ServerStatus hostServer(ServerSettings settings)
+		static ServerStatus hostServer(ServerSettings.ConfigStore settings)
 		{
-
 			Server server = new Server(settings);
 
 			try
