@@ -27,6 +27,7 @@ namespace KMPServer
 
         public class ConfigStore
         {
+            public string ipBinding = "0.0.0.0";
             public int port = 2076;
             public int httpPort = 8081;
             public int maxClients = 8;

@@ -330,7 +330,7 @@ namespace KMPServer
 
 			threadException = null;
 
-			tcpListener = new TcpListener(IPAddress.Any, settings.port);
+			tcpListener = new TcpListener(IPAddress.Parse(settings.ipBinding), settings.port);
 			listenThread.Start();
 
 			try
@@ -1000,7 +1000,7 @@ namespace KMPServer
 			try
 			{
 
-				IPEndPoint endpoint = new IPEndPoint(IPAddress.Any, settings.port);
+                IPEndPoint endpoint = new IPEndPoint(IPAddress.Parse(settings.ipBinding), settings.port);
 				byte[] received = udpClient.EndReceive(result, ref endpoint);
 
 				if (received.Length >= KMPCommon.MSG_HEADER_LENGTH + 4)
