@@ -1981,10 +1981,10 @@ namespace KMPServer
 				string sql;
 				if (!secondaryUpdate && sending_client != -1)
 				{
-					object obj = ByteArrayToObject(data);
-					if (obj.GetType().ToString().CompareTo("KMP.KMPVesselUpdate")==0) //Clumsy but it works
-					{
-						KMPVesselUpdate vessel_update = obj as KMPVesselUpdate;
+                    var vessel_update = ByteArrayToObject<KMPVesselUpdate>(data);
+
+                    if (vessel_update != null)
+					{	
 						OwnerID = clients[sending_client].playerID;
 						vessel_info = new String[4];
 						vessel_info[0] = vessel_update.player;
@@ -2156,10 +2156,10 @@ namespace KMPServer
 				else if (secondaryUpdate)
 				{
 					//Secondary update
-					object obj = ByteArrayToObject(data);
-					if (obj.GetType().ToString().CompareTo("KMP.KMPVesselUpdate")==0) //Clumsy but it works
-					{
-						KMPVesselUpdate vessel_update = obj as KMPVesselUpdate;
+                    var vessel_update = ByteArrayToObject<KMPVesselUpdate>(data);
+
+                    if (vessel_update != null)
+					{		
 						try {
 							bool active = false;
 							cmd = universeDB.CreateCommand();
@@ -2592,6 +2592,22 @@ namespace KMPServer
 			MemoryStream ms = new MemoryStream(data);
 			return bf.Deserialize(ms);
 		}
+
+        private T ByteArrayToObject<T>(byte[] data)
+        {
+            if (data == null)
+                return default(T);
+            BinaryFormatter bf = new BinaryFormatter();
+            MemoryStream ms = new MemoryStream(data);
+            try
+            {
+                return (T)bf.Deserialize(ms);
+            }
+            catch
+            {
+                return default(T);
+            }
+        }
 		
 		private string CleanInput(string strIn)
 	    {
