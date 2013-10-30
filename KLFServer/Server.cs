@@ -640,11 +640,6 @@ namespace KMPServer
 			catch (ThreadAbortException)
 			{
 			}
-			catch (NullReferenceException e)
-			{
-				//Almost certainly need to be smarter about this.
-				stampedConsoleWriteLine("Internal error during disconnect: " + e.StackTrace);
-			}
 			catch (Exception e)
 			{
 				passExceptionToMain(e);
@@ -904,80 +899,88 @@ namespace KMPServer
 
 		public void disconnectClient(int index, String message)
 		{
-			//Send a message to client informing them why they were disconnected
-			if (clients[index].tcpClient != null)
+			try
 			{
-				if (clients[index].tcpClient.Connected)
-					sendConnectionEndMessageDirect(clients[index].tcpClient, message);
-				
-				//Close the socket
-				lock (clients[index].tcpClientLock)
+				//Send a message to client informing them why they were disconnected
+				if (clients[index].tcpClient != null)
 				{
-					clients[index].endReceivingMessages();
-					clients[index].tcpClient.Close();
-				}
-			}
-
-			if (clients[index].canBeReplaced)
-				return;
-
-			numClients--;
-
-			//Only send the disconnect message if the client performed handshake successfully
-			if (clients[index].receivedHandshake)
-			{
-				stampedConsoleWriteLine("Client #" + index + " " + clients[index].username + " has disconnected: " + message);
-
-				StringBuilder sb = new StringBuilder();
-
-				//Build disconnect message
-				sb.Append("User ");
-				sb.Append(clients[index].username);
-				sb.Append(" has disconnected : " + message);
-
-				//Send the disconnect message to all other clients
-				sendServerMessageToAll(sb.ToString());
-				
-				//Update the database
-				if (clients[index].currentVessel != Guid.Empty)
-				{
-					try {
-						SQLiteCommand cmd = universeDB.CreateCommand();
-						string sql = "UPDATE kmpVessel SET Active = 0 WHERE Guid = '@guid'";
-						cmd.CommandText = sql;
-                        cmd.Parameters.AddWithValue("guid", clients[index].currentVessel);
-						cmd.ExecuteNonQuery();
-						cmd.Dispose();
-					} catch { }
-					sendVesselStatusUpdateToAll(index, clients[index].currentVessel);
-				}
-				
-				bool emptySubspace = true;
-				
-				foreach (ServerClient client in clients)
-				{
-					if (clients[index].currentSubspaceID == client.currentSubspaceID && client.tcpClient.Connected && client.playerID != clients[index].playerID)
+					if (clients[index].tcpClient.Connected)
+						sendConnectionEndMessageDirect(clients[index].tcpClient, message);
+					
+					//Close the socket
+					lock (clients[index].tcpClientLock)
 					{
-						emptySubspace = false;
-						break;
+						clients[index].endReceivingMessages();
+						clients[index].tcpClient.Close();
 					}
 				}
-				
-				if (emptySubspace)
+	
+				if (clients[index].canBeReplaced)
+					return;
+	
+				numClients--;
+	
+				//Only send the disconnect message if the client performed handshake successfully
+				if (clients[index].receivedHandshake)
 				{
-					SQLiteCommand cmd = universeDB.CreateCommand();
-					string sql = "DELETE FROM kmpSubspace WHERE ID = @id AND LastTick < (SELECT MIN(s.LastTick) FROM kmpSubspace s INNER JOIN kmpVessel v ON v.Subspace = s.ID);";
-					cmd.CommandText = sql;
-                    cmd.Parameters.AddWithValue("id", clients[index].currentSubspaceID);
-					cmd.ExecuteNonQuery();
-					cmd.Dispose();
+					stampedConsoleWriteLine("Client #" + index + " " + clients[index].username + " has disconnected: " + message);
+	
+					StringBuilder sb = new StringBuilder();
+	
+					//Build disconnect message
+					sb.Append("User ");
+					sb.Append(clients[index].username);
+					sb.Append(" has disconnected : " + message);
+	
+					//Send the disconnect message to all other clients
+					sendServerMessageToAll(sb.ToString());
+					
+					//Update the database
+					if (clients[index].currentVessel != Guid.Empty)
+					{
+						try {
+							SQLiteCommand cmd = universeDB.CreateCommand();
+							string sql = "UPDATE kmpVessel SET Active = 0 WHERE Guid = '@guid'";
+							cmd.CommandText = sql;
+	                        cmd.Parameters.AddWithValue("guid", clients[index].currentVessel);
+							cmd.ExecuteNonQuery();
+							cmd.Dispose();
+						} catch { }
+						sendVesselStatusUpdateToAll(index, clients[index].currentVessel);
+					}
+					
+					bool emptySubspace = true;
+					
+					foreach (ServerClient client in clients)
+					{
+						if (clients[index].currentSubspaceID == client.currentSubspaceID && client.tcpClient.Connected && client.playerID != clients[index].playerID)
+						{
+							emptySubspace = false;
+							break;
+						}
+					}
+					
+					if (emptySubspace)
+					{
+						SQLiteCommand cmd = universeDB.CreateCommand();
+						string sql = "DELETE FROM kmpSubspace WHERE ID = @id AND LastTick < (SELECT MIN(s.LastTick) FROM kmpSubspace s INNER JOIN kmpVessel v ON v.Subspace = s.ID);";
+						cmd.CommandText = sql;
+	                    cmd.Parameters.AddWithValue("id", clients[index].currentSubspaceID);
+						cmd.ExecuteNonQuery();
+						cmd.Dispose();
+					}
+					
+					//backupDatabase();
 				}
-				
-				//backupDatabase();
+				else
+					stampedConsoleWriteLine("Client failed to handshake successfully: " + message);
 			}
-			else
-				stampedConsoleWriteLine("Client failed to handshake successfully: " + message);
-
+			catch (NullReferenceException e)
+			{
+				//Almost certainly need to be smarter about this.
+				stampedConsoleWriteLine("Internal error during disconnect: " + e.StackTrace);
+			}
+			
 			clients[index].receivedHandshake = false;
 			clients[index].universeSent = false;
 			
