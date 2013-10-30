@@ -24,18 +24,29 @@ namespace KMPServer
 		public const String TOTAL_INACTIVE_SHIPS_LABEL = "totalInactiveShips";
 		public const String SCREENSHOT_HEIGHT_LABEL = "screenshotHeight";
 
-		public int port = 2076;
-		public int httpPort = 8081;
-		public int maxClients = 8;
-		public float updatesPerSecond = 60;
-		public int screenshotInterval = 3000;
-		public bool autoRestart = false;
-		public bool autoHost = false;
-		public bool saveScreenshots = false;
-		public String joinMessage = String.Empty;
-		public String serverInfo = String.Empty;
-		public byte totalInactiveShips = 100;
-		public ScreenshotSettings screenshotSettings = new ScreenshotSettings();
+		public class ConfigStore
+		{
+		    public int port = 2076;
+		    public int httpPort = 8081;
+		    public int maxClients = 8;
+		    public float updatesPerSecond = 60;
+		    public int screenshotInterval = 3000;
+		    public bool autoRestart = false;
+		    public bool autoHost = false;
+		    public bool saveScreenshots = false;
+		    public String joinMessage = String.Empty;
+		    public String serverInfo = String.Empty;
+		    public byte totalInactiveShips = 100;
+
+		    private ScreenshotSettings _screenshotSettings = new ScreenshotSettings();
+		    public ScreenshotSettings screenshotSettings
+		    {
+		        get
+		        {
+		            return _screenshotSettings;
+		        }
+		    }
+		}
 
 		public const int MIN_UPDATE_INTERVAL = 250;
 		public const int MAX_UPDATE_INTERVAL = 500;
