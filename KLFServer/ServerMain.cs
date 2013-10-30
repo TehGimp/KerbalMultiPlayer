@@ -18,6 +18,28 @@ namespace KMPServer
             ServerSettings.ConfigStore settings = new ServerSettings.ConfigStore();
             ServerSettings.readFromFile(settings);
 
+            bool settingsChanged = false;
+
+            if (args != null && args.Length > 0)
+            {
+                for (int i = 0; i < args.Length - 1; i++)
+                {
+                    if (args[i].StartsWith("+"))
+                    {
+                        var key = args[i].Substring(1);
+                        var val = args[i++];
+                        try
+                        {
+                            ServerSettings.modifySetting(settings, key, val);
+                            settingsChanged = true;
+                        }
+                        catch { }
+                    }
+                }
+            }
+
+            if (settingsChanged) { ServerSettings.writeToFile(settings); }
+
             Log.MinLogLevel = settings.LogLevel;
 
 			Console.Title = "KMP Server " + KMPCommon.PROGRAM_VERSION;
