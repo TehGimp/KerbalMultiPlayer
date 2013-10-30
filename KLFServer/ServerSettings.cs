@@ -38,6 +38,7 @@ namespace KMPServer
             public String joinMessage = String.Empty;
             public String serverInfo = String.Empty;
             public byte totalInactiveShips = 100;
+            public Log.LogLevels LogLevel = Log.LogLevels.Info;
 
             private ScreenshotSettings _screenshotSettings = new ScreenshotSettings();
             public ScreenshotSettings screenshotSettings
@@ -77,6 +78,43 @@ namespace KMPServer
 		{
 			return port >= IPEndPoint.MinPort && port <= IPEndPoint.MaxPort;
 		}
+
+        public static void modifySetting(ConfigStore Store, string Key, string Value)
+        {
+            try
+            {
+                FieldInfo f = Store.GetType().GetFields().Where(fF => fF.Name.ToLowerInvariant() == Key).First();
+                object newValue;
+
+                if (f.FieldType.IsEnum)
+                {
+                    newValue = Enum.Parse(f.FieldType, Value.ToString(), true);
+                }
+                else
+                {
+                    newValue = (f.FieldType == typeof(bool)) ? getBool(Value.ToString()) : Convert.ChangeType(Value, f.FieldType);
+                }
+
+                f.SetValue(Store, newValue);
+            }
+            catch
+            {
+                throw new ArgumentException(string.Format("{0} is not a valid value for {1}", Value, Key));
+            }
+        }
+
+        public static Dictionary<string, string> GetCurrentValues(ConfigStore Store)
+        {
+            var result = new Dictionary<string, string>();
+
+            foreach (FieldInfo f in Store.GetType().GetFields().Where(f => f.IsPublic))
+            {
+                var value = f.GetValue(Store).ToString();
+                result.Add(f.Name, value);
+            }
+
+            return result;
+        }
 
         //Write the setting store out to a file by reflecting over its members.
         public static void writeToFile(ConfigStore Store)
