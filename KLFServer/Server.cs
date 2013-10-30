@@ -529,7 +529,9 @@ namespace KMPServer
 								if (guid != Guid.Empty.ToString())
 								{
 									SQLiteCommand cmd = universeDB.CreateCommand();
-									string sql = "UPDATE kmpPlayer SET Guid = '" + Guid.NewGuid().ToString() + "' WHERE Guid = '" + guid + "';";
+									string sql = "UPDATE kmpPlayer SET Guid = '@newGuid' WHERE Guid = '@guid';";
+                                    cmd.Parameters.AddWithValue("newGuid", Guid.NewGuid().ToString());
+                                    cmd.Parameters.AddWithValue("guid", guid);
 									cmd.CommandText = sql;
 									cmd.ExecuteNonQuery();
 									cmd.Dispose();
@@ -553,8 +555,10 @@ namespace KMPServer
 										for (int i = 0; i < clients.Length; i++)
 										{
 											SQLiteCommand cmd = universeDB.CreateCommand();
-											string sql = "DELETE FROM kmpPlayer WHERE Name LIKE '" + username_lower + "';" + 
-												" INSERT INTO kmpPlayer (Name, Guid) VALUES ('" + username_lower + "','" + guid + "');";
+											string sql = "DELETE FROM kmpPlayer WHERE Name LIKE '@username';" + 
+												" INSERT INTO kmpPlayer (Name, Guid) VALUES ('@username','@guid');";
+                                            cmd.Parameters.AddWithValue("username", username_lower);
+                                            cmd.Parameters.AddWithValue("guid", guid);
 											cmd.CommandText = sql;
 											cmd.ExecuteNonQuery();
 											cmd.Dispose();
@@ -579,8 +583,9 @@ namespace KMPServer
 							{
 								String dereg = input.Substring(12, input.Length - 12);
 								SQLiteCommand cmd = universeDB.CreateCommand();
-								string sql = "DELETE FROM kmpPlayer WHERE Guid = '" + dereg + "' OR Name LIKE '" + dereg + "';";
+								string sql = "DELETE FROM kmpPlayer WHERE Guid = '@dereg' OR Name LIKE '@dereg';";
 								cmd.CommandText = sql;
+                                cmd.Parameters.AddWithValue("dereg", dereg);
 								cmd.ExecuteNonQuery();
 								cmd.Dispose();
 								stampedConsoleWriteLine("Players with name/token '" + dereg + "' removed from player roster.");
@@ -598,8 +603,10 @@ namespace KMPServer
 										for (int i = 0; i < clients.Length; i++)
 										{
 											SQLiteCommand cmd = universeDB.CreateCommand();
-											string sql = "UPDATE kmpPlayer SET Name='" + username_lower + "', Guid='" + guid + "' WHERE Name LIKE '" + username_lower +"' OR Guid = '" + guid + "';";
+											string sql = "UPDATE kmpPlayer SET Name='@username', Guid='@guid' WHERE Name LIKE '@username' OR Guid = '@guid';";
 											cmd.CommandText = sql;
+                                            cmd.Parameters.AddWithValue("username", username_lower);
+                                            cmd.Parameters.AddWithValue("guid", guid);
 											cmd.ExecuteNonQuery();
 											cmd.Dispose();
 										}
@@ -927,8 +934,9 @@ namespace KMPServer
 				{
 					try {
 						SQLiteCommand cmd = universeDB.CreateCommand();
-						string sql = "UPDATE kmpVessel SET Active = 0 WHERE Guid = '" + clients[index].currentVessel + "'";
+						string sql = "UPDATE kmpVessel SET Active = 0 WHERE Guid = '@guid'";
 						cmd.CommandText = sql;
+                        cmd.Parameters.AddWithValue("guid", clients[index].currentVessel);
 						cmd.ExecuteNonQuery();
 						cmd.Dispose();
 					} catch { }
@@ -949,8 +957,9 @@ namespace KMPServer
 				if (emptySubspace)
 				{
 					SQLiteCommand cmd = universeDB.CreateCommand();
-					string sql = "DELETE FROM kmpSubspace WHERE ID = " + clients[index].currentSubspaceID + " AND LastTick < (SELECT MIN(s.LastTick) FROM kmpSubspace s INNER JOIN kmpVessel v ON v.Subspace = s.ID);";
+					string sql = "DELETE FROM kmpSubspace WHERE ID = @id AND LastTick < (SELECT MIN(s.LastTick) FROM kmpSubspace s INNER JOIN kmpVessel v ON v.Subspace = s.ID);";
 					cmd.CommandText = sql;
+                    cmd.Parameters.AddWithValue("id", clients[index].currentSubspaceID);
 					cmd.ExecuteNonQuery();
 					cmd.Dispose();
 				}
@@ -1227,8 +1236,10 @@ namespace KMPServer
 					
 						//Check if this player is new to universe
 						SQLiteCommand cmd = universeDB.CreateCommand();
-						string sql = "SELECT COUNT(*) FROM kmpPlayer WHERE Name = '" + username_lower + "' AND Guid != '" + guid + "';";
+                        string sql = "SELECT COUNT(*) FROM kmpPlayer WHERE Name = '@username' AND Guid != '@guid';";
 						cmd.CommandText = sql;
+                        cmd.Parameters.AddWithValue("username", username_lower);
+                        cmd.Parameters.AddWithValue("guid", guid);
 						Int32 name_taken = Convert.ToInt32(cmd.ExecuteScalar());
 						cmd.Dispose();
 						if (name_taken > 0)
@@ -1239,21 +1250,26 @@ namespace KMPServer
 							break;
 						}
 						cmd = universeDB.CreateCommand();
-						sql = "SELECT COUNT(*) FROM kmpPlayer WHERE Guid = '" + guid + "'";
+						sql = "SELECT COUNT(*) FROM kmpPlayer WHERE Guid = '@guid'";
 						cmd.CommandText = sql;
+                        cmd.Parameters.AddWithValue("guid", guid);
 						Int32 player_exists = Convert.ToInt32(cmd.ExecuteScalar());
 						cmd.Dispose();
 						if (player_exists == 0) //New user
 						{
 							cmd = universeDB.CreateCommand();
-							sql = "INSERT INTO kmpPlayer (Name, Guid) VALUES ('" + username_lower + "','" + guid + "');";
+							sql = "INSERT INTO kmpPlayer (Name, Guid) VALUES ('@username','@guid');";
 							cmd.CommandText = sql;
+                            cmd.Parameters.AddWithValue("username", username_lower);
+                            cmd.Parameters.AddWithValue("guid", guid);
 							cmd.ExecuteNonQuery();
 							cmd.Dispose();
 						}
 						cmd = universeDB.CreateCommand();
-						sql = "SELECT ID FROM kmpPlayer WHERE Guid = '" + guid + "' AND Name LIKE '" + username_lower + "';";
+						sql = "SELECT ID FROM kmpPlayer WHERE Guid = '@guid' AND Name LIKE '@username';";
 						cmd.CommandText = sql;
+                        cmd.Parameters.AddWithValue("username", username_lower);
+                        cmd.Parameters.AddWithValue("guid", guid);
 						Int32 playerID = Convert.ToInt32(cmd.ExecuteScalar());
 						cmd.Dispose();
 					    
@@ -1471,8 +1487,9 @@ namespace KMPServer
 					{
 						try {
 							SQLiteCommand cmd = universeDB.CreateCommand();
-							string sql = "UPDATE kmpVessel SET Active = 0 WHERE Guid = '" + clients[client_index].currentVessel + "'";
+							string sql = "UPDATE kmpVessel SET Active = 0 WHERE Guid = '@id'";
 							cmd.CommandText = sql;
+                            cmd.Parameters.AddWithValue("id", clients[client_index].currentVessel);
 							cmd.ExecuteNonQuery();
 							cmd.Dispose();
 						} catch { }
@@ -1496,8 +1513,9 @@ namespace KMPServer
 						if (!clients[client_index].warping)
 						{
 							SQLiteCommand cmd = universeDB.CreateCommand();
-							string sql = "SELECT LastTick FROM kmpSubspace WHERE ID = " + clients[client_index].currentSubspaceID + ";";
+							string sql = "SELECT LastTick FROM kmpSubspace WHERE ID = @id;";
 							cmd.CommandText = sql;
+                            cmd.Parameters.AddWithValue("id", clients[client_index].currentSubspaceID);
 							SQLiteDataReader reader = cmd.ExecuteReader();
 						
 							try 
@@ -1544,8 +1562,9 @@ namespace KMPServer
 							{
 								//stopped warping-create subspace & add player to it
 								SQLiteCommand cmd = universeDB.CreateCommand();
-								string sql = "INSERT INTO kmpSubspace (LastTick) VALUES (" + clients[client_index].lastTick + ");";
+								string sql = "INSERT INTO kmpSubspace (LastTick) VALUES (@tick);";
 								cmd.CommandText = sql;
+                                cmd.Parameters.AddWithValue("tick", clients[client_index].lastTick);
 								cmd.ExecuteNonQuery();
 								cmd.Dispose();
 								cmd = universeDB.CreateCommand();
@@ -1624,10 +1643,13 @@ namespace KMPServer
 				" INNER JOIN kmpVessel v ON v.Guid = vu.Guid" +
 				" INNER JOIN (SELECT Guid, MAX(Tick) Tick" +
 				"   FROM kmpVesselUpdateHistory" +
-				"   WHERE Tick > " + lastTick + " AND Tick < " + atTick +
+				"   WHERE Tick > @lastTick AND Tick < @atTick" +
 				"   GROUP BY Guid) t ON t.Guid = vu.Guid AND t.Tick = vu.Tick" +
-				" WHERE vu.Subspace != " + toSubspace + ";";
+				" WHERE vu.Subspace != @toSubspace;";
 			cmd.CommandText = sql;
+            cmd.Parameters.AddWithValue("lastTick", lastTick);
+            cmd.Parameters.AddWithValue("atTick", atTick);
+            cmd.Parameters.AddWithValue("toSubspace", toSubspace);
 			SQLiteDataReader reader = cmd.ExecuteReader(); 
 			try 
 			{ 
@@ -2593,3 +2615,4 @@ namespace KMPServer
 		}
 	}
 }
+
