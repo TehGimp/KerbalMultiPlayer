@@ -25,7 +25,7 @@ namespace KMPServer
 		public const String SCREENSHOT_HEIGHT_LABEL = "screenshotHeight";
 
 		public int port = 2076;
-		public int httpPort = 80;
+		public int httpPort = 8081;
 		public int maxClients = 8;
 		public float updatesPerSecond = 60;
 		public int screenshotInterval = 3000;

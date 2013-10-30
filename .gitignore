@@ -1,3 +1,26 @@
-/KLFServer/KMPServer.csproj~
-/LICENSE~
-/README.md~
+# Generic ignore patterns
+*~
+*.o
+*.a
+*.moc
+.git
+
+# Logs etc.
+
+# Windows project stuff
+/bin
+/obj
+KLFClient/bin
+KLFClient/obj
+KLFServer/bin
+KLFServer/obj
+
+
+# Windows runtime
+*.exe
+*.ilk
+*.pdb
+*.msi
+
+# Windows clutter
+*.db

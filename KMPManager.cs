@@ -3104,12 +3104,12 @@ namespace KMP
 					bool addHostPressed = GUILayout.Button("Add",field_options);
 					if (addHostPressed)
 					{
-						KMPClientMain.SetServer(newHost);
+						KMPClientMain.SetServer(newHost.Trim());
 						String[] favorites = KMPClientMain.GetFavorites();
 						for (int i=0; i<8; ++i)
 						{
 							if (String.IsNullOrEmpty(favorites[i]) || i == 7) {
-								favorites[i] = newHost + ":" + newPort;
+								favorites[i] = newHost.Trim() + ":" + newPort.Trim();
 								break;
 							}
 						}

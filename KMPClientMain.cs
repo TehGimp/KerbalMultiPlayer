@@ -1339,14 +1339,14 @@ namespace KMP
 		static String findCraftFilename(String craft_name, ref byte craft_type)
 		{
 			String vab_filename = getCraftFilename(craft_name, KMPCommon.CRAFT_TYPE_VAB);
-			if (vab_filename != null && KSP.IO.File.Exists<KMPClientMain>(vab_filename))
+			if (vab_filename != null && System.IO.File.Exists(vab_filename))
 			{
 				craft_type = KMPCommon.CRAFT_TYPE_VAB;
 				return vab_filename;
 			}
 
 			String sph_filename = getCraftFilename(craft_name, KMPCommon.CRAFT_TYPE_SPH);
-			if (sph_filename != null && KSP.IO.File.Exists<KMPClientMain>(sph_filename))
+			if (sph_filename != null && System.IO.File.Exists(sph_filename))
 			{
 				craft_type = KMPCommon.CRAFT_TYPE_SPH;
 				return sph_filename;
@@ -1406,7 +1406,7 @@ namespace KMP
 							String index_string = label.Substring(FAVORITE_LABEL.Length);
 							int index = -1;
 							if (int.TryParse(index_string, out index) && index >= 0 && index < favorites.Length)
-								favorites[index] = line;
+								favorites[index] = line.Trim();
 						}
 
 					}
