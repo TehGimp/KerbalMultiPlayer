@@ -15,278 +15,95 @@ namespace KMPServer
 
 		static void Main(string[] args)
 		{
-
-			Console.Title = "KMP Server " + KMPCommon.PROGRAM_VERSION;
-			Console.WriteLine("KMP Server version " + KMPCommon.PROGRAM_VERSION);
-			Console.WriteLine("    Created by Shaun Esau");
-			Console.WriteLine("    Based on Kerbal LiveFeed created by Alfred Lam");
-			Console.WriteLine();
-
             ServerSettings.ConfigStore settings = new ServerSettings.ConfigStore();
             ServerSettings.readFromFile(settings);
-			
-			bool firstLoop = true;
 
-			while (true)
-			{
-				Console.WriteLine();
+            Log.MinLogLevel = settings.LogLevel;
 
-				Console.ForegroundColor = ConsoleColor.Green;
-				Console.Write("Port: ");
+			Console.Title = "KMP Server " + KMPCommon.PROGRAM_VERSION;
+            Log.Info("KMP Server version " + KMPCommon.PROGRAM_VERSION);
+            Log.Info("    Created by Shaun Esau");
+            Log.Info("    Based on Kerbal LiveFeed created by Alfred Lam");
+            Log.Info("");
 
-				Console.ResetColor();
-				Console.WriteLine(settings.port);
+            if (settings.autoHost)
+            {
+                startServer(settings);
+                return;
+            }
 
-				Console.ForegroundColor = ConsoleColor.Green;
-				Console.Write("HTTP Port: ");
+            Log.Info("Current Configuration:");
+            Log.Info("");
 
-				Console.ResetColor();
-				Console.WriteLine(settings.httpPort);
+            foreach (var kvp in ServerSettings.GetCurrentValues(settings))
+            {
+                Log.Info("{0}\t: {1}", kvp.Key, kvp.Value);
+            }
 
-				Console.ForegroundColor = ConsoleColor.Green;
-				Console.Write("Max Clients: ");
+            Log.Info("");
+            Log.Info("Enter /set [key] [value] to modify a setting.");
+            Log.Info("/quit to exit, or /start to begin the server.");
+            Log.Info("");
 
-				Console.ResetColor();
-				Console.WriteLine(settings.maxClients);
+            bool running = true;
 
-				Console.ForegroundColor = ConsoleColor.Green;
-				Console.Write("Join Message: ");
+            while (running)
+            {
+                var line = Console.ReadLine();
 
-				Console.ResetColor();
-				Console.WriteLine(settings.joinMessage);
+                var parts = line.Split(' ');
 
-				Console.ForegroundColor = ConsoleColor.Green;
-				Console.Write("Server Info: ");
-
-				Console.ResetColor();
-				Console.WriteLine(settings.serverInfo);
-
-				Console.ForegroundColor = ConsoleColor.Green;
-				Console.Write("Updates Per Second: ");
-
-				Console.ResetColor();
-				Console.WriteLine(settings.updatesPerSecond);
-
-//				Console.ForegroundColor = ConsoleColor.Green;
-//				Console.Write("Total Inactive Ships: ");
-//
-//				Console.ResetColor();
-//				Console.WriteLine(settings.totalInactiveShips);
-
-				Console.ForegroundColor = ConsoleColor.Green;
-				Console.Write("Screenshot Height: ");
-
-				Console.ResetColor();
-				Console.WriteLine(settings.screenshotSettings.maxHeight);
-
-				Console.ForegroundColor = ConsoleColor.Green;
-				Console.Write("Screenshot Interval: ");
-
-				Console.ResetColor();
-				Console.WriteLine(settings.screenshotInterval + "ms");
-
-				Console.ForegroundColor = ConsoleColor.Green;
-				Console.Write("Save Screenshots: ");
-
-				Console.ResetColor();
-				Console.WriteLine(settings.saveScreenshots);
-
-				Console.ForegroundColor = ConsoleColor.Green;
-				Console.Write("Auto-Restart: ");
-
-				Console.ResetColor();
-				Console.WriteLine(settings.autoRestart);
-
-				Console.ForegroundColor = ConsoleColor.Green;
-				Console.Write("Auto-Host: ");
-
-				Console.ResetColor();
-				Console.WriteLine(settings.autoHost);
-
-				Console.ResetColor();
-				Console.WriteLine();
-				Console.WriteLine("P: change port, HP: change http port, M: change max clients");
-				Console.WriteLine("J: join message, IF: server info, U: updates per second");//, IS: total inactive ships");
-				Console.WriteLine("SH: screenshot height, SI: screenshot interval, SV: save screenshots");
-				Console.WriteLine("AR: toggle auto-restart, AH: toggle auto-host");
-				Console.WriteLine("H: begin hosting, Q: quit");
-
-				String in_string;
-				if (settings.autoHost && firstLoop)
-				{
-					in_string = "h";
-				}
-				else
-				{
-					in_string = Console.ReadLine().ToLower();
-				}
-				firstLoop = false;
-
-				if (in_string == "q")
-				{
-					break;
-				}
-				else if (in_string == "p")
-				{
-					Console.Write("Enter the Port: ");
-
-					int new_port;
-					if (int.TryParse(Console.ReadLine(), out new_port) && ServerSettings.validPort(new_port))
-					{
-						settings.port = new_port;
-                        ServerSettings.writeToFile(settings);
-					}
-					else
-					{
-						Console.WriteLine("Invalid port ["
-							+ IPEndPoint.MinPort + '-'
-							+ IPEndPoint.MaxPort + ']');
-					}
-				}
-				else if (in_string == "hp")
-				{
-					Console.Write("Enter the HTTP Port: ");
-
-					int new_port;
-					if (int.TryParse(Console.ReadLine(), out new_port) && ServerSettings.validPort(new_port))
-					{
-						settings.httpPort = new_port;
-                        ServerSettings.writeToFile(settings);
-					}
-					else
-					{
-						Console.WriteLine("Invalid port ["
-							+ IPEndPoint.MinPort + '-'
-							+ IPEndPoint.MaxPort + ']');
-					}
-				}
-				else if (in_string == "m")
-				{
-					Console.Write("Enter the max number of clients: ");
-
-					int new_value;
-					if (int.TryParse(Console.ReadLine(), out new_value) && new_value > 0)
-					{
-						settings.maxClients = new_value;
-                        ServerSettings.writeToFile(settings);
-					}
-					else
-						Console.WriteLine("Invalid number of clients");
-				}
-				else if (in_string == "j")
-				{
-					Console.Write("Enter the join message: ");
-					settings.joinMessage = Console.ReadLine();
-                    ServerSettings.writeToFile(settings);
-				}
-				else if (in_string == "if")
-				{
-					Console.Write("Enter the server info message: ");
-					settings.serverInfo = Console.ReadLine();
-                    ServerSettings.writeToFile(settings);
-				}
-				else if (in_string == "u")
-				{
-					Console.Write("Enter the number of updates to receive per second: ");
-					float new_value;
-					if (float.TryParse(Console.ReadLine(), out new_value) && ServerSettings.validUpdatesPerSecond(new_value))
-					{
-						settings.updatesPerSecond = new_value;
-                        ServerSettings.writeToFile(settings);
-					}
-					else
-					{
-						Console.WriteLine("Invalid updates per second ["
-							+ ServerSettings.MIN_UPDATES_PER_SECOND + '-'
-							+ ServerSettings.MAX_UPDATES_PER_SECOND + ']');
-					}
-				}
-				else if (in_string == "sh")
-				{
-					Console.Write("Enter the screenshot height: ");
-					int new_value;
-					if (int.TryParse(Console.ReadLine(), out new_value))
-					{
-						settings.screenshotSettings.maxHeight = new_value;
-                        ServerSettings.writeToFile(settings);
-					}
-					else
-					{
-						Console.WriteLine("Invalid screenshot height.");
-					}
-				}
-				else if (in_string == "si")
-				{
-					Console.Write("Enter the screenshot interval: ");
-					int new_value;
-					if (int.TryParse(Console.ReadLine(), out new_value) && ServerSettings.validScreenshotInterval(new_value))
-					{
-						settings.screenshotInterval = new_value;
-                        ServerSettings.writeToFile(settings);
-					}
-					else
-					{
-						Console.WriteLine("Invalid screenshot interval ["
-							+ ServerSettings.MIN_SCREENSHOT_INTERVAL + '-'
-							+ ServerSettings.MAX_SCREENSHOT_INTERVAL + ']');
-					}
-				}
-//				else if (in_string == "is")
-//				{
-//					Console.Write("Enter the total number of inactive ships: ");
-//					byte new_value;
-//					if (byte.TryParse(Console.ReadLine(), out new_value))
-//					{
-//						settings.totalInactiveShips = new_value;
-//						settings.writeConfigFile();
-//					}
-//					else
-//					{
-//						Console.WriteLine("Invalid total inactive ships ["
-//							+ Byte.MinValue + '-'
-//							+ Byte.MaxValue + ']');
-//					}
-//				}
-				else if (in_string == "sv")
-				{
-					settings.saveScreenshots = !settings.saveScreenshots;
-                    ServerSettings.writeToFile(settings);
-				}
-				else if (in_string == "ar")
-				{
-					settings.autoRestart = !settings.autoRestart;
-                    ServerSettings.writeToFile(settings);
-				}
-				else if (in_string == "ah")
-				{
-					settings.autoHost = !settings.autoHost;
-                    ServerSettings.writeToFile(settings);
-				}
-				else if (in_string == "h")
-				{
-					ServerStatus status = hostServer(settings);
-					while (status == ServerStatus.RESTARTING)
-					{
-						System.Threading.Thread.Sleep(AUTO_RESTART_DELAY);
-						status = hostServer(settings);
-					}
-					
-					if (status == ServerStatus.QUIT)
-					{
-						Console.WriteLine("Press any key to quit");
-						Console.ReadKey();
-	
-						break;
-					}
-					else
-					{
-						Console.WriteLine("Server "+Enum.GetName(typeof(ServerStatus), status).ToLower());
-					}
-				}
-
-			}
-
+                switch (parts[0].ToLowerInvariant())
+                {
+                    case "/quit":
+                        return;
+                    case "/set":
+                        if (parts.Length != 3)
+                        {
+                            Log.Info("Invalid usage. Usage is /set [key] [value]");
+                        }
+                        else 
+                        {
+                            try
+                            {
+                                ServerSettings.modifySetting(settings, parts[1], parts[2]);
+                                Log.Info("{0} changed to {1}", parts[1], parts[2]);
+                                ServerSettings.writeToFile(settings);
+                            }
+                            catch
+                            {
+                                Log.Info("{0} cannot be set to {1}", parts[1], parts[2]);
+                            }
+                        }
+                        break;
+                    case "/start":
+                        startServer(settings);
+                        break;
+                    default:
+                        Log.Info("Unrecognised command: {0}", parts[0]);
+                        break;
+                }
+            }
 		}
+
+        private static void startServer(ServerSettings.ConfigStore settings)
+        {
+            ServerStatus status = hostServer(settings);
+            while (status == ServerStatus.RESTARTING)
+            {
+                System.Threading.Thread.Sleep(AUTO_RESTART_DELAY);
+                status = hostServer(settings);
+            }
+             
+            if (status == ServerStatus.QUIT)
+            {
+
+            }
+            else
+            {
+                Console.WriteLine("Server " + Enum.GetName(typeof(ServerStatus), status).ToLower());
+            }
+        }
 
 		static ServerStatus hostServer(ServerSettings.ConfigStore settings)
 		{
@@ -298,31 +115,13 @@ namespace KMPServer
 			}
 			catch (Exception e)
 			{
-				//Write an error log
-				TextWriter writer = File.CreateText("KMPServerlog.txt");
-
-				writer.WriteLine(e.ToString());
+				Log.Error("Unexpected exception encountered! Crash report written to log file");
+				Log.Error(e.ToString());
 				if (server.threadExceptionStackTrace != null && server.threadExceptionStackTrace.Length > 0)
 				{
-					writer.Write("Stacktrace: ");
-					writer.WriteLine(server.threadExceptionStackTrace);
+					Log.Error("Stacktrace: ");
+					Log.Error(server.threadExceptionStackTrace);
 				}
-
-				writer.Close();
-
-				Console.WriteLine();
-
-				Console.ForegroundColor = ConsoleColor.Red;
-				Server.stampedConsoleWriteLine("Unexpected exception encountered! Crash report written to KMPServerlog.txt");
-				Console.WriteLine(e.ToString());
-				if (server.threadExceptionStackTrace != null && server.threadExceptionStackTrace.Length > 0)
-				{
-					Console.Write("Stacktrace: ");
-					Console.WriteLine(server.threadExceptionStackTrace);
-				}
-
-				Console.WriteLine();
-				Console.ResetColor();
 				//server.clearState();
 				//return ServerStatus.CRASHED;
 			}

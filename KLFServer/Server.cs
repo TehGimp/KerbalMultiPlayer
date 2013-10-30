@@ -167,39 +167,6 @@ namespace KMPServer
 			this.settings = settings;
 		}
 
-		public static void stampedConsoleWriteLine(String message)
-		{
-			lock (consoleWriteLock)
-			{
-
-				ConsoleColor default_color = Console.ForegroundColor;
-
-				try
-				{
-					Console.ForegroundColor = ConsoleColor.DarkGreen;
-					Console.Write('[');
-					Console.Write(DateTime.Now.ToString("HH:mm:ss"));
-					Console.Write("] ");
-
-					Console.ForegroundColor = default_color;
-					Console.WriteLine(message);
-				}
-				catch (IOException) { }
-				finally
-				{
-					Console.ForegroundColor = default_color;
-				}
-
-			}
-		}
-
-		public static void debugConsoleWriteLine(String message)
-		{
-#if DEBUG_OUT
-			stampedConsoleWriteLine(message);
-#endif
-		}
-
 		public void clearState()
 		{
 			safeAbort(listenThread);
@@ -342,7 +309,7 @@ namespace KMPServer
 			//Start hosting server
 			stopwatch.Start();
 
-			stampedConsoleWriteLine("Hosting server on port " + settings.port + "...");
+			Log.Info("Hosting server on port " + settings.port + "...");
 
 			clients = new ServerClient[settings.maxClients];
 			for (int i = 0; i < clients.Length; i++)
@@ -376,18 +343,18 @@ namespace KMPServer
 				udpClient = null;
 			}
 
-			Console.WriteLine("Commands:");
-			Console.WriteLine("/quit - Quit server cleanly");
-			Console.WriteLine("/stop - Stop hosting server");
-			Console.WriteLine("/list - List players");
-			Console.WriteLine("/count - Display player counts");
-			Console.WriteLine("/kick <username> - Kick player <username>");
-			Console.WriteLine("/ban <username> - Permanently ban player <username> and any known aliases");
-			Console.WriteLine("/register <username> <token> - Add new roster entry for player <username> with authentication token <token> (BEWARE: will delete any matching roster entries)");
-			Console.WriteLine("/update <username> <token> - Update existing roster entry for player <username>/token <token> (one param must match existing roster entry, other will be updated)");
-			Console.WriteLine("/unregister <username/token> - Temove any player that has a matching username or token from the roster");
-			Console.WriteLine("/save - Backup universe");
-			Console.WriteLine("Non-commands will be sent to players as a chat message");
+			Log.Info("Commands:");
+            Log.Info("/quit - Quit server cleanly");
+            Log.Info("/stop - Stop hosting server");
+            Log.Info("/list - List players");
+            Log.Info("/count - Display player counts");
+            Log.Info("/kick <username> - Kick player <username>");
+            Log.Info("/ban <username> - Permanently ban player <username> and any known aliases");
+            Log.Info("/register <username> <token> - Add new roster entry for player <username> with authentication token <token> (BEWARE: will delete any matching roster entries)");
+            Log.Info("/update <username> <token> - Update existing roster entry for player <username>/token <token> (one param must match existing roster entry, other will be updated)");
+            Log.Info("/unregister <username/token> - Temove any player that has a matching username or token from the roster");
+            Log.Info("/save - Backup universe");
+            Log.Info("Non-commands will be sent to players as a chat message");
 
 			commandThread.Start();
 			connectionThread.Start();
@@ -404,8 +371,8 @@ namespace KMPServer
 			}
 			catch (Exception e)
 			{
-				stampedConsoleWriteLine("Error starting http server: " + e);
-				stampedConsoleWriteLine("Please try running the server as an administrator");
+				Log.Error("Error starting http server: " + e);
+				Log.Error("Please try running the server as an administrator");
 			}
 			
 			long last_backup_time = 0;
@@ -441,7 +408,7 @@ namespace KMPServer
 			clearState();
 			stopwatch.Stop();
 
-			stampedConsoleWriteLine("Server session ended.");
+            Log.Info("Server session ended.");
 			
 		}
 
@@ -496,22 +463,22 @@ namespace KMPServer
 									}
 								}
 
-								stampedConsoleWriteLine(sb.ToString());
+                                Log.Info(sb.ToString());
 							}
 							else if (input == "/count")
 							{
-								stampedConsoleWriteLine("Total clients: " + numClients);
+                                Log.Info("Total clients: " + numClients);
 
 								lock (clientActivityCountLock)
 								{
-									stampedConsoleWriteLine("In-Game Clients: " + numInGameClients);
-									stampedConsoleWriteLine("In-Flight Clients: " + numInFlightClients);
+                                    Log.Info("In-Game Clients: " + numInGameClients);
+                                    Log.Info("In-Flight Clients: " + numInFlightClients);
 								}
 							}
 							else if (input == "/save")
 							{
 								//Save the universe!
-								stampedConsoleWriteLine("Saving the universe! ;-)");
+                                Log.Info("Saving the universe! ;-)");
 								backupDatabase();
 							}
 							else if (input.Length > 5 && input.Substring(0, 5) == "/ban ")
@@ -536,11 +503,11 @@ namespace KMPServer
 									cmd.CommandText = sql;
 									cmd.ExecuteNonQuery();
 									cmd.Dispose();
-									stampedConsoleWriteLine("Player '" + ban_name + "' and all known aliases banned from server permanently. Use /unregister to allow this user to reconnect.");
+                                    Log.Info("Player '" + ban_name + "' and all known aliases banned from server permanently. Use /unregister to allow this user to reconnect.");
 								}
 								else
 								{
-									stampedConsoleWriteLine("Failed to locate player '" + ban_name + "'.");
+                                    Log.Info("Failed to locate player '" + ban_name + "'.");
 								}
 							}
 							else if (input.Length > 10 && input.Substring(0, 10) == "/register ")
@@ -564,20 +531,20 @@ namespace KMPServer
 											cmd.ExecuteNonQuery();
 											cmd.Dispose();
 										}
-										stampedConsoleWriteLine("Player '" + args[0] + "' added to player roster with token '" + args[1] + "'.");
+                                        Log.Info("Player '" + args[0] + "' added to player roster with token '" + args[1] + "'.");
 									}
 									catch (FormatException)
 									{
-										stampedConsoleWriteLine("Supplied token is invalid.");
+                                        Log.Info("Supplied token is invalid.");
 									}
 									catch (Exception)
 									{
-										stampedConsoleWriteLine("Registration failed, possibly due to a malformed /register command.");
+                                        Log.Info("Registration failed, possibly due to a malformed /register command.");
 									}
 								}
 								else
 								{
-									stampedConsoleWriteLine("Could not parse register command. Format is \"/register <username> <token>\"");
+                                    Log.Info("Could not parse register command. Format is \"/register <username> <token>\"");
 								}
 							}
 							else if (input.Length > 12 && input.Substring(0, 12) == "/unregister ")
@@ -589,7 +556,7 @@ namespace KMPServer
                                 cmd.Parameters.AddWithValue("dereg", dereg);
 								cmd.ExecuteNonQuery();
 								cmd.Dispose();
-								stampedConsoleWriteLine("Players with name/token '" + dereg + "' removed from player roster.");
+                                Log.Info("Players with name/token '" + dereg + "' removed from player roster.");
 							}
 							else if (input.Length > 8 && input.Substring(0, 8) == "/update ")
 							{
@@ -611,20 +578,20 @@ namespace KMPServer
 											cmd.ExecuteNonQuery();
 											cmd.Dispose();
 										}
-										stampedConsoleWriteLine("Updated roster with player '" + args[0] + "' and token '" + args[1] + "'.");
+                                        Log.Info("Updated roster with player '" + args[0] + "' and token '" + args[1] + "'.");
 									}
 									catch (FormatException)
 									{
-										stampedConsoleWriteLine("Supplied token is invalid.");
+                                        Log.Info("Supplied token is invalid.");
 									}
 									catch (Exception)
 									{
-										stampedConsoleWriteLine("Update failed, possibly due to a malformed /update command.");
+                                        Log.Info("Update failed, possibly due to a malformed /update command.");
 									}
 								}
 								else
 								{
-									stampedConsoleWriteLine("Could not parse update command. Format is \"/update <username> <token>\"");
+                                    Log.Info("Could not parse update command. Format is \"/update <username> <token>\"");
 								}
 							}
 						}
@@ -651,7 +618,7 @@ namespace KMPServer
 
 			try
 			{
-				stampedConsoleWriteLine("Listening for clients...");
+				Log.Info("Listening for clients...");
 				tcpListener.Start(4);
 
 				while (true)
@@ -684,7 +651,7 @@ namespace KMPServer
 							if (clientIsValid(client_index))
 							{
 								//Send a handshake to the client
-								stampedConsoleWriteLine("Accepted client. Handshaking...");
+								Log.Info("Accepted client. Handshaking...");
 								sendHandshakeMessage(client_index);
 
 								sendMessageHeaderDirect(client, KMPCommon.ServerMessageID.NULL, 0);
@@ -700,7 +667,7 @@ namespace KMPServer
 						else
 						{
 							//Client array is full
-							stampedConsoleWriteLine("Client attempted to connect, but server is full.");
+							Log.Info("Client attempted to connect, but server is full.");
 							sendHandshakeRefusalMessageDirect(client, "Server is currently full");
 							client.Close();
 						}
@@ -715,8 +682,8 @@ namespace KMPServer
 					if (client == null && error_message.Length > 0)
 					{
 						//There was an error accepting the client
-						stampedConsoleWriteLine("Error accepting client: ");
-						stampedConsoleWriteLine(error_message);
+						Log.Info("Error accepting client: ");
+						Log.Info(error_message);
 					}
 
 					Thread.Sleep(SLEEP_TIME);
@@ -736,7 +703,7 @@ namespace KMPServer
 		{
 			try
 			{
-				debugConsoleWriteLine("Starting disconnect thread");
+				Log.Debug("Starting disconnect thread");
 
 				while (true)
 				{
@@ -824,7 +791,7 @@ namespace KMPServer
 				passExceptionToMain(e);
 			}
 
-			debugConsoleWriteLine("Ending disconnect thread.");
+			Log.Debug("Ending disconnect thread.");
 		}
 
 		void sendOutgoingMessages()
@@ -923,7 +890,7 @@ namespace KMPServer
 				//Only send the disconnect message if the client performed handshake successfully
 				if (clients[index].receivedHandshake)
 				{
-					stampedConsoleWriteLine("Client #" + index + " " + clients[index].username + " has disconnected: " + message);
+					Log.Info("Client #" + index + " " + clients[index].username + " has disconnected: " + message);
 	
 					StringBuilder sb = new StringBuilder();
 	
@@ -973,12 +940,12 @@ namespace KMPServer
 					//backupDatabase();
 				}
 				else
-					stampedConsoleWriteLine("Client failed to handshake successfully: " + message);
+					Log.Info("Client failed to handshake successfully: " + message);
 			}
 			catch (NullReferenceException e)
 			{
 				//Almost certainly need to be smarter about this.
-				stampedConsoleWriteLine("Internal error during disconnect: " + e.StackTrace);
+				Log.Info("Internal error during disconnect: " + e.StackTrace);
 			}
 			
 			clients[index].receivedHandshake = false;
@@ -994,7 +961,7 @@ namespace KMPServer
 
 		public void clientActivityLevelChanged(int index)
 		{
-			stampedConsoleWriteLine(clients[index].username + " activity level is now " + clients[index].activityLevel);
+			Log.Info(clients[index].username + " activity level is now " + clients[index].activityLevel);
 			
 			//Count the number of in-game/in-flight clients
 			int num_in_game = 0;
@@ -1203,7 +1170,7 @@ namespace KMPServer
 			if (!clientIsValid(client_index))
 				return;
 
-			//stampedConsoleWriteLine("Message id: " + id.ToString() + " from client: " + client_index + " data: " + (data != null ? data.Length.ToString() : "0"));
+			//Log.Info("Message id: " + id.ToString() + " from client: " + client_index + " data: " + (data != null ? data.Length.ToString() : "0"));
 			//Console.WriteLine("Message id: " + id.ToString() + " data: " + (data != null ? System.Text.Encoding.ASCII.GetString(data) : ""));
 
 			UnicodeEncoding encoder = new UnicodeEncoding();
@@ -1237,7 +1204,7 @@ namespace KMPServer
 							{
 								//Disconnect the player
 								disconnectClient(client_index, "Your username is already in use.");
-								stampedConsoleWriteLine("Rejected client due to duplicate username: " + username);
+								Log.Info("Rejected client due to duplicate username: " + username);
 								accepted = false;
 								break;
 							}
@@ -1258,7 +1225,7 @@ namespace KMPServer
 						{
 							//Disconnect the player
 							disconnectClient(client_index, "Your username is already claimed by an existing user.");
-							stampedConsoleWriteLine("Rejected client due to duplicate username w/o matching guid: " + username);
+							Log.Info("Rejected client due to duplicate username w/o matching guid: " + username);
 							break;
 						}
 						cmd = universeDB.CreateCommand();
@@ -1318,7 +1285,7 @@ namespace KMPServer
 						sendServerMessage(client_index, sb.ToString());
 						sendServerSettings(client_index);
 
-						stampedConsoleWriteLine(username + " has joined the server using client version " + version);
+						Log.Info(username + " has joined the server using client version " + version);
 
 						//Build join message
 						//sb.Clear();
@@ -1413,7 +1380,7 @@ namespace KMPServer
 						sb.Append(" has shared a screenshot.");
 
 						sendTextMessageToAll(sb.ToString());
-						stampedConsoleWriteLine(sb.ToString());
+						Log.Info(sb.ToString());
 
 						//Send the screenshot to every client watching the player
 						sendScreenshotToWatchers(client_index, data);
@@ -1474,7 +1441,7 @@ namespace KMPServer
 									break;
 							}
 
-							stampedConsoleWriteLine(sb.ToString());
+							Log.Info(sb.ToString());
 			
 							sb.Append(" . Enter !getcraft ");
 							sb.Append(clients[client_index].username);
@@ -1601,7 +1568,7 @@ namespace KMPServer
 								clients[client_index].lastTick = -1d;
 								sendSubspace(client_index, false);
 								clients[client_index].warping = false;
-								stampedConsoleWriteLine(clients[client_index].username + " set to new subspace " + newSubspace);
+								Log.Info(clients[client_index].username + " set to new subspace " + newSubspace);
 							}
 						}
 						else
@@ -1610,7 +1577,7 @@ namespace KMPServer
 							{
 								clients[client_index].warping = true;
 								clients[client_index].currentSubspaceID = -1;
-								stampedConsoleWriteLine(clients[client_index].username + " is warping");
+								Log.Info(clients[client_index].username + " is warping");
 							}
 						}
 					}
@@ -1639,7 +1606,7 @@ namespace KMPServer
 							}
 						} 
 						clients[client_index].currentSubspaceID = subspaceID;
-						stampedConsoleWriteLine(clients[client_index].username + " sync request to subspace " + subspaceID);
+						Log.Info(clients[client_index].username + " sync request to subspace " + subspaceID);
 						sendSubspace(client_index, true);
 					}
 					break;
@@ -1697,7 +1664,7 @@ namespace KMPServer
 			if (!clients[client_index].warping)
 			{
 				sendSubspaceSync(client_index);
-				stampedConsoleWriteLine("Sending all vessels in current subspace for " + clients[client_index].username);
+				Log.Info("Sending all vessels in current subspace for " + clients[client_index].username);
 				SQLiteCommand cmd = universeDB.CreateCommand();
 				string sql = "SELECT  vu.UpdateMessage, v.ProtoVessel, v.Private, v.OwnerID" +
 					" FROM kmpVesselUpdate vu" +
@@ -1779,7 +1746,7 @@ namespace KMPServer
 					reader.Close();
 				}
 				clients[client_index].currentSubspaceID = subspace;
-				stampedConsoleWriteLine(clients[client_index].username + " set to lead subspace " + subspace);
+				Log.Info(clients[client_index].username + " set to lead subspace " + subspace);
 				sendSyncMessage(client_index, tick);
 			}
 		}
@@ -1834,7 +1801,7 @@ namespace KMPServer
 									clients[target_index].sharedCraftFile,
 									clients[target_index].sharedCraftType);
 
-								stampedConsoleWriteLine("Sent craft " + clients[target_index].sharedCraftName
+								Log.Info("Sent craft " + clients[target_index].sharedCraftName
 									+ " to client " + clients[client_index].username);
 							}
 						}
@@ -1853,7 +1820,7 @@ namespace KMPServer
 			String full_message = sb.ToString();
 
 			//Console.SetCursorPosition(0, Console.CursorTop);
-			stampedConsoleWriteLine(full_message);
+			Log.Info(full_message);
 
 			//Send the update to all other clients
 			sendTextMessageToAll(full_message, client_index);
@@ -1881,7 +1848,7 @@ namespace KMPServer
 			client.GetStream().Write(KMPCommon.intToBytes((int)id), 0, 4);
 			client.GetStream().Write(KMPCommon.intToBytes(msg_length), 0, 4);
 
-			debugConsoleWriteLine("Sending message: " + id.ToString());
+			Log.Debug("Sending message: " + id.ToString());
 		}
 
 		private void sendHandshakeRefusalMessageDirect(TcpClient client, String message)
@@ -2024,7 +1991,7 @@ namespace KMPServer
 						vessel_info[2] = "Using vessel: " + vessel_update.name;
 						vessel_info[3] = "";
 						
-						//stampedConsoleWriteLine("Unpacked update from tick=" + vessel_update.tick + " @ client tick=" + clients[sending_client].lastTick);
+						//Log.Info("Unpacked update from tick=" + vessel_update.tick + " @ client tick=" + clients[sending_client].lastTick);
 						ConfigNode node = vessel_update.getProtoVesselNode();
 						if (node != null)
 						{
@@ -2036,7 +2003,7 @@ namespace KMPServer
 							cmd.Dispose();
 							if (result == null)
 							{
-								stampedConsoleWriteLine("New vessel " + vessel_update.kmpID + " from " + clients[sending_client].username + " added to universe");
+								Log.Info("New vessel " + vessel_update.kmpID + " from " + clients[sending_client].username + " added to universe");
 								cmd = universeDB.CreateCommand();
 								sql = "INSERT INTO kmpVessel (Guid, GameGuid, OwnerID, Private, Active, ProtoVessel, Subspace)" +
 									"VALUES ('"+vessel_update.kmpID+"','"+vessel_update.id+"',"+clients[sending_client].playerID+","+Convert.ToInt32(vessel_update.isPrivate)+","+Convert.ToInt32(vessel_update.state==State.ACTIVE)+",@protoVessel,"+clients[sending_client].currentSubspaceID+")";
@@ -2248,7 +2215,7 @@ namespace KMPServer
 			}
 			catch (Exception e)
 			{
-				stampedConsoleWriteLine("Vessel update error: " + e.Message  + " " + e.StackTrace);
+				Log.Info("Vessel update error: " + e.Message  + " " + e.StackTrace);
 			}
 			
 			//Build the message array
@@ -2327,7 +2294,7 @@ namespace KMPServer
 					cmd.Dispose();
 					if (vessel_update.situation == Situation.DESTROYED) 
 					{
-						stampedConsoleWriteLine("Vessel " + vessel_update.kmpID + " reported as destroyed");
+						Log.Info("Vessel " + vessel_update.kmpID + " reported as destroyed");
 						recentlyDestroyed[vessel_update.kmpID] = currentMillisecond;
 					}
 					return vessel_update.situation == Situation.DESTROYED;
@@ -2387,7 +2354,7 @@ namespace KMPServer
 		
 		private void sendScreenshot(int client_index, byte[] bytes)
 		{
-			stampedConsoleWriteLine("Sending screenshot to player " + clients[client_index].username);
+			Log.Info("Sending screenshot to player " + clients[client_index].username);
 			clients[client_index].queueOutgoingMessage(KMPCommon.ServerMessageID.SCREENSHOT_SHARE, bytes);
 		}
 		
@@ -2461,7 +2428,7 @@ namespace KMPServer
 		
 		private void sendSyncMessage(int client_index, double tick)
 		{
-			//stampedConsoleWriteLine("Time sync for: " + clients[client_index].username);
+			//Log.Info("Time sync for: " + clients[client_index].username);
 			byte[] message_bytes = buildMessageArray(KMPCommon.ServerMessageID.SYNC, BitConverter.GetBytes(tick));
 			clients[client_index].queueOutgoingMessage(message_bytes);
 		}
@@ -2507,12 +2474,12 @@ namespace KMPServer
 				cmd.CommandText = sql;
 				version = Convert.ToInt32(cmd.ExecuteScalar());
 			}
-			catch { stampedConsoleWriteLine("Missing (or bad) universe database file."); }
+			catch { Log.Info("Missing (or bad) universe database file."); }
 			finally
 			{
 				if (version != UNIVERSE_VERSION)
 				{
-					stampedConsoleWriteLine("Creating new universe...");
+					Log.Info("Creating new universe...");
 					try {
 						File.Delete("KMP_universe.db");
 					} catch {}
@@ -2530,7 +2497,7 @@ namespace KMPServer
 				}
 				else
 				{
-					stampedConsoleWriteLine("Loading universe...");
+					Log.Info("Loading universe...");
 					diskDB.BackupDatabase(universeDB, "main", "main",-1, null, 0);
 				}
 				diskDB.Close();
@@ -2540,7 +2507,7 @@ namespace KMPServer
 			string sql2 = "UPDATE kmpVessel SET Active = 0;";
 			cmd2.CommandText = sql2;
 			cmd2.ExecuteNonQuery();
-			stampedConsoleWriteLine("Universe OK.");
+			Log.Info("Universe OK.");
 		}
 		
 		public void backupDatabase()
@@ -2556,7 +2523,7 @@ namespace KMPServer
 			cmd.CommandText = sql;
 			cmd.ExecuteNonQuery();
 			diskDB.Close();
-			stampedConsoleWriteLine("Universe saved to disk.");
+			Log.Info("Universe saved to disk.");
 		}
 		
 		public void cleanDatabase()
@@ -2567,7 +2534,7 @@ namespace KMPServer
 				" DELETE FROM kmpVesselUpdate WHERE ID IN (SELECT ID FROM kmpVesselUpdate vu WHERE Subspace != (SELECT ID FROM kmpSubspace WHERE LastTick = (SELECT MAX(LastTick) FROM kmpSubspace WHERE ID IN (SELECT Subspace FROM kmpVesselUpdate WHERE Guid = vu.Guid))));";
 			cmd.CommandText = sql;
 			cmd.ExecuteNonQuery();
-			stampedConsoleWriteLine("Optimized in-memory universe database.");
+			Log.Info("Optimized in-memory universe database.");
 		}
 		
 		public bool firstSubspaceIsPresentOrFutureOfSecondSubspace(int comparisonSubspace, int referenceSubspace)
