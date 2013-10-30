@@ -2,11 +2,12 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Reflection;
 
 public class KMPCommon
 {
 
-	public String PROGRAM_VERSION
+	public static String PROGRAM_VERSION
     {
         get
         {
