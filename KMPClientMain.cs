@@ -1826,7 +1826,8 @@ namespace KMP
 		{
 			byte[] time = null;
 			if (gameManager.lastTick > 0d) time = BitConverter.GetBytes(gameManager.lastTick);
-			sendMessageUDP(KMPCommon.ClientMessageID.UDP_PROBE, time);
+			if (udpConnected) sendMessageUDP(KMPCommon.ClientMessageID.UDP_PROBE, time);
+			else sendMessageTCP(KMPCommon.ClientMessageID.UDP_PROBE, time);
 		}
 
 		private static void sendMessageUDP(KMPCommon.ClientMessageID id, byte[] data)

@@ -182,7 +182,7 @@ namespace KMP
 		{
 			get
 			{
-				return FlightGlobals.ready && FlightGlobals.ActiveVessel != null && KMPClientMain.handshakeCompleted && KMPClientMain.udpConnected && KMPClientMain.receivedSettings;
+				return FlightGlobals.ready && FlightGlobals.ActiveVessel != null && KMPClientMain.handshakeCompleted && KMPClientMain.receivedSettings;
 			}
 		}
 
