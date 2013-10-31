@@ -12,6 +12,7 @@ namespace KMPServer
 	public class ServerSettings
 	{
 		public const String SERVER_CONFIG_FILENAME = "KMPServerConfig.txt";
+        public const string SERVER_WHITELIST_FILENAME = "KMPWhitelist.txt";
 
         public class ConfigStore
         {
@@ -28,9 +29,19 @@ namespace KMPServer
             public String serverInfo = String.Empty;
             public byte totalInactiveShips = 100;
             public Log.LogLevels LogLevel = Log.LogLevels.Info;
+            public bool whitelisted = false;
+
+            private List<string> _whitelist = new List<string>();
+            internal List<string> whitelist
+            {
+                get
+                {
+                    return _whitelist;
+                }
+            }
 
             private ScreenshotSettings _screenshotSettings = new ScreenshotSettings();
-            public ScreenshotSettings screenshotSettings
+            internal ScreenshotSettings screenshotSettings
             {
                 get
                 {
@@ -72,7 +83,7 @@ namespace KMPServer
         {
             try
             {
-                FieldInfo f = Store.GetType().GetFields().Where(fF => fF.Name.ToLowerInvariant() == Key).First();
+                FieldInfo f = Store.GetType().GetFields().Where(fF => fF.Name.ToLowerInvariant() == Key.ToLowerInvariant()).First();
                 object newValue;
 
                 if (f.FieldType.IsEnum)
@@ -103,6 +114,43 @@ namespace KMPServer
             }
 
             return result;
+        }
+
+        public static void saveWhitelist(ConfigStore Store)
+        {
+            string FileName = SERVER_WHITELIST_FILENAME;
+
+            try
+            {
+                if (File.Exists(FileName))
+                {
+                    File.SetAttributes(FileName, FileAttributes.Normal);
+                }
+
+                using (StreamWriter configWriter = new StreamWriter(FileName))
+                {
+                    foreach (var u in Store.whitelist)
+                    {
+                        configWriter.WriteLine(u.ToLowerInvariant());
+                    }
+                }
+            }
+            catch { }
+        }
+
+        public static void loadWhitelist(ConfigStore Store)
+        {
+            string FileName = SERVER_WHITELIST_FILENAME;
+
+            try
+            {
+                if (File.Exists(FileName))
+                {
+                    Store.whitelist.Clear();
+                    Store.whitelist.AddRange(File.ReadAllLines(FileName));
+                }
+            }
+            catch { }
         }
 
         //Write the setting store out to a file by reflecting over its members.

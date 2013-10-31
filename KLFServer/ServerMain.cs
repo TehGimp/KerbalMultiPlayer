@@ -17,6 +17,7 @@ namespace KMPServer
 		{
             ServerSettings.ConfigStore settings = new ServerSettings.ConfigStore();
             ServerSettings.readFromFile(settings);
+            ServerSettings.loadWhitelist(settings);
 
             bool settingsChanged = false;
 
@@ -64,7 +65,8 @@ namespace KMPServer
             }
 
             Log.Info("");
-            Log.Info("Enter /set [key] [value] to modify a setting.");
+            Log.Info("/set [key] [value] to modify a setting.");
+            Log.Info("/whitelist [add|del] [user] to update whitelist.");
             Log.Info("/quit to exit, or /start to begin the server.");
             Log.Info("");
 
@@ -80,22 +82,58 @@ namespace KMPServer
                 {
                     case "/quit":
                         return;
-                    case "/set":
+                    case "/whitelist":
                         if (parts.Length != 3)
+                        {
+                            Log.Info("Invalid usage. /whitelist [add|del] [user]");
+                        }
+
+                        switch (parts[1])
+                        {
+                            case "add":
+                                if (!settings.whitelist.Contains(parts[2], StringComparer.InvariantCultureIgnoreCase))
+                                {
+                                    settings.whitelist.Add(parts[2].ToLowerInvariant());
+                                    Log.Info("{0} has been added to the whitelist", parts[2]);
+                                }
+                                else
+                                {
+                                    Log.Info("{0} is already on the whitelist", parts[2]);
+                                }
+                                break;
+                            case "del":
+                                if (settings.whitelist.Contains(parts[2], StringComparer.InvariantCultureIgnoreCase))
+                                {
+                                    settings.whitelist.Remove(parts[2].ToLowerInvariant());
+                                    Log.Info("{0} has been removed from the whitelist", parts[2]);
+                                }
+                                else
+                                {
+                                    Log.Info("{0} was not already on the whitelist", parts[2]);
+                                }
+                                break;
+                        }
+
+                        ServerSettings.saveWhitelist(settings);
+                        break;
+                    case "/set":
+                        if (parts.Length < 3)
                         {
                             Log.Info("Invalid usage. Usage is /set [key] [value]");
                         }
                         else 
                         {
+                            string val = String.Join(" ", parts.Skip(2).ToArray());
+
                             try
                             {
-                                ServerSettings.modifySetting(settings, parts[1], parts[2]);
-                                Log.Info("{0} changed to {1}", parts[1], parts[2]);
+                                ServerSettings.modifySetting(settings, parts[1], val);
+                                Log.Info("{0} changed to {1}", parts[1], val);
                                 ServerSettings.writeToFile(settings);
                             }
                             catch
                             {
-                                Log.Info("{0} cannot be set to {1}", parts[1], parts[2]);
+                                Log.Info("{0} cannot be set to {1}", parts[1], val);
                             }
                         }
                         break;
