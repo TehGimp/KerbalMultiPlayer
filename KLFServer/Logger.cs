@@ -13,6 +13,7 @@ namespace KMPServer
         public enum LogLevels : int
         {
             Debug = 0,
+            Activity = 5,
             Info = 10,
             Notice = 20,
             Warning = 30,
@@ -41,6 +42,12 @@ namespace KMPServer
         {
             Console.ForegroundColor = ConsoleColor.DarkGreen;
             WriteLog(LogLevels.Debug, format, args);
+        }
+
+        public static void Activity(string format, params object[] args)
+        {
+            Console.ForegroundColor = ConsoleColor.DarkMagenta;
+            WriteLog(LogLevels.Activity, format, args);
         }
 
         public static void Info(string format, params object[] args)

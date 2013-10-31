@@ -940,7 +940,7 @@ namespace KMPServer
 
 		public void clientActivityLevelChanged(ServerClient cl)
 		{
-			Log.Info(cl.username + " activity level is now " + cl.activityLevel);
+			Log.Activity(cl.username + " activity level is now " + cl.activityLevel);
 			
 			//Count the number of in-game/in-flight clients
 			int num_in_game = 0;
@@ -1536,7 +1536,7 @@ namespace KMPServer
 								cl.lastTick = -1d;
 								sendSubspace(cl, false);
 								cl.warping = false;
-								Log.Info(cl.username + " set to new subspace " + newSubspace);
+                                Log.Activity(cl.username + " set to new subspace " + newSubspace);
 							}
 						}
 						else
@@ -1545,7 +1545,7 @@ namespace KMPServer
 							{
 								cl.warping = true;
 								cl.currentSubspaceID = -1;
-								Log.Info(cl.username + " is warping");
+								Log.Activity(cl.username + " is warping");
 							}
 						}
 					}
@@ -1714,7 +1714,7 @@ namespace KMPServer
 					reader.Close();
 				}
 				cl.currentSubspaceID = subspace;
-				Log.Info(cl.username + " set to lead subspace " + subspace);
+                Log.Activity(cl.username + " set to lead subspace " + subspace);
 				sendSyncMessage(cl, tick);
 			}
 		}
@@ -2250,7 +2250,7 @@ namespace KMPServer
 					cmd.Dispose();
 					if (vessel_update.situation == Situation.DESTROYED) 
 					{
-						Log.Info("Vessel " + vessel_update.kmpID + " reported as destroyed");
+						Log.Activity("Vessel " + vessel_update.kmpID + " reported as destroyed");
 						recentlyDestroyed[vessel_update.kmpID] = currentMillisecond;
 					}
 					return vessel_update.situation == Situation.DESTROYED;
