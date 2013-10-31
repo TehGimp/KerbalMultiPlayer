@@ -1632,7 +1632,7 @@ namespace KMPServer
 			if (!cl.warping)
 			{
 				sendSubspaceSync(cl);
-				Log.Info("Sending all vessels in current subspace for " + cl.username);
+				Log.Activity("Sending all vessels in current subspace for " + cl.username);
 				SQLiteCommand cmd = universeDB.CreateCommand();
 				string sql = "SELECT  vu.UpdateMessage, v.ProtoVessel, v.Private, v.OwnerID" +
 					" FROM kmpVesselUpdate vu" +
