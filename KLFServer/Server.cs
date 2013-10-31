@@ -722,59 +722,56 @@ namespace KMPServer
 
                     foreach (var client in clients.Where(c => c.isValid))
                     {
-                        if (client.isValid)
+                        long last_receive_time = 0;
+                        long connection_start_time = 0;
+                        bool handshook = false;
+
+                        lock (client.timestampLock)
                         {
-                            long last_receive_time = 0;
-                            long connection_start_time = 0;
-                            bool handshook = false;
+                            last_receive_time = client.lastReceiveTime;
+                            connection_start_time = client.connectionStartTime;
+                            handshook = client.receivedHandshake;
+                        }
 
-                            lock (client.timestampLock)
-                            {
-                                last_receive_time = client.lastReceiveTime;
-                                connection_start_time = client.connectionStartTime;
-                                handshook = client.receivedHandshake;
-                            }
+                        if (currentMillisecond - last_receive_time > CLIENT_TIMEOUT_DELAY
+                            || (!handshook && (currentMillisecond - connection_start_time) > CLIENT_HANDSHAKE_TIMEOUT_DELAY))
+                        {
+                            //Disconnect the client
+                            disconnectClient(client, "Timeout");
+                        }
+                        else
+                        {
+                            bool changed = false;
 
-                            if (currentMillisecond - last_receive_time > CLIENT_TIMEOUT_DELAY
-                                || (!handshook && (currentMillisecond - connection_start_time) > CLIENT_HANDSHAKE_TIMEOUT_DELAY))
+                            //Reset the client's activity level if the time since last update was too long
+                            lock (client.activityLevelLock)
                             {
-                                //Disconnect the client
-                                disconnectClient(client, "Timeout");
-                            }
-                            else
-                            {
-                                bool changed = false;
-
-                                //Reset the client's activity level if the time since last update was too long
-                                lock (client.activityLevelLock)
+                                if (client.activityLevel == ServerClient.ActivityLevel.IN_FLIGHT
+                                    && (currentMillisecond - client.lastInFlightActivityTime) > ACTIVITY_RESET_DELAY)
                                 {
-                                    if (client.activityLevel == ServerClient.ActivityLevel.IN_FLIGHT
-                                        && (currentMillisecond - client.lastInFlightActivityTime) > ACTIVITY_RESET_DELAY)
-                                    {
-                                        client.activityLevel = ServerClient.ActivityLevel.IN_GAME;
-                                        changed = true;
-                                        client.universeSent = false;
-                                    }
-
-                                    if (client.activityLevel == ServerClient.ActivityLevel.IN_GAME
-                                        && (currentMillisecond - client.lastInGameActivityTime) > ACTIVITY_RESET_DELAY)
-                                    {
-                                        client.activityLevel = ServerClient.ActivityLevel.INACTIVE;
-                                        changed = true;
-                                        client.universeSent = false;
-                                    }
+                                    client.activityLevel = ServerClient.ActivityLevel.IN_GAME;
+                                    changed = true;
+                                    client.universeSent = false;
                                 }
 
-                                if (changed)
-                                    clientActivityLevelChanged(client);
-
+                                if (client.activityLevel == ServerClient.ActivityLevel.IN_GAME
+                                    && (currentMillisecond - client.lastInGameActivityTime) > ACTIVITY_RESET_DELAY)
+                                {
+                                    client.activityLevel = ServerClient.ActivityLevel.INACTIVE;
+                                    changed = true;
+                                    client.universeSent = false;
+                                }
                             }
-                        }
-                        else if (!client.canBeReplaced)
-                        {
-                            //Client is disconnected but slot has not been cleaned up
-                            disconnectClient(client, "Connection lost");
-                        }
+
+                            if (changed)
+                                clientActivityLevelChanged(client);
+                        } 
+                    }
+					
+					foreach (var client in clients.Where(c => !c.isValid))
+                    {
+                        //Client is disconnected but slot has not been cleaned up
+                        disconnectClient(client, "Connection lost");
                     }
 					
 					Thread.Sleep(SLEEP_TIME);
@@ -1511,7 +1508,7 @@ namespace KMPServer
 								SQLiteCommand cmd = universeDB.CreateCommand();
 								string sql = "INSERT INTO kmpSubspace (LastTick) VALUES (@tick);";
 								cmd.CommandText = sql;
-                                cmd.Parameters.AddWithValue("tick", cl.lastTick);
+                                cmd.Parameters.AddWithValue("tick", cl.lastTick.ToString("0.0").Replace(",","."));
 								cmd.ExecuteNonQuery();
 								cmd.Dispose();
 								cmd = universeDB.CreateCommand();
@@ -1594,8 +1591,8 @@ namespace KMPServer
 				"   GROUP BY Guid) t ON t.Guid = vu.Guid AND t.Tick = vu.Tick" +
 				" WHERE vu.Subspace != @toSubspace;";
 			cmd.CommandText = sql;
-            cmd.Parameters.AddWithValue("lastTick", lastTick);
-            cmd.Parameters.AddWithValue("atTick", atTick);
+            cmd.Parameters.AddWithValue("lastTick", lastTick.ToString("0.0").Replace(",","."));
+            cmd.Parameters.AddWithValue("atTick", atTick.ToString("0.0").Replace(",","."));
             cmd.Parameters.AddWithValue("toSubspace", toSubspace);
 			SQLiteDataReader reader = cmd.ExecuteReader(); 
 			try 
