@@ -24,7 +24,7 @@ namespace KMPServer
             public int screenshotInterval = 3000;
             public bool autoRestart = false;
             public bool autoHost = false;
-            public bool saveScreenshots = false;
+            public bool saveScreenshots = true;
             public String joinMessage = String.Empty;
             public String serverInfo = String.Empty;
             public byte totalInactiveShips = 100;

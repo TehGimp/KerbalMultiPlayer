@@ -2041,10 +2041,10 @@ namespace KMP
 				while (crewEnum.MoveNext())
 					if (crewEnum.Current.rosterStatus == ProtoCrewMember.RosterStatus.AVAILABLE) applicants++;
 				
-				if (protovessel.GetVesselCrew().Count > applicants)
+				if (protovessel.GetVesselCrew().Count * 5 > applicants)
 				{
 					KMPClientMain.DebugLog("Adding crew applicants");
-					for (int i = 0; i < (protovessel.GetVesselCrew().Count * 2);)
+					for (int i = 0; i < (protovessel.GetVesselCrew().Count * 5);)
 					{
 						ProtoCrewMember protoCrew = CrewGenerator.RandomCrewMemberPrototype();
 						if (!HighLogic.CurrentGame.CrewRoster.ExistsInRoster(protoCrew.name))
