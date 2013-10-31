@@ -1175,8 +1175,8 @@ namespace KMPServer
                         //If whitelisting is enabled and the user is *not* on the list:
                         if (settings.whitelisted && settings.whitelist.Contains(username, StringComparer.InvariantCultureIgnoreCase) == false)
                         {
-                            disconnectClient(cl, "Your username is already in use.");
-                            Log.Info("Rejected client due to duplicate username: " + username);
+                            disconnectClient(cl, "You are not on this servers whitelist.");
+                            Log.Info("Rejected client due to not being on the whitelist: " + username);
                             accepted = false;
                         }
 
