@@ -22,6 +22,7 @@ using KMP;
 using System.Data.Common;
 using System.Runtime.Serialization.Formatters.Binary;
 using System.Text.RegularExpressions;
+using System.Globalization;
 
 namespace KMPServer
 {
@@ -414,6 +415,7 @@ namespace KMPServer
 
 		private void handleCommands()
 		{
+			Thread.CurrentThread.CurrentCulture = new CultureInfo("en-GB");
 			try
 			{
 				while (true)
@@ -615,7 +617,7 @@ namespace KMPServer
 
 		private void listenForClients()
 		{
-
+			Thread.CurrentThread.CurrentCulture = new CultureInfo("en-GB");
 			try
 			{
 				Log.Info("Listening for clients...");
@@ -701,6 +703,7 @@ namespace KMPServer
 
 		private void handleConnections()
 		{
+			Thread.CurrentThread.CurrentCulture = new CultureInfo("en-GB");
 			try
 			{
 				Log.Debug("Starting disconnect thread");
@@ -790,9 +793,9 @@ namespace KMPServer
 
 		void sendOutgoingMessages()
 		{
+			Thread.CurrentThread.CurrentCulture = new CultureInfo("en-GB");
 			try
 			{
-
 				while (true)
 				{
                     foreach (var client in clients.Where(c => c.isValid))
