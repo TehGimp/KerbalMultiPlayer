@@ -2036,6 +2036,12 @@ namespace KMP
 					}
 				}
 				
+				if (!((update != null && update.bodyName != "Kerbin") || protovessel.altitude > 35000d || kscPosition == Vector3d.zero || Vector3d.Distance(kscPosition,protovessel.position) > 40000d)) //refuse to load anything too close to the KSC
+				{
+					KMPClientMain.DebugLog("Tried to load vessel to close to KSC");
+					return;
+				}
+				
 				IEnumerator<ProtoCrewMember> crewEnum = HighLogic.CurrentGame.CrewRoster.GetEnumerator();
 				int applicants = 0;
 				while (crewEnum.MoveNext())
