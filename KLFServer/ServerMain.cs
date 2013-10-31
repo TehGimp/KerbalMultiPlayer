@@ -17,6 +17,7 @@ namespace KMPServer
 		{
             ServerSettings.ConfigStore settings = new ServerSettings.ConfigStore();
             ServerSettings.readFromFile(settings);
+            ServerSettings.loadWhitelist(settings);
 
             bool settingsChanged = false;
 
@@ -112,6 +113,8 @@ namespace KMPServer
                                 }
                                 break;
                         }
+
+                        ServerSettings.saveWhitelist(settings);
                         break;
                     case "/set":
                         if (parts.Length < 3)
