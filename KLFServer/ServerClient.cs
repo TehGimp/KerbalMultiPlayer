@@ -94,6 +94,22 @@ namespace KMPServer
 			queuedOutMessages = new Queue<byte[]>();
 		}
 
+        public bool isValid
+        {
+            get
+            {
+                return (this.tcpClient != null && this.tcpClient.Connected);
+            }
+        }
+
+        public bool isReady
+        {
+            get
+            {
+                return (isValid && this.receivedHandshake);
+            }
+        }
+
 		public void resetProperties()
 		{
 			username = "";
@@ -325,7 +341,7 @@ namespace KMPServer
 
 		private void messageReceived(KMPCommon.ClientMessageID id, byte[] data)
 		{
-			parent.queueClientMessage(clientIndex, id, data);
+			parent.queueClientMessage(this, id, data);
 		}
 
 		public void sendOutgoingMessages()
@@ -446,7 +462,7 @@ namespace KMPServer
 			}
 
 			if (changed)
-				parent.clientActivityLevelChanged(clientIndex);
+				parent.clientActivityLevelChanged(this);
 		}
 
 	}

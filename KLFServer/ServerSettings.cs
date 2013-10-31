@@ -28,9 +28,19 @@ namespace KMPServer
             public String serverInfo = String.Empty;
             public byte totalInactiveShips = 100;
             public Log.LogLevels LogLevel = Log.LogLevels.Info;
+            public bool whitelisted = false;
+
+            private List<string> _whitelist = new List<string>();
+            internal List<string> whitelist
+            {
+                get
+                {
+                    return _whitelist;
+                }
+            }
 
             private ScreenshotSettings _screenshotSettings = new ScreenshotSettings();
-            public ScreenshotSettings screenshotSettings
+            internal ScreenshotSettings screenshotSettings
             {
                 get
                 {

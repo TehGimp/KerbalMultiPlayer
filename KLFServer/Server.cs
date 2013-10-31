@@ -432,36 +432,36 @@ namespace KMPServer
 									stop = true;
 
 								//Disconnect all clients
-								for (int i = 0; i < clients.Length; i++)
-									disconnectClient(i, "Server is shutting down");
+                                foreach (var c in clients)
+                                {
+                                    disconnectClient(c, "Server is shutting down");
+                                }
 								
 								break;
 							}
 							else if (input.Length > 6 && input.Substring(0, 6) == "/kick ")
 							{
 								String kick_name = input.Substring(6, input.Length - 6).ToLower();
-								for (int i = 0; i < clients.Length; i++)
-								{
-									if (clientIsReady(i) && clients[i].username.ToLower() == kick_name)
-									{
-										disconnectClient(i, "You were kicked from the server.");
-									}
-								}
+
+                                var clientToDisconnect = clients.Where(cl => cl.username.ToLower() == kick_name && cl.isReady).FirstOrDefault();
+
+                                if (clientToDisconnect != null)
+                                {
+                                    disconnectClient(clientToDisconnect, "You were kicked from the server.");
+                                }
 							}
 							else if (input == "/list")
 							{
 								//Display player list
 								StringBuilder sb = new StringBuilder();
-								for (int i = 0; i < clients.Length; i++)
-								{
-									if (clientIsReady(i))
-									{
-										sb.Append(clients[i].username);
-										sb.Append(" - ");
-										sb.Append(clients[i].activityLevel.ToString());
-										sb.Append('\n');
-									}
-								}
+
+                                foreach (var client in clients.Where(c => c.isReady))
+                                {
+                                    sb.Append(client.username);
+                                    sb.Append(" - ");
+                                    sb.Append(client.activityLevel.ToString());
+                                    sb.Append('\n');
+                                }
 
                                 Log.Info(sb.ToString());
 							}
@@ -485,15 +485,15 @@ namespace KMPServer
 							{
 								String ban_name = input.Substring(5, input.Length - 5).ToLower();
 								string guid = Guid.Empty.ToString();
-								for (int i = 0; i < clients.Length; i++)
-								{
-									if (clientIsReady(i) && clients[i].username.ToLower() == ban_name)
-									{
-										disconnectClient(i, "You were banned from the server!");
-										guid = clients[i].guid;
-									}
-									
-								}
+
+                                var userToBan = clients.Where(c => c.username.ToLower() == ban_name && c.isReady).FirstOrDefault();
+
+                                if (userToBan != null)
+                                {
+                                    disconnectClient(userToBan, "You were banned from the server!");
+                                    guid = userToBan.guid;
+                                }
+
 								if (guid != Guid.Empty.ToString())
 								{
 									SQLiteCommand cmd = universeDB.CreateCommand();
@@ -645,20 +645,20 @@ namespace KMPServer
 					if (client != null && client.Connected)
 					{
 						//Try to add the client
-						int client_index = addClient(client);
-						if (client_index >= 0)
+						ServerClient cl = addClient(client);
+						if (cl != null)
 						{
-							if (clientIsValid(client_index))
+							if (cl.isValid)
 							{
 								//Send a handshake to the client
 								Log.Info("Accepted client. Handshaking...");
-								sendHandshakeMessage(client_index);
+								sendHandshakeMessage(cl);
 
 								sendMessageHeaderDirect(client, KMPCommon.ServerMessageID.NULL, 0);
 
 								//Send the join message to the client
 								if (settings.joinMessage.Length > 0)
-									sendServerMessage(client_index, settings.joinMessage);
+									sendServerMessage(cl, settings.joinMessage);
 							}
 
 							//Send a server setting update to all clients
@@ -715,70 +715,67 @@ namespace KMPServer
 						message = clientMessageQueue.Dequeue();
 						
 						//if (clientMessageQueue.TryDequeue(out message))
-						handleMessage(message.clientIndex, message.id, message.data);
+						handleMessage(clients[message.clientIndex], message.id, message.data);
 //						else
 //							break;
 					}
-					
 
-					//Check for clients that have not sent messages for too long
-					for (int i = 0; i < clients.Length; i++)
-					{
-						if (clientIsValid(i))
-						{
-							long last_receive_time = 0;
-							long connection_start_time = 0;
-							bool handshook = false;
+                    foreach (var client in clients.Where(c => c.isValid))
+                    {
+                        if (client.isValid)
+                        {
+                            long last_receive_time = 0;
+                            long connection_start_time = 0;
+                            bool handshook = false;
 
-							lock (clients[i].timestampLock)
-							{
-								last_receive_time = clients[i].lastReceiveTime;
-								connection_start_time = clients[i].connectionStartTime;
-								handshook = clients[i].receivedHandshake;
-							}
+                            lock (client.timestampLock)
+                            {
+                                last_receive_time = client.lastReceiveTime;
+                                connection_start_time = client.connectionStartTime;
+                                handshook = client.receivedHandshake;
+                            }
 
-							if (currentMillisecond - last_receive_time > CLIENT_TIMEOUT_DELAY
-								|| (!handshook && (currentMillisecond - connection_start_time) > CLIENT_HANDSHAKE_TIMEOUT_DELAY))
-							{
-								//Disconnect the client
-								disconnectClient(i, "Timeout");
-							}
-							else
-							{
-								bool changed = false;
+                            if (currentMillisecond - last_receive_time > CLIENT_TIMEOUT_DELAY
+                                || (!handshook && (currentMillisecond - connection_start_time) > CLIENT_HANDSHAKE_TIMEOUT_DELAY))
+                            {
+                                //Disconnect the client
+                                disconnectClient(client, "Timeout");
+                            }
+                            else
+                            {
+                                bool changed = false;
 
-								//Reset the client's activity level if the time since last update was too long
-								lock (clients[i].activityLevelLock)
-								{
-									if (clients[i].activityLevel == ServerClient.ActivityLevel.IN_FLIGHT
-										&& (currentMillisecond - clients[i].lastInFlightActivityTime) > ACTIVITY_RESET_DELAY)
-									{
-										clients[i].activityLevel = ServerClient.ActivityLevel.IN_GAME;
-										changed = true;
-										clients[i].universeSent = false;
-									}
+                                //Reset the client's activity level if the time since last update was too long
+                                lock (client.activityLevelLock)
+                                {
+                                    if (client.activityLevel == ServerClient.ActivityLevel.IN_FLIGHT
+                                        && (currentMillisecond - client.lastInFlightActivityTime) > ACTIVITY_RESET_DELAY)
+                                    {
+                                        client.activityLevel = ServerClient.ActivityLevel.IN_GAME;
+                                        changed = true;
+                                        client.universeSent = false;
+                                    }
 
-									if (clients[i].activityLevel == ServerClient.ActivityLevel.IN_GAME
-										&& (currentMillisecond - clients[i].lastInGameActivityTime) > ACTIVITY_RESET_DELAY)
-									{
-										clients[i].activityLevel = ServerClient.ActivityLevel.INACTIVE;
-										changed = true;
-										clients[i].universeSent = false;
-									}
-								}
+                                    if (client.activityLevel == ServerClient.ActivityLevel.IN_GAME
+                                        && (currentMillisecond - client.lastInGameActivityTime) > ACTIVITY_RESET_DELAY)
+                                    {
+                                        client.activityLevel = ServerClient.ActivityLevel.INACTIVE;
+                                        changed = true;
+                                        client.universeSent = false;
+                                    }
+                                }
 
-								if (changed)
-									clientActivityLevelChanged(i);
+                                if (changed)
+                                    clientActivityLevelChanged(client);
 
-							}
-						}
-						else if (!clients[i].canBeReplaced)
-						{
-							//Client is disconnected but slot has not been cleaned up
-							disconnectClient(i, "Connection lost");
-						}
-
-					}
+                            }
+                        }
+                        else if (!client.canBeReplaced)
+                        {
+                            //Client is disconnected but slot has not been cleaned up
+                            disconnectClient(client, "Connection lost");
+                        }
+                    }
 					
 					Thread.Sleep(SLEEP_TIME);
 				}
@@ -801,11 +798,10 @@ namespace KMPServer
 
 				while (true)
 				{
-					for (int i = 0; i < clients.Length; i++)
-					{
-						if (clientIsValid(i))
-							clients[i].sendOutgoingMessages();
-					}
+                    foreach (var client in clients.Where(c => c.isValid))
+                    {
+                        client.sendOutgoingMessages();
+                    }
 
 					Thread.Sleep(SLEEP_TIME);
 				}
@@ -822,105 +818,88 @@ namespace KMPServer
 
 		//Clients
 
-		private int addClient(TcpClient tcp_client)
+		private ServerClient addClient(TcpClient tcp_client)
 		{
 
 			if (tcp_client == null || !tcp_client.Connected)
-				return -1;
+				return null;
 
 			//Find an open client slot
-			for (int i = 0; i < clients.Length; i++)
-			{
-				ServerClient client = clients[i];
+            var replaceSlot = clients.Where(c => c.canBeReplaced && !c.isValid).FirstOrDefault();
 
-				//Check if the client is valid
-				if (client.canBeReplaced && !clientIsValid(i))
-				{
+            if (replaceSlot != null)
+            {
+                replaceSlot.tcpClient = tcp_client;
 
-					//Add the client
-					client.tcpClient = tcp_client;
+                //Reset client properties
+                replaceSlot.resetProperties();
 
-					//Reset client properties
-					client.resetProperties();
+                replaceSlot.startReceivingMessages();
+                numClients++;
 
-					client.startReceivingMessages();
-					numClients++;
+                return replaceSlot;
+            }
 
-					return i;
-				}
-
-			}
-
-			return -1;
+            return null;
 		}
 
-		public bool clientIsValid(int index)
-		{
-			return index >= 0 && index < clients.Length && clients[index].tcpClient != null && clients[index].tcpClient.Connected;
-		}
-
-		public bool clientIsReady(int index)
-		{
-			return clientIsValid(index) && clients[index].receivedHandshake;
-		}
-
-		public void disconnectClient(int index, String message)
+		public void disconnectClient(ServerClient cl, String message)
 		{
 			try
 			{
 				//Send a message to client informing them why they were disconnected
-				if (clients[index].tcpClient != null)
+				if (cl.tcpClient != null)
 				{
-					if (clients[index].tcpClient.Connected)
-						sendConnectionEndMessageDirect(clients[index].tcpClient, message);
+					if (cl.tcpClient.Connected)
+						sendConnectionEndMessageDirect(cl.tcpClient, message);
 					
 					//Close the socket
-					lock (clients[index].tcpClientLock)
+					lock (cl.tcpClientLock)
 					{
-						clients[index].endReceivingMessages();
-						clients[index].tcpClient.Close();
+						cl.endReceivingMessages();
+						cl.tcpClient.Close();
 					}
 				}
 	
-				if (clients[index].canBeReplaced)
+				if (cl.canBeReplaced)
 					return;
 	
 				numClients--;
 	
 				//Only send the disconnect message if the client performed handshake successfully
-				if (clients[index].receivedHandshake)
+				if (cl.receivedHandshake)
 				{
-					Log.Info("Client #" + index + " " + clients[index].username + " has disconnected: " + message);
+					Log.Info("Client #" + cl.playerID + " " + cl.username + " has disconnected: " + message);
 	
 					StringBuilder sb = new StringBuilder();
 	
 					//Build disconnect message
 					sb.Append("User ");
-					sb.Append(clients[index].username);
+					sb.Append(cl.username);
 					sb.Append(" has disconnected : " + message);
 	
 					//Send the disconnect message to all other clients
 					sendServerMessageToAll(sb.ToString());
 					
 					//Update the database
-					if (clients[index].currentVessel != Guid.Empty)
+					if (cl.currentVessel != Guid.Empty)
 					{
 						try {
 							SQLiteCommand cmd = universeDB.CreateCommand();
 							string sql = "UPDATE kmpVessel SET Active = 0 WHERE Guid = '@guid'";
 							cmd.CommandText = sql;
-	                        cmd.Parameters.AddWithValue("guid", clients[index].currentVessel);
+	                        cmd.Parameters.AddWithValue("guid", cl.currentVessel);
 							cmd.ExecuteNonQuery();
 							cmd.Dispose();
 						} catch { }
-						sendVesselStatusUpdateToAll(index, clients[index].currentVessel);
+						sendVesselStatusUpdateToAll(cl, cl.currentVessel);
 					}
 					
 					bool emptySubspace = true;
 					
 					foreach (ServerClient client in clients)
 					{
-						if (clients[index].currentSubspaceID == client.currentSubspaceID && client.tcpClient.Connected && client.playerID != clients[index].playerID)
+						if (cl.currentSubspaceID == client.currentSubspaceID && client.tcpClient.Connected && cl.playerID != client.playerID)
 						{
 							emptySubspace = false;
 							break;
@@ -932,7 +911,7 @@ namespace KMPServer
 						SQLiteCommand cmd = universeDB.CreateCommand();
 						string sql = "DELETE FROM kmpSubspace WHERE ID = @id AND LastTick < (SELECT MIN(s.LastTick) FROM kmpSubspace s INNER JOIN kmpVessel v ON v.Subspace = s.ID);";
 						cmd.CommandText = sql;
-	                    cmd.Parameters.AddWithValue("id", clients[index].currentSubspaceID);
+	                    cmd.Parameters.AddWithValue("id", cl.currentSubspaceID);
 						cmd.ExecuteNonQuery();
 						cmd.Dispose();
 					}
@@ -948,43 +927,40 @@ namespace KMPServer
 				Log.Info("Internal error during disconnect: " + e.StackTrace);
 			}
 			
-			clients[index].receivedHandshake = false;
-			clients[index].universeSent = false;
+			cl.receivedHandshake = false;
+			cl.universeSent = false;
 			
-			if (clients[index].activityLevel != ServerClient.ActivityLevel.INACTIVE)
-				clientActivityLevelChanged(index);
+			if (cl.activityLevel != ServerClient.ActivityLevel.INACTIVE)
+				clientActivityLevelChanged(cl);
 			else
 				sendServerSettingsToAll();
 			
-			clients[index].disconnected();
+			cl.disconnected();
 		}
 
-		public void clientActivityLevelChanged(int index)
+		public void clientActivityLevelChanged(ServerClient cl)
 		{
-			Log.Info(clients[index].username + " activity level is now " + clients[index].activityLevel);
+			Log.Info(cl.username + " activity level is now " + cl.activityLevel);
 			
 			//Count the number of in-game/in-flight clients
 			int num_in_game = 0;
 			int num_in_flight = 0;
 
-			for (int i = 0; i < clients.Length; i++)
-			{
-				if (clientIsValid(i))
-				{
-					switch (clients[i].activityLevel)
-					{
-						case ServerClient.ActivityLevel.IN_GAME:
-							num_in_game++;
-							break;
+            foreach (var client in clients.Where(c => c.isValid))
+            {
+                switch (client.activityLevel)
+                {
+                    case ServerClient.ActivityLevel.IN_GAME:
+                        num_in_game++;
+                        break;
 
-						case ServerClient.ActivityLevel.IN_FLIGHT:
-							num_in_game++;
-							num_in_flight++;
-							break;
-					}
-				}
-			}
-			
+                    case ServerClient.ActivityLevel.IN_FLIGHT:
+                        num_in_game++;
+                        num_in_flight++;
+                        break;
+                }
+            }
+
 			lock (clientActivityCountLock)
 			{
 				numInGameClients = num_in_game;
@@ -1027,7 +1003,7 @@ namespace KMPServer
 						Array.Copy(received, index, data, 0, data.Length);
 					}
 
-					if (clientIsReady(sender_index))
+					if (clients[sender_index].isReady)
 					{
 						if ((currentMillisecond - clients[sender_index].lastUDPACKTime) > UDP_ACK_THROTTLE)
 						{
@@ -1037,7 +1013,7 @@ namespace KMPServer
 						}
 
 						//Handle the message
-						handleMessage(sender_index, id, data);
+						handleMessage(clients[sender_index], id, data);
 					}
 
 				}
@@ -1054,17 +1030,9 @@ namespace KMPServer
 			}
 		}
 
-		private int getClientIndexByName(String name)
+		private ServerClient getClientByName(String name)
 		{
-			name = name.ToLower(); //Set name to lowercase to make the search case-insensitive
-
-			for (int i = 0; i < clients.Length; i++)
-			{
-				if (clientIsReady(i) && clients[i].username.ToLower() == name)
-					return i;
-			}
-
-			return -1;
+            return clients.Where(c => c.isReady && c.username.Equals(name, StringComparison.InvariantCultureIgnoreCase)).FirstOrDefault();
 		}
 
 		//HTTP
@@ -1100,18 +1068,17 @@ namespace KMPServer
 				response_builder.Append("Players: ");
 
 				bool first = true;
-				for (int i = 0; i < clients.Length; i++)
-				{
-					if (clientIsReady(i))
-					{
-						if (first)
-							first = false;
-						else
-							response_builder.Append(", ");
 
-						response_builder.Append(clients[i].username);
-					}
-				}
+                foreach (var client in clients.Where(c => c.isReady))
+                {
+                    if (first)
+                        first = false;
+                    else
+                        response_builder.Append(", ");
+
+                    response_builder.Append(client.username);
+                }
+
 				response_builder.Append('\n');
 
 				response_builder.Append("Information: ");
@@ -1155,22 +1122,22 @@ namespace KMPServer
 
 		//Messages
 
-		public void queueClientMessage(int client_index, KMPCommon.ClientMessageID id, byte[] data)
+		public void queueClientMessage(ServerClient cl, KMPCommon.ClientMessageID id, byte[] data)
 		{
 			ClientMessage message = new ClientMessage();
-			message.clientIndex = client_index;
+			message.clientIndex = cl.clientIndex;
 			message.id = id;
 			message.data = data;
 
 			clientMessageQueue.Enqueue(message);
 		}
 
-		public void handleMessage(int client_index, KMPCommon.ClientMessageID id, byte[] data)
+		public void handleMessage(ServerClient cl, KMPCommon.ClientMessageID id, byte[] data)
 		{
-			if (!clientIsValid(client_index))
+			if (!cl.isValid)
 				return;
 
-			//Log.Info("Message id: " + id.ToString() + " from client: " + client_index + " data: " + (data != null ? data.Length.ToString() : "0"));
+			//Log.Info("Message id: " + id.ToString() + " from client: " + cl + " data: " + (data != null ? data.Length.ToString() : "0"));
 			//Console.WriteLine("Message id: " + id.ToString() + " data: " + (data != null ? System.Text.Encoding.ASCII.GetString(data) : ""));
 
 			UnicodeEncoding encoder = new UnicodeEncoding();
@@ -1196,19 +1163,22 @@ namespace KMPServer
 						String username_lower = username.ToLower();
 
 						bool accepted = true;
-					
-						//Ensure no other players have the same username
-						for (int i = 0; i < clients.Length; i++)
-						{
-							if (i != client_index && clientIsReady(i) && clients[i].username.ToLower() == username_lower)
-							{
-								//Disconnect the player
-								disconnectClient(client_index, "Your username is already in use.");
+
+                        //Ensure no other players have the same username.
+                        if (clients.Any(c => c.isReady && c.username.ToLower() == username_lower))
+                        {
+                            disconnectClient(cl, "Your username is already in use.");
 								Log.Info("Rejected client due to duplicate username: " + username);
 								accepted = false;
-								break;
-							}
-						}
+                        }
+
+                        //If whitelisting is enabled and the user is *not* on the list:
+                        if (settings.whitelisted && settings.whitelist.Contains(username, StringComparer.InvariantCultureIgnoreCase) == false)
+                        {
+                            disconnectClient(cl, "Your username is already in use.");
+                            Log.Info("Rejected client due to duplicate username: " + username);
+                            accepted = false;
+                        }
 
 						if (!accepted)
 							break;
@@ -1224,7 +1194,7 @@ namespace KMPServer
 						if (name_taken > 0)
 						{
 							//Disconnect the player
-							disconnectClient(client_index, "Your username is already claimed by an existing user.");
+							disconnectClient(cl, "Your username is already claimed by an existing user.");
 							Log.Info("Rejected client due to duplicate username w/o matching guid: " + username);
 							break;
 						}
@@ -1257,14 +1227,12 @@ namespace KMPServer
 						{
 							//Get the username of the other user on the server
 							sb.Append("There is currently 1 other user on this server: ");
-							for (int i = 0; i < clients.Length; i++)
-							{
-								if (i != client_index && clientIsReady(i))
-								{
-									sb.Append(clients[i].username);
+
+                            foreach (var client in clients.Where(c => c.isReady && c != cl))
+                            {
+                                sb.Append(client.username);
 									break;
-								}
-							}
+                            }
 						}
 						else
 						{
@@ -1277,13 +1245,13 @@ namespace KMPServer
 							}
 						}
 
-						clients[client_index].username = username;
-						clients[client_index].receivedHandshake = true;
-						clients[client_index].guid = guid;
-						clients[client_index].playerID = playerID;
+						cl.username = username;
+						cl.receivedHandshake = true;
+						cl.guid = guid;
+						cl.playerID = playerID;
 					
-						sendServerMessage(client_index, sb.ToString());
-						sendServerSettings(client_index);
+						sendServerMessage(cl, sb.ToString());
+						sendServerSettings(cl);
 
 						Log.Info(username + " has joined the server using client version " + version);
 
@@ -1295,7 +1263,7 @@ namespace KMPServer
 						sb.Append(" has joined the server.");
 
 						//Send the join message to all other clients
-						sendServerMessageToAll(sb.ToString(), client_index);
+						sendServerMessageToAll(sb.ToString(), cl);
 
 					}
 
@@ -1304,12 +1272,12 @@ namespace KMPServer
 				case KMPCommon.ClientMessageID.PRIMARY_PLUGIN_UPDATE:
 				case KMPCommon.ClientMessageID.SECONDARY_PLUGIN_UPDATE:
 
-					if (data != null && clientIsReady(client_index))
+					if (data != null && cl.isReady)
 					{
 #if SEND_UPDATES_TO_SENDER
 						sendPluginUpdateToAll(data, id == KMPCommon.ClientMessageID.SECONDARY_PLUGIN_UPDATE);
 #else
-						sendPluginUpdateToAll(data, id == KMPCommon.ClientMessageID.SECONDARY_PLUGIN_UPDATE, client_index);
+						sendPluginUpdateToAll(data, id == KMPCommon.ClientMessageID.SECONDARY_PLUGIN_UPDATE, cl);
 #endif
 					}
 
@@ -1317,14 +1285,14 @@ namespace KMPServer
 
 				case KMPCommon.ClientMessageID.TEXT_MESSAGE:
 
-					if (data != null && clientIsReady(client_index))
-						handleClientTextMessage(client_index, encoder.GetString(data, 0, data.Length));
+					if (data != null && cl.isReady)
+						handleClientTextMessage(cl, encoder.GetString(data, 0, data.Length));
 
 					break;
 
 				case KMPCommon.ClientMessageID.SCREEN_WATCH_PLAYER:
 
-					if (!clientIsReady(client_index))
+					if (!cl.isReady)
 						break;
 
 					String watch_name = String.Empty;
@@ -1334,31 +1302,31 @@ namespace KMPServer
 
 					bool watch_name_changed = false;
 
-					lock (clients[client_index].watchPlayerNameLock)
+					lock (cl.watchPlayerNameLock)
 					{
-						if (watch_name != clients[client_index].watchPlayerName)
+						if (watch_name != cl.watchPlayerName)
 						{
 							//Set the watch player name
-							clients[client_index].watchPlayerName = watch_name;
+							cl.watchPlayerName = watch_name;
 							watch_name_changed = true;
 						}
 					}
 
 					if (watch_name_changed && watch_name.Length > 0
-						&& watch_name != clients[client_index].username)
+						&& watch_name != cl.username)
 					{
 						//Try to find the player the client is watching and send that player's current screenshot
-						int watch_index = getClientIndexByName(watch_name);
-						if (clientIsReady(watch_index))
+						ServerClient watch_client = getClientByName(watch_name);
+						if (watch_client.isReady)
 						{
 							byte[] screenshot = null;
-							lock (clients[watch_index].screenshotLock)
+							lock (watch_client.screenshotLock)
 							{
-								screenshot = clients[watch_index].screenshot;
+								screenshot = watch_client.screenshot;
 							}
 
 							if (screenshot != null)
-								sendScreenshot(client_index, clients[watch_index].screenshot);
+								sendScreenshot(cl, watch_client.screenshot);
 						}
 					}
 					
@@ -1367,26 +1335,26 @@ namespace KMPServer
 
 				case KMPCommon.ClientMessageID.SCREENSHOT_SHARE:
 
-					if (data != null && data.Length <= settings.screenshotSettings.maxNumBytes && clientIsReady(client_index))
+					if (data != null && data.Length <= settings.screenshotSettings.maxNumBytes && cl.isReady)
 					{
 						//Set the screenshot for the player
-						lock (clients[client_index].screenshotLock)
+						lock (cl.screenshotLock)
 						{
-							clients[client_index].screenshot = data;
+							cl.screenshot = data;
 						}
 
 						StringBuilder sb = new StringBuilder();
-						sb.Append(clients[client_index].username);
+						sb.Append(cl.username);
 						sb.Append(" has shared a screenshot.");
 
 						sendTextMessageToAll(sb.ToString());
 						Log.Info(sb.ToString());
 
 						//Send the screenshot to every client watching the player
-						sendScreenshotToWatchers(client_index, data);
+						sendScreenshotToWatchers(cl, data);
 
 						if (settings.saveScreenshots)
-							saveScreenshot(data, clients[client_index].username);
+							saveScreenshot(data, cl.username);
 					}
 
 					break;
@@ -1397,12 +1365,12 @@ namespace KMPServer
 					if (data != null)
 						message = encoder.GetString(data, 0, data.Length); //Decode the message
 
-					disconnectClient(client_index, message); //Disconnect the client
+					disconnectClient(cl, message); //Disconnect the client
 					break;
 
 				case KMPCommon.ClientMessageID.SHARE_CRAFT_FILE:
 
-					if (clientIsReady(client_index) && data != null
+					if (cl.isReady && data != null
 						&& data.Length > 5 && (data.Length - 5) <= KMPCommon.MAX_CRAFT_FILE_BYTES)
 					{
 						//Read craft name length
@@ -1417,16 +1385,16 @@ namespace KMPServer
 							byte[] craft_bytes = new byte[data.Length - craft_name_length - 5];
 							Array.Copy(data, 5 + craft_name_length, craft_bytes, 0, craft_bytes.Length);
 
-							lock (clients[client_index].sharedCraftLock)
+							lock (cl.sharedCraftLock)
 							{
-								clients[client_index].sharedCraftName = craft_name;
-								clients[client_index].sharedCraftFile = craft_bytes;
-								clients[client_index].sharedCraftType = craft_type;
+								cl.sharedCraftName = craft_name;
+								cl.sharedCraftFile = craft_bytes;
+								cl.sharedCraftType = craft_type;
 							}
 
 							//Send a message to players informing them that a craft has been shared
 							StringBuilder sb = new StringBuilder();
-							sb.Append(clients[client_index].username);
+							sb.Append(cl.username);
 							sb.Append(" shared ");
 							sb.Append(craft_name);
 
@@ -1444,7 +1412,7 @@ namespace KMPServer
 							Log.Info(sb.ToString());
 			
 							sb.Append(" . Enter !getcraft ");
-							sb.Append(clients[client_index].username);
+							sb.Append(cl.username);
 							sb.Append(" to get it.");
 							sendTextMessageToAll(sb.ToString());
 						}
@@ -1452,34 +1420,34 @@ namespace KMPServer
 					break;
 
 				case KMPCommon.ClientMessageID.ACTIVITY_UPDATE_IN_FLIGHT:
-					if (clients[client_index].activityLevel == ServerClient.ActivityLevel.IN_GAME && clientIsReady(client_index) && !clients[client_index].universeSent)
+					if (cl.activityLevel == ServerClient.ActivityLevel.IN_GAME && cl.isReady && !cl.universeSent)
 					{
-						clients[client_index].universeSent = true;
-						sendSubspace(client_index);
+						cl.universeSent = true;
+						sendSubspace(cl);
 					}
-					clients[client_index].updateActivityLevel(ServerClient.ActivityLevel.IN_FLIGHT);
+					cl.updateActivityLevel(ServerClient.ActivityLevel.IN_FLIGHT);
 					break;
 
 				case KMPCommon.ClientMessageID.ACTIVITY_UPDATE_IN_GAME:
-					if (clients[client_index].activityLevel == ServerClient.ActivityLevel.INACTIVE) sendServerSync(client_index);
-					if (clients[client_index].activityLevel == ServerClient.ActivityLevel.IN_FLIGHT && clients[client_index].currentVessel != Guid.Empty)
+					if (cl.activityLevel == ServerClient.ActivityLevel.INACTIVE) sendServerSync(cl);
+					if (cl.activityLevel == ServerClient.ActivityLevel.IN_FLIGHT && cl.currentVessel != Guid.Empty)
 					{
 						try {
 							SQLiteCommand cmd = universeDB.CreateCommand();
 							string sql = "UPDATE kmpVessel SET Active = 0 WHERE Guid = '@id'";
 							cmd.CommandText = sql;
-                            cmd.Parameters.AddWithValue("id", clients[client_index].currentVessel);
+                            cmd.Parameters.AddWithValue("id", cl.currentVessel);
 							cmd.ExecuteNonQuery();
 							cmd.Dispose();
 						} catch { }
-						sendVesselStatusUpdateToAll(client_index,clients[client_index].currentVessel);
-						clients[client_index].universeSent = false;
+						sendVesselStatusUpdateToAll(cl,cl.currentVessel);
+						cl.universeSent = false;
 					}
-					clients[client_index].updateActivityLevel(ServerClient.ActivityLevel.IN_GAME);
+					cl.updateActivityLevel(ServerClient.ActivityLevel.IN_GAME);
 					break;
 
 				case KMPCommon.ClientMessageID.PING:
-					clients[client_index].queueOutgoingMessage(KMPCommon.ServerMessageID.PING_REPLY, null);
+					cl.queueOutgoingMessage(KMPCommon.ServerMessageID.PING_REPLY, null);
 					break;
 				
 				case KMPCommon.ClientMessageID.UDP_PROBE:
@@ -1488,13 +1456,13 @@ namespace KMPServer
 						double tick = BitConverter.ToDouble(data,0);
 						double lastTick = tick;
 						
-						clients[client_index].lastTick = tick;
-						if (!clients[client_index].warping)
+						cl.lastTick = tick;
+						if (!cl.warping)
 						{
 							SQLiteCommand cmd = universeDB.CreateCommand();
 							string sql = "SELECT LastTick FROM kmpSubspace WHERE ID = @id;";
 							cmd.CommandText = sql;
-                            cmd.Parameters.AddWithValue("id", clients[client_index].currentSubspaceID);
+                            cmd.Parameters.AddWithValue("id", cl.currentSubspaceID);
 							SQLiteDataReader reader = cmd.ExecuteReader();
 						
 							try 
@@ -1512,21 +1480,21 @@ namespace KMPServer
 						
 							if (lastTick - tick > 0.1d)
 							{
-								sendSyncMessage(client_index,lastTick+clients[client_index].syncOffset);
-								clients[client_index].syncOffset += 0.05d;
-								if (clients[client_index].lagWarning > 300) disconnectClient(client_index,"Your game was running too slowly compared to other players. Please try reconnecting in a moment.");
-								else clients[client_index].lagWarning++;
+								sendSyncMessage(cl,lastTick+cl.syncOffset);
+								cl.syncOffset += 0.05d;
+								if (cl.lagWarning > 300) disconnectClient(cl,"Your game was running too slowly compared to other players. Please try reconnecting in a moment.");
+								else cl.lagWarning++;
 							}
 							else
 							{
-								clients[client_index].lagWarning = 0;
-								if (clients[client_index].syncOffset > 0.05d) clients[client_index].syncOffset -= 0.01d;
+								cl.lagWarning = 0;
+								if (cl.syncOffset > 0.05d) cl.syncOffset -= 0.01d;
 								cmd = universeDB.CreateCommand();
-								sql = "UPDATE kmpSubspace SET LastTick = " + tick + " WHERE ID = " + clients[client_index].currentSubspaceID + " AND LastTick < " + tick;
+								sql = "UPDATE kmpSubspace SET LastTick = " + tick + " WHERE ID = " + cl.currentSubspaceID + " AND LastTick < " + tick;
 								cmd.CommandText = sql;
 								cmd.ExecuteNonQuery();
 								cmd.Dispose();
-								sendHistoricalVesselUpdates(clients[client_index].currentSubspaceID, tick, lastTick);
+								sendHistoricalVesselUpdates(cl.currentSubspaceID, tick, lastTick);
 							}
 						}
 					}
@@ -1535,7 +1503,7 @@ namespace KMPServer
 					if (data != null)
 					{
 						float rate = BitConverter.ToSingle(data,0);
-						if (clients[client_index].warping)
+						if (cl.warping)
 						{
 							if (rate < 1.1f)
 							{
@@ -1543,7 +1511,7 @@ namespace KMPServer
 								SQLiteCommand cmd = universeDB.CreateCommand();
 								string sql = "INSERT INTO kmpSubspace (LastTick) VALUES (@tick);";
 								cmd.CommandText = sql;
-                                cmd.Parameters.AddWithValue("tick", clients[client_index].lastTick);
+                                cmd.Parameters.AddWithValue("tick", cl.lastTick);
 								cmd.ExecuteNonQuery();
 								cmd.Dispose();
 								cmd = universeDB.CreateCommand();
@@ -1564,20 +1532,20 @@ namespace KMPServer
 									cmd.Dispose();
 								}
 							
-								clients[client_index].currentSubspaceID = newSubspace;
-								clients[client_index].lastTick = -1d;
-								sendSubspace(client_index, false);
-								clients[client_index].warping = false;
-								Log.Info(clients[client_index].username + " set to new subspace " + newSubspace);
+								cl.currentSubspaceID = newSubspace;
+								cl.lastTick = -1d;
+								sendSubspace(cl, false);
+								cl.warping = false;
+								Log.Info(cl.username + " set to new subspace " + newSubspace);
 							}
 						}
 						else
 						{
 							if (rate > 1.1f)
 							{
-								clients[client_index].warping = true;
-								clients[client_index].currentSubspaceID = -1;
-								Log.Info(clients[client_index].username + " is warping");
+								cl.warping = true;
+								cl.currentSubspaceID = -1;
+								Log.Info(cl.username + " is warping");
 							}
 						}
 					}
@@ -1605,9 +1573,9 @@ namespace KMPServer
 								reader.Close();
 							}
 						} 
-						clients[client_index].currentSubspaceID = subspaceID;
-						Log.Info(clients[client_index].username + " sync request to subspace " + subspaceID);
-						sendSubspace(client_index, true);
+						cl.currentSubspaceID = subspaceID;
+						Log.Info(cl.username + " sync request to subspace " + subspaceID);
+						sendSubspace(cl, true);
 					}
 					break;
 			}
@@ -1640,11 +1608,11 @@ namespace KMPServer
 					vessel_update.isMine = false;
 					vessel_update.relTime = RelativeTime.FUTURE;
 					byte[] update = ObjectToByteArray(vessel_update);
-					for (int i=0; i < clients.Length; i++)
-					{
-						if (clients[i] != null && clients[i].currentSubspaceID == toSubspace && !clients[i].warping && vessel_update.kmpID != clients[i].currentVessel)
-							sendVesselMessage(i, update);	
-					}
+
+                    foreach (var client in clients.Where(c => c.currentSubspaceID == toSubspace && !c.warping && c.currentVessel != vessel_update.kmpID))
+                    {
+                        sendVesselMessage(client, update);	
+                    }
 				} 
 			} 
 			finally 
@@ -1659,12 +1627,12 @@ namespace KMPServer
 			cmd.Dispose();
 		}
 		
-		private void sendSubspace(int client_index, bool excludeOwnActive = false)
+		private void sendSubspace(ServerClient cl, bool excludeOwnActive = false)
 		{
-			if (!clients[client_index].warping)
+			if (!cl.warping)
 			{
-				sendSubspaceSync(client_index);
-				Log.Info("Sending all vessels in current subspace for " + clients[client_index].username);
+				sendSubspaceSync(cl);
+				Log.Info("Sending all vessels in current subspace for " + cl.username);
 				SQLiteCommand cmd = universeDB.CreateCommand();
 				string sql = "SELECT  vu.UpdateMessage, v.ProtoVessel, v.Private, v.OwnerID" +
 					" FROM kmpVesselUpdate vu" +
@@ -1673,9 +1641,9 @@ namespace KMPServer
 					" INNER JOIN" +
 					"  (SELECT vu.Guid, MAX(s.LastTick) AS LastTick" +
 					"  FROM kmpVesselUpdate vu" +
-					"  INNER JOIN kmpSubspace s ON s.ID = vu.Subspace AND s.LastTick <= (SELECT LastTick FROM kmpSubspace WHERE ID = " + clients[client_index].currentSubspaceID + ")" +
+					"  INNER JOIN kmpSubspace s ON s.ID = vu.Subspace AND s.LastTick <= (SELECT LastTick FROM kmpSubspace WHERE ID = " + cl.currentSubspaceID + ")" +
 					"  GROUP BY vu.Guid) t ON t.Guid = vu.Guid AND t.LastTick = s.LastTick";
-				if (excludeOwnActive) sql += " AND NOT v.Guid = '" + clients[client_index].currentVessel + "'";
+				if (excludeOwnActive) sql += " AND NOT v.Guid = '" + cl.currentVessel + "'";
 				sql += ";";
 				cmd.CommandText = sql;
 				SQLiteDataReader reader = cmd.ExecuteReader(); 
@@ -1687,26 +1655,26 @@ namespace KMPServer
 						ConfigNode protoVessel = (ConfigNode) ByteArrayToObject(GetDataReaderBytes(reader,1));
 						vessel_update.state = State.INACTIVE;
 						vessel_update.isPrivate = reader.GetBoolean(2);
-						vessel_update.isMine = reader.GetInt32(3) == clients[client_index].playerID;
+						vessel_update.isMine = reader.GetInt32(3) == cl.playerID;
 						vessel_update.setProtoVessel(protoVessel);
 						vessel_update.isSyncOnlyUpdate = true;
 						vessel_update.distance = 0;
 						byte[] update = ObjectToByteArray(vessel_update);
-						sendVesselMessage(client_index, update);
+						sendVesselMessage(cl, update);
 					} 
 				} 
 				finally 
 				{ 
 					reader.Close();
 				}
-				sendSyncCompleteMessage(client_index);
+				sendSyncCompleteMessage(cl);
 			}
 		}
 		
-		private void sendSubspaceSync(int client_index, bool sendSync = true)
+		private void sendSubspaceSync(ServerClient cl, bool sendSync = true)
 		{
 			SQLiteCommand cmd = universeDB.CreateCommand();
-				string sql = "SELECT LastTick FROM kmpSubspace WHERE ID = " + clients[client_index].currentSubspaceID + ";";
+				string sql = "SELECT LastTick FROM kmpSubspace WHERE ID = " + cl.currentSubspaceID + ";";
 				cmd.CommandText = sql;
 				SQLiteDataReader reader = cmd.ExecuteReader(); 
 				double tick = 0d;
@@ -1721,12 +1689,12 @@ namespace KMPServer
 				{ 
 					reader.Close();
 				}
-				if (sendSync) sendSyncMessage(client_index, tick);
+				if (sendSync) sendSyncMessage(cl, tick);
 		}
 		
-		private void sendServerSync(int client_index)
+		private void sendServerSync(ServerClient cl)
 		{
-			if (!clients[client_index].warping)
+			if (!cl.warping)
 			{
 				SQLiteCommand cmd = universeDB.CreateCommand();
 				string sql = "SELECT ss1.ID, ss1.LastTick FROM kmpSubspace ss1 LEFT JOIN kmpSubspace ss2 ON ss1.LastTick < ss2.LastTick WHERE ss2.ID IS NULL;";
@@ -1745,13 +1713,13 @@ namespace KMPServer
 				{ 
 					reader.Close();
 				}
-				clients[client_index].currentSubspaceID = subspace;
-				Log.Info(clients[client_index].username + " set to lead subspace " + subspace);
-				sendSyncMessage(client_index, tick);
+				cl.currentSubspaceID = subspace;
+				Log.Info(cl.username + " set to lead subspace " + subspace);
+				sendSyncMessage(cl, tick);
 			}
 		}
 		
-		public void handleClientTextMessage(int client_index, String message_text)
+		public void handleClientTextMessage(ServerClient cl, String message_text)
 		{
 			StringBuilder sb = new StringBuilder();
 
@@ -1763,21 +1731,19 @@ namespace KMPServer
 				{
 					//Compile list of usernames
 					sb.Append("Connected users:\n");
-					for (int i = 0; i < clients.Length; i++)
-					{
-						if (clientIsReady(i))
-						{
-							sb.Append(clients[i].username);
-							sb.Append('\n');
-						}
-					}
 
-					sendTextMessage(client_index, sb.ToString());
+                    foreach (var client in clients.Where(c => c.isReady))
+                    {
+                        sb.Append(client.username);
+                        sb.Append('\n');
+                    }
+
+					sendTextMessage(cl, sb.ToString());
 					return;
 				}
 				else if (message_lower == "!quit")
 				{
-					disconnectClient(client_index, "Requested quit");
+					disconnectClient(cl, "Requested quit");
 					return;
 				}
 				else if (message_lower.Length > (KMPCommon.GET_CRAFT_COMMAND.Length + 1)
@@ -1786,23 +1752,23 @@ namespace KMPServer
 					String player_name = message_lower.Substring(KMPCommon.GET_CRAFT_COMMAND.Length + 1);
 
 					//Find the player with the given name
-					int target_index = getClientIndexByName(player_name);
+					ServerClient target_client = getClientByName(player_name);
 
-					if (clientIsReady(target_index))
+					if (target_client.isReady)
 					{
 						//Send the client the craft data
-						lock (clients[target_index].sharedCraftLock)
+						lock (target_client.sharedCraftLock)
 						{
-							if (clients[target_index].sharedCraftName.Length > 0
-								&& clients[target_index].sharedCraftFile != null && clients[target_index].sharedCraftFile.Length > 0)
+							if (target_client.sharedCraftName.Length > 0
+								&& target_client.sharedCraftFile != null && target_client.sharedCraftFile.Length > 0)
 							{
-								sendCraftFile(client_index,
-									clients[target_index].sharedCraftName,
-									clients[target_index].sharedCraftFile,
-									clients[target_index].sharedCraftType);
+								sendCraftFile(cl,
+									target_client.sharedCraftName,
+									target_client.sharedCraftFile,
+									target_client.sharedCraftType);
 
-								Log.Info("Sent craft " + clients[target_index].sharedCraftName
-									+ " to client " + clients[client_index].username);
+								Log.Info("Sent craft " + target_client.sharedCraftName
+									+ " to client " + cl.username);
 							}
 						}
 					}
@@ -1813,7 +1779,7 @@ namespace KMPServer
 
 			//Compile full message
 			sb.Append('[');
-			sb.Append(clients[client_index].username);
+			sb.Append(cl.username);
 			sb.Append("] ");
 			sb.Append(message_text);
 
@@ -1823,7 +1789,7 @@ namespace KMPServer
 			Log.Info(full_message);
 
 			//Send the update to all other clients
-			sendTextMessageToAll(full_message, client_index);
+			sendTextMessageToAll(full_message, cl);
 		}
 
 		public static byte[] buildMessageArray(KMPCommon.ServerMessageID id, byte[] data)
@@ -1905,7 +1871,7 @@ namespace KMPServer
 			}
 		}
 
-		private void sendHandshakeMessage(int client_index)
+		private void sendHandshakeMessage(ServerClient cl)
 		{
 			//Encode version string
 			UnicodeEncoding encoder = new UnicodeEncoding();
@@ -1923,48 +1889,46 @@ namespace KMPServer
 			version_bytes.CopyTo(data_bytes, 8);
 
 			//Write client ID
-			KMPCommon.intToBytes(client_index).CopyTo(data_bytes, 8 + version_bytes.Length);
+			KMPCommon.intToBytes(cl.playerID).CopyTo(data_bytes, 8 + version_bytes.Length);
 
-			clients[client_index].queueOutgoingMessage(KMPCommon.ServerMessageID.HANDSHAKE, data_bytes);
+			cl.queueOutgoingMessage(KMPCommon.ServerMessageID.HANDSHAKE, data_bytes);
 		}
 
-		private void sendServerMessageToAll(String message, int exclude_index = -1)
+        private void sendServerMessageToAll(String message, ServerClient exclude = null)
 		{
 			UnicodeEncoding encoder = new UnicodeEncoding();
 			byte[] message_bytes = buildMessageArray(KMPCommon.ServerMessageID.SERVER_MESSAGE, encoder.GetBytes(message));
 
-			for (int i = 0; i < clients.Length; i++)
-			{
-				if ((i != exclude_index) && clientIsReady(i))
-					clients[i].queueOutgoingMessage(message_bytes);
-			}
+            foreach (var client in clients.Where(cl => cl.isReady && cl != exclude))
+            {
+                client.queueOutgoingMessage(message_bytes);
+            }
 		}
 
-		private void sendServerMessage(int client_index, String message)
+		private void sendServerMessage(ServerClient cl, String message)
 		{
 			UnicodeEncoding encoder = new UnicodeEncoding();
-			clients[client_index].queueOutgoingMessage(KMPCommon.ServerMessageID.SERVER_MESSAGE, encoder.GetBytes(message));
+			cl.queueOutgoingMessage(KMPCommon.ServerMessageID.SERVER_MESSAGE, encoder.GetBytes(message));
 		}
 
-		private void sendTextMessageToAll(String message, int exclude_index = -1)
+		private void sendTextMessageToAll(String message, ServerClient exclude = null)
 		{
 			UnicodeEncoding encoder = new UnicodeEncoding();
 			byte[] message_bytes = buildMessageArray(KMPCommon.ServerMessageID.TEXT_MESSAGE, encoder.GetBytes(message));
 
-			for (int i = 0; i < clients.Length; i++)
-			{
-				if ((i != exclude_index) && clientIsReady(i))
-					clients[i].queueOutgoingMessage(message_bytes);
-			}
+            foreach (var client in clients.Where(cl => cl.isReady && cl != exclude))
+            {
+                client.queueOutgoingMessage(message_bytes);
+            }
 		}
 
-		private void sendTextMessage(int client_index, String message)
+		private void sendTextMessage(ServerClient cl, String message)
 		{
 			UnicodeEncoding encoder = new UnicodeEncoding();
-			clients[client_index].queueOutgoingMessage(KMPCommon.ServerMessageID.SERVER_MESSAGE, encoder.GetBytes(message));
+			cl.queueOutgoingMessage(KMPCommon.ServerMessageID.SERVER_MESSAGE, encoder.GetBytes(message));
 		}
 
-		private void sendPluginUpdateToAll(byte[] data, bool secondaryUpdate, int sending_client = -1)
+		private void sendPluginUpdateToAll(byte[] data, bool secondaryUpdate, ServerClient cl = null)
 		{
 			//Extract the KMPVesselUpdate & ProtoVessel, if present, for universe DB
 			byte[] infoOnly_data = new byte[data.Length];
@@ -1979,19 +1943,19 @@ namespace KMPServer
 			{
 				SQLiteCommand cmd;
 				string sql;
-				if (!secondaryUpdate && sending_client != -1)
+				if (!secondaryUpdate && cl != null)
 				{
                     var vessel_update = ByteArrayToObject<KMPVesselUpdate>(data);
 
                     if (vessel_update != null)
 					{	
-						OwnerID = clients[sending_client].playerID;
+						OwnerID = cl.playerID;
 						vessel_info = new String[4];
 						vessel_info[0] = vessel_update.player;
 						vessel_info[2] = "Using vessel: " + vessel_update.name;
 						vessel_info[3] = "";
 						
-						//Log.Info("Unpacked update from tick=" + vessel_update.tick + " @ client tick=" + clients[sending_client].lastTick);
+						//Log.Info("Unpacked update from tick=" + vessel_update.tick + " @ client tick=" + cl.lastTick);
 						ConfigNode node = vessel_update.getProtoVesselNode();
 						if (node != null)
 						{
@@ -2003,10 +1967,10 @@ namespace KMPServer
 							cmd.Dispose();
 							if (result == null)
 							{
-								Log.Info("New vessel " + vessel_update.kmpID + " from " + clients[sending_client].username + " added to universe");
+								Log.Info("New vessel " + vessel_update.kmpID + " from " + cl.username + " added to universe");
 								cmd = universeDB.CreateCommand();
 								sql = "INSERT INTO kmpVessel (Guid, GameGuid, OwnerID, Private, Active, ProtoVessel, Subspace)" +
-									"VALUES ('"+vessel_update.kmpID+"','"+vessel_update.id+"',"+clients[sending_client].playerID+","+Convert.ToInt32(vessel_update.isPrivate)+","+Convert.ToInt32(vessel_update.state==State.ACTIVE)+",@protoVessel,"+clients[sending_client].currentSubspaceID+")";
+									"VALUES ('"+vessel_update.kmpID+"','"+vessel_update.id+"',"+cl.playerID+","+Convert.ToInt32(vessel_update.isPrivate)+","+Convert.ToInt32(vessel_update.state==State.ACTIVE)+",@protoVessel,"+cl.currentSubspaceID+")";
 								cmd.Parameters.Add("@protoVessel", DbType.Binary, protoVesselBlob.Length).Value = protoVesselBlob;
 								cmd.CommandText = sql;
 								cmd.ExecuteNonQuery();
@@ -2015,10 +1979,10 @@ namespace KMPServer
 							else
 							{
 								int current_subspace = Convert.ToInt32(result);
-								if (current_subspace == clients[sending_client].currentSubspaceID)
+								if (current_subspace == cl.currentSubspaceID)
 								{
 									cmd = universeDB.CreateCommand();
-									sql = "UPDATE kmpVessel SET Private = "+Convert.ToInt32(vessel_update.isPrivate)+", Active = "+Convert.ToInt32(vessel_update.state==State.ACTIVE)+", OwnerID="+clients[sending_client].playerID+", ProtoVessel = @protoVessel WHERE Guid = '" + vessel_update.kmpID + "';";
+									sql = "UPDATE kmpVessel SET Private = "+Convert.ToInt32(vessel_update.isPrivate)+", Active = "+Convert.ToInt32(vessel_update.state==State.ACTIVE)+", OwnerID="+cl.playerID+", ProtoVessel = @protoVessel WHERE Guid = '" + vessel_update.kmpID + "';";
 									cmd.Parameters.Add("@protoVessel", DbType.Binary, protoVesselBlob.Length).Value = protoVesselBlob;
 									cmd.CommandText = sql;
 									cmd.ExecuteNonQuery();
@@ -2028,7 +1992,7 @@ namespace KMPServer
 								{
 									
 									cmd = universeDB.CreateCommand();
-									sql = "UPDATE kmpVessel SET Private = "+Convert.ToInt32(vessel_update.isPrivate)+", Active = "+Convert.ToInt32(vessel_update.state==State.ACTIVE)+", OwnerID="+clients[sending_client].playerID+", ProtoVessel = @protoVessel, Subspace = "+clients[sending_client].currentSubspaceID+" WHERE Guid = '" + vessel_update.kmpID + "';";
+									sql = "UPDATE kmpVessel SET Private = "+Convert.ToInt32(vessel_update.isPrivate)+", Active = "+Convert.ToInt32(vessel_update.state==State.ACTIVE)+", OwnerID="+cl.playerID+", ProtoVessel = @protoVessel, Subspace = "+cl.currentSubspaceID+" WHERE Guid = '" + vessel_update.kmpID + "';";
 									cmd.Parameters.Add("@protoVessel", DbType.Binary, protoVesselBlob.Length).Value = protoVesselBlob;
 									cmd.CommandText = sql;
 									cmd.ExecuteNonQuery();
@@ -2046,7 +2010,7 @@ namespace KMPServer
 									{
 										cmd = universeDB.CreateCommand();
 										//Clean up database entries
-										sql = "DELETE FROM kmpSubspace WHERE ID = " + clients[sending_client].currentSubspaceID + " AND LastTick < (SELECT MIN(s.LastTick) FROM kmpSubspace s INNER JOIN kmpVessel v ON v.Subspace = s.ID);";
+										sql = "DELETE FROM kmpSubspace WHERE ID = " + cl.currentSubspaceID + " AND LastTick < (SELECT MIN(s.LastTick) FROM kmpSubspace s INNER JOIN kmpVessel v ON v.Subspace = s.ID);";
 										cmd.CommandText = sql;
 										cmd.ExecuteNonQuery();
 										cmd.Dispose();
@@ -2054,21 +2018,21 @@ namespace KMPServer
 								}
 							}
 							
-							if (clients[sending_client] != null && clients[sending_client].currentVessel != vessel_update.kmpID && clients[sending_client].currentVessel != Guid.Empty)
+							if (cl != null && cl.currentVessel != vessel_update.kmpID && cl.currentVessel != Guid.Empty)
 							{
 								
 								try {
 									cmd = universeDB.CreateCommand();
-									sql = "UPDATE kmpVessel SET Active = 0 WHERE Guid = '" + clients[sending_client].currentVessel + "'";
+									sql = "UPDATE kmpVessel SET Active = 0 WHERE Guid = '" + cl.currentVessel + "'";
 									cmd.CommandText = sql;
 									cmd.ExecuteNonQuery();
 									cmd.Dispose();
 								} catch { }
 								
-								sendVesselStatusUpdateToAll(sending_client, clients[sending_client].currentVessel);
+								sendVesselStatusUpdateToAll(cl, cl.currentVessel);
 							}
 							
-							clients[sending_client].currentVessel = vessel_update.kmpID;
+							cl.currentVessel = vessel_update.kmpID;
 							
 						}
 						else
@@ -2082,10 +2046,10 @@ namespace KMPServer
 							if (result != null)
 							{
 								int current_subspace = Convert.ToInt32(result);
-								if (current_subspace == clients[sending_client].currentSubspaceID)
+								if (current_subspace == cl.currentSubspaceID)
 								{
 									cmd = universeDB.CreateCommand();
-									sql = "UPDATE kmpVessel SET Private = "+Convert.ToInt32(vessel_update.isPrivate)+", Active = "+Convert.ToInt32(vessel_update.state==State.ACTIVE)+", OwnerID="+clients[sending_client].playerID+" WHERE Guid = '" + vessel_update.kmpID + "';";
+									sql = "UPDATE kmpVessel SET Private = "+Convert.ToInt32(vessel_update.isPrivate)+", Active = "+Convert.ToInt32(vessel_update.state==State.ACTIVE)+", OwnerID="+cl.playerID+" WHERE Guid = '" + vessel_update.kmpID + "';";
 									cmd.CommandText = sql;
 									cmd.ExecuteNonQuery();
 									cmd.Dispose();
@@ -2094,7 +2058,7 @@ namespace KMPServer
 								{
 									
 									cmd = universeDB.CreateCommand();
-									sql = "UPDATE kmpVessel SET Private = "+Convert.ToInt32(vessel_update.isPrivate)+", Active = "+Convert.ToInt32(vessel_update.state==State.ACTIVE)+", OwnerID="+clients[sending_client].playerID+", Subspace = "+clients[sending_client].currentSubspaceID+" WHERE Guid = '" + vessel_update.kmpID + "';";
+									sql = "UPDATE kmpVessel SET Private = "+Convert.ToInt32(vessel_update.isPrivate)+", Active = "+Convert.ToInt32(vessel_update.state==State.ACTIVE)+", OwnerID="+cl.playerID+", Subspace = "+cl.currentSubspaceID+" WHERE Guid = '" + vessel_update.kmpID + "';";
 									cmd.CommandText = sql;
 									cmd.ExecuteNonQuery();
 									cmd.Dispose();
@@ -2111,7 +2075,7 @@ namespace KMPServer
 									{
 										cmd = universeDB.CreateCommand();
 										//Clean up database entries
-										sql = "DELETE FROM kmpSubspace WHERE ID = " + clients[sending_client].currentSubspaceID + " AND LastTick < (SELECT MIN(s.LastTick) FROM kmpSubspace s INNER JOIN kmpVessel v ON v.Subspace = s.ID);";
+										sql = "DELETE FROM kmpSubspace WHERE ID = " + cl.currentSubspaceID + " AND LastTick < (SELECT MIN(s.LastTick) FROM kmpSubspace s INNER JOIN kmpVessel v ON v.Subspace = s.ID);";
 										cmd.CommandText = sql;
 										cmd.ExecuteNonQuery();
 										cmd.Dispose();
@@ -2119,28 +2083,28 @@ namespace KMPServer
 								}
 							}
 							
-							if (clients[sending_client] != null && clients[sending_client].currentVessel != vessel_update.kmpID && clients[sending_client].currentVessel != Guid.Empty)
+							if (cl != null && cl.currentVessel != vessel_update.kmpID && cl.currentVessel != Guid.Empty)
 							{
 								
 								try {
 									cmd = universeDB.CreateCommand();
-									sql = "UPDATE kmpVessel SET Active = 0 WHERE Guid = '" + clients[sending_client].currentVessel + "'";
+									sql = "UPDATE kmpVessel SET Active = 0 WHERE Guid = '" + cl.currentVessel + "'";
 									cmd.CommandText = sql;
 									cmd.ExecuteNonQuery();
 									cmd.Dispose();
 								} catch { }
 								
-								sendVesselStatusUpdateToAll(sending_client, clients[sending_client].currentVessel);
+								sendVesselStatusUpdateToAll(cl, cl.currentVessel);
 							}
 							
-							clients[sending_client].currentVessel = vessel_update.kmpID;
+							cl.currentVessel = vessel_update.kmpID;
 						}
 						
 						//Store update
-						storeVesselUpdate(vessel_update, sending_client);
+						storeVesselUpdate(vessel_update, cl);
 				
 						//Update vessel destroyed status
-						if (checkVesselDestruction(vessel_update, sending_client))
+						if (checkVesselDestruction(vessel_update, cl))
 							vessel_update.situation = Situation.DESTROYED;
 						
 						//Repackage the update for distribution
@@ -2175,20 +2139,20 @@ namespace KMPServer
 							} catch { }
 							cmd.Dispose();
 							
-							if (!active || OwnerID == clients[sending_client].playerID) //Inactive vessel or this player was last in control of it
+							if (!active || OwnerID == cl.playerID) //Inactive vessel or this player was last in control of it
 							{
 								if (vessel_update.getProtoVesselNode() != null)
 								{
 									//Store included protovessel, update subspace
 									byte[] protoVesselBlob = ObjectToByteArray(vessel_update.getProtoVesselNode());
 									cmd = universeDB.CreateCommand();
-									sql = "UPDATE kmpVessel SET ProtoVessel = @protoVessel, Subspace = "+clients[sending_client].currentSubspaceID+" WHERE Guid = '" + vessel_update.kmpID + "';";
+									sql = "UPDATE kmpVessel SET ProtoVessel = @protoVessel, Subspace = "+cl.currentSubspaceID+" WHERE Guid = '" + vessel_update.kmpID + "';";
 									cmd.Parameters.Add("@protoVessel", DbType.Binary, protoVesselBlob.Length).Value = protoVesselBlob;
 									cmd.CommandText = sql;
 									cmd.ExecuteNonQuery();
 									cmd.Dispose();
 								}
-								if (OwnerID == clients[sending_client].playerID) 
+								if (OwnerID == cl.playerID) 
 								{
 									//Update Active status
 									cmd = universeDB.CreateCommand();
@@ -2198,9 +2162,9 @@ namespace KMPServer
 									cmd.Dispose();
 								}
 								//No one else is controlling it, so store the update
-								storeVesselUpdate(vessel_update, sending_client, true);
+								storeVesselUpdate(vessel_update, cl, true);
 								//Update vessel destroyed status
-								if (checkVesselDestruction(vessel_update, sending_client))
+								if (checkVesselDestruction(vessel_update, cl))
 									vessel_update.situation = Situation.DESTROYED;
 							}
 						} catch { }
@@ -2223,66 +2187,58 @@ namespace KMPServer
 			byte[] owned_message_bytes = buildMessageArray(KMPCommon.ServerMessageID.PLUGIN_UPDATE, owned_data);
 			byte[] past_message_bytes = buildMessageArray(KMPCommon.ServerMessageID.PLUGIN_UPDATE, past_data);
 
-			//Send the update to all other clients
-			for (int i = 0; i < clients.Length; i++)
-			{
-				//Make sure the client is valid and in-game
-				if ((i != sending_client)
-					&& clientIsReady(i)
-					&& clients[i].activityLevel != ServerClient.ActivityLevel.INACTIVE
-					&& (clients[i].activityLevel == ServerClient.ActivityLevel.IN_FLIGHT || !secondaryUpdate))
-				{
-					if ((clients[i].currentSubspaceID == clients[sending_client].currentSubspaceID)
-				    	&& !clients[i].warping && !clients[sending_client].warping
-				    	&& clients[i].lastTick != -1d)
-					{
-						if (OwnerID == clients[i].playerID)
-							clients[i].queueOutgoingMessage(owned_message_bytes);
-						else
-							clients[i].queueOutgoingMessage(message_bytes);
-					}
-					else if (!secondaryUpdate
-				         && firstSubspaceIsPresentOrFutureOfSecondSubspace(clients[i].currentSubspaceID,clients[sending_client].currentSubspaceID)
-				         && !clients[i].warping && !clients[sending_client].warping && clients[i].lastTick != -1d)
-					{
-						clients[i].queueOutgoingMessage(past_message_bytes);
-					}
-					else if (!secondaryUpdate && clients[i].lastTick != -1d)
-					{
-						if (vessel_info != null)
-						{
-							if (clients[i].warping) vessel_info[1] = "Unknown due to warp";
-							else 
-							{
-								vessel_info[1] = "In the future";
-								vessel_info[2] = vessel_info[2] + " [Future]";
-								vessel_info[3] = clients[sending_client].currentSubspaceID.ToString();
-							}
-							infoOnly_data = ObjectToByteArray(vessel_info);
-						}
-						byte[] infoOnly_message_bytes = buildMessageArray(KMPCommon.ServerMessageID.PLUGIN_UPDATE, infoOnly_data);
-						clients[i].queueOutgoingMessage(infoOnly_message_bytes);
-					}
-				}
-			}
+            foreach (var client in clients.Where(c => c != cl && c.isReady && c.activityLevel != ServerClient.ActivityLevel.INACTIVE && (c.activityLevel == ServerClient.ActivityLevel.IN_GAME || !secondaryUpdate)))
+            {
+                if ((client.currentSubspaceID == cl.currentSubspaceID)
+                    && !client.warping && !cl.warping
+                    && client.lastTick != -1d)
+                {
+                    if (OwnerID == client.playerID)
+                        client.queueOutgoingMessage(owned_message_bytes);
+                    else
+                        client.queueOutgoingMessage(message_bytes);
+                }
+                else if (!secondaryUpdate
+                     && firstSubspaceIsPresentOrFutureOfSecondSubspace(client.currentSubspaceID, cl.currentSubspaceID)
+                     && !client.warping && !cl.warping && client.lastTick != -1d)
+                {
+                    client.queueOutgoingMessage(past_message_bytes);
+                }
+                else if (!secondaryUpdate && client.lastTick != -1d)
+                {
+                    if (vessel_info != null)
+                    {
+                        if (client.warping) vessel_info[1] = "Unknown due to warp";
+                        else
+                        {
+                            vessel_info[1] = "In the future";
+                            vessel_info[2] = vessel_info[2] + " [Future]";
+                            vessel_info[3] = cl.currentSubspaceID.ToString();
+                        }
+                        infoOnly_data = ObjectToByteArray(vessel_info);
+                    }
+                    byte[] infoOnly_message_bytes = buildMessageArray(KMPCommon.ServerMessageID.PLUGIN_UPDATE, infoOnly_data);
+                    client.queueOutgoingMessage(infoOnly_message_bytes);
+                }
+            }
 		}
 		
-		private void storeVesselUpdate(KMPVesselUpdate vessel_update, int sending_client, bool isSecondary = false)
+		private void storeVesselUpdate(KMPVesselUpdate vessel_update, ServerClient cl, bool isSecondary = false)
 		{
 			byte[] updateBlob = ObjectToByteArray(vessel_update);
 			SQLiteCommand cmd = universeDB.CreateCommand();
-			string sql = "DELETE FROM kmpVesselUpdate WHERE Guid = '" + vessel_update.kmpID + "' AND Subspace = " + clients[sending_client].currentSubspaceID + ";" +
+			string sql = "DELETE FROM kmpVesselUpdate WHERE Guid = '" + vessel_update.kmpID + "' AND Subspace = " + cl.currentSubspaceID + ";" +
 				" INSERT INTO kmpVesselUpdate (Guid, Subspace, UpdateMessage)" +
-				" VALUES ('"+vessel_update.kmpID+"',"+clients[sending_client].currentSubspaceID+",@update);";
+				" VALUES ('"+vessel_update.kmpID+"',"+cl.currentSubspaceID+",@update);";
 			if (!isSecondary) sql += " INSERT INTO kmpVesselUpdateHistory (Guid, Subspace, Tick, UpdateMessage)" +
-				" VALUES ('"+vessel_update.kmpID+"',"+clients[sending_client].currentSubspaceID+","+vessel_update.tick+",@update);";
+				" VALUES ('"+vessel_update.kmpID+"',"+cl.currentSubspaceID+","+vessel_update.tick+",@update);";
 			cmd.Parameters.Add("@update", DbType.Binary, updateBlob.Length).Value = updateBlob;
 			cmd.CommandText = sql;
 			cmd.ExecuteNonQuery();
 			cmd.Dispose();	
 		}
 		
-		private bool checkVesselDestruction(KMPVesselUpdate vessel_update, int sending_client)
+		private bool checkVesselDestruction(KMPVesselUpdate vessel_update, ServerClient cl)
 		{
 			try {
 				if (!recentlyDestroyed.ContainsKey(vessel_update.kmpID) || (recentlyDestroyed[vessel_update.kmpID] + 1500L) < currentMillisecond)
@@ -2303,30 +2259,21 @@ namespace KMPServer
 			return false;
 		}
 		
-		private void sendVesselStatusUpdateToAll(int sending_client, Guid vessel)
+		private void sendVesselStatusUpdateToAll(ServerClient cl, Guid vessel)
 		{
-			for (int i = 0; i < clients.Length; i++)
-			{
-				//Make sure the client is valid and in-game
-				if ((i != sending_client)
-					&& clientIsReady(i)
-					&& clients[i].activityLevel != ServerClient.ActivityLevel.INACTIVE
-				    //&& !clients[i].warping
-					//&& (clients[i].activityLevel == ServerClient.ActivityLevel.IN_FLIGHT)
-				    )
-				{
-					sendVesselStatusUpdate(i,vessel);
-				}
-			}
+            foreach (var client in clients.Where(c => c.isReady && c != cl && c.activityLevel != ServerClient.ActivityLevel.INACTIVE))
+            {
+                sendVesselStatusUpdate(client, vessel);
+            }
 		}
 		
-		private void sendVesselStatusUpdate(int client_index, Guid vessel)
+		private void sendVesselStatusUpdate(ServerClient cl, Guid vessel)
 		{
 			SQLiteCommand cmd = universeDB.CreateCommand();
 			string sql = "SELECT vu.UpdateMessage, v.ProtoVessel, v.Private, v.OwnerID, v.Active" +
 				" FROM kmpVesselUpdate vu" +
 				" INNER JOIN kmpVessel v ON v.Guid = vu.Guid" +
-				" WHERE vu.Subspace = " + clients[client_index].currentSubspaceID + " AND v.Guid = '" + vessel.ToString() + "';";
+				" WHERE vu.Subspace = " + cl.currentSubspaceID + " AND v.Guid = '" + vessel.ToString() + "';";
 			cmd.CommandText = sql;
 			SQLiteDataReader reader = cmd.ExecuteReader(); 
 			try 
@@ -2336,14 +2283,14 @@ namespace KMPServer
 					KMPVesselUpdate vessel_update = (KMPVesselUpdate) ByteArrayToObject(GetDataReaderBytes(reader,0));
 					ConfigNode protoVessel = (ConfigNode) ByteArrayToObject(GetDataReaderBytes(reader,1));
 					vessel_update.isPrivate = reader.GetBoolean(2);
-					vessel_update.isMine = reader.GetInt32(3) == clients[client_index].playerID;
+					vessel_update.isMine = reader.GetInt32(3) == cl.playerID;
 					if (reader.GetBoolean(4))
 						vessel_update.state = State.ACTIVE;
 					else
 						vessel_update.state = State.INACTIVE;
 					vessel_update.setProtoVessel(protoVessel);
 					byte[] update = ObjectToByteArray(vessel_update);
-					sendVesselMessage(client_index, update);
+					sendVesselMessage(cl, update);
 				} 
 			} 
 			finally 
@@ -2352,32 +2299,29 @@ namespace KMPServer
 			}
 		}
 		
-		private void sendScreenshot(int client_index, byte[] bytes)
+		private void sendScreenshot(ServerClient cl, byte[] bytes)
 		{
-			Log.Info("Sending screenshot to player " + clients[client_index].username);
-			clients[client_index].queueOutgoingMessage(KMPCommon.ServerMessageID.SCREENSHOT_SHARE, bytes);
+			Log.Info("Sending screenshot to player " + cl.username);
+			cl.queueOutgoingMessage(KMPCommon.ServerMessageID.SCREENSHOT_SHARE, bytes);
 		}
 		
-		private void sendScreenshotToWatchers(int client_index, byte[] bytes)
+		private void sendScreenshotToWatchers(ServerClient cl, byte[] bytes)
 		{
 			//Create a list of valid watchers
 			List<int> watcher_indices = new List<int>();
 
-			for (int i = 0; i < clients.Length; i++)
-			{
-				if (i != client_index && clientIsReady(i) && clients[i].activityLevel != ServerClient.ActivityLevel.INACTIVE)
-				{
-					bool match = false;
+            foreach(var client in clients.Where(c => c != cl && c.isReady && c.activityLevel != ServerClient.ActivityLevel.INACTIVE))
+            {
+                bool match = false;
 
-					lock (clients[i].watchPlayerNameLock)
+					lock (client.watchPlayerNameLock)
 					{
-						match = clients[i].watchPlayerName == clients[client_index].username;
+						match = client.watchPlayerName == cl.username;
 					}
 
 					if (match)
-						watcher_indices.Add(i);
-				}
-			}
+						watcher_indices.Add(client.clientIndex);
+            }
 
 			if (watcher_indices.Count > 0)
 			{
@@ -2390,7 +2334,7 @@ namespace KMPServer
 			}
 		}
 
-		private void sendCraftFile(int client_index, String craft_name, byte[] data, byte type)
+		private void sendCraftFile(ServerClient cl, String craft_name, byte[] data, byte type)
 		{
 
 			UnicodeEncoding encoder = new UnicodeEncoding();
@@ -2404,7 +2348,7 @@ namespace KMPServer
 			name_bytes.CopyTo(bytes, 5);
 			data.CopyTo(bytes, 5 + name_bytes.Length);
 
-			clients[client_index].queueOutgoingMessage(KMPCommon.ServerMessageID.CRAFT_FILE, bytes);
+			cl.queueOutgoingMessage(KMPCommon.ServerMessageID.CRAFT_FILE, bytes);
 		}
 
 		private void sendServerSettingsToAll()
@@ -2413,36 +2357,34 @@ namespace KMPServer
 			byte[] setting_bytes = serverSettingBytes();
 			byte[] message_bytes = buildMessageArray(KMPCommon.ServerMessageID.SERVER_SETTINGS, setting_bytes);
 
-			//Send to clients
-			for (int i = 0; i < clients.Length; i++)
-			{
-				if (clientIsValid(i))
-					clients[i].queueOutgoingMessage(message_bytes);
-			}
+            foreach (var client in clients.Where(c => c.isValid))
+            {
+                client.queueOutgoingMessage(message_bytes);
+            }
 		}
 
-		private void sendServerSettings(int client_index)
+		private void sendServerSettings(ServerClient cl)
 		{
-			clients[client_index].queueOutgoingMessage(KMPCommon.ServerMessageID.SERVER_SETTINGS, serverSettingBytes());
+			cl.queueOutgoingMessage(KMPCommon.ServerMessageID.SERVER_SETTINGS, serverSettingBytes());
 		}
 		
-		private void sendSyncMessage(int client_index, double tick)
+		private void sendSyncMessage(ServerClient cl, double tick)
 		{
-			//Log.Info("Time sync for: " + clients[client_index].username);
+			//Log.Info("Time sync for: " + cl.username);
 			byte[] message_bytes = buildMessageArray(KMPCommon.ServerMessageID.SYNC, BitConverter.GetBytes(tick));
-			clients[client_index].queueOutgoingMessage(message_bytes);
+			cl.queueOutgoingMessage(message_bytes);
 		}
 		
-		private void sendSyncCompleteMessage(int client_index)
+		private void sendSyncCompleteMessage(ServerClient cl)
 		{
 			byte[] message_bytes = buildMessageArray(KMPCommon.ServerMessageID.SYNC_COMPLETE, null);
-			clients[client_index].queueOutgoingMessage(message_bytes);
+			cl.queueOutgoingMessage(message_bytes);
 		}
 		
-		private void sendVesselMessage(int client_index, byte[] data)
+		private void sendVesselMessage(ServerClient cl, byte[] data)
 		{
 			byte[] message_bytes = buildMessageArray(KMPCommon.ServerMessageID.PLUGIN_UPDATE, data);
-			clients[client_index].queueOutgoingMessage(message_bytes);
+			cl.queueOutgoingMessage(message_bytes);
 		}
 		
 		private byte[] serverSettingBytes()
