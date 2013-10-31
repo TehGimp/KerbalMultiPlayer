@@ -72,7 +72,7 @@ namespace KMPServer
         {
             try
             {
-                FieldInfo f = Store.GetType().GetFields().Where(fF => fF.Name.ToLowerInvariant() == Key).First();
+                FieldInfo f = Store.GetType().GetFields().Where(fF => fF.Name.ToLowerInvariant() == Key.ToLowerInvariant()).First();
                 object newValue;
 
                 if (f.FieldType.IsEnum)

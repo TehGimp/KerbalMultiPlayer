@@ -682,8 +682,8 @@ namespace KMPServer
 					if (client == null && error_message.Length > 0)
 					{
 						//There was an error accepting the client
-						Log.Info("Error accepting client: ");
-						Log.Info(error_message);
+						Log.Error("Error accepting client: ");
+						Log.Error(error_message);
 					}
 
 					Thread.Sleep(SLEEP_TIME);

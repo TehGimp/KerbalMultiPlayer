@@ -81,21 +81,23 @@ namespace KMPServer
                     case "/quit":
                         return;
                     case "/set":
-                        if (parts.Length != 3)
+                        if (parts.Length < 3)
                         {
                             Log.Info("Invalid usage. Usage is /set [key] [value]");
                         }
                         else 
                         {
+                            string val = String.Join(" ", parts.Skip(2).ToArray());
+
                             try
                             {
-                                ServerSettings.modifySetting(settings, parts[1], parts[2]);
-                                Log.Info("{0} changed to {1}", parts[1], parts[2]);
+                                ServerSettings.modifySetting(settings, parts[1], val);
+                                Log.Info("{0} changed to {1}", parts[1], val);
                                 ServerSettings.writeToFile(settings);
                             }
                             catch
                             {
-                                Log.Info("{0} cannot be set to {1}", parts[1], parts[2]);
+                                Log.Info("{0} cannot be set to {1}", parts[1], val);
                             }
                         }
                         break;
