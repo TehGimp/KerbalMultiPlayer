@@ -11,8 +11,6 @@
     <RootNamespace>KMPServer</RootNamespace>
     <AssemblyName>KMPServer</AssemblyName>
     <FileAlignment>512</FileAlignment>
-    <TargetFrameworkVersion>v4.0</TargetFrameworkVersion>
-    <TargetFrameworkProfile />
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|x86' ">
     <PlatformTarget>x86</PlatformTarget>
@@ -36,15 +34,17 @@
   <ItemGroup>
     <Reference Include="System" />
     <Reference Include="System.Data" />
+    <Reference Include="System.Runtime.Serialization" />
+    <Reference Include="System.ServiceModel" />
     <Reference Include="System.Xml" />
     <Reference Include="UnityEngine">
-      <HintPath>..\..\..\..\..\Program Files (x86)\Steam\steamapps\common\Kerbal Space Program\KSP_Data\Managed\UnityEngine.dll</HintPath>
+      <HintPath>..\UnityEngine.dll</HintPath>
     </Reference>
     <Reference Include="Assembly-CSharp">
-      <HintPath>..\..\..\..\..\Program Files (x86)\Steam\steamapps\common\Kerbal Space Program\KSP_Data\Managed\Assembly-CSharp.dll</HintPath>
+      <HintPath>..\Assembly-CSharp.dll</HintPath>
     </Reference>
     <Reference Include="Assembly-CSharp-firstpass">
-      <HintPath>..\..\..\..\..\Program Files (x86)\Steam\steamapps\common\Kerbal Space Program\KSP_Data\Managed\Assembly-CSharp-firstpass.dll</HintPath>
+      <HintPath>..\Assembly-CSharp-firstpass.dll</HintPath>
     </Reference>
     <Reference Include="System.Data.SQLite">
       <HintPath>..\System.Data.SQLite.dll</HintPath>
@@ -57,6 +57,11 @@
     <Compile Include="ServerMain.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="ServerSettings.cs" />
+    <Compile Include="Service References\ServerList\Reference.cs">
+      <AutoGen>True</AutoGen>
+      <DesignTime>True</DesignTime>
+      <DependentUpon>Reference.svcmap</DependentUpon>
+    </Compile>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
@@ -75,5 +80,33 @@
   <ItemGroup>
     <None Include="app.config" />
     <None Include="KMPServer.exe.config" />
+    <None Include="Service References\ServerList\Report.wsdl" />
+    <None Include="Service References\ServerList\Report.xsd">
+      <SubType>Designer</SubType>
+    </None>
+    <None Include="Service References\ServerList\Report1.xsd">
+      <SubType>Designer</SubType>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <WCFMetadata Include="Service References\" />
+  </ItemGroup>
+  <ItemGroup>
+    <WCFMetadataStorage Include="Service References\ServerList\" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Service References\ServerList\Report.disco" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Service References\ServerList\configuration91.svcinfo" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Service References\ServerList\configuration.svcinfo" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Service References\ServerList\Reference.svcmap">
+      <Generator>WCF Proxy Generator</Generator>
+      <LastGenOutput>Reference.cs</LastGenOutput>
+    </None>
   </ItemGroup>
 </Project>
