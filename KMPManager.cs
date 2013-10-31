@@ -542,7 +542,7 @@ namespace KMP
 			writePrimaryUpdate();
 			
 			//nearby vessels
-			if (isInFlight && !syncing && !warping && (FlightGlobals.ActiveVessel.mainBody.bodyName != "Kerbin" || FlightGlobals.ActiveVessel.altitude > 35000d || kscPosition == Vector3d.zero || Vector3d.Distance(kscPosition,FlightGlobals.ActiveVessel.GetWorldPos3D()) > 40000d))
+			if (isInFlight && !syncing && !warping && (FlightGlobals.ActiveVessel.mainBody.bodyName != "Kerbin" || FlightGlobals.ActiveVessel.altitude > 35000d || kscPosition == Vector3d.zero || Vector3d.Distance(kscPosition,FlightGlobals.ActiveVessel.GetWorldPos3D()) > 3000d))
 			{
 				writeSecondaryUpdates();
 			}
@@ -551,7 +551,7 @@ namespace KMP
 		private void writePrimaryUpdate()
 		{
 			if (!syncing && isInFlight && !warping
-			    && (FlightGlobals.ActiveVessel.mainBody.bodyName != "Kerbin" || FlightGlobals.ActiveVessel.altitude > 35000d || kscPosition == Vector3d.zero || Vector3d.Distance(kscPosition,FlightGlobals.ActiveVessel.GetWorldPos3D()) > 40000d))
+			    && (FlightGlobals.ActiveVessel.mainBody.bodyName != "Kerbin" || FlightGlobals.ActiveVessel.altitude > 35000d || kscPosition == Vector3d.zero || Vector3d.Distance(kscPosition,FlightGlobals.ActiveVessel.GetWorldPos3D()) > 3000d))
 			{
 				lastTick = Planetarium.GetUniversalTime();
 				//Write vessel status
