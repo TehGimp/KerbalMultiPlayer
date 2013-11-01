@@ -2823,6 +2823,14 @@ namespace KMP
 						);
 				}
 			}
+
+			
+		    if(!gameRunning)
+     	    {
+         		//close the windows if not connected to a server 
+       	 	    KMPScreenshotDisplay.windowEnabled = false;
+      		    KMPGlobalSettings.instance.chatWindowEnabled = false;
+ 		    }
 			
 			if (KMPScreenshotDisplay.windowEnabled)
 			{
