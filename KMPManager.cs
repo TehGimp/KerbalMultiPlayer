@@ -415,7 +415,7 @@ namespace KMP
 				
 				
 				//Prevent cases of remaining unfixed NREs from remote vessel updates from creating an inconsistent game state
-				if (HighLogic.fetch.log.Count > 100)
+				if (HighLogic.fetch.log.Count > 100 && isInFlight)
 				{
 					bool allNRE = true;
 					foreach (HighLogic.LogEntry logEntry in HighLogic.fetch.log.GetRange(HighLogic.fetch.log.Count-25,25))
