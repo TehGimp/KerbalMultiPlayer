@@ -43,7 +43,7 @@ namespace KMPServer
 		public const int MAX_SCREENSHOT_COUNT = 10000;
 		public const int UDP_ACK_THROTTLE = 1000;
 		public const int DATABASE_BACKUP_INTERVAL = 300000;
-		
+	
 		public const float NOT_IN_FLIGHT_UPDATE_WEIGHT = 1.0f/4.0f;
 		public const int ACTIVITY_RESET_DELAY = 10000;
 
@@ -887,8 +887,14 @@ namespace KMPServer
 			catch (NullReferenceException e)
 			{
 				//Almost certainly need to be smarter about this.
+                cl.tcpClient = null;
+
 				Log.Info("Internal error during disconnect: " + e.StackTrace);
 			}
+            catch (InvalidOperationException e)
+            {
+                cl.tcpClient = null;             
+            }
 			
 			cl.receivedHandshake = false;
 			cl.universeSent = false;
@@ -899,13 +905,12 @@ namespace KMPServer
 				sendServerSettingsToAll();
 			
 			cl.disconnected();
-			
 		}
 		
 		public void postDisconnectCleanup(ServerClient client)
 		{
-			if (clients.Contains (client)) clients.Remove(client);
-			if (flight_clients.Contains (client)) flight_clients.Remove(client);
+			if (clients.Contains(client)) clients.Remove(client);
+			if (flight_clients.Contains(client)) flight_clients.Remove(client);
 			client = null;
 			if (clients.Count > 0) backedUpSinceEmpty = false;
 		}

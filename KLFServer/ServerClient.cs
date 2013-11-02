@@ -21,6 +21,7 @@ namespace KMPServer
 		}
 
 		public const int SEND_BUFFER_SIZE = 8192;
+        public const int POLL_INTERVAL = 10000;
 
 		//Properties
 
@@ -53,6 +54,7 @@ namespace KMPServer
 		public long connectionStartTime;
 		public long lastReceiveTime;
 		public long lastUDPACKTime;
+        public long lastPollTime = 0;
 
 		public long lastInGameActivityTime;
 		public long lastInFlightActivityTime;
@@ -91,7 +93,41 @@ namespace KMPServer
         {
             get
             {
-                return (this.tcpClient != null && this.tcpClient.Connected);
+               // bool isConnected = false;
+                if (this.tcpClient != null && this.tcpClient.Connected)
+                {                   
+                    Socket clientSocket = this.tcpClient.Client;
+                    try
+                    {
+                        if ((parent.currentMillisecond - lastPollTime) > POLL_INTERVAL)
+                        {
+                            lastPollTime = parent.currentMillisecond;
+                            return !(clientSocket.Poll(10000, SelectMode.SelectRead) && clientSocket.Available == 0);
+                        }
+                        else
+                        {
+                            // They have max 10 seconds to get their shit together. 
+                            return true;
+                        }
+                    }
+                    catch (SocketException)
+                    {
+                        // Unknown error
+                        return false;
+                    } catch (ObjectDisposedException)
+                    {
+                        // Socket closed
+                        return false;
+                    }
+                    catch (Exception ex)
+                    {
+                        // Shouldn't happen, pass up.
+                        parent.passExceptionToMain(ex);
+                    }
+                    
+                    return true;
+                }
+                return false;
             }
         }
 
@@ -175,6 +211,8 @@ namespace KMPServer
 			}
 			catch (System.IO.IOException)
 			{
+                parent.disconnectClient(this, "IOException");
+				parent.postDisconnectCleanup(this);
 			}
 			catch (Exception e)
 			{
@@ -184,38 +222,39 @@ namespace KMPServer
 
 		private void asyncReceive(IAsyncResult result)
 		{
-			try
-			{
-				int read = tcpClient.GetStream().EndRead(result);
+            try
+            {
+                int read = tcpClient.GetStream().EndRead(result);
 
-				if (read > 0)
-				{
-					receiveIndex += read;
-					//Console.WriteLine("Got data: " + System.Text.Encoding.ASCII.GetString(receiveBuffer));
-					updateReceiveTimestamp();
-					handleReceive();
-				}
+                if (read > 0)
+                {
+                    receiveIndex += read;
+                    //Console.WriteLine("Got data: " + System.Text.Encoding.ASCII.GetString(receiveBuffer));
+                    updateReceiveTimestamp();
+                    handleReceive();
+                }
 
-				tcpClient.GetStream().BeginRead(
-					receiveBuffer,
-					receiveIndex,
-					receiveBuffer.Length - receiveIndex,
-					asyncReceive,
-					receiveBuffer);
+                tcpClient.GetStream().BeginRead(
+                    receiveBuffer,
+                    receiveIndex,
+                    receiveBuffer.Length - receiveIndex,
+                    asyncReceive,
+                    receiveBuffer);
+            }
+            catch (InvalidOperationException) {
+				parent.disconnectClient(this, "InvalidOperationException");
+				parent.postDisconnectCleanup(this);
 			}
-			catch (InvalidOperationException)
-			{
+            catch (System.IO.IOException) {
+				parent.disconnectClient(this, "IOException");
+				parent.postDisconnectCleanup(this);
 			}
-			catch (System.IO.IOException)
-			{
-			}
-			catch (ThreadAbortException)
-			{
-			}
-			catch (Exception e)
-			{
-				parent.passExceptionToMain(e);
-			}
+            catch (NullReferenceException) { } // ignore,  gets thrown after a disconnect
+            catch (ThreadAbortException) { }
+            catch (Exception e)
+            {
+                parent.passExceptionToMain(e);
+            }
 
 		}
 
@@ -385,21 +424,31 @@ namespace KMPServer
 						}
 					}
 
-					//Send the send buffer
-					if (send_buffer_index > 0)
-					{
-						tcpClient.GetStream().BeginWrite(
-							send_buffer,
-							0,
-							send_buffer_index,
-							asyncSend,
-							next_message);
-					}
-				}
-			}
-			catch (System.InvalidOperationException) { }
-			catch (System.IO.IOException) { }
-			catch (System.NullReferenceException) { }
+                    //Send the send buffer
+                    if (send_buffer_index > 0)
+                    {
+                        tcpClient.GetStream().BeginWrite(
+                            send_buffer,
+                            0,
+                            send_buffer_index,
+                            asyncSend,
+                            next_message);
+                    }
+                }
+            }
+            // Socket closed or not connected.
+            catch (System.InvalidOperationException)
+            {
+                parent.disconnectClient(this, "InvalidOperationException");
+				parent.postDisconnectCleanup(this);
+            }
+            // Raised by BeginWrite, can mean socket is down.
+            catch (System.IO.IOException)
+            {
+                parent.disconnectClient(this, "IOException");
+				parent.postDisconnectCleanup(this);
+            }
+            catch (System.NullReferenceException) { }
 			
 		}
 
