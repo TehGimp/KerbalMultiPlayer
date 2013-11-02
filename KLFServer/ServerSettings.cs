@@ -175,7 +175,7 @@ namespace KMPServer
                     }
                 }
             }
-            catch (Exception ex)
+            catch (Exception)
             { 
                 
             }
@@ -266,7 +266,7 @@ namespace KMPServer
                     configReader.Close();
                 }
             }
-            catch (Exception ex)
+            catch (Exception)
             {
                 
             }

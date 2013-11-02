@@ -7,6 +7,7 @@ using System.Net.Sockets;
 using System.Threading;
 using System.Net;
 using System.Collections;
+using System.Collections.Concurrent;
 
 namespace KMPServer
 {
@@ -28,11 +29,7 @@ namespace KMPServer
 			private set;
 			get;
 		}
-		public int clientIndex
-		{
-			private set;
-			get;
-		}
+		public int clientIndex;
 		public String username;
 		public String guid;
 		public int playerID;
@@ -46,7 +43,6 @@ namespace KMPServer
 		public bool warping = false;
 		
 		public bool receivedHandshake;
-		public bool canBeReplaced;
 
 		public byte[] screenshot;
 		public String watchPlayerName;
@@ -82,16 +78,13 @@ namespace KMPServer
 
 		public KMPCommon.ClientMessageID currentMessageID;
 
-		public Queue<byte[]> queuedOutMessages;
+		public ConcurrentQueue<byte[]> queuedOutMessages;
 
-		public ServerClient(Server parent, int index)
+		public ServerClient(Server parent)
 		{
 			this.parent = parent;
-			this.clientIndex = index;
-
-			canBeReplaced = true;
-
-			queuedOutMessages = new Queue<byte[]>();
+			
+			queuedOutMessages = new ConcurrentQueue<byte[]>();
 		}
 
         public bool isValid
@@ -115,7 +108,6 @@ namespace KMPServer
 			username = "";
 			screenshot = null;
 			watchPlayerName = String.Empty;
-			canBeReplaced = false;
 			receivedHandshake = false;
 
 			sharedCraftFile = null;
@@ -124,7 +116,7 @@ namespace KMPServer
 
 			lastUDPACKTime = 0;
 
-			queuedOutMessages = new Queue<byte[]>();
+			queuedOutMessages = new ConcurrentQueue<byte[]>();
 
 			lock (activityLevelLock)
 			{
@@ -150,7 +142,6 @@ namespace KMPServer
 
 		public void disconnected()
 		{
-			canBeReplaced = true;
 			screenshot = null;
 			watchPlayerName = String.Empty;
 
@@ -358,12 +349,11 @@ namespace KMPServer
 					
 					while (queuedOutMessages.Count > 0)
 					{
-						next_message = queuedOutMessages.Peek();
+						queuedOutMessages.TryPeek(out next_message);
 						if (send_buffer_index == 0 && next_message.Length >= send_buffer.Length)
 						{
 							//If the next message is too large for the send buffer, just send it
-							//queuedOutMessages.TryDequeue(out next_message);
-							next_message = queuedOutMessages.Dequeue();
+							queuedOutMessages.TryDequeue(out next_message);
 
 							tcpClient.GetStream().BeginWrite(
 								next_message,
@@ -375,8 +365,7 @@ namespace KMPServer
 						else if (next_message.Length <= (send_buffer.Length - send_buffer_index))
 						{
 							//If the next message is small enough, copy it to the send buffer
-							//queuedOutMessages.TryDequeue(out next_message);
-							next_message = queuedOutMessages.Dequeue();
+							queuedOutMessages.TryDequeue(out next_message);
 
 							next_message.CopyTo(send_buffer, send_buffer_index);
 							send_buffer_index += next_message.Length;
