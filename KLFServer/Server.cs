@@ -1709,6 +1709,7 @@ namespace KMPServer
 				sendSyncMessage(cl, tick);
 			}
 		}
+
 		
 		public void handleClientTextMessage(ServerClient cl, String message_text)
 		{
@@ -1738,35 +1739,49 @@ namespace KMPServer
 					postDisconnectCleanup(cl);
 					return;
 				}
-				else if (message_lower.Length > (KMPCommon.GET_CRAFT_COMMAND.Length + 1)
-					&& message_lower.Substring(0, KMPCommon.GET_CRAFT_COMMAND.Length) == KMPCommon.GET_CRAFT_COMMAND)
-				{
-					String player_name = message_lower.Substring(KMPCommon.GET_CRAFT_COMMAND.Length + 1);
+                else if (message_lower == "!help")
+                {
+                    sb.Append("Available Commands:\n");
+                    sb.Append("!help - Displays this message\n");
+                    sb.Append("!list - View all connected players\n");
+                    sb.Append("!quit - Leaves the server\n");
+                    sb.Append("!sharecraft <craft name> - Shares .craft files with the other players\n");
+                    sb.Append("!getcraft <playername> - Gets the most recent craft shared by the specified player\n");
+                    sb.Append("\n");
+                    
+                    sendTextMessage(cl, sb.ToString());
 
-					//Find the player with the given name
-					ServerClient target_client = getClientByName(player_name);
+                    return;
+                }
+                else if (message_lower.Length > (KMPCommon.GET_CRAFT_COMMAND.Length + 1)
+                    && message_lower.Substring(0, KMPCommon.GET_CRAFT_COMMAND.Length) == KMPCommon.GET_CRAFT_COMMAND)
+                {
+                    String player_name = message_lower.Substring(KMPCommon.GET_CRAFT_COMMAND.Length + 1);
 
-					if (target_client.isReady)
-					{
-						//Send the client the craft data
-						lock (target_client.sharedCraftLock)
-						{
-							if (target_client.sharedCraftName.Length > 0
-								&& target_client.sharedCraftFile != null && target_client.sharedCraftFile.Length > 0)
-							{
-								sendCraftFile(cl,
-									target_client.sharedCraftName,
-									target_client.sharedCraftFile,
-									target_client.sharedCraftType);
+                    //Find the player with the given name
+                    ServerClient target_client = getClientByName(player_name);
 
-								Log.Info("Sent craft " + target_client.sharedCraftName
-									+ " to client " + cl.username);
-							}
-						}
-					}
-					
-					return;
-				}
+                    if (target_client.isReady)
+                    {
+                        //Send the client the craft data
+                        lock (target_client.sharedCraftLock)
+                        {
+                            if (target_client.sharedCraftName.Length > 0
+                                && target_client.sharedCraftFile != null && target_client.sharedCraftFile.Length > 0)
+                            {
+                                sendCraftFile(cl,
+                                    target_client.sharedCraftName,
+                                    target_client.sharedCraftFile,
+                                    target_client.sharedCraftType);
+
+                                Log.Info("Sent craft " + target_client.sharedCraftName
+                                    + " to client " + cl.username);
+                            }
+                        }
+                    }
+
+                    return;
+                }
 			}
 
 			//Compile full message
