@@ -76,7 +76,9 @@ namespace KMPServer
 		public SynchronizedCollection<ServerClient> clients;
 		public SynchronizedCollection<ServerClient> flight_clients;
 		public ConcurrentQueue<ClientMessage> clientMessageQueue;
-
+		
+		public int clientIndex = 0;
+		
 		public ServerSettings.ConfigStore settings;
 
 		public Stopwatch stopwatch = new Stopwatch();
@@ -807,7 +809,7 @@ namespace KMPServer
 			newClient.resetProperties();
 			newClient.startReceivingMessages();
 			clients.Add(newClient);
-			newClient.clientIndex = clients.IndexOf(newClient);
+			newClient.clientIndex = this.clientIndex++; //Assign unique clientIndex to each client
 			return newClient;
 		}
 
@@ -964,18 +966,19 @@ namespace KMPServer
 						data = new byte[data_length];
 						Array.Copy(received, index, data, 0, data.Length);
 					}
-
-					if (clients[sender_index].isReady)
+					
+					ServerClient client = clients.Where(c => c.isReady && c.clientIndex == sender_index).FirstOrDefault();
+					if (client != null)
 					{
-						if ((currentMillisecond - clients[sender_index].lastUDPACKTime) > UDP_ACK_THROTTLE)
+						if ((currentMillisecond - client.lastUDPACKTime) > UDP_ACK_THROTTLE)
 						{
 							//Acknowledge the client's message with a TCP message
-							clients[sender_index].queueOutgoingMessage(KMPCommon.ServerMessageID.UDP_ACKNOWLEDGE, null);
-							clients[sender_index].lastUDPACKTime = currentMillisecond;
+							client.queueOutgoingMessage(KMPCommon.ServerMessageID.UDP_ACKNOWLEDGE, null);
+							client.lastUDPACKTime = currentMillisecond;
 						}
 
 						//Handle the message
-						handleMessage(clients[sender_index], id, data);
+						handleMessage(client, id, data);
 					}
 
 				}
