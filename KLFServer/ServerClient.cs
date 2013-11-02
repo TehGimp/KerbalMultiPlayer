@@ -20,6 +20,7 @@ namespace KMPServer
 		}
 
 		public const int SEND_BUFFER_SIZE = 8192;
+        public const int POLL_INTERVAL = 10000;
 
 		//Properties
 
@@ -40,6 +41,7 @@ namespace KMPServer
 		public int currentSubspaceID = -1;
 		public double enteredSubspaceAt = 0d;
 		public double lastTick = 0d;
+        
 		public double syncOffset = 0.05d;
 		public int lagWarning = 0;
 		public bool universeSent = false;
@@ -57,6 +59,7 @@ namespace KMPServer
 		public long connectionStartTime;
 		public long lastReceiveTime;
 		public long lastUDPACKTime;
+        public long lastPollTime = 0;
 
 		public long lastInGameActivityTime;
 		public long lastInFlightActivityTime;
@@ -83,6 +86,7 @@ namespace KMPServer
 		public KMPCommon.ClientMessageID currentMessageID;
 
 		public Queue<byte[]> queuedOutMessages;
+        private object queueLock = new object();
 
 		public ServerClient(Server parent, int index)
 		{
@@ -98,7 +102,41 @@ namespace KMPServer
         {
             get
             {
-                return (this.tcpClient != null && this.tcpClient.Connected);
+               // bool isConnected = false;
+                if (this.tcpClient != null && this.tcpClient.Connected)
+                {                   
+                    Socket clientSocket = this.tcpClient.Client;
+                    try
+                    {
+                        if ((parent.currentMillisecond - lastPollTime) > POLL_INTERVAL)
+                        {
+                            lastPollTime = parent.currentMillisecond;
+                            return !(clientSocket.Poll(10000, SelectMode.SelectRead) && clientSocket.Available == 0);
+                        }
+                        else
+                        {
+                            // They have max 10 seconds to get their shit together. 
+                            return true;
+                        }
+                    }
+                    catch (SocketException ex)
+                    {
+                        // Unknown error
+                        return false;
+                    } catch (ObjectDisposedException ex)
+                    {
+                        // Socket closed
+                        return false;
+                    }
+                    catch (Exception ex)
+                    {
+                        // Shouldn't happen, pass up.
+                        parent.passExceptionToMain(ex);
+                    }
+                    
+                    return true;
+                }
+                return false;
             }
         }
 
@@ -184,6 +222,7 @@ namespace KMPServer
 			}
 			catch (System.IO.IOException)
 			{
+                parent.disconnectClient(this, "Timeout");
 			}
 			catch (Exception e)
 			{
@@ -193,38 +232,33 @@ namespace KMPServer
 
 		private void asyncReceive(IAsyncResult result)
 		{
-			try
-			{
-				int read = tcpClient.GetStream().EndRead(result);
+            try
+            {
+                int read = tcpClient.GetStream().EndRead(result);
 
-				if (read > 0)
-				{
-					receiveIndex += read;
-					//Console.WriteLine("Got data: " + System.Text.Encoding.ASCII.GetString(receiveBuffer));
-					updateReceiveTimestamp();
-					handleReceive();
-				}
+                if (read > 0)
+                {
+                    receiveIndex += read;
+                    //Console.WriteLine("Got data: " + System.Text.Encoding.ASCII.GetString(receiveBuffer));
+                    updateReceiveTimestamp();
+                    handleReceive();
+                }
 
-				tcpClient.GetStream().BeginRead(
-					receiveBuffer,
-					receiveIndex,
-					receiveBuffer.Length - receiveIndex,
-					asyncReceive,
-					receiveBuffer);
-			}
-			catch (InvalidOperationException)
-			{
-			}
-			catch (System.IO.IOException)
-			{
-			}
-			catch (ThreadAbortException)
-			{
-			}
-			catch (Exception e)
-			{
-				parent.passExceptionToMain(e);
-			}
+                tcpClient.GetStream().BeginRead(
+                    receiveBuffer,
+                    receiveIndex,
+                    receiveBuffer.Length - receiveIndex,
+                    asyncReceive,
+                    receiveBuffer);
+            }
+            catch (InvalidOperationException) { parent.disconnectClient(this, "Timeout"); }
+            catch (System.IO.IOException) { parent.disconnectClient(this, "Timeout"); }
+            catch (NullReferenceException) { } // ignore,  gets thrown after a disconnect
+            catch (ThreadAbortException) { }
+            catch (Exception e)
+            {
+                parent.passExceptionToMain(e);
+            }
 
 		}
 
@@ -347,76 +381,93 @@ namespace KMPServer
 		public void sendOutgoingMessages()
 		{
 
-			try
-			{
-				if (queuedOutMessages.Count > 0)
-				{
-					//Check the size of the next message
-					byte[] next_message = null;
-					int send_buffer_index = 0;
-					byte[] send_buffer = new byte[SEND_BUFFER_SIZE];
-					
-					while (queuedOutMessages.Count > 0)
-					{
-						next_message = queuedOutMessages.Peek();
-						if (send_buffer_index == 0 && next_message.Length >= send_buffer.Length)
-						{
-							//If the next message is too large for the send buffer, just send it
-							//queuedOutMessages.TryDequeue(out next_message);
-							next_message = queuedOutMessages.Dequeue();
+            try
+            {
+                if (queuedOutMessages.Count > 0)
+                {
+                    //Check the size of the next message
+                    byte[] next_message = null;
+                    int send_buffer_index = 0;
+                    byte[] send_buffer = new byte[SEND_BUFFER_SIZE];
 
-							tcpClient.GetStream().BeginWrite(
-								next_message,
-								0,
-								next_message.Length,
-								asyncSend,
-								next_message);
-						}
-						else if (next_message.Length <= (send_buffer.Length - send_buffer_index))
-						{
-							//If the next message is small enough, copy it to the send buffer
-							//queuedOutMessages.TryDequeue(out next_message);
-							next_message = queuedOutMessages.Dequeue();
+                    while (queuedOutMessages.Count > 0)
+                    {
+                        next_message = queuedOutMessages.Peek();
+                        if (send_buffer_index == 0 && next_message.Length >= send_buffer.Length)
+                        {
+                            //If the next message is too large for the send buffer, just send it
+                            //queuedOutMessages.TryDequeue(out next_message);
+                            lock (queueLock)
+                            {
+                                next_message = queuedOutMessages.Dequeue();
+                            }
 
-							next_message.CopyTo(send_buffer, send_buffer_index);
-							send_buffer_index += next_message.Length;
-						}
-						else
-						{
-							//If the next message is too big, send the send buffer
-							tcpClient.GetStream().BeginWrite(
-								send_buffer,
-								0,
-								send_buffer_index,
-								asyncSend,
-								next_message);
+                            tcpClient.GetStream().BeginWrite(
+                                next_message,
+                                0,
+                                next_message.Length,
+                                asyncSend,
+                                next_message);
+                        }
+                        else if (next_message.Length <= (send_buffer.Length - send_buffer_index))
+                        {
+                            //If the next message is small enough, copy it to the send buffer
+                            //queuedOutMessages.TryDequeue(out next_message);
+                            lock (queueLock)
+                            {
+                                next_message = queuedOutMessages.Dequeue();
+                            }
+                            next_message.CopyTo(send_buffer, send_buffer_index);
+                            send_buffer_index += next_message.Length;
+                        }
+                        else
+                        {
+                            //If the next message is too big, send the send buffer
+                            tcpClient.GetStream().BeginWrite(
+                                send_buffer,
+                                0,
+                                send_buffer_index,
+                                asyncSend,
+                                next_message);
 
-							send_buffer_index = 0;
-							send_buffer = new byte[SEND_BUFFER_SIZE];
-						}
-					}
+                            send_buffer_index = 0;
+                            send_buffer = new byte[SEND_BUFFER_SIZE];
+                        }
+                    }
 
-					//Send the send buffer
-					if (send_buffer_index > 0)
-					{
-						tcpClient.GetStream().BeginWrite(
-							send_buffer,
-							0,
-							send_buffer_index,
-							asyncSend,
-							next_message);
-					}
-				}
-			}
-			catch (System.InvalidOperationException) { }
-			catch (System.IO.IOException) { }
-			catch (System.NullReferenceException) { }
+                    //Send the send buffer
+                    if (send_buffer_index > 0)
+                    {
+                        tcpClient.GetStream().BeginWrite(
+                            send_buffer,
+                            0,
+                            send_buffer_index,
+                            asyncSend,
+                            next_message);
+                    }
+                }
+            }
+            // Socket closed or not connected.
+            catch (System.InvalidOperationException)
+            {
+                parent.disconnectClient(this, "Timeout");
+            }
+            // Raised by BeginWrite, can mean socket is down.
+            catch (System.IO.IOException)
+            {
+                parent.disconnectClient(this, "Timeout");
+            }
+            // Called @ array crap, so not relevant.
+            catch (System.NullReferenceException) { }
 			
 		}
 
 		public void queueOutgoingMessage(KMPCommon.ServerMessageID id, byte[] data)
 		{
-			queueOutgoingMessage(Server.buildMessageArray(id, data));
+            lock (queueLock)
+            {
+                queueOutgoingMessage(Server.buildMessageArray(id, data));
+            }
 		}
 
 		public void queueOutgoingMessage(byte[] message_bytes)
