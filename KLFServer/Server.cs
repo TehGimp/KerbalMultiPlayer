@@ -161,7 +161,7 @@ namespace KMPServer
 
 			if (clients != null)
 			{
-				foreach (ServerClient client in clients)
+				foreach (ServerClient client in clients.ToList())
 				{
 					client.endReceivingMessages();
 					if (client.tcpClient != null)
@@ -411,7 +411,7 @@ namespace KMPServer
 									stop = true;
 
 								//Disconnect all clients
-                                foreach (var c in clients)
+                                foreach (var c in clients.ToList())
                                 {
                                     disconnectClient(c, "Server is shutting down");
                                 }
@@ -436,7 +436,7 @@ namespace KMPServer
 								//Display player list
 								StringBuilder sb = new StringBuilder();
 
-                                foreach (var client in clients.Where(c => c.isReady))
+                                foreach (var client in clients.ToList().Where(c => c.isReady))
                                 {
                                     sb.Append(client.username);
                                     sb.Append(" - ");
@@ -694,7 +694,7 @@ namespace KMPServer
 							break;
 					}
 
-                    foreach (var client in clients.Where(c => c.isValid))
+                    foreach (var client in clients.ToList().Where(c => c.isValid))
                     {
                         long last_receive_time = 0;
                         long connection_start_time = 0;
@@ -744,7 +744,7 @@ namespace KMPServer
                     }
 					
 					List<ServerClient> disconnectedClients = new List<ServerClient>();
-					foreach (var client in clients.Where(c => !c.isValid))
+					foreach (var client in clients.ToList().Where(c => !c.isValid))
                     {
                         //Client is disconnected but slot has not been cleaned up
                         disconnectClient(client, "Connection lost");
@@ -777,7 +777,7 @@ namespace KMPServer
 			{
 				while (true)
 				{
-                    foreach (var client in clients.Where(c => c.isValid))
+                    foreach (var client in clients.ToList().Where(c => c.isValid))
                     {
                         client.sendOutgoingMessages();
                     }
@@ -860,7 +860,7 @@ namespace KMPServer
 					
 					bool emptySubspace = true;
 					
-					foreach (ServerClient client in clients)
+					foreach (ServerClient client in clients.ToList())
 					{
 						if (cl.currentSubspaceID == client.currentSubspaceID && client.tcpClient.Connected && cl.playerID != client.playerID)
 						{
@@ -1031,7 +1031,7 @@ namespace KMPServer
 
 				bool first = true;
 
-                foreach (var client in clients.Where(c => c.isReady))
+                foreach (var client in clients.ToList().Where(c => c.isReady))
                 {
                     if (first)
                         first = false;
@@ -1193,7 +1193,7 @@ namespace KMPServer
 							//Get the username of the other user on the server
 							sb.Append("There is currently 1 other user on this server: ");
 
-                            foreach (var client in clients.Where(c => c.isReady && c != cl))
+                            foreach (var client in clients.ToList().Where(c => c.isReady && c != cl))
                             {
                                 sb.Append(client.username);
 									break;
@@ -1584,7 +1584,7 @@ namespace KMPServer
 					vessel_update.relTime = RelativeTime.FUTURE;
 					byte[] update = ObjectToByteArray(vessel_update);
 
-                    foreach (var client in clients.Where(c => c.currentSubspaceID == toSubspace && !c.warping && c.currentVessel != vessel_update.kmpID))
+                    foreach (var client in clients.ToList().Where(c => c.currentSubspaceID == toSubspace && !c.warping && c.currentVessel != vessel_update.kmpID))
                     {
                         sendVesselMessage(client, update);	
                     }
@@ -1707,7 +1707,7 @@ namespace KMPServer
 					//Compile list of usernames
 					sb.Append("Connected users:\n");
 
-                    foreach (var client in clients.Where(c => c.isReady))
+                    foreach (var client in clients.ToList().Where(c => c.isReady))
                     {
                         sb.Append(client.username);
                         sb.Append('\n');
@@ -1875,7 +1875,7 @@ namespace KMPServer
 			UnicodeEncoding encoder = new UnicodeEncoding();
 			byte[] message_bytes = buildMessageArray(KMPCommon.ServerMessageID.SERVER_MESSAGE, encoder.GetBytes(message));
 
-            foreach (var client in clients.Where(cl => cl.isReady && cl != exclude))
+            foreach (var client in clients.ToList().Where(cl => cl.isReady && cl != exclude))
             {
                 client.queueOutgoingMessage(message_bytes);
             }
@@ -1892,7 +1892,7 @@ namespace KMPServer
 			UnicodeEncoding encoder = new UnicodeEncoding();
 			byte[] message_bytes = buildMessageArray(KMPCommon.ServerMessageID.TEXT_MESSAGE, encoder.GetBytes(message));
 
-            foreach (var client in clients.Where(cl => cl.isReady && cl != exclude))
+            foreach (var client in clients.ToList().Where(cl => cl.isReady && cl != exclude))
             {
                 client.queueOutgoingMessage(message_bytes);
             }
@@ -1974,7 +1974,7 @@ namespace KMPServer
 									cmd.ExecuteNonQuery();
 									cmd.Dispose();
 									bool emptySubspace = true;
-									foreach (ServerClient client in clients)
+									foreach (ServerClient client in clients.ToList())
 									{
 										if (client != null && current_subspace == client.currentSubspaceID && client.tcpClient.Connected)
 										{
@@ -2039,7 +2039,7 @@ namespace KMPServer
 									cmd.ExecuteNonQuery();
 									cmd.Dispose();
 									bool emptySubspace = true;
-									foreach (ServerClient client in clients)
+									foreach (ServerClient client in clients.ToList())
 									{
 										if (client != null && current_subspace == client.currentSubspaceID && client.tcpClient.Connected)
 										{
@@ -2163,7 +2163,7 @@ namespace KMPServer
 			byte[] owned_message_bytes = buildMessageArray(KMPCommon.ServerMessageID.PLUGIN_UPDATE, owned_data);
 			byte[] past_message_bytes = buildMessageArray(KMPCommon.ServerMessageID.PLUGIN_UPDATE, past_data);
 
-            foreach (var client in clients.Where(c => c != cl && c.isReady && c.activityLevel != ServerClient.ActivityLevel.INACTIVE && (c.activityLevel == ServerClient.ActivityLevel.IN_GAME || !secondaryUpdate)))
+            foreach (var client in clients.ToList().Where(c => c != cl && c.isReady && c.activityLevel != ServerClient.ActivityLevel.INACTIVE && (c.activityLevel == ServerClient.ActivityLevel.IN_GAME || !secondaryUpdate)))
             {
                 if ((client.currentSubspaceID == cl.currentSubspaceID)
                     && !client.warping && !cl.warping
@@ -2237,7 +2237,7 @@ namespace KMPServer
 		
 		private void sendVesselStatusUpdateToAll(ServerClient cl, Guid vessel)
 		{
-            foreach (var client in clients.Where(c => c.isReady && c != cl && c.activityLevel != ServerClient.ActivityLevel.INACTIVE))
+            foreach (var client in clients.ToList().Where(c => c.isReady && c != cl && c.activityLevel != ServerClient.ActivityLevel.INACTIVE))
             {
                 sendVesselStatusUpdate(client, vessel);
             }
@@ -2285,7 +2285,7 @@ namespace KMPServer
 		{
 			//Build the message and send it to all watchers
 			byte[] message_bytes = buildMessageArray(KMPCommon.ServerMessageID.SCREENSHOT_SHARE, bytes);
-            foreach(var client in clients.Where(c => c != cl && c.isReady && c.activityLevel != ServerClient.ActivityLevel.INACTIVE))
+            foreach(var client in clients.ToList().Where(c => c != cl && c.isReady && c.activityLevel != ServerClient.ActivityLevel.INACTIVE))
             {
                 bool match = false;
 
@@ -2322,7 +2322,7 @@ namespace KMPServer
 			byte[] setting_bytes = serverSettingBytes();
 			byte[] message_bytes = buildMessageArray(KMPCommon.ServerMessageID.SERVER_SETTINGS, setting_bytes);
 
-            foreach (var client in clients.Where(c => c.isValid))
+            foreach (var client in clients.ToList().Where(c => c.isValid))
             {
                 client.queueOutgoingMessage(message_bytes);
             }

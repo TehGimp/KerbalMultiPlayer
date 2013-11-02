@@ -336,7 +336,7 @@ namespace KMP
 				            {
 				            }
 							//Krakensbane shift to new orbital location
-							if (targetTick > currentTick+2.5d || !FlightGlobals.ActiveVessel.orbit.referenceBody.atmosphere || FlightGlobals.ActiveVessel.orbit.altitude > vessel.orbit.referenceBody.maxAtmosphereAltitude)
+							if (targetTick > currentTick+2.5d || !FlightGlobals.ActiveVessel.orbit.referenceBody.atmosphere || FlightGlobals.ActiveVessel.orbit.altitude > FlightGlobals.ActiveVessel.orbit.referenceBody.maxAtmosphereAltitude)
 							{
 								KMPClientMain.DebugLog("Krakensbane shift");
 								Vector3d diffPos = FlightGlobals.ActiveVessel.orbit.getPositionAtUT(targetTick) - FlightGlobals.ActiveVessel.GetWorldPos3D();
