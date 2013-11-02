@@ -40,7 +40,7 @@ namespace KMPServer
 		public int currentSubspaceID = -1;
 		public double enteredSubspaceAt = 0d;
 		public double lastTick = 0d;
-		public double syncOffset = 0.05d;
+		public double syncOffset = 0.01d;
 		public int lagWarning = 0;
 		public bool universeSent = false;
 		public bool warping = false;

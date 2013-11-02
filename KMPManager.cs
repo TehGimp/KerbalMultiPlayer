@@ -304,7 +304,7 @@ namespace KMP
 				try
 				{
 					double currentTick = Planetarium.GetUniversalTime();
-					if (isInFlight && targetTick > currentTick)
+					if (isInFlight && targetTick > currentTick+0.05d)
 					{
 						KMPClientMain.DebugLog("Syncing to new time " + targetTick + " from " + Planetarium.GetUniversalTime());
 						if (FlightGlobals.ActiveVessel.situation != Vessel.Situations.PRELAUNCH

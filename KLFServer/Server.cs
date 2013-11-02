@@ -1478,17 +1478,22 @@ namespace KMPServer
 								cmd.Dispose();
 							}
 						
-							if (lastTick - tick > 0.1d)
+							if (lastTick - tick > 0.15d)
 							{
 								sendSyncMessage(cl,lastTick+cl.syncOffset);
-								cl.syncOffset += 0.05d;
-								if (cl.lagWarning > 300) disconnectClient(cl,"Your game was running too slowly compared to other players. Please try reconnecting in a moment.");
-								else cl.lagWarning++;
+								if (cl.receivedHandshake)
+								{
+									cl.syncOffset += 0.001d;
+									if (cl.syncOffset > 0.5d) cl.syncOffset = 0.5d;
+									Log.Debug("Sending time-sync to " + cl.username + " current offset " + cl.syncOffset);
+									if (cl.lagWarning > 5000) disconnectClient(cl,"Your game was running too slowly compared to other players. Please try reconnecting in a moment.");
+									else cl.lagWarning++;
+								}
 							}
 							else
 							{
 								cl.lagWarning = 0;
-								if (cl.syncOffset > 0.05d) cl.syncOffset -= 0.01d;
+								if (cl.syncOffset > 0.001d) cl.syncOffset -= 0.0005d;
 								cmd = universeDB.CreateCommand();
 								sql = "UPDATE kmpSubspace SET LastTick = " + tick.ToString("0.0").Replace(",",".") + " WHERE ID = " + cl.currentSubspaceID.ToString("D") + " AND LastTick < " + tick.ToString("0.0").Replace(",",".");
 								cmd.CommandText = sql;
