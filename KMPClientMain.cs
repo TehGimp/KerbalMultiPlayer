@@ -1312,7 +1312,7 @@ namespace KMP
 
 		static void enqueuePluginChatMessage(String message, bool print = false)
 		{
-
+			SetMessage(message); //Show 'chat' disconnection messages on connection window
 			enqueueClientInteropMessage(
 				KMPCommon.ClientInteropMessageID.CHAT_RECEIVE,
 				encoder.GetBytes(message)
