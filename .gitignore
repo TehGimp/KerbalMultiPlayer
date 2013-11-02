@@ -26,3 +26,8 @@ KLFServerList/obj
 
 # Windows clutter
 *.db
+
+# KSP binaries
+Assembly-CSharp.dll
+Assembly-CSharp-firstpass.dll
+UnityEngine.dll

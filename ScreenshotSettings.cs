@@ -20,9 +20,7 @@ public class ScreenshotSettings
 
 	public ScreenshotSettings()
 	{
-        //maxWidth = maxWidth;
-        //maxHeight = maxHeight;
-        maxHeight = 256; // I don't know why this variable is here
+        maxHeight = 256; //Default
 	}
 
 	public int maxWidth
