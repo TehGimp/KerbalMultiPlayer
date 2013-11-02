@@ -14,6 +14,8 @@ KLFClient/bin
 KLFClient/obj
 KLFServer/bin
 KLFServer/obj
+KLFServerList/bin
+KLFServerList/obj
 
 
 # Windows runtime
