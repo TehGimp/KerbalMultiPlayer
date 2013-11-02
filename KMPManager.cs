@@ -335,15 +335,18 @@ namespace KMP
 				            catch (NullReferenceException)
 				            {
 				            }
-							//Krakensbane shift to new orbital location to prevent vessel destruction
-							KMPClientMain.DebugLog("Krakensbane shift");
-							Vector3d diffPos = FlightGlobals.ActiveVessel.orbit.getPositionAtUT(targetTick) - FlightGlobals.ActiveVessel.GetWorldPos3D();
-							foreach (Vessel otherVessel in FlightGlobals.Vessels.Where(v => v.packed == false && (v.id != FlightGlobals.ActiveVessel.id || (v.loaded && Vector3d.Distance(FlightGlobals.ActiveVessel.GetWorldPos3D(),v.GetWorldPos3D()) < INACTIVE_VESSEL_RANGE))))
-	                			otherVessel.GoOnRails();
-							getKrakensbane().setOffset(diffPos);
-							//Update velocity
-							FlightGlobals.ActiveVessel.ChangeWorldVelocity((-1 * oldObtVel) + FlightGlobals.ActiveVessel.orbitDriver.orbit.getOrbitalVelocityAtUT(targetTick).xzy);
-            				FlightGlobals.ActiveVessel.orbitDriver.vel = FlightGlobals.ActiveVessel.orbit.vel;
+							//Krakensbane shift to new orbital location
+							if (targetTick > currentTick+2.5d || !FlightGlobals.ActiveVessel.orbit.referenceBody.atmosphere || FlightGlobals.ActiveVessel.orbit.altitude > vessel.orbit.referenceBody.maxAtmosphereAltitude)
+							{
+								KMPClientMain.DebugLog("Krakensbane shift");
+								Vector3d diffPos = FlightGlobals.ActiveVessel.orbit.getPositionAtUT(targetTick) - FlightGlobals.ActiveVessel.GetWorldPos3D();
+								foreach (Vessel otherVessel in FlightGlobals.Vessels.Where(v => v.packed == false && (v.id != FlightGlobals.ActiveVessel.id || (v.loaded && Vector3d.Distance(FlightGlobals.ActiveVessel.GetWorldPos3D(),v.GetWorldPos3D()) < INACTIVE_VESSEL_RANGE))))
+		                			otherVessel.GoOnRails();
+								getKrakensbane().setOffset(diffPos);
+								//Update velocity
+								FlightGlobals.ActiveVessel.ChangeWorldVelocity((-1 * oldObtVel) + FlightGlobals.ActiveVessel.orbitDriver.orbit.getOrbitalVelocityAtUT(targetTick).xzy);
+	            				FlightGlobals.ActiveVessel.orbitDriver.vel = FlightGlobals.ActiveVessel.orbit.vel;
+							}
 						}
 						Planetarium.SetUniversalTime(targetTick);
 						KMPClientMain.DebugLog("sync completed");
