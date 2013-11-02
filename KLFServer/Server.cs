@@ -2432,7 +2432,14 @@ namespace KMPServer
 		
 		public void backupDatabase()
 		{
-			File.Delete(DB_FILE);
+			try
+			{
+				if (File.Exists(DB_FILE))
+				{
+					File.Copy(DB_FILE, DB_FILE + ".bak");
+					File.Delete(DB_FILE);
+				}
+			} catch {}
 			SQLiteConnection diskDB = new SQLiteConnection(DB_FILE_CONN);
 			diskDB.Open();
 			universeDB.BackupDatabase(diskDB, "main", "main",-1, null, 0);
