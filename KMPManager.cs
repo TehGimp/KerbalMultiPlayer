@@ -458,10 +458,13 @@ namespace KMP
 		
 		private void kickToTrackingStation()
 		{
-			KMPClientMain.DebugLog("Selected unavailable vessel, switching");
-			ScreenMessages.PostScreenMessage("Selected vessel is occupied or private...", 5f,ScreenMessageStyle.UPPER_RIGHT);
-			syncing = true;
-			StartCoroutine(returnToTrackingStation());
+			if (!syncing)
+			{
+				KMPClientMain.DebugLog("Selected unavailable vessel, switching");
+				ScreenMessages.PostScreenMessage("Selected vessel is occupied or private...", 5f,ScreenMessageStyle.UPPER_RIGHT);
+				syncing = true;
+				StartCoroutine(returnToTrackingStation());
+			}
 		}
 		
 		private void writeUpdates()

@@ -714,8 +714,7 @@ namespace KMPServer
                             || (!handshook && (currentMillisecond - connection_start_time) > CLIENT_HANDSHAKE_TIMEOUT_DELAY))
                         {
                             //Disconnect the client
-                            disconnectClient(client, "Timeout");
-							postDisconnectCleanup(client);
+                            markClientForCleanup(client);
                         }
                         else
                         {
@@ -911,9 +910,13 @@ namespace KMPServer
 			cl.disconnected();
 		}
 		
-		public void markForPostDisconnectCleanup(ServerClient client)
+		public void markClientForCleanup(ServerClient client)
 		{
-			cleanupClients.Add(client);
+			if (clients.Contains(client))
+			{
+				Log.Debug("Client " + client.username + " added to disconnect list");
+				cleanupClients.Add(client);
+			}
 		}
 		
 		public void postDisconnectCleanup(ServerClient client)
