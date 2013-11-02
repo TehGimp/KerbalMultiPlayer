@@ -1061,13 +1061,23 @@ namespace KMPServer
 				response_builder.Append(settings.totalInactiveShips);
 				response_builder.Append('\n');
 
-				response_builder.Append("Screenshot Height: ");
-				response_builder.Append(settings.screenshotSettings.maxHeight);
+                response_builder.Append("Screenshot Width: ");
+				response_builder.Append(settings.screenshotWidth);
 				response_builder.Append('\n');
+
+                response_builder.Append("Screenshot Height: ");
+                response_builder.Append(settings.screenshotHeight);
+                response_builder.Append('\n');
 
 				response_builder.Append("Screenshot Save: ");
 				response_builder.Append(settings.saveScreenshots);
 				response_builder.Append('\n');
+
+                response_builder.Append("Whitelisted: ");
+                response_builder.Append(settings.whitelisted);
+                response_builder.Append('\n');
+
+                
 
 				//Send response
 				byte[] buffer = System.Text.Encoding.UTF8.GetBytes(response_builder.ToString());
