@@ -335,6 +335,7 @@ namespace KMPServer
             Log.Info("/update <username> <token> - Update existing roster entry for player <username>/token <token> (one param must match existing roster entry, other will be updated)");
             Log.Info("/unregister <username/token> - Remove any player that has a matching username or token from the roster");
             Log.Info("/save - Backup universe");
+            Log.Info("/help - Displays all commands in the server");
             Log.Info("Non-commands will be sent to players as a chat message");
 
 			commandThread.Start();
@@ -570,8 +571,10 @@ namespace KMPServer
 								else
 								{
                                     Log.Info("Could not parse update command. Format is \"/update <username> <token>\"");
-								}
-							}
+                                }
+                            }
+                            else if (input == "/help")
+                                displayCommands();
 						}
 						else
 						{
@@ -1076,6 +1079,12 @@ namespace KMPServer
 				response_builder.Append(settings.saveScreenshots);
 				response_builder.Append('\n');
 
+                response_builder.Append("Whitelisted: ");
+                response_builder.Append(settings.whitelisted);
+                response_builder.Append('\n');
+
+                
+
 				//Send response
 				byte[] buffer = System.Text.Encoding.UTF8.GetBytes(response_builder.ToString());
 				response.ContentLength64 = buffer.LongLength;
@@ -1390,7 +1399,7 @@ namespace KMPServer
 
 							Log.Info(sb.ToString());
 			
-							sb.Append(" . Enter " + KMPCommon.GET_CRAFT_COMMAND + " ");
+							sb.Append(" . Enter !getcraft ");
 							sb.Append(cl.username);
 							sb.Append(" to get it.");
 							sendTextMessageToAll(sb.ToString());
@@ -1457,7 +1466,7 @@ namespace KMPServer
 								cmd.Dispose();
 							}
 						
-							if (lastTick - tick > 0.20d)
+							if (lastTick - tick > 0.15d)
 							{
 								sendSyncMessage(cl,lastTick+cl.syncOffset);
 								if (cl.receivedHandshake)
@@ -1735,35 +1744,48 @@ namespace KMPServer
 					postDisconnectCleanup(cl);
 					return;
 				}
-				else if (message_lower.Length > (KMPCommon.GET_CRAFT_COMMAND.Length + 1)
-					&& message_lower.Substring(0, KMPCommon.GET_CRAFT_COMMAND.Length) == KMPCommon.GET_CRAFT_COMMAND)
-				{
-					String player_name = message_lower.Substring(KMPCommon.GET_CRAFT_COMMAND.Length + 1);
+                else if (message_lower == "!help")
+                {
+                    sb.Append("Available Server Commands:\n");
+                    sb.Append("!help - Displays this message\n");
+                    sb.Append("!list - View all connected players\n");
+                    sb.Append("!quit - Leaves the server\n");
+                    sb.Append("!getcraft <playername> - Gets the most recent craft shared by the specified player\n");
+                    sb.Append("\n");
+                    
+                    sendTextMessage(cl, sb.ToString());
 
-					//Find the player with the given name
-					ServerClient target_client = getClientByName(player_name);
+                    return;
+                }
+                else if (message_lower.Length > (KMPCommon.GET_CRAFT_COMMAND.Length + 1)
+                    && message_lower.Substring(0, KMPCommon.GET_CRAFT_COMMAND.Length) == KMPCommon.GET_CRAFT_COMMAND)
+                {
+                    String player_name = message_lower.Substring(KMPCommon.GET_CRAFT_COMMAND.Length + 1);
 
-					if (target_client.isReady)
-					{
-						//Send the client the craft data
-						lock (target_client.sharedCraftLock)
-						{
-							if (target_client.sharedCraftName.Length > 0
-								&& target_client.sharedCraftFile != null && target_client.sharedCraftFile.Length > 0)
-							{
-								sendCraftFile(cl,
-									target_client.sharedCraftName,
-									target_client.sharedCraftFile,
-									target_client.sharedCraftType);
+                    //Find the player with the given name
+                    ServerClient target_client = getClientByName(player_name);
 
-								Log.Info("Sent craft " + target_client.sharedCraftName
-									+ " to client " + cl.username);
-							}
-						}
-					}
-					
-					return;
-				}
+                    if (target_client.isReady)
+                    {
+                        //Send the client the craft data
+                        lock (target_client.sharedCraftLock)
+                        {
+                            if (target_client.sharedCraftName.Length > 0
+                                && target_client.sharedCraftFile != null && target_client.sharedCraftFile.Length > 0)
+                            {
+                                sendCraftFile(cl,
+                                    target_client.sharedCraftName,
+                                    target_client.sharedCraftFile,
+                                    target_client.sharedCraftType);
+
+                                Log.Info("Sent craft " + target_client.sharedCraftName
+                                    + " to client " + cl.username);
+                            }
+                        }
+                    }
+
+                    return;
+                }
 			}
 
 			//Compile full message
@@ -2432,14 +2454,7 @@ namespace KMPServer
 		
 		public void backupDatabase()
 		{
-			try
-			{
-				if (File.Exists(DB_FILE))
-				{
-					File.Copy(DB_FILE, DB_FILE + ".bak");
-					File.Delete(DB_FILE);
-				}
-			} catch {}
+			File.Delete(DB_FILE);
 			SQLiteConnection diskDB = new SQLiteConnection(DB_FILE_CONN);
 			diskDB.Open();
 			universeDB.BackupDatabase(diskDB, "main", "main",-1, null, 0);
@@ -2543,5 +2558,24 @@ namespace KMPServer
 	           return Regex.Replace(strIn, @"[\r\n\x00\x1a\\'""]", ""); 
 	        } catch { return String.Empty; }
 		}
+
+        private void displayCommands()
+        {
+            Log.Info("Commands:");
+            Log.Info("/quit - Quit server cleanly");
+            Log.Info("/stop - Stop hosting server");
+            Log.Info("/list - List players");
+            Log.Info("/count - Display player counts");
+            Log.Info("/kick <username> - Kick player <username>");
+            Log.Info("/ban <username> - Permanently ban player <username> and any known aliases");
+            Log.Info("/register <username> <token> - Add new roster entry for player <username> with authentication token <token> (BEWARE: will delete any matching roster entries)");
+            Log.Info("/update <username> <token> - Update existing roster entry for player <username>/token <token> (one param must match existing roster entry, other will be updated)");
+            Log.Info("/unregister <username/token> - Temove any player that has a matching username or token from the roster");
+            Log.Info("/save - Backup universe");
+            Log.Info("/help - Displays all commands in the server");
+            Log.Info("Non-commands will be sent to players as a chat message");
+
+            // to add a new command to the command list just copy the Log.Info method and add how to use that command.
+        }
 	}
 }
