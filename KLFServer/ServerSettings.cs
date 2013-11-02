@@ -30,6 +30,9 @@ namespace KMPServer
             public byte totalInactiveShips = 100;
             public Log.LogLevels LogLevel = Log.LogLevels.Info;
             public bool whitelisted = false;
+            public int screenshotHeight = 600;
+            public int screenshotWidth = 800;
+        
 
             private List<string> _whitelist = new List<string>();
             internal List<string> whitelist
@@ -45,7 +48,10 @@ namespace KMPServer
             {
                 get
                 {
+                    _screenshotSettings.maxHeight = screenshotHeight;
+                    _screenshotSettings.maxWidth = screenshotWidth;
                     return _screenshotSettings;
+                    
                 }
             }
         }
