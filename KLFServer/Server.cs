@@ -75,6 +75,7 @@ namespace KMPServer
 
 		public SynchronizedCollection<ServerClient> clients;
 		public SynchronizedCollection<ServerClient> flight_clients;
+		public SynchronizedCollection<ServerClient> cleanupClients;
 		public ConcurrentQueue<ClientMessage> clientMessageQueue;
 		
 		public int clientIndex = 0;
@@ -300,7 +301,7 @@ namespace KMPServer
 
 			clients = new SynchronizedCollection<ServerClient>(settings.maxClients);
 			flight_clients = new SynchronizedCollection<ServerClient>(settings.maxClients);
-
+			cleanupClients = new SynchronizedCollection<ServerClient>(settings.maxClients);
 			clientMessageQueue = new ConcurrentQueue<ClientMessage>();
 
 			listenThread = new Thread(new ThreadStart(listenForClients));
@@ -332,7 +333,7 @@ namespace KMPServer
             Log.Info("/ban <username> - Permanently ban player <username> and any known aliases");
             Log.Info("/register <username> <token> - Add new roster entry for player <username> with authentication token <token> (BEWARE: will delete any matching roster entries)");
             Log.Info("/update <username> <token> - Update existing roster entry for player <username>/token <token> (one param must match existing roster entry, other will be updated)");
-            Log.Info("/unregister <username/token> - Temove any player that has a matching username or token from the roster");
+            Log.Info("/unregister <username/token> - Remove any player that has a matching username or token from the roster");
             Log.Info("/save - Backup universe");
             Log.Info("Non-commands will be sent to players as a chat message");
 
@@ -746,13 +747,14 @@ namespace KMPServer
                     }
 					
 					List<ServerClient> disconnectedClients = new List<ServerClient>();
-					foreach (var client in clients.ToList().Where(c => !c.isValid))
+					foreach (var client in clients.ToList().Where(c => !c.isValid || cleanupClients.ToList().Contains(c)))
                     {
                         //Client is disconnected but slot has not been cleaned up
                         disconnectClient(client, "Connection lost");
 						disconnectedClients.Add(client);
                     }
-					foreach (var client in disconnectedClients)
+					cleanupClients.Clear();
+					foreach (var client in disconnectedClients.ToList())
 					{
 						//Perform final cleanup afterward to prevent an InvalidOperationError
 						postDisconnectCleanup(client);
@@ -893,7 +895,7 @@ namespace KMPServer
 
 				Log.Info("Internal error during disconnect: " + e.StackTrace);
 			}
-            catch (InvalidOperationException e)
+            catch (InvalidOperationException)
             {
                 cl.tcpClient = null;             
             }
@@ -907,6 +909,11 @@ namespace KMPServer
 				sendServerSettingsToAll();
 			
 			cl.disconnected();
+		}
+		
+		public void markForPostDisconnectCleanup(ServerClient client)
+		{
+			cleanupClients.Add(client);
 		}
 		
 		public void postDisconnectCleanup(ServerClient client)
@@ -1380,7 +1387,7 @@ namespace KMPServer
 
 							Log.Info(sb.ToString());
 			
-							sb.Append(" . Enter " + GET_CRAFT_COMMAND + " ");
+							sb.Append(" . Enter " + KMPCommon.GET_CRAFT_COMMAND + " ");
 							sb.Append(cl.username);
 							sb.Append(" to get it.");
 							sendTextMessageToAll(sb.ToString());
@@ -1447,7 +1454,7 @@ namespace KMPServer
 								cmd.Dispose();
 							}
 						
-							if (lastTick - tick > 0.15d)
+							if (lastTick - tick > 0.20d)
 							{
 								sendSyncMessage(cl,lastTick+cl.syncOffset);
 								if (cl.receivedHandshake)
