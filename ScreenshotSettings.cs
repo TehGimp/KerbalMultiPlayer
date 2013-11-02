@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 
-
 public class ScreenshotSettings
 {
 
@@ -21,7 +20,9 @@ public class ScreenshotSettings
 
 	public ScreenshotSettings()
 	{
-		maxHeight = 256;
+        //maxWidth = maxWidth;
+        //maxHeight = maxHeight;
+        maxHeight = 256; // I don't know why this variable is here
 	}
 
 	public int maxWidth

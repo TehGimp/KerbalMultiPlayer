@@ -24,7 +24,7 @@ public class KMPCommon
 
 	public const int MAX_CRAFT_FILE_BYTES = 1024 * 1024;
 
-	public const String SHARE_CRAFT_COMMAND = "/sharecraft";
+	public const String SHARE_CRAFT_COMMAND = "!sharecraft";
 	public const String GET_CRAFT_COMMAND = "!getcraft";
 
 	public const byte CRAFT_TYPE_VAB = 0;

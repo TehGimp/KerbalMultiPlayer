@@ -9,7 +9,7 @@ namespace KMPServer
     public static class Log
     {
         private static string LogFilename = "KMPServer.log";
-
+        
         public enum LogLevels : int
         {
             Debug = 0,
