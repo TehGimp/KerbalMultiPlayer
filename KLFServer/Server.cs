@@ -1380,7 +1380,7 @@ namespace KMPServer
 
 							Log.Info(sb.ToString());
 			
-							sb.Append(" . Enter !getcraft ");
+							sb.Append(" . Enter " + GET_CRAFT_COMMAND + " ");
 							sb.Append(cl.username);
 							sb.Append(" to get it.");
 							sendTextMessageToAll(sb.ToString());
