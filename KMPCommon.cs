@@ -18,6 +18,7 @@ public class KMPCommon
 	public const Int32 FILE_FORMAT_VERSION = 10000;
 	public const Int32 NET_PROTOCOL_VERSION = 10000;
 	public const int MSG_HEADER_LENGTH = 8;
+    public const int MAX_MESSAGE_SIZE = 8192;
 	public const int INTEROP_MSG_HEADER_LENGTH = 8;
 
 	public const int SERVER_SETTINGS_LENGTH = 13;

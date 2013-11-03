@@ -299,6 +299,11 @@ namespace KMPServer
 						
 						int data_length = KMPCommon.intFromBytes(currentMessageHeader, 4);
 
+                        if (data_length > KMPCommon.MAX_MESSAGE_SIZE)
+                        {
+                            throw new InvalidOperationException("Client fed bad data");
+                        }
+
 						if (data_length > 0)
 						{
 							//Init message data buffer

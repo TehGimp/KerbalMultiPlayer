@@ -248,6 +248,7 @@ namespace KMPServer
             //Read the settings file into a dictionary before shoving the values in the setting store.
             try
             {
+                if (!File.Exists(FileName)) { return; }
                 using (StreamReader configReader = new StreamReader(FileName))
                 {
                     string CurrentLine;

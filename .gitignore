@@ -38,3 +38,4 @@ UnityEngine.dll
 /KMPServerList/obj/Release
 /KMPServerList/obj/Release/KMPServerList.csproj.FileListAbsolute.txt
 /KMPServerList/obj/Release/KMPServerList.csprojResolveAssemblyReference.cache
+*.cache
