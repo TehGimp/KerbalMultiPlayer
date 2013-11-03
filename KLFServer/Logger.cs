@@ -32,7 +32,7 @@ namespace KMPServer
                 Console.WriteLine(Line);
                 try
                 {
-                    File.AppendAllText(LogFilename, Line + "\n");
+                    File.AppendAllText(LogFilename, Line + Environment.NewLine);
                 }
                 catch { } //What do we do about this?
             }
