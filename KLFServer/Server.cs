@@ -1787,16 +1787,10 @@ namespace KMPServer
                 }
 			}
 
-			//Compile full message
-			sb.Append('[');
-			sb.Append(cl.username);
-			sb.Append("] ");
-			sb.Append(message_text);
+            string full_message = string.Format("<{0}> {1}", cl.username, message_text);
 
-			String full_message = sb.ToString();
-
-			//Console.SetCursorPosition(0, Console.CursorTop);
-			Log.Info(full_message);
+            //Console.SetCursorPosition(0, Console.CursorTop);
+            Log.Chat(cl.username, message_text);
 
 			//Send the update to all other clients
 			sendTextMessageToAll(full_message, cl);

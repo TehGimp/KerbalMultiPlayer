@@ -69,23 +69,41 @@ namespace KMPServer
             Log.Info("/whitelist [add|del] [user] to update whitelist.");
             Log.Info("/quit to exit, or /start to begin the server.");
             Log.Info("");
-            
-            if(!File.Exists("Assembly-CSharp.dll"))
+
+            //Check for missing files, try and copy from KSP installation if possible.
+            string[] RequiredFiles = { "Assembly-CSharp.dll", "Assembly-CSharp-firstpass.dll", "UnityEngine.dll" };
+
+            var missingFiles = RequiredFiles.Where(f => File.Exists(f) == false);
+
+            foreach (var f in missingFiles)
             {
-            	Log.Error("Assembly: Assembly-CSharp.dll MAY not be present in working directory. Please refer to readme. If you believe that this assembly is in the directory, try running anyway.");
+                var tryKSPpath = @"%programfiles(x86)%\Steam\SteamApps\common\Kerbal Space Program\KSP_Data\Managed\" + f;
+                if (File.Exists(f))
+                {
+                    try
+                    {
+                        File.Copy(tryKSPpath, f);
+                    }
+                    catch
+                    {
+                        //Cannot copy.
+                    }
+                }
+                else
+                {
+                    break;
+                }
             }
-            if(!File.Exists("Assembly-CSharp-firstpass.dll"))
+
+            //Check again.
+            missingFiles = RequiredFiles.Where(f => File.Exists(f) == false);
+
+            if (missingFiles.Any())
             {
-            	Log.Error("Assembly: Assembly-CSharp-firstpass.dll MAY not be present in working directory. Please refer to readme. If you believe that this assembly is in the directory, try running anyway.");
+                Log.Error("The following required files are missing:");
+                foreach (var f in missingFiles) { Log.Error(f); }
+                Log.Error("Please place them in the KMP server directory. See README.txt for more information.");
             }
-            if(!File.Exists("UnityEngine.dll"))
-            {
-            	Log.Error("Assembly: UnityEngine.dll MAY not be present in working directory. Please refer to readme. If you believe that this assembly is in the directory, try running anyway.");
-            }
-//            if(!File.Exists("sqlite3.dll"))
-//            {
-//            	Log.Error("REQUIRED ASSEMBLY: sqlite3.dll not present in working directory. Please refer to readme.");
-//            }
             
             bool running = true;
 	    

@@ -15,6 +15,7 @@ namespace KMPServer
             Debug = 0,
             Activity = 5,
             Info = 10,
+            Chat = 11,
             Notice = 20,
             Warning = 30,
             Error = 40,
@@ -72,6 +73,12 @@ namespace KMPServer
         {
             Console.ForegroundColor = ConsoleColor.DarkRed;
             WriteLog(LogLevels.Error, format, args);
+        }
+
+        public static void Chat(string who, string message)
+        {
+            Console.ForegroundColor = ConsoleColor.DarkRed;
+            WriteLog(LogLevels.Error, "<{0}> {1}", who, message);
         }
     }
 }
