@@ -620,10 +620,11 @@ namespace KMPServer
 						client = null;
 						error_message = e.ToString();
 					}
-
+					
 					if (client != null && client.Connected)
 					{
 						//Try to add the client
+						client.NoDelay = true;
 						ServerClient cl = addClient(client);
 						if (cl != null)
 						{
