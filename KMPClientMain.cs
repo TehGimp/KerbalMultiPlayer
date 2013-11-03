@@ -345,9 +345,11 @@ namespace KMP
 				tcpClient.Connect(endpoint);
 				tcpSocket = tcpClient.Client;
                 tcpSocket.SetSocketOption(SocketOptionLevel.Tcp, SocketOptionName.KeepAlive, true);
+                tcpSocket.NoDelay = true;
+
 				if (tcpSocket.Connected)
 				{
-					tcpSocket.NoDelay = true;
+					
 					clientID = -1;
 					endSession = false;
 					intentionalConnectionEnd = false;
