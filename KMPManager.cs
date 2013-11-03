@@ -2815,24 +2815,27 @@ namespace KMP
 			
 			if (!KMPConnectionDisplay.windowEnabled && KMPClientMain.handshakeCompleted && KMPClientMain.tcpSocket != null)
 			{
-				KMPInfoDisplay.infoWindowPos = GUILayout.Window(
-					999999,
-					KMPInfoDisplay.infoWindowPos,
-					infoDisplayWindow,
-					KMPInfoDisplay.infoDisplayMinimized ? "KMP" : "KerbalMP v"+KMPCommon.PROGRAM_VERSION+" ("+KMPGlobalSettings.instance.guiToggleKey+")",
-					KMPInfoDisplay.layoutOptions
-					);
-				
-				if (isInFlight && !syncing && !KMPInfoDisplay.infoDisplayMinimized)
+				if(KMPInfoDisplay.infoDisplayActive)
 				{
-					GUILayout.Window(
-						999996,
-						KMPVesselLockDisplay.windowPos,
-						lockWindow,
-						"Lock",
-						KMPVesselLockDisplay.layoutOptions
+					KMPInfoDisplay.infoWindowPos = GUILayout.Window(
+						999999,
+						KMPInfoDisplay.infoWindowPos,
+						infoDisplayWindow,
+						KMPInfoDisplay.infoDisplayMinimized ? "KMP" : "KerbalMP v"+KMPCommon.PROGRAM_VERSION+" ("+KMPGlobalSettings.instance.guiToggleKey+")",
+						KMPInfoDisplay.layoutOptions
 						);
-				}
+					
+					if (isInFlight && !syncing && !KMPInfoDisplay.infoDisplayMinimized)
+					{
+						GUILayout.Window(
+							999996,
+							KMPVesselLockDisplay.windowPos,
+							lockWindow,
+							"Lock",
+							KMPVesselLockDisplay.layoutOptions
+							);
+					}
+				}	
 			}
 
 			
