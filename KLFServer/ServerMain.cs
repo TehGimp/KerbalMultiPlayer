@@ -72,15 +72,15 @@ namespace KMPServer
             
             if(!File.Exists("Assembly-CSharp.dll"))
             {
-            	Log.Error("REQUIRED ASSEMBLY: Assembly-CSharp.dll not present in working directory. Please refer to readme.");
+            	Log.Error("Assembly: Assembly-CSharp.dll MAY not be present in working directory. Please refer to readme. If you believe that this assembly is in the directory, try running anyway.");
             }
             if(!File.Exists("Assembly-CSharp-firstpass.dll"))
             {
-            	Log.Error("REQUIRED ASSEMBLY: Assembly-CSharp-firstpass.dll not present in working directory. Please refer to readme.");
+            	Log.Error("Assembly: Assembly-CSharp-firstpass.dll MAY not be present in working directory. Please refer to readme. If you believe that this assembly is in the directory, try running anyway.");
             }
             if(!File.Exists("UnityEngine.dll"))
             {
-            	Log.Error("REQUIRED ASSEMBLY: UnityEngine.dll not present in working directory. Please refer to readme.");
+            	Log.Error("Assembly: UnityEngine.dll MAY not be present in working directory. Please refer to readme. If you believe that this assembly is in the directory, try running anyway.");
             }
 //            if(!File.Exists("sqlite3.dll"))
 //            {
