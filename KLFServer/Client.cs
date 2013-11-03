@@ -11,7 +11,7 @@ using System.Collections.Concurrent;
 
 namespace KMPServer
 {
-	class ServerClient
+	class Client
 	{
 		public enum ActivityLevel
 		{
@@ -85,7 +85,7 @@ namespace KMPServer
 		
 		public string disconnectMessage = "";
 		
-		public ServerClient(Server parent)
+		public Client(Server parent)
 		{
 			this.parent = parent;
 			resetProperties();
@@ -158,7 +158,7 @@ namespace KMPServer
 
 			lock (activityLevelLock)
 			{
-				activityLevel = ServerClient.ActivityLevel.INACTIVE;
+				activityLevel = Client.ActivityLevel.INACTIVE;
 				lastInGameActivityTime = parent.currentMillisecond;
 				lastInFlightActivityTime = parent.currentMillisecond;
 			}
