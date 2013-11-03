@@ -917,7 +917,7 @@ namespace KMPServer
 		{
 			if (clients.Contains(client))
 			{
-				Log.Debug("Client " + client.username + " added to disconnect list");
+				Log.Debug("Client " + client.username + " added to disconnect list: " + message);
 				client.disconnectMessage = message;
 				cleanupClients.Add(client);
 			}
@@ -1438,10 +1438,10 @@ namespace KMPServer
 				case KMPCommon.ClientMessageID.UDP_PROBE:
 					if (data != null)
 					{
-						double tick = BitConverter.ToDouble(data,0);
-						double lastTick = tick;
-						
-						cl.lastTick = tick;
+						double incomingTick = BitConverter.ToDouble(data,0);
+						double lastSubspaceTick = incomingTick;
+						double lastClientTick = cl.lastTick;
+						cl.lastTick = incomingTick;
 						if (!cl.warping)
 						{
 							SQLiteCommand cmd = universeDB.CreateCommand();
@@ -1454,7 +1454,7 @@ namespace KMPServer
 							{ 	
 								while(reader.Read()) 
 								{ 
-									lastTick = reader.GetDouble(0);
+									lastSubspaceTick = reader.GetDouble(0);
 								} 
 							}
 							finally 
@@ -1463,31 +1463,35 @@ namespace KMPServer
 								cmd.Dispose();
 							}
 						
-							if (lastTick - tick > 0.15d)
+							if (lastSubspaceTick - incomingTick > 0.2d)
 							{
-								sendSyncMessage(cl,lastTick+cl.syncOffset);
-								if (cl.receivedHandshake)
+								if (cl.receivedHandshake && cl.lastSyncTime < (currentMillisecond - 100L))
 								{
-									cl.syncOffset += 0.001d;
-									if (cl.syncOffset > 0.5d) cl.syncOffset = 0.5d;
+									cl.syncOffset += 0.005d;
+									if (cl.syncOffset > 0.1d) cl.syncOffset = 0.1;
 									Log.Debug("Sending time-sync to " + cl.username + " current offset " + cl.syncOffset);
-									if (cl.lagWarning > 5000)
+									if (cl.lagWarning > 150)
 									{
 										markClientForDisconnect(cl,"Your game was running too slowly compared to other players. Please try reconnecting in a moment.");
 									}
-									else cl.lagWarning++;
+									else
+									{
+										sendSyncMessage(cl,lastSubspaceTick+cl.syncOffset);
+										cl.lastSyncTime = currentMillisecond;
+										cl.lagWarning++;
+									}
 								}
 							}
 							else
 							{
 								cl.lagWarning = 0;
-								if (cl.syncOffset > 0.001d) cl.syncOffset -= 0.0005d;
+								if (cl.syncOffset > 0.01d) cl.syncOffset -= 0.001d;
 								cmd = universeDB.CreateCommand();
-								sql = "UPDATE kmpSubspace SET LastTick = " + tick.ToString("0.0").Replace(",",".") + " WHERE ID = " + cl.currentSubspaceID.ToString("D") + " AND LastTick < " + tick.ToString("0.0").Replace(",",".");
+								sql = "UPDATE kmpSubspace SET LastTick = " + incomingTick.ToString("0.0").Replace(",",".") + " WHERE ID = " + cl.currentSubspaceID.ToString("D") + " AND LastTick < " + incomingTick.ToString("0.0").Replace(",",".");
 								cmd.CommandText = sql;
 								cmd.ExecuteNonQuery();
 								cmd.Dispose();
-								sendHistoricalVesselUpdates(cl.currentSubspaceID, tick, lastTick);
+								sendHistoricalVesselUpdates(cl.currentSubspaceID, incomingTick, lastSubspaceTick);
 							}
 						}
 					}

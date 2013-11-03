@@ -418,13 +418,13 @@ namespace KMP
 				
 				
 				//Prevent cases of remaining unfixed NREs from remote vessel updates from creating an inconsistent game state
-				if (HighLogic.fetch.log.Count > 100 && isInFlight && !syncing)
+				if (HighLogic.fetch.log.Count > 1000 && isInFlight && !syncing)
 				{
 					bool forceResync = false; int nreCount = 0;
 					foreach (HighLogic.LogEntry logEntry in HighLogic.fetch.log.GetRange(HighLogic.fetch.log.Count-50,50))
 			        {
 						if (logEntry.condition.Contains("NullReferenceException")) nreCount++;
-						if (nreCount >= 25)
+						if (nreCount >= 40)
 						{
 							forceResync = true;
 							break;

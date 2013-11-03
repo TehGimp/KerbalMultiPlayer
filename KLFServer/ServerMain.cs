@@ -82,10 +82,10 @@ namespace KMPServer
             {
             	Log.Error("REQUIRED ASSEMBLY: UnityEngine.dll not present in working directory. Please refer to readme.");
             }
-            if(!File.Exists("sqlite3.dll"))
-            {
-            	Log.Error("REQUIRED ASSEMBLY: sqlite3.dll not present in working directory. Please refer to readme.");
-            }
+//            if(!File.Exists("sqlite3.dll"))
+//            {
+//            	Log.Error("REQUIRED ASSEMBLY: sqlite3.dll not present in working directory. Please refer to readme.");
+//            }
             
             bool running = true;
 	    

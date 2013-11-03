@@ -53,6 +53,7 @@ namespace KMPServer
 
 		public long connectionStartTime;
 		public long lastReceiveTime;
+		public long lastSyncTime;
 		public long lastUDPACKTime;
         public long lastPollTime = 0;
 
@@ -87,8 +88,7 @@ namespace KMPServer
 		public ServerClient(Server parent)
 		{
 			this.parent = parent;
-			
-			queuedOutMessages = new ConcurrentQueue<byte[]>();
+			resetProperties();
 		}
 
         public bool isValid
@@ -104,7 +104,7 @@ namespace KMPServer
                         if ((parent.currentMillisecond - lastPollTime) > POLL_INTERVAL)
                         {
                             lastPollTime = parent.currentMillisecond;
-                            return !(clientSocket.Poll(10000, SelectMode.SelectRead) && clientSocket.Available == 0);
+                            return !(clientSocket.Poll(10000, SelectMode.SelectWrite) && clientSocket.Available == 0);
                         }
                         else
                         {
@@ -167,6 +167,7 @@ namespace KMPServer
 			{
 				lastReceiveTime = parent.currentMillisecond;
 				connectionStartTime = parent.currentMillisecond;
+				lastSyncTime = parent.currentMillisecond;
 			}
 		}
 
