@@ -431,8 +431,7 @@ namespace KMPServer
 
                                 if (clientToDisconnect != null)
                                 {
-                                    disconnectClient(clientToDisconnect, "You were kicked from the server.");
-									postDisconnectCleanup(clientToDisconnect);
+                                    markClientForDisconnect(clientToDisconnect, "You were kicked from the server.");
                                 }
 							}
 							else if (input == "/list")
@@ -473,8 +472,7 @@ namespace KMPServer
 
                                 if (userToBan != null)
                                 {
-                                    disconnectClient(userToBan, "You were banned from the server!");
-									postDisconnectCleanup(userToBan);
+                                    markClientForDisconnect(userToBan, "You were banned from the server!");
                                     guid = userToBan.guid;
                                 }
 
@@ -717,7 +715,7 @@ namespace KMPServer
                             || (!handshook && (currentMillisecond - connection_start_time) > CLIENT_HANDSHAKE_TIMEOUT_DELAY))
                         {
                             //Disconnect the client
-                            markClientForCleanup(client);
+                            markClientForDisconnect(client);
                         }
                         else
                         {
@@ -749,13 +747,14 @@ namespace KMPServer
                     }
 					
 					List<ServerClient> disconnectedClients = new List<ServerClient>();
-					foreach (var client in clients.ToList().Where(c => !c.isValid || cleanupClients.ToList().Contains(c)))
+					List<ServerClient> markedClients = cleanupClients.ToList();
+					cleanupClients.Clear();
+					foreach (var client in clients.ToList().Where(c => !c.isValid || markedClients.Contains(c)))
                     {
                         //Client is disconnected but slot has not been cleaned up
-                        disconnectClient(client, "Connection lost");
+                        disconnectClient(client, (String.IsNullOrEmpty(client.disconnectMessage)) ? "Connection lost" : client.disconnectMessage);
 						disconnectedClients.Add(client);
                     }
-					cleanupClients.Clear();
 					foreach (var client in disconnectedClients.ToList())
 					{
 						//Perform final cleanup afterward to prevent an InvalidOperationError
@@ -913,11 +912,12 @@ namespace KMPServer
 			cl.disconnected();
 		}
 		
-		public void markClientForCleanup(ServerClient client)
+		public void markClientForDisconnect(ServerClient client, string message = "Connection Lost")
 		{
 			if (clients.Contains(client))
 			{
 				Log.Debug("Client " + client.username + " added to disconnect list");
+				client.disconnectMessage = message;
 				cleanupClients.Add(client);
 			}
 		}
@@ -1151,8 +1151,7 @@ namespace KMPServer
                         //Ensure no other players have the same username.
                         if (clients.Any(c => c.isReady && c.username.ToLower() == username_lower))
                         {
-                            disconnectClient(cl, "Your username is already in use.");
-							postDisconnectCleanup(cl);
+                            markClientForDisconnect(cl, "Your username is already in use.");
 							Log.Info("Rejected client due to duplicate username: " + username);
 							accepted = false;
                         }
@@ -1160,8 +1159,7 @@ namespace KMPServer
                         //If whitelisting is enabled and the user is *not* on the list:
                         if (settings.whitelisted && settings.whitelist.Contains(username, StringComparer.InvariantCultureIgnoreCase) == false)
                         {
-                            disconnectClient(cl, "You are not on this servers whitelist.");
-							postDisconnectCleanup(cl);
+                            markClientForDisconnect(cl, "You are not on this servers whitelist.");
                             Log.Info("Rejected client due to not being on the whitelist: " + username);
                             accepted = false;
                         }
@@ -1180,8 +1178,7 @@ namespace KMPServer
 						if (name_taken > 0)
 						{
 							//Disconnect the player
-							disconnectClient(cl, "Your username is already claimed by an existing user.");
-							postDisconnectCleanup(cl);
+							markClientForDisconnect(cl, "Your username is already claimed by an existing user.");
 							Log.Info("Rejected client due to duplicate username w/o matching guid: " + username);
 							break;
 						}
@@ -1352,8 +1349,7 @@ namespace KMPServer
 					if (data != null)
 						message = encoder.GetString(data, 0, data.Length); //Decode the message
 
-					disconnectClient(cl, message); //Disconnect the client
-					postDisconnectCleanup(cl);
+					markClientForDisconnect(cl, message); //Disconnect the client
 					break;
 
 				case KMPCommon.ClientMessageID.SHARE_CRAFT_FILE:
@@ -1476,8 +1472,7 @@ namespace KMPServer
 									Log.Debug("Sending time-sync to " + cl.username + " current offset " + cl.syncOffset);
 									if (cl.lagWarning > 5000)
 									{
-										disconnectClient(cl,"Your game was running too slowly compared to other players. Please try reconnecting in a moment.");
-										postDisconnectCleanup(cl);
+										markClientForDisconnect(cl,"Your game was running too slowly compared to other players. Please try reconnecting in a moment.");
 									}
 									else cl.lagWarning++;
 								}
@@ -1740,8 +1735,7 @@ namespace KMPServer
 				}
 				else if (message_lower == "!quit")
 				{
-					disconnectClient(cl, "Requested quit");
-					postDisconnectCleanup(cl);
+					markClientForDisconnect(cl, "Requested quit");
 					return;
 				}
                 else if (message_lower == "!help")
