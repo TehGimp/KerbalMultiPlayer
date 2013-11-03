@@ -33,3 +33,8 @@ Assembly-CSharp-firstpass.dll
 UnityEngine.dll
 /KMPServerList/obj/Release/DesignTimeResolveAssemblyReferencesInput.cache
 /KerbalMultiPlayer.v11.suo
+/KMPServerList/obj/Release/KMPServerList.dll
+/KMPServerList/bin/KMPServerList.dll
+/KMPServerList/obj/Release
+/KMPServerList/obj/Release/KMPServerList.csproj.FileListAbsolute.txt
+/KMPServerList/obj/Release/KMPServerList.csprojResolveAssemblyReference.cache
