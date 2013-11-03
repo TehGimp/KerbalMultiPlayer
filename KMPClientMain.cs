@@ -344,6 +344,7 @@ namespace KMP
 				TcpClient tcpClient = new TcpClient();
 				tcpClient.Connect(endpoint);
 				tcpSocket = tcpClient.Client;
+                tcpSocket.SetSocketOption(SocketOptionLevel.Tcp, SocketOptionName.KeepAlive, true);
 				if (tcpSocket.Connected)
 				{
 					tcpSocket.NoDelay = true;
