@@ -1750,7 +1750,7 @@ namespace KMPServer
                     sb.Append("!list - View all connected players\n");
                     sb.Append("!quit - Leaves the server\n");
                     sb.Append("!getcraft <playername> - Gets the most recent craft shared by the specified player\n");
-                    sb.Append("\n");
+                    sb.Append(Environment.NewLine);
                     
                     sendTextMessage(cl, sb.ToString());
 
@@ -2566,6 +2566,8 @@ namespace KMPServer
             Log.Info("/unregister <username/token> - Temove any player that has a matching username or token from the roster");
             Log.Info("/save - Backup universe");
             Log.Info("/help - Displays all commands in the server");
+            Log.Info("/set [key] [value] to modify a setting.");
+            Log.Info("/whitelist [add|del] [user] to update whitelist.");
             Log.Info("Non-commands will be sent to players as a chat message");
 
             // to add a new command to the command list just copy the Log.Info method and add how to use that command.
