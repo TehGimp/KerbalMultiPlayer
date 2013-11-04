@@ -849,7 +849,7 @@ namespace KMPServer
 					{
 						try {
 							SQLiteCommand cmd = universeDB.CreateCommand();
-							string sql = "UPDATE kmpVessel SET Active = 0 WHERE Guid = '@guid'";
+							string sql = "UPDATE kmpVessel SET Active = 0 WHERE Guid = @guid";
 							cmd.CommandText = sql;
 	                        cmd.Parameters.AddWithValue("guid", cl.currentVessel);
 							cmd.ExecuteNonQuery();
@@ -1164,7 +1164,7 @@ namespace KMPServer
 					
 						//Check if this player is new to universe
 						SQLiteCommand cmd = universeDB.CreateCommand();
-                        string sql = "SELECT COUNT(*) FROM kmpPlayer WHERE Name = '@username' AND Guid != '@guid';";
+                        string sql = "SELECT COUNT(*) FROM kmpPlayer WHERE Name = @username AND Guid != @guid;";
 						cmd.CommandText = sql;
                         cmd.Parameters.AddWithValue("username", username_lower);
                         cmd.Parameters.AddWithValue("guid", guid);
@@ -1178,7 +1178,7 @@ namespace KMPServer
 							break;
 						}
 						cmd = universeDB.CreateCommand();
-						sql = "SELECT COUNT(*) FROM kmpPlayer WHERE Guid = '@guid'";
+						sql = "SELECT COUNT(*) FROM kmpPlayer WHERE Guid = @guid";
 						cmd.CommandText = sql;
                         cmd.Parameters.AddWithValue("guid", guid);
 						Int32 player_exists = Convert.ToInt32(cmd.ExecuteScalar());
@@ -1186,7 +1186,7 @@ namespace KMPServer
 						if (player_exists == 0) //New user
 						{
 							cmd = universeDB.CreateCommand();
-							sql = "INSERT INTO kmpPlayer (Name, Guid) VALUES ('@username','@guid');";
+							sql = "INSERT INTO kmpPlayer (Name, Guid) VALUES (@username,@guid);";
 							cmd.CommandText = sql;
                             cmd.Parameters.AddWithValue("username", username_lower);
                             cmd.Parameters.AddWithValue("guid", guid);
@@ -1194,7 +1194,7 @@ namespace KMPServer
 							cmd.Dispose();
 						}
 						cmd = universeDB.CreateCommand();
-						sql = "SELECT ID FROM kmpPlayer WHERE Guid = '@guid' AND Name LIKE '@username';";
+						sql = "SELECT ID FROM kmpPlayer WHERE Guid = @guid AND Name LIKE @username;";
 						cmd.CommandText = sql;
                         cmd.Parameters.AddWithValue("username", username_lower);
                         cmd.Parameters.AddWithValue("guid", guid);
@@ -1413,7 +1413,7 @@ namespace KMPServer
 					{
 						try {
 							SQLiteCommand cmd = universeDB.CreateCommand();
-							string sql = "UPDATE kmpVessel SET Active = 0 WHERE Guid = '@id'";
+							string sql = "UPDATE kmpVessel SET Active = 0 WHERE Guid = @id";
 							cmd.CommandText = sql;
                             cmd.Parameters.AddWithValue("id", cl.currentVessel);
 							cmd.ExecuteNonQuery();
