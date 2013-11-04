@@ -36,6 +36,7 @@ namespace KMPServer
                     File.AppendAllText(LogFilename, Line + Environment.NewLine);
                 }
                 catch { } //What do we do about this?
+                Console.ForegroundColor = ConsoleColor.Gray;
             }
         }
 
