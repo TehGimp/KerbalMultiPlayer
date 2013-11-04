@@ -39,7 +39,7 @@ namespace KMPServer
 		
 		public const long CLIENT_TIMEOUT_DELAY = 16000;
 		public const long CLIENT_HANDSHAKE_TIMEOUT_DELAY = 18000;
-		public const int SLEEP_TIME = 3;
+		public const int SLEEP_TIME = 10;
 		public const int MAX_SCREENSHOT_COUNT = 10000;
 		public const int UDP_ACK_THROTTLE = 1000;
 		public const int DATABASE_BACKUP_INTERVAL = 300000;
@@ -51,7 +51,7 @@ namespace KMPServer
 		public const string DB_FILE_CONN = "Data Source=KMP_universe.db";
 		public const string DB_FILE = "KMP_universe.db";
 		
-		public const int UNIVERSE_VERSION = 1;
+		public const int UNIVERSE_VERSION = 2;
 		
 		public bool quit = false;
 		public bool stop = false;
@@ -689,6 +689,21 @@ namespace KMPServer
 							break;
 					}
 
+					List<Client> disconnectedClients = new List<Client>();
+					List<Client> markedClients = cleanupClients.ToList();
+					cleanupClients.Clear();
+					foreach (var client in clients.ToList().Where(c => !c.isValid || markedClients.Exists(mc => mc.clientIndex==c.clientIndex)))
+                    {
+                        //Client should be disconnected
+                        disconnectClient(client, (String.IsNullOrEmpty(client.disconnectMessage)) ? "Connection lost" : client.disconnectMessage);
+						disconnectedClients.Add(client);
+                    }
+					foreach (var client in disconnectedClients.ToList())
+					{
+						//Perform final cleanup
+						postDisconnectCleanup(client);
+					}
+					
                     foreach (var client in clients.ToList().Where(c => c.isValid))
                     {
                         long last_receive_time = 0;
@@ -737,26 +752,12 @@ namespace KMPServer
                         } 
                     }
 					
-					List<Client> disconnectedClients = new List<Client>();
-					List<Client> markedClients = cleanupClients.ToList();
-					cleanupClients.Clear();
-					foreach (var client in clients.ToList().Where(c => !c.isValid || markedClients.Contains(c)))
-                    {
-                        //Client should be disconnected
-                        disconnectClient(client, (String.IsNullOrEmpty(client.disconnectMessage)) ? "Connection lost" : client.disconnectMessage);
-						disconnectedClients.Add(client);
-                    }
-					foreach (var client in disconnectedClients.ToList())
-					{
-						//Perform final cleanup
-						postDisconnectCleanup(client);
-					}
-					
 					Thread.Sleep(SLEEP_TIME);
 				}
 			}
 			catch (ThreadAbortException)
 			{
+				Log.Debug("ThreadAbortException caught in handleConnections");
 			}
 			catch (Exception e)
 			{
@@ -1461,7 +1462,10 @@ namespace KMPServer
 								{
 									Log.Debug("Sending time-sync to " + cl.username + " current offset " + cl.syncOffset);
 									if (cl.lagWarning > 24)
+									{
+										cl.lastSyncTime = currentMillisecond;
 										markClientForDisconnect(cl,"Your game was running too slowly compared to other players. Please try reconnecting in a moment.");
+									}
 									else
 									{
 										sendSyncMessage(cl,lastSubspaceTick+cl.syncOffset);
@@ -2395,7 +2399,21 @@ namespace KMPServer
 			catch { Log.Info("Missing (or bad) universe database file."); }
 			finally
 			{
-				if (version != UNIVERSE_VERSION)
+				if (version == 1)
+				{
+					//Upgrade old universe to version 2
+					Log.Info("Upgrading universe database...");
+					SQLiteCommand cmd = diskDB.CreateCommand();
+					string sql = "CREATE INDEX kmpVesselIdxGuid on kmpVessel(Guid);" +
+                        "CREATE INDEX kmpVesselUpdateIdxGuid on kmpVesselUpdate(guid);" +
+                        "CREATE INDEX kmpVesselUpdateHistoryIdxTick on kmpVesselUpdateHistory(Tick);" +
+                        "UPDATE kmpInfo SET Version = '" + UNIVERSE_VERSION + "';";
+					cmd.CommandText = sql;
+					cmd.ExecuteNonQuery();
+					Log.Info("Loading universe...");
+					diskDB.BackupDatabase(universeDB, "main", "main",-1, null, 0);
+				}
+				else if (version != UNIVERSE_VERSION)
 				{
 					Log.Info("Creating new universe...");
 					try {
@@ -2409,7 +2427,10 @@ namespace KMPServer
 						"CREATE TABLE kmpPlayer (ID INTEGER PRIMARY KEY AUTOINCREMENT, Name NVARCHAR(100), Guid CHAR(40));" +
 						"CREATE TABLE kmpVessel (Guid CHAR(40), GameGuid CHAR(40), OwnerID INTEGER, Private BIT, Active BIT, ProtoVessel BLOB, Subspace INTEGER, Destroyed BIT);" +
 						"CREATE TABLE kmpVesselUpdate (ID INTEGER PRIMARY KEY AUTOINCREMENT, Guid CHAR(40), Subspace INTEGER, UpdateMessage BLOB);" +
-						"CREATE TABLE kmpVesselUpdateHistory (Guid CHAR(40), Subspace INTEGER, Tick DOUBLE, UpdateMessage BLOB);";
+						"CREATE TABLE kmpVesselUpdateHistory (Guid CHAR(40), Subspace INTEGER, Tick DOUBLE, UpdateMessage BLOB);" +
+						"CREATE INDEX kmpVesselIdxGuid on kmpVessel(Guid);" +
+                        "CREATE INDEX kmpVesselUpdateIdxGuid on kmpVesselUpdate(guid);" +
+                        "CREATE INDEX kmpVesselUpdateHistoryIdxTick on kmpVesselUpdateHistory(Tick);";
 					cmd.CommandText = sql;
 					cmd.ExecuteNonQuery();
 				}
@@ -2524,13 +2545,18 @@ namespace KMPServer
 
         private T ByteArrayToObject<T>(byte[] data)
         {
-            if (data == null)
+            if (data.Length == 0)
                 return default(T);
             BinaryFormatter bf = new BinaryFormatter();
             MemoryStream ms = new MemoryStream(data);
             try
             {
-                return (T)bf.Deserialize(ms);
+                Object o = bf.Deserialize(ms);
+                if(o is T) {
+                    return (T)o;
+                } else {
+                    return default(T);
+                }
             }
             catch
             {

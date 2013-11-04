@@ -21,7 +21,7 @@ namespace KMPServer
 		}
 
 		public const int SEND_BUFFER_SIZE = 8192;
-        public const int POLL_INTERVAL = 10000;
+        public const int POLL_INTERVAL = 60000;
 
 		//Properties
 
@@ -106,7 +106,7 @@ namespace KMPServer
 							if ((parent.currentMillisecond - lastPollTime) > POLL_INTERVAL)
 							{
 							    lastPollTime = parent.currentMillisecond;
-							    return !(clientSocket.Poll(10000, SelectMode.SelectWrite) && clientSocket.Available == 0);
+							    return !(clientSocket.Available == 0 && clientSocket.Poll(10000, SelectMode.SelectRead));
 							}
 							else
 							{
