@@ -435,6 +435,8 @@ namespace KMP
 					else
 						enqueuePluginChatMessage("Lost connection with server", true);
 
+                    udpSocket.Close();
+
 					return true;
 				}
 

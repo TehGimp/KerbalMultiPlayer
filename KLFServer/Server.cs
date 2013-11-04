@@ -451,7 +451,17 @@ namespace KMPServer
 								//Save the universe!
                                 Log.Info("Saving the universe! ;-)");
 								backupDatabase();
-							}
+							} 
+                            else if (input == "/clearclients")
+                             {
+                                 var notReadyClients = clients.Where(c => !c.isReady);
+                                 foreach (Client client in notReadyClients)
+                                 {
+                                     disconnectClient(client, "Disconnected via clearclients.");
+                                     postDisconnectCleanup(client);
+                                     Log.Info("Force-Disconnected client: " + client.playerID);
+                                 }
+                             }
 							else if (input.Length > 5 && input.Substring(0, 5) == "/ban ")
 							{
 								String ban_name = input.Substring(5, input.Length - 5).ToLower();
@@ -624,6 +634,10 @@ namespace KMPServer
 								Log.Info("Accepted client. Handshaking...");
 								sendHandshakeMessage(cl);
 
+                                // Start UDP communication by sending an ACK as a signal that udp is live.
+                                //cl.queueOutgoingMessage(KMPCommon.ServerMessageID.UDP_ACKNOWLEDGE, null);
+                                //cl.lastUDPACKTime = currentMillisecond;
+
 								sendMessageDirect(client, KMPCommon.ServerMessageID.NULL, null);
 
 								//Send the join message to the client
@@ -710,7 +724,7 @@ namespace KMPServer
                             || (!handshook && (currentMillisecond - connection_start_time) > CLIENT_HANDSHAKE_TIMEOUT_DELAY))
                         {
                             //Disconnect the client
-                            markClientForDisconnect(client);
+                            markClientForDisconnect(client, "Handshake failed");
                         }
                         else
                         {
@@ -947,7 +961,6 @@ namespace KMPServer
 		{
 			try
 			{
-
                 IPEndPoint endpoint = new IPEndPoint(IPAddress.Parse(settings.ipBinding), settings.port);
 				byte[] received = udpClient.EndReceive(result, ref endpoint);
 
@@ -2563,6 +2576,7 @@ namespace KMPServer
             Log.Info("/update <username> <token> - Update existing roster entry for player <username>/token <token> (one param must match existing roster entry, other will be updated)");
             Log.Info("/unregister <username/token> - Remove any player that has a matching username or token from the roster");
             Log.Info("/save - Backup universe");
+            Log.Info("/clearclients - Disconnect any clients that are marked as Not Ready.");
             Log.Info("/help - Displays all commands in the server");
             Log.Info("/set [key] [value] to modify a setting.");
             Log.Info("/whitelist [add|del] [user] to update whitelist.");
