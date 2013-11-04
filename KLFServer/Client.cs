@@ -234,22 +234,33 @@ namespace KMPServer
 		{
             try
             {
-                int read = tcpClient.GetStream().EndRead(result);
-
-                if (read > 0)
+                if (tcpClient.Connected)
                 {
-                    receiveIndex += read;
-                    //Console.WriteLine("Got data: " + System.Text.Encoding.ASCII.GetString(receiveBuffer));
-                    updateReceiveTimestamp();
-                    handleReceive();
-                }
+                    var stream = tcpClient.GetStream();
+                    int read = stream.EndRead(result);
 
-                tcpClient.GetStream().BeginRead(
-                    receiveBuffer,
-                    receiveIndex,
-                    receiveBuffer.Length - receiveIndex,
-                    asyncReceive,
-                    receiveBuffer);
+                    if (read > 0)
+                    {
+                        receiveIndex += read;
+                        //Console.WriteLine("Got data: " + System.Text.Encoding.ASCII.GetString(receiveBuffer));
+                        updateReceiveTimestamp();
+                        handleReceive();
+                    }
+
+                    if (tcpClient.Connected)
+                    {
+                        tcpClient.GetStream().BeginRead(
+                            receiveBuffer,
+                            receiveIndex,
+                            receiveBuffer.Length - receiveIndex,
+                            asyncReceive,
+                            receiveBuffer);
+                    }
+                }
+                else
+                {
+                    tcpClient.Close();
+                }
             }
             catch (InvalidOperationException) {
 				//parent.disconnectClient(this, "InvalidOperationException");
@@ -367,7 +378,14 @@ namespace KMPServer
 		{
 			try
 			{
-				tcpClient.GetStream().EndWrite(result);
+                if (tcpClient.Connected)
+                {
+                    tcpClient.GetStream().EndWrite(result);
+                }
+                else
+                {
+                    //Do we care?!
+                }
 			}
 			catch (InvalidOperationException)
 			{
