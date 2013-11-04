@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Reflection;
 using System.IO;
-using ICSharpCode.SharpZipLib.BZip2;
+using ICSharpCode.SharpZipLib.GZip;
 
 public class KMPCommon
 {
@@ -21,7 +21,7 @@ public class KMPCommon
 	public const Int32 NET_PROTOCOL_VERSION = 10001;
 	public const int MSG_HEADER_LENGTH = 8;
     public const int MAX_MESSAGE_SIZE = 1024 * 1024; //Enough room for a max-size craft file
-	public const int MESSAGE_COMPRESSION_THRESHOLD = 2048;
+	public const int MESSAGE_COMPRESSION_THRESHOLD = 1024;
 	public const int INTEROP_MSG_HEADER_LENGTH = 8;
 
 	public const int SERVER_SETTINGS_LENGTH = 13;
@@ -124,7 +124,7 @@ public class KMPCommon
 		if (data == null) return null;
 		byte[] compressedData = null;
         MemoryStream ms = null;
-        BZip2OutputStream bz2 = null;
+        GZipOutputStream gzip = null;
 		try
         {
 			ms = new MemoryStream();
@@ -148,9 +148,9 @@ public class KMPCommon
 	            {
 					writer.Write((byte)1);
 	                writer.Write(size);
-	                bz2 = new BZip2OutputStream(ms);
-	                bz2.Write(data, 0, data.Length);
-	                bz2.Close();
+	                gzip = new GZipOutputStream(ms);
+	                gzip.Write(data, 0, data.Length);
+	                gzip.Close();
 	                compressedData = ms.ToArray();
 	                ms.Close();                
 	                writer.Close();
@@ -159,7 +159,7 @@ public class KMPCommon
 		}
         finally
         {
-            if (bz2 != null) bz2.Dispose();
+            if (gzip != null) gzip.Dispose();
             if (ms != null) ms.Dispose();
         }
         return compressedData;
@@ -170,7 +170,7 @@ public class KMPCommon
 		if (data == null) return null;
 		byte[] decompressedData = null;
         MemoryStream ms = null;
-        BZip2InputStream bz2 = null;
+        GZipInputStream gzip = null;
         try
 		{
 			ms = new MemoryStream(data,false);
@@ -186,10 +186,10 @@ public class KMPCommon
 				{
 					//Decompress
 	                Int32 size = reader.ReadInt32();
-	                bz2 = new BZip2InputStream(ms);
+	                gzip = new GZipInputStream(ms);
 	                decompressedData = new byte[size];
-	                bz2.Read(decompressedData, 0, decompressedData.Length);
-	                bz2.Close();
+	                gzip.Read(decompressedData, 0, decompressedData.Length);
+	                gzip.Close();
 	                ms.Close();
 				}
 				reader.Close();
@@ -197,7 +197,7 @@ public class KMPCommon
         }
         finally
         {
-            if (bz2 != null) bz2.Dispose();
+            if (gzip != null) gzip.Dispose();
             if (ms != null) ms.Dispose();
         }
         return decompressedData;
