@@ -479,7 +479,7 @@ namespace KMPServer
 								if (guid != Guid.Empty.ToString())
 								{
 									SQLiteCommand cmd = universeDB.CreateCommand();
-									string sql = "UPDATE kmpPlayer SET Guid = '@newGuid' WHERE Guid = '@guid';";
+									string sql = "UPDATE kmpPlayer SET Guid = @newGuid WHERE Guid = @guid;";
                                     cmd.Parameters.AddWithValue("newGuid", Guid.NewGuid().ToString());
                                     cmd.Parameters.AddWithValue("guid", guid);
 									cmd.CommandText = sql;
@@ -504,8 +504,8 @@ namespace KMPServer
 										String username_lower = args[0].ToLower();
 
 										SQLiteCommand cmd = universeDB.CreateCommand();
-										string sql = "DELETE FROM kmpPlayer WHERE Name LIKE '@username';" + 
-											" INSERT INTO kmpPlayer (Name, Guid) VALUES ('@username','@guid');";
+										string sql = "DELETE FROM kmpPlayer WHERE Name LIKE @username;" + 
+											" INSERT INTO kmpPlayer (Name, Guid) VALUES (@username,@guid);";
                                         cmd.Parameters.AddWithValue("username", username_lower);
                                         cmd.Parameters.AddWithValue("guid", guid);
 										cmd.CommandText = sql;
@@ -531,7 +531,7 @@ namespace KMPServer
 							{
 								String dereg = input.Substring(12, input.Length - 12);
 								SQLiteCommand cmd = universeDB.CreateCommand();
-								string sql = "DELETE FROM kmpPlayer WHERE Guid = '@dereg' OR Name LIKE '@dereg';";
+								string sql = "DELETE FROM kmpPlayer WHERE Guid = @dereg OR Name LIKE @dereg;";
 								cmd.CommandText = sql;
                                 cmd.Parameters.AddWithValue("dereg", dereg);
 								cmd.ExecuteNonQuery();
@@ -549,7 +549,7 @@ namespace KMPServer
 										String guid = parser.ToString();
 										String username_lower = args[0].ToLower();
 										SQLiteCommand cmd = universeDB.CreateCommand();
-										string sql = "UPDATE kmpPlayer SET Name='@username', Guid='@guid' WHERE Name LIKE '@username' OR Guid = '@guid';";
+										string sql = "UPDATE kmpPlayer SET Name=@username, Guid=@guid WHERE Name LIKE @username OR Guid = @guid;";
 										cmd.CommandText = sql;
                                         cmd.Parameters.AddWithValue("username", username_lower);
                                         cmd.Parameters.AddWithValue("guid", guid);
@@ -757,13 +757,13 @@ namespace KMPServer
 					cleanupClients.Clear();
 					foreach (var client in clients.ToList().Where(c => !c.isValid || markedClients.Contains(c)))
                     {
-                        //Client is disconnected but slot has not been cleaned up
+                        //Client should be disconnected
                         disconnectClient(client, (String.IsNullOrEmpty(client.disconnectMessage)) ? "Connection lost" : client.disconnectMessage);
 						disconnectedClients.Add(client);
                     }
 					foreach (var client in disconnectedClients.ToList())
 					{
-						//Perform final cleanup afterward to prevent an InvalidOperationError
+						//Perform final cleanup
 						postDisconnectCleanup(client);
 					}
 					
@@ -1470,15 +1470,13 @@ namespace KMPServer
 						
 							if (lastSubspaceTick - incomingTick > 0.2d)
 							{
-								if (cl.receivedHandshake && cl.lastSyncTime < (currentMillisecond - 100L))
+								cl.syncOffset += 0.001d;
+								if (cl.syncOffset > 0.5d) cl.syncOffset = 0.5;
+								if (cl.receivedHandshake && cl.lastSyncTime < (currentMillisecond - 2500L))
 								{
-									cl.syncOffset += 0.005d;
-									if (cl.syncOffset > 0.1d) cl.syncOffset = 0.1;
 									Log.Debug("Sending time-sync to " + cl.username + " current offset " + cl.syncOffset);
-									if (cl.lagWarning > 150)
-									{
+									if (cl.lagWarning > 24)
 										markClientForDisconnect(cl,"Your game was running too slowly compared to other players. Please try reconnecting in a moment.");
-									}
 									else
 									{
 										sendSyncMessage(cl,lastSubspaceTick+cl.syncOffset);
@@ -2574,7 +2572,7 @@ namespace KMPServer
             Log.Info("/ban <username> - Permanently ban player <username> and any known aliases");
             Log.Info("/register <username> <token> - Add new roster entry for player <username> with authentication token <token> (BEWARE: will delete any matching roster entries)");
             Log.Info("/update <username> <token> - Update existing roster entry for player <username>/token <token> (one param must match existing roster entry, other will be updated)");
-            Log.Info("/unregister <username/token> - Temove any player that has a matching username or token from the roster");
+            Log.Info("/unregister <username/token> - Remove any player that has a matching username or token from the roster");
             Log.Info("/save - Backup universe");
             Log.Info("/help - Displays all commands in the server");
             Log.Info("/set [key] [value] to modify a setting.");
