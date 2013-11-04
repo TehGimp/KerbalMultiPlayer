@@ -951,7 +951,6 @@ namespace KMPServer
 		{
 			try
 			{
-                Log.Info("udo");
                 IPEndPoint endpoint = new IPEndPoint(IPAddress.Parse(settings.ipBinding), settings.port);
 				byte[] received = udpClient.EndReceive(result, ref endpoint);
 
