@@ -316,19 +316,7 @@ namespace KMPServer
 				udpClient = null;
 			}
 
-			Log.Info("Commands:");
-            Log.Info("/quit - Quit server cleanly");
-            Log.Info("/stop - Stop hosting server");
-            Log.Info("/list - List players");
-            Log.Info("/count - Display player counts");
-            Log.Info("/kick <username> - Kick player <username>");
-            Log.Info("/ban <username> - Permanently ban player <username> and any known aliases");
-            Log.Info("/register <username> <token> - Add new roster entry for player <username> with authentication token <token> (BEWARE: will delete any matching roster entries)");
-            Log.Info("/update <username> <token> - Update existing roster entry for player <username>/token <token> (one param must match existing roster entry, other will be updated)");
-            Log.Info("/unregister <username/token> - Remove any player that has a matching username or token from the roster");
-            Log.Info("/save - Backup universe");
-            Log.Info("/help - Displays all commands in the server");
-            Log.Info("Non-commands will be sent to players as a chat message");
+			displayCommands();
 
 			commandThread.Start();
 			connectionThread.Start();
@@ -2560,23 +2548,24 @@ namespace KMPServer
 
         private void displayCommands()
         {
-            Log.Info("Commands:");
-            Log.Info("/quit - Quit server cleanly");
-            Log.Info("/stop - Stop hosting server");
-            Log.Info("/list - List players");
-            Log.Info("/count - Display player counts");
-            Log.Info("/kick <username> - Kick player <username>");
-            Log.Info("/ban <username> - Permanently ban player <username> and any known aliases");
-            Log.Info("/register <username> <token> - Add new roster entry for player <username> with authentication token <token> (BEWARE: will delete any matching roster entries)");
-            Log.Info("/update <username> <token> - Update existing roster entry for player <username>/token <token> (one param must match existing roster entry, other will be updated)");
-            Log.Info("/unregister <username/token> - Remove any player that has a matching username or token from the roster");
-            Log.Info("/save - Backup universe");
-            Log.Info("/help - Displays all commands in the server");
-            Log.Info("/set [key] [value] to modify a setting.");
-            Log.Info("/whitelist [add|del] [user] to update whitelist.");
-            Log.Info("Non-commands will be sent to players as a chat message");
-
-            // to add a new command to the command list just copy the Log.Info method and add how to use that command.
+			Log.Info("Commands:");
+			Log.Info("/quit - Quit server cleanly");
+			Log.Info("/stop - Stop hosting server");
+			Log.Info("/list - List players");
+			Log.Info("/count - Display player counts");
+			Log.Info("/kick <username> - Kick player <username>");
+			Log.Info("/ban <username> - Permanently ban player <username> and any known aliases");
+			Log.Info("/register <username> <token> - Add new roster entry for player <username> with authentication token <token> (BEWARE: will delete any matching roster entries)");
+			Log.Info("/update <username> <token> - Update existing roster entry for player <username>/token <token> (one param must match existing roster entry, other will be updated)");
+			Log.Info("/unregister <username/token> - Remove any player that has a matching username or token from the roster");
+			Log.Info("/clearclients - Disconnect any clients that are marked as Not Ready.");
+			Log.Info("/save - Backup universe");
+			Log.Info("/help - Displays all commands in the server");
+			Log.Info("/set [key] [value] to modify a setting.");
+			Log.Info("/whitelist [add|del] [user] to update whitelist.");
+			Log.Info("Non-commands will be sent to players as a chat message");
+			
+			// to add a new command to the command list just copy the Log.Info method and add how to use that command.
         }
 	}
 }
