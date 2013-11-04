@@ -629,7 +629,7 @@ namespace KMPServer
 							if (cl.isValid)
 							{
 								//Send a handshake to the client
-								Log.Info("Accepted client. Handshaking...");
+								Log.Info("Accepted client from {0}. Handshaking...", client.Client.RemoteEndPoint.ToString());
 								sendHandshakeMessage(cl);
 
 								sendMessageDirect(client, KMPCommon.ServerMessageID.NULL, null);
@@ -1240,7 +1240,7 @@ namespace KMPServer
 						sendServerMessage(cl, sb.ToString());
 						sendServerSettings(cl);
 
-						Log.Info(username + " has joined the server using client version " + version);
+                        Log.Info("{0} has joined the server using client version {1}", username, version);
 
 						//Build join message
 						//sb.Clear();
@@ -2570,7 +2570,6 @@ namespace KMPServer
             Log.Info("/register <username> <token> - Add new roster entry for player <username> with authentication token <token> (BEWARE: will delete any matching roster entries)");
             Log.Info("/update <username> <token> - Update existing roster entry for player <username>/token <token> (one param must match existing roster entry, other will be updated)");
             Log.Info("/unregister <username/token> - Remove any player that has a matching username or token from the roster");
-			Log.Info("/clearclients - Disconnect any clients that are marked as Not Ready.");
             Log.Info("/save - Backup universe");
             Log.Info("/help - Displays all commands in the server");
             Log.Info("/set [key] [value] to modify a setting.");
