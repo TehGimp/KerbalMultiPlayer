@@ -625,8 +625,8 @@ namespace KMPServer
 								sendHandshakeMessage(cl);
 
                                 // Start UDP communication by sending an ACK as a signal that udp is live.
-                                cl.queueOutgoingMessage(KMPCommon.ServerMessageID.UDP_ACKNOWLEDGE, null);
-                                cl.lastUDPACKTime = currentMillisecond;
+                                //cl.queueOutgoingMessage(KMPCommon.ServerMessageID.UDP_ACKNOWLEDGE, null);
+                                //cl.lastUDPACKTime = currentMillisecond;
 
 								sendMessageDirect(client, KMPCommon.ServerMessageID.NULL, null);
 
@@ -714,7 +714,7 @@ namespace KMPServer
                             || (!handshook && (currentMillisecond - connection_start_time) > CLIENT_HANDSHAKE_TIMEOUT_DELAY))
                         {
                             //Disconnect the client
-                            markClientForDisconnect(client);
+                            markClientForDisconnect(client, "Handshake failed");
                         }
                         else
                         {
