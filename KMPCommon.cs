@@ -146,7 +146,7 @@ public class KMPCommon
 	            Int32 size = data.Length;
 	            using (BinaryWriter writer = new BinaryWriter(ms))
 	            {
-					writer.Write(false);
+					writer.Write(true);
 	                writer.Write(size);
 	                gzip = new GZipOutputStream(ms);
 	                gzip.Write(data, 0, data.Length);
