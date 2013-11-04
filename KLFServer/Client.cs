@@ -101,16 +101,19 @@ namespace KMPServer
                     Socket clientSocket = this.tcpClient.Client;
                     try
                     {
-                        if ((parent.currentMillisecond - lastPollTime) > POLL_INTERVAL)
-                        {
-                            lastPollTime = parent.currentMillisecond;
-                            return !(clientSocket.Poll(10000, SelectMode.SelectWrite) && clientSocket.Available == 0);
-                        }
-                        else
-                        {
-                            // They have max 10 seconds to get their shit together. 
-                            return true;
-                        }
+						if (receivedHandshake)
+						{
+							if ((parent.currentMillisecond - lastPollTime) > POLL_INTERVAL)
+							{
+							    lastPollTime = parent.currentMillisecond;
+							    return !(clientSocket.Poll(10000, SelectMode.SelectWrite) && clientSocket.Available == 0);
+							}
+							else
+							{
+							    // They have max 10 seconds to get their shit together. 
+							    return true;
+							}
+						} else return true;
                     }
                     catch (SocketException)
                     {
