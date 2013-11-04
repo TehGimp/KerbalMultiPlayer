@@ -621,7 +621,7 @@ namespace KMPServer
 							if (cl.isValid)
 							{
 								//Send a handshake to the client
-								Log.Info("Accepted client. Handshaking...");
+								Log.Info("Accepted client from {0}. Handshaking...", client.Client.RemoteEndPoint.ToString());
 								sendHandshakeMessage(cl);
 
 								sendMessageDirect(client, KMPCommon.ServerMessageID.NULL, null);
@@ -1232,7 +1232,7 @@ namespace KMPServer
 						sendServerMessage(cl, sb.ToString());
 						sendServerSettings(cl);
 
-						Log.Info(username + " has joined the server using client version " + version);
+                        Log.Info("{0} has joined the server using client version {1}", username, version);
 
 						//Build join message
 						//sb.Clear();
