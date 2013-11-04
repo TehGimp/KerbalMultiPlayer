@@ -1677,7 +1677,7 @@ namespace KMP
 						if (currentMessageDataIndex >= currentMessageData.Length)
 						{
 							//Handle received message
-							messageReceived(currentMessageID, currentMessageData);
+							messageReceived(currentMessageID, KMPCommon.Decompress(currentMessageData));
 	
 							currentMessageData = null;
 	
@@ -1851,13 +1851,17 @@ namespace KMP
 
 		private static byte[] buildMessageByteArray(KMPCommon.ClientMessageID id, byte[] data, byte[] prefix = null)
 		{
+			byte[] compressed_data = null;
 			int prefix_length = 0;
 			if (prefix != null)
 				prefix_length = prefix.Length;
 
 			int msg_data_length = 0;
 			if (data != null)
-				msg_data_length = data.Length;
+			{				
+				compressed_data = KMPCommon.Compress(data);
+				msg_data_length = compressed_data.Length;
+			}
 
 			byte[] message_bytes = new byte[KMPCommon.MSG_HEADER_LENGTH + msg_data_length + prefix_length];
 
@@ -1875,10 +1879,10 @@ namespace KMP
 			KMPCommon.intToBytes(msg_data_length).CopyTo(message_bytes, index);
 			index += 4;
 
-			if (data != null)
+			if (compressed_data != null)
 			{
-				data.CopyTo(message_bytes, index);
-				index += data.Length;
+				compressed_data.CopyTo(message_bytes, index);
+				index += compressed_data.Length;
 			}
 
 			return message_bytes;

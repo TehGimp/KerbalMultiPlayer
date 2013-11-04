@@ -992,7 +992,7 @@ namespace KMPServer
 						}
 
 						//Handle the message
-						handleMessage(client, id, data);
+						handleMessage(client, id, KMPCommon.Decompress(data));
 					}
 
 				}
@@ -1799,16 +1799,20 @@ namespace KMPServer
 		public static byte[] buildMessageArray(KMPCommon.ServerMessageID id, byte[] data)
 		{
 			//Construct the byte array for the message
+			byte[] compressed_data = null;
 			int msg_data_length = 0;
 			if (data != null)
-				msg_data_length = data.Length;
+			{
+				compressed_data = KMPCommon.Compress(data);
+				msg_data_length = compressed_data.Length;
+			}
 
 			byte[] message_bytes = new byte[KMPCommon.MSG_HEADER_LENGTH + msg_data_length];
 
 			KMPCommon.intToBytes((int)id).CopyTo(message_bytes, 0);
 			KMPCommon.intToBytes(msg_data_length).CopyTo(message_bytes, 4);
-			if (data != null)
-				data.CopyTo(message_bytes, KMPCommon.MSG_HEADER_LENGTH);
+			if (compressed_data != null)
+				compressed_data.CopyTo(message_bytes, KMPCommon.MSG_HEADER_LENGTH);
 
 			return message_bytes;
 		}

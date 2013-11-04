@@ -3,6 +3,9 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Reflection;
+using System.IO;
+using ICSharpCode.SharpZipLib.BZip2;
+
 
 public class KMPCommon
 {
@@ -115,6 +118,63 @@ public class KMPCommon
 		WARPING /*data*/,
 		SSYNC /*data*/
 	}
+	
+    public static byte[] Compress(byte[] data)
+	{
+		if (data == null) return null;
+		byte[] compressedData = null;
+        MemoryStream ms = null;
+        BZip2OutputStream bz2 = null;
 
+        try
+        {
+            ms = new MemoryStream();
+            Int32 size = data.Length;
+            using (BinaryWriter writer = new BinaryWriter(ms))
+            {
+                writer.Write(size);
+                bz2 = new BZip2OutputStream(ms);
+                bz2.Write(data, 0, data.Length);
+                bz2.Close();
+                compressedData = ms.ToArray();
+                ms.Close();                
+                writer.Close();
+            }
+        }
+        finally
+        {
+            if (bz2 != null) bz2.Dispose();
+            if (ms != null) ms.Dispose();
+        }
+        return compressedData;
+    }
+
+    public static byte[] Decompress(byte[] data)
+    {
+		if (data == null) return null;
+		byte[] decompressedData = null;
+        MemoryStream ms = null;
+        BZip2InputStream bz2 = null;
+        try
+		{
+			ms = new MemoryStream(data,false);
+        	using (BinaryReader reader = new BinaryReader(ms))
+            {
+                Int32 size = reader.ReadInt32();
+                bz2 = new BZip2InputStream(ms);
+                decompressedData = new byte[size];
+                bz2.Read(decompressedData, 0, decompressedData.Length);
+                bz2.Close();
+                ms.Close();
+                reader.Close();
+            }
+        }
+        finally
+        {
+            if (bz2 != null) bz2.Dispose();
+            if (ms != null) ms.Dispose();
+        }
+        return decompressedData;
+    } 
 }
 
