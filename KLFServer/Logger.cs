@@ -78,8 +78,8 @@ namespace KMPServer
 
         public static void Chat(string who, string message)
         {
-            Console.ForegroundColor = ConsoleColor.DarkRed;
-            WriteLog(LogLevels.Error, "<{0}> {1}", who, message);
+            Console.ForegroundColor = ConsoleColor.DarkCyan;
+            WriteLog(LogLevels.Info, "<{0}> {1}", who, message);
         }
     }
 }

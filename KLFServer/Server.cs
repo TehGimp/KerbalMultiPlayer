@@ -452,6 +452,14 @@ namespace KMPServer
                                 Log.Info("Saving the universe! ;-)");
 								backupDatabase();
 							}
+							else if (input == "/clearclients")
+							{
+								foreach (Client client in clients.ToList().Where(c => !c.isReady))
+								{
+									markClientForDisconnect(client, "Disconnected via /clearclients command");
+									Log.Info("Force-disconnected client: {0}", client.playerID);
+								}
+							}
 							else if (input.Length > 5 && input.Substring(0, 5) == "/ban ")
 							{
 								String ban_name = input.Substring(5, input.Length - 5).ToLower();
@@ -2562,6 +2570,7 @@ namespace KMPServer
             Log.Info("/register <username> <token> - Add new roster entry for player <username> with authentication token <token> (BEWARE: will delete any matching roster entries)");
             Log.Info("/update <username> <token> - Update existing roster entry for player <username>/token <token> (one param must match existing roster entry, other will be updated)");
             Log.Info("/unregister <username/token> - Remove any player that has a matching username or token from the roster");
+			Log.Info("/clearclients - Disconnect any clients that are marked as Not Ready.");
             Log.Info("/save - Backup universe");
             Log.Info("/help - Displays all commands in the server");
             Log.Info("/set [key] [value] to modify a setting.");
