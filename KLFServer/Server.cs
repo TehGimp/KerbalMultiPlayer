@@ -1442,7 +1442,7 @@ namespace KMPServer
 					{
 						double incomingTick = BitConverter.ToDouble(data,0);
 						double lastSubspaceTick = incomingTick;
-						double lastClientTick = cl.lastTick;
+
 						cl.lastTick = incomingTick;
 						if (!cl.warping)
 						{
