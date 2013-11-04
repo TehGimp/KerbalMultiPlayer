@@ -39,7 +39,7 @@ namespace KMPServer
 		
 		public const long CLIENT_TIMEOUT_DELAY = 16000;
 		public const long CLIENT_HANDSHAKE_TIMEOUT_DELAY = 18000;
-		public const int SLEEP_TIME = 3;
+		public const int SLEEP_TIME = 10;
 		public const int MAX_SCREENSHOT_COUNT = 10000;
 		public const int UDP_ACK_THROTTLE = 1000;
 		public const int DATABASE_BACKUP_INTERVAL = 300000;
@@ -51,7 +51,7 @@ namespace KMPServer
 		public const string DB_FILE_CONN = "Data Source=KMP_universe.db";
 		public const string DB_FILE = "KMP_universe.db";
 		
-		public const int UNIVERSE_VERSION = 1;
+		public const int UNIVERSE_VERSION = 2;
 		
 		public bool quit = false;
 		public bool stop = false;
@@ -689,6 +689,21 @@ namespace KMPServer
 							break;
 					}
 
+					List<Client> disconnectedClients = new List<Client>();
+					List<Client> markedClients = cleanupClients.ToList();
+					cleanupClients.Clear();
+					foreach (var client in clients.ToList().Where(c => !c.isValid || markedClients.Exists(mc => mc.clientIndex==c.clientIndex)))
+                    {
+                        //Client should be disconnected
+                        disconnectClient(client, (String.IsNullOrEmpty(client.disconnectMessage)) ? "Connection lost" : client.disconnectMessage);
+						disconnectedClients.Add(client);
+                    }
+					foreach (var client in disconnectedClients.ToList())
+					{
+						//Perform final cleanup
+						postDisconnectCleanup(client);
+					}
+					
                     foreach (var client in clients.ToList().Where(c => c.isValid))
                     {
                         long last_receive_time = 0;
@@ -737,26 +752,12 @@ namespace KMPServer
                         } 
                     }
 					
-					List<Client> disconnectedClients = new List<Client>();
-					List<Client> markedClients = cleanupClients.ToList();
-					cleanupClients.Clear();
-					foreach (var client in clients.ToList().Where(c => !c.isValid || markedClients.Contains(c)))
-                    {
-                        //Client should be disconnected
-                        disconnectClient(client, (String.IsNullOrEmpty(client.disconnectMessage)) ? "Connection lost" : client.disconnectMessage);
-						disconnectedClients.Add(client);
-                    }
-					foreach (var client in disconnectedClients.ToList())
-					{
-						//Perform final cleanup
-						postDisconnectCleanup(client);
-					}
-					
 					Thread.Sleep(SLEEP_TIME);
 				}
 			}
 			catch (ThreadAbortException)
 			{
+				Log.Debug("ThreadAbortException caught in handleConnections");
 			}
 			catch (Exception e)
 			{
@@ -1111,404 +1112,342 @@ namespace KMPServer
 		{
 			if (!cl.isValid)
 				return;
-
-			//Log.Info("Message id: " + id.ToString() + " from client: " + cl + " data: " + (data != null ? data.Length.ToString() : "0"));
-			//Console.WriteLine("Message id: " + id.ToString() + " data: " + (data != null ? System.Text.Encoding.ASCII.GetString(data) : ""));
-
-			UnicodeEncoding encoder = new UnicodeEncoding();
-
-			switch (id)
-			{
-				case KMPCommon.ClientMessageID.HANDSHAKE:
-					if (data != null)
-					{
-						StringBuilder sb = new StringBuilder();
-
-						//Read username
-						Int32 username_length = KMPCommon.intFromBytes(data, 0);
-						String username = encoder.GetString(data, 4, username_length);
-
-						
-						Int32 guid_length = KMPCommon.intFromBytes(data, 4 + username_length);
-						int offset = 4 + username_length + 4;
-						String guid = new Guid(encoder.GetString(data, offset, guid_length)).ToString();					
-						offset = 4 + username_length + 4 + guid_length;
-						String version = encoder.GetString(data, offset, data.Length - offset);
-
-						String username_lower = username.ToLower();
-
-						bool accepted = true;
-
-                        //Ensure no other players have the same username.
-                        if (clients.Any(c => c.isReady && c.username.ToLower() == username_lower))
-                        {
-                            markClientForDisconnect(cl, "Your username is already in use.");
-							Log.Info("Rejected client due to duplicate username: " + username);
-							accepted = false;
-                        }
-
-                        //If whitelisting is enabled and the user is *not* on the list:
-                        if (settings.whitelisted && settings.whitelist.Contains(username, StringComparer.InvariantCultureIgnoreCase) == false)
-                        {
-                            markClientForDisconnect(cl, "You are not on this servers whitelist.");
-                            Log.Info("Rejected client due to not being on the whitelist: " + username);
-                            accepted = false;
-                        }
-
-						if (!accepted)
-							break;
-					
-						//Check if this player is new to universe
-						SQLiteCommand cmd = universeDB.CreateCommand();
-                        string sql = "SELECT COUNT(*) FROM kmpPlayer WHERE Name = @username AND Guid != @guid;";
-						cmd.CommandText = sql;
-                        cmd.Parameters.AddWithValue("username", username_lower);
-                        cmd.Parameters.AddWithValue("guid", guid);
-						Int32 name_taken = Convert.ToInt32(cmd.ExecuteScalar());
-						cmd.Dispose();
-						if (name_taken > 0)
-						{
-							//Disconnect the player
-							markClientForDisconnect(cl, "Your username is already claimed by an existing user.");
-							Log.Info("Rejected client due to duplicate username w/o matching guid: " + username);
-							break;
-						}
-						cmd = universeDB.CreateCommand();
-						sql = "SELECT COUNT(*) FROM kmpPlayer WHERE Guid = @guid";
-						cmd.CommandText = sql;
-                        cmd.Parameters.AddWithValue("guid", guid);
-						Int32 player_exists = Convert.ToInt32(cmd.ExecuteScalar());
-						cmd.Dispose();
-						if (player_exists == 0) //New user
-						{
-							cmd = universeDB.CreateCommand();
-							sql = "INSERT INTO kmpPlayer (Name, Guid) VALUES (@username,@guid);";
-							cmd.CommandText = sql;
-                            cmd.Parameters.AddWithValue("username", username_lower);
-                            cmd.Parameters.AddWithValue("guid", guid);
-							cmd.ExecuteNonQuery();
-							cmd.Dispose();
-						}
-						cmd = universeDB.CreateCommand();
-						sql = "SELECT ID FROM kmpPlayer WHERE Guid = @guid AND Name LIKE @username;";
-						cmd.CommandText = sql;
-                        cmd.Parameters.AddWithValue("username", username_lower);
-                        cmd.Parameters.AddWithValue("guid", guid);
-						Int32 playerID = Convert.ToInt32(cmd.ExecuteScalar());
-						cmd.Dispose();
-					    
-						//Send the active user count to the client
-						if (clients.Count == 2)
-						{
-							//Get the username of the other user on the server
-							sb.Append("There is currently 1 other user on this server: ");
-
-                            foreach (var client in clients.ToList().Where(c => c.isReady && c != cl))
-                            {
-                                sb.Append(client.username);
-									break;
-                            }
-						}
-						else
-						{
-							sb.Append("There are currently ");
-							sb.Append(clients.Count - 1);
-							sb.Append(" other users on this server.");
-							if (clients.Count > 1)
-							{
-								sb.Append(" Enter !list to see them.");
-							}
-						}
-
-						cl.username = username;
-						cl.receivedHandshake = true;
-						cl.guid = guid;
-						cl.playerID = playerID;
-					
-						sendServerMessage(cl, sb.ToString());
-						sendServerSettings(cl);
-
-                        Log.Info("{0} has joined the server using client version {1}", username, version);
-
-						//Build join message
-						//sb.Clear();
-						sb.Remove(0,sb.Length);
-						sb.Append("User ");
-						sb.Append(username);
-						sb.Append(" has joined the server.");
-
-						//Send the join message to all other clients
-						sendServerMessageToAll(sb.ToString(), cl);
-
-					}
-
-					break;
-
-				case KMPCommon.ClientMessageID.PRIMARY_PLUGIN_UPDATE:
-				case KMPCommon.ClientMessageID.SECONDARY_PLUGIN_UPDATE:
-
-					if (data != null && cl.isReady)
-					{
-#if SEND_UPDATES_TO_SENDER
-						sendPluginUpdateToAll(data, id == KMPCommon.ClientMessageID.SECONDARY_PLUGIN_UPDATE);
-#else
-						sendPluginUpdateToAll(data, id == KMPCommon.ClientMessageID.SECONDARY_PLUGIN_UPDATE, cl);
-#endif
-					}
-
-					break;
-
-				case KMPCommon.ClientMessageID.TEXT_MESSAGE:
-
-					if (data != null && cl.isReady)
-						handleClientTextMessage(cl, encoder.GetString(data, 0, data.Length));
-
-					break;
-
-				case KMPCommon.ClientMessageID.SCREEN_WATCH_PLAYER:
-
-					if (!cl.isReady)
-						break;
-
-					String watch_name = String.Empty;
-
-					if (data != null)
-						watch_name = encoder.GetString(data);
-
-					bool watch_name_changed = false;
-
-					lock (cl.watchPlayerNameLock)
-					{
-						if (watch_name != cl.watchPlayerName)
-						{
-							//Set the watch player name
-							cl.watchPlayerName = watch_name;
-							watch_name_changed = true;
-						}
-					}
-
-					if (watch_name_changed && watch_name.Length > 0
-						&& watch_name != cl.username)
-					{
-						//Try to find the player the client is watching and send that player's current screenshot
-						Client watch_client = getClientByName(watch_name);
-						if (watch_client.isReady)
-						{
-							byte[] screenshot = null;
-							lock (watch_client.screenshotLock)
-							{
-								screenshot = watch_client.screenshot;
-							}
-
-							if (screenshot != null)
-								sendScreenshot(cl, watch_client.screenshot);
-						}
-					}
-					
-
-					break;
-
-				case KMPCommon.ClientMessageID.SCREENSHOT_SHARE:
-
-					if (data != null && data.Length <= settings.screenshotSettings.maxNumBytes && cl.isReady)
-					{
-						//Set the screenshot for the player
-						lock (cl.screenshotLock)
-						{
-							cl.screenshot = data;
-						}
-
-						StringBuilder sb = new StringBuilder();
-						sb.Append(cl.username);
-						sb.Append(" has shared a screenshot.");
-
-						sendTextMessageToAll(sb.ToString());
-						Log.Info(sb.ToString());
-
-						//Send the screenshot to every client watching the player
-						sendScreenshotToWatchers(cl, data);
-
-						if (settings.saveScreenshots)
-							saveScreenshot(data, cl.username);
-					}
-
-					break;
-
-				case KMPCommon.ClientMessageID.CONNECTION_END:
-
-					String message = String.Empty;
-					if (data != null)
-						message = encoder.GetString(data, 0, data.Length); //Decode the message
-
-					markClientForDisconnect(cl, message); //Disconnect the client
-					break;
-
-				case KMPCommon.ClientMessageID.SHARE_CRAFT_FILE:
-
-					if (cl.isReady && data != null
-						&& data.Length > 5 && (data.Length - 5) <= KMPCommon.MAX_CRAFT_FILE_BYTES)
-					{
-						//Read craft name length
-						byte craft_type = data[0];
-						int craft_name_length = KMPCommon.intFromBytes(data, 1);
-						if (craft_name_length < data.Length - 5)
-						{
-							//Read craft name
-							String craft_name = encoder.GetString(data, 5, craft_name_length);
-
-							//Read craft bytes
-							byte[] craft_bytes = new byte[data.Length - craft_name_length - 5];
-							Array.Copy(data, 5 + craft_name_length, craft_bytes, 0, craft_bytes.Length);
-
-							lock (cl.sharedCraftLock)
-							{
-								cl.sharedCraftName = craft_name;
-								cl.sharedCraftFile = craft_bytes;
-								cl.sharedCraftType = craft_type;
-							}
-
-							//Send a message to players informing them that a craft has been shared
-							StringBuilder sb = new StringBuilder();
-							sb.Append(cl.username);
-							sb.Append(" shared ");
-							sb.Append(craft_name);
-
-							switch (craft_type)
-							{
-								case KMPCommon.CRAFT_TYPE_VAB:
-									sb.Append(" (VAB)");
-									break;
-
-								case KMPCommon.CRAFT_TYPE_SPH:
-									sb.Append(" (SPH)");
-									break;
-							}
-
-							Log.Info(sb.ToString());
 			
-							sb.Append(" . Enter !getcraft ");
-							sb.Append(cl.username);
-							sb.Append(" to get it.");
-							sendTextMessageToAll(sb.ToString());
-						}
-					}
-					break;
-
-				case KMPCommon.ClientMessageID.ACTIVITY_UPDATE_IN_FLIGHT:
-					if (cl.activityLevel == Client.ActivityLevel.IN_GAME && cl.isReady && !cl.universeSent)
-					{
-						cl.universeSent = true;
-						sendSubspace(cl);
-					}
-					cl.updateActivityLevel(Client.ActivityLevel.IN_FLIGHT);
-					break;
-
-				case KMPCommon.ClientMessageID.ACTIVITY_UPDATE_IN_GAME:
-					if (cl.activityLevel == Client.ActivityLevel.INACTIVE) sendServerSync(cl);
-					if (cl.activityLevel == Client.ActivityLevel.IN_FLIGHT && cl.currentVessel != Guid.Empty)
-					{
-						try {
-							SQLiteCommand cmd = universeDB.CreateCommand();
-							string sql = "UPDATE kmpVessel SET Active = 0 WHERE Guid = @id";
-							cmd.CommandText = sql;
-                            cmd.Parameters.AddWithValue("id", cl.currentVessel);
-							cmd.ExecuteNonQuery();
-							cmd.Dispose();
-						} catch { }
-						sendVesselStatusUpdateToAll(cl,cl.currentVessel);
-						cl.universeSent = false;
-					}
-					cl.updateActivityLevel(Client.ActivityLevel.IN_GAME);
-					break;
-
-				case KMPCommon.ClientMessageID.PING:
-					cl.queueOutgoingMessage(KMPCommon.ServerMessageID.PING_REPLY, null);
-					break;
-				
-				case KMPCommon.ClientMessageID.UDP_PROBE:
-					if (data != null)
-					{
-						double incomingTick = BitConverter.ToDouble(data,0);
-						double lastSubspaceTick = incomingTick;
-
-						cl.lastTick = incomingTick;
-						if (!cl.warping)
+			try
+				{
+				//Log.Info("Message id: " + id.ToString() + " from client: " + cl + " data: " + (data != null ? data.Length.ToString() : "0"));
+				//Console.WriteLine("Message id: " + id.ToString() + " data: " + (data != null ? System.Text.Encoding.ASCII.GetString(data) : ""));
+	
+				UnicodeEncoding encoder = new UnicodeEncoding();
+	
+				switch (id)
+				{
+					case KMPCommon.ClientMessageID.HANDSHAKE:
+						if (data != null)
 						{
-							SQLiteCommand cmd = universeDB.CreateCommand();
-							string sql = "SELECT LastTick FROM kmpSubspace WHERE ID = @id;";
-							cmd.CommandText = sql;
-                            cmd.Parameters.AddWithValue("id", cl.currentSubspaceID.ToString("D"));
-							SQLiteDataReader reader = cmd.ExecuteReader();
+							StringBuilder sb = new StringBuilder();
+	
+							//Read username
+							Int32 username_length = KMPCommon.intFromBytes(data, 0);
+							String username = encoder.GetString(data, 4, username_length);
+	
+							
+							Int32 guid_length = KMPCommon.intFromBytes(data, 4 + username_length);
+							int offset = 4 + username_length + 4;
+							String guid = new Guid(encoder.GetString(data, offset, guid_length)).ToString();					
+							offset = 4 + username_length + 4 + guid_length;
+							String version = encoder.GetString(data, offset, data.Length - offset);
+	
+							String username_lower = username.ToLower();
+	
+							bool accepted = true;
+	
+	                        //Ensure no other players have the same username.
+	                        if (clients.Any(c => c.isReady && c.username.ToLower() == username_lower))
+	                        {
+	                            markClientForDisconnect(cl, "Your username is already in use.");
+								Log.Info("Rejected client due to duplicate username: " + username);
+								accepted = false;
+	                        }
+	
+	                        //If whitelisting is enabled and the user is *not* on the list:
+	                        if (settings.whitelisted && settings.whitelist.Contains(username, StringComparer.InvariantCultureIgnoreCase) == false)
+	                        {
+	                            markClientForDisconnect(cl, "You are not on this servers whitelist.");
+	                            Log.Info("Rejected client due to not being on the whitelist: " + username);
+	                            accepted = false;
+	                        }
+	
+							if (!accepted)
+								break;
 						
-							try 
-							{ 	
-								while(reader.Read()) 
-								{ 
-									lastSubspaceTick = reader.GetDouble(0);
-								} 
+							//Check if this player is new to universe
+							SQLiteCommand cmd = universeDB.CreateCommand();
+	                        string sql = "SELECT COUNT(*) FROM kmpPlayer WHERE Name = @username AND Guid != @guid;";
+							cmd.CommandText = sql;
+	                        cmd.Parameters.AddWithValue("username", username_lower);
+	                        cmd.Parameters.AddWithValue("guid", guid);
+							Int32 name_taken = Convert.ToInt32(cmd.ExecuteScalar());
+							cmd.Dispose();
+							if (name_taken > 0)
+							{
+								//Disconnect the player
+								markClientForDisconnect(cl, "Your username is already claimed by an existing user.");
+								Log.Info("Rejected client due to duplicate username w/o matching guid: " + username);
+								break;
 							}
-							finally 
-							{ 
-								reader.Close();
+							cmd = universeDB.CreateCommand();
+							sql = "SELECT COUNT(*) FROM kmpPlayer WHERE Guid = @guid";
+							cmd.CommandText = sql;
+	                        cmd.Parameters.AddWithValue("guid", guid);
+							Int32 player_exists = Convert.ToInt32(cmd.ExecuteScalar());
+							cmd.Dispose();
+							if (player_exists == 0) //New user
+							{
+								cmd = universeDB.CreateCommand();
+								sql = "INSERT INTO kmpPlayer (Name, Guid) VALUES (@username,@guid);";
+								cmd.CommandText = sql;
+	                            cmd.Parameters.AddWithValue("username", username_lower);
+	                            cmd.Parameters.AddWithValue("guid", guid);
+								cmd.ExecuteNonQuery();
 								cmd.Dispose();
 							}
-						
-							if (lastSubspaceTick - incomingTick > 0.2d)
+							cmd = universeDB.CreateCommand();
+							sql = "SELECT ID FROM kmpPlayer WHERE Guid = @guid AND Name LIKE @username;";
+							cmd.CommandText = sql;
+	                        cmd.Parameters.AddWithValue("username", username_lower);
+	                        cmd.Parameters.AddWithValue("guid", guid);
+							Int32 playerID = Convert.ToInt32(cmd.ExecuteScalar());
+							cmd.Dispose();
+						    
+							//Send the active user count to the client
+							if (clients.Count == 2)
 							{
-								cl.syncOffset += 0.001d;
-								if (cl.syncOffset > 0.5d) cl.syncOffset = 0.5;
-								if (cl.receivedHandshake && cl.lastSyncTime < (currentMillisecond - 2500L))
-								{
-									Log.Debug("Sending time-sync to " + cl.username + " current offset " + cl.syncOffset);
-									if (cl.lagWarning > 24)
-										markClientForDisconnect(cl,"Your game was running too slowly compared to other players. Please try reconnecting in a moment.");
-									else
-									{
-										sendSyncMessage(cl,lastSubspaceTick+cl.syncOffset);
-										cl.lastSyncTime = currentMillisecond;
-										cl.lagWarning++;
-									}
-								}
+								//Get the username of the other user on the server
+								sb.Append("There is currently 1 other user on this server: ");
+	
+	                            foreach (var client in clients.ToList().Where(c => c.isReady && c != cl))
+	                            {
+	                                sb.Append(client.username);
+										break;
+	                            }
 							}
 							else
 							{
-								cl.lagWarning = 0;
-								if (cl.syncOffset > 0.01d) cl.syncOffset -= 0.001d;
-								cmd = universeDB.CreateCommand();
-								sql = "UPDATE kmpSubspace SET LastTick = " + incomingTick.ToString("0.0").Replace(",",".") + " WHERE ID = " + cl.currentSubspaceID.ToString("D") + " AND LastTick < " + incomingTick.ToString("0.0").Replace(",",".");
-								cmd.CommandText = sql;
-								cmd.ExecuteNonQuery();
-								cmd.Dispose();
-								sendHistoricalVesselUpdates(cl.currentSubspaceID, incomingTick, lastSubspaceTick);
+								sb.Append("There are currently ");
+								sb.Append(clients.Count - 1);
+								sb.Append(" other users on this server.");
+								if (clients.Count > 1)
+								{
+									sb.Append(" Enter !list to see them.");
+								}
+							}
+	
+							cl.username = username;
+							cl.receivedHandshake = true;
+							cl.guid = guid;
+							cl.playerID = playerID;
+						
+							sendServerMessage(cl, sb.ToString());
+							sendServerSettings(cl);
+	
+	                        Log.Info("{0} has joined the server using client version {1}", username, version);
+	
+							//Build join message
+							//sb.Clear();
+							sb.Remove(0,sb.Length);
+							sb.Append("User ");
+							sb.Append(username);
+							sb.Append(" has joined the server.");
+	
+							//Send the join message to all other clients
+							sendServerMessageToAll(sb.ToString(), cl);
+	
+						}
+	
+						break;
+	
+					case KMPCommon.ClientMessageID.PRIMARY_PLUGIN_UPDATE:
+					case KMPCommon.ClientMessageID.SECONDARY_PLUGIN_UPDATE:
+	
+						if (data != null && cl.isReady)
+						{
+	#if SEND_UPDATES_TO_SENDER
+							sendPluginUpdateToAll(data, id == KMPCommon.ClientMessageID.SECONDARY_PLUGIN_UPDATE);
+	#else
+							sendPluginUpdateToAll(data, id == KMPCommon.ClientMessageID.SECONDARY_PLUGIN_UPDATE, cl);
+	#endif
+						}
+	
+						break;
+	
+					case KMPCommon.ClientMessageID.TEXT_MESSAGE:
+	
+						if (data != null && cl.isReady)
+							handleClientTextMessage(cl, encoder.GetString(data, 0, data.Length));
+	
+						break;
+	
+					case KMPCommon.ClientMessageID.SCREEN_WATCH_PLAYER:
+	
+						if (!cl.isReady)
+							break;
+	
+						String watch_name = String.Empty;
+	
+						if (data != null)
+							watch_name = encoder.GetString(data);
+	
+						bool watch_name_changed = false;
+	
+						lock (cl.watchPlayerNameLock)
+						{
+							if (watch_name != cl.watchPlayerName)
+							{
+								//Set the watch player name
+								cl.watchPlayerName = watch_name;
+								watch_name_changed = true;
 							}
 						}
-					}
-					break;
-				case KMPCommon.ClientMessageID.WARPING:
-					if (data != null)
-					{
-						float rate = BitConverter.ToSingle(data,0);
-						if (cl.warping)
+	
+						if (watch_name_changed && watch_name.Length > 0
+							&& watch_name != cl.username)
 						{
-							if (rate < 1.1f)
+							//Try to find the player the client is watching and send that player's current screenshot
+							Client watch_client = getClientByName(watch_name);
+							if (watch_client.isReady)
 							{
-								//stopped warping-create subspace & add player to it
+								byte[] screenshot = null;
+								lock (watch_client.screenshotLock)
+								{
+									screenshot = watch_client.screenshot;
+								}
+	
+								if (screenshot != null)
+									sendScreenshot(cl, watch_client.screenshot);
+							}
+						}
+						
+	
+						break;
+	
+					case KMPCommon.ClientMessageID.SCREENSHOT_SHARE:
+	
+						if (data != null && data.Length <= settings.screenshotSettings.maxNumBytes && cl.isReady)
+						{
+							//Set the screenshot for the player
+							lock (cl.screenshotLock)
+							{
+								cl.screenshot = data;
+							}
+	
+							StringBuilder sb = new StringBuilder();
+							sb.Append(cl.username);
+							sb.Append(" has shared a screenshot.");
+	
+							sendTextMessageToAll(sb.ToString());
+							Log.Info(sb.ToString());
+	
+							//Send the screenshot to every client watching the player
+							sendScreenshotToWatchers(cl, data);
+	
+							if (settings.saveScreenshots)
+								saveScreenshot(data, cl.username);
+						}
+	
+						break;
+	
+					case KMPCommon.ClientMessageID.CONNECTION_END:
+	
+						String message = String.Empty;
+						if (data != null)
+							message = encoder.GetString(data, 0, data.Length); //Decode the message
+	
+						markClientForDisconnect(cl, message); //Disconnect the client
+						break;
+	
+					case KMPCommon.ClientMessageID.SHARE_CRAFT_FILE:
+	
+						if (cl.isReady && data != null
+							&& data.Length > 5 && (data.Length - 5) <= KMPCommon.MAX_CRAFT_FILE_BYTES)
+						{
+							//Read craft name length
+							byte craft_type = data[0];
+							int craft_name_length = KMPCommon.intFromBytes(data, 1);
+							if (craft_name_length < data.Length - 5)
+							{
+								//Read craft name
+								String craft_name = encoder.GetString(data, 5, craft_name_length);
+	
+								//Read craft bytes
+								byte[] craft_bytes = new byte[data.Length - craft_name_length - 5];
+								Array.Copy(data, 5 + craft_name_length, craft_bytes, 0, craft_bytes.Length);
+	
+								lock (cl.sharedCraftLock)
+								{
+									cl.sharedCraftName = craft_name;
+									cl.sharedCraftFile = craft_bytes;
+									cl.sharedCraftType = craft_type;
+								}
+	
+								//Send a message to players informing them that a craft has been shared
+								StringBuilder sb = new StringBuilder();
+								sb.Append(cl.username);
+								sb.Append(" shared ");
+								sb.Append(craft_name);
+	
+								switch (craft_type)
+								{
+									case KMPCommon.CRAFT_TYPE_VAB:
+										sb.Append(" (VAB)");
+										break;
+	
+									case KMPCommon.CRAFT_TYPE_SPH:
+										sb.Append(" (SPH)");
+										break;
+								}
+	
+								Log.Info(sb.ToString());
+				
+								sb.Append(" . Enter !getcraft ");
+								sb.Append(cl.username);
+								sb.Append(" to get it.");
+								sendTextMessageToAll(sb.ToString());
+							}
+						}
+						break;
+	
+					case KMPCommon.ClientMessageID.ACTIVITY_UPDATE_IN_FLIGHT:
+						if (cl.activityLevel == Client.ActivityLevel.IN_GAME && cl.isReady && !cl.universeSent)
+						{
+							cl.universeSent = true;
+							sendSubspace(cl);
+						}
+						cl.updateActivityLevel(Client.ActivityLevel.IN_FLIGHT);
+						break;
+	
+					case KMPCommon.ClientMessageID.ACTIVITY_UPDATE_IN_GAME:
+						if (cl.activityLevel == Client.ActivityLevel.INACTIVE) sendServerSync(cl);
+						if (cl.activityLevel == Client.ActivityLevel.IN_FLIGHT && cl.currentVessel != Guid.Empty)
+						{
+							try {
 								SQLiteCommand cmd = universeDB.CreateCommand();
-								string sql = "INSERT INTO kmpSubspace (LastTick) VALUES (@tick);";
+								string sql = "UPDATE kmpVessel SET Active = 0 WHERE Guid = @id";
 								cmd.CommandText = sql;
-                                cmd.Parameters.AddWithValue("tick", cl.lastTick.ToString("0.0").Replace(",","."));
+	                            cmd.Parameters.AddWithValue("id", cl.currentVessel);
 								cmd.ExecuteNonQuery();
 								cmd.Dispose();
-								cmd = universeDB.CreateCommand();
-								sql = "SELECT last_insert_rowid();";
+							} catch { }
+							sendVesselStatusUpdateToAll(cl,cl.currentVessel);
+							cl.universeSent = false;
+						}
+						cl.updateActivityLevel(Client.ActivityLevel.IN_GAME);
+						break;
+	
+					case KMPCommon.ClientMessageID.PING:
+						cl.queueOutgoingMessage(KMPCommon.ServerMessageID.PING_REPLY, null);
+						break;
+					
+					case KMPCommon.ClientMessageID.UDP_PROBE:
+						if (data != null)
+						{
+							double incomingTick = BitConverter.ToDouble(data,0);
+							double lastSubspaceTick = incomingTick;
+	
+							cl.lastTick = incomingTick;
+							if (!cl.warping)
+							{
+								SQLiteCommand cmd = universeDB.CreateCommand();
+								string sql = "SELECT LastTick FROM kmpSubspace WHERE ID = @id;";
 								cmd.CommandText = sql;
+	                            cmd.Parameters.AddWithValue("id", cl.currentSubspaceID.ToString("D"));
 								SQLiteDataReader reader = cmd.ExecuteReader();
-								int newSubspace = -1;
+							
 								try 
 								{ 	
 									while(reader.Read()) 
 									{ 
-										newSubspace = reader.GetInt32(0);
+										lastSubspaceTick = reader.GetDouble(0);
 									} 
 								}
 								finally 
@@ -1517,54 +1456,125 @@ namespace KMPServer
 									cmd.Dispose();
 								}
 							
-								cl.currentSubspaceID = newSubspace;
-								cl.lastTick = -1d;
-								sendSubspace(cl, false);
-								cl.warping = false;
-                                Log.Activity(cl.username + " set to new subspace " + newSubspace);
+								if (lastSubspaceTick - incomingTick > 0.2d)
+								{
+									cl.syncOffset += 0.001d;
+									if (cl.syncOffset > 0.5d) cl.syncOffset = 0.5;
+									if (cl.receivedHandshake && cl.lastSyncTime < (currentMillisecond - 2500L))
+									{
+										Log.Debug("Sending time-sync to " + cl.username + " current offset " + cl.syncOffset);
+										if (cl.lagWarning > 24)
+										{
+											cl.lastSyncTime = currentMillisecond;
+											markClientForDisconnect(cl,"Your game was running too slowly compared to other players. Please try reconnecting in a moment.");
+										}
+										else
+										{
+											sendSyncMessage(cl,lastSubspaceTick+cl.syncOffset);
+											cl.lastSyncTime = currentMillisecond;
+											cl.lagWarning++;
+										}
+									}
+								}
+								else
+								{
+									cl.lagWarning = 0;
+									if (cl.syncOffset > 0.01d) cl.syncOffset -= 0.001d;
+									cmd = universeDB.CreateCommand();
+									sql = "UPDATE kmpSubspace SET LastTick = " + incomingTick.ToString("0.0").Replace(",",".") + " WHERE ID = " + cl.currentSubspaceID.ToString("D") + " AND LastTick < " + incomingTick.ToString("0.0").Replace(",",".");
+									cmd.CommandText = sql;
+									cmd.ExecuteNonQuery();
+									cmd.Dispose();
+									sendHistoricalVesselUpdates(cl.currentSubspaceID, incomingTick, lastSubspaceTick);
+								}
 							}
 						}
-						else
+						break;
+					case KMPCommon.ClientMessageID.WARPING:
+						if (data != null)
 						{
-							if (rate > 1.1f)
+							float rate = BitConverter.ToSingle(data,0);
+							if (cl.warping)
 							{
-								cl.warping = true;
-								cl.currentSubspaceID = -1;
-								Log.Activity(cl.username + " is warping");
+								if (rate < 1.1f)
+								{
+									//stopped warping-create subspace & add player to it
+									SQLiteCommand cmd = universeDB.CreateCommand();
+									string sql = "INSERT INTO kmpSubspace (LastTick) VALUES (@tick);";
+									cmd.CommandText = sql;
+	                                cmd.Parameters.AddWithValue("tick", cl.lastTick.ToString("0.0").Replace(",","."));
+									cmd.ExecuteNonQuery();
+									cmd.Dispose();
+									cmd = universeDB.CreateCommand();
+									sql = "SELECT last_insert_rowid();";
+									cmd.CommandText = sql;
+									SQLiteDataReader reader = cmd.ExecuteReader();
+									int newSubspace = -1;
+									try 
+									{ 	
+										while(reader.Read()) 
+										{ 
+											newSubspace = reader.GetInt32(0);
+										} 
+									}
+									finally 
+									{ 
+										reader.Close();
+										cmd.Dispose();
+									}
+								
+									cl.currentSubspaceID = newSubspace;
+									cl.lastTick = -1d;
+									sendSubspace(cl, false);
+									cl.warping = false;
+	                                Log.Activity(cl.username + " set to new subspace " + newSubspace);
+								}
+							}
+							else
+							{
+								if (rate > 1.1f)
+								{
+									cl.warping = true;
+									cl.currentSubspaceID = -1;
+									Log.Activity(cl.username + " is warping");
+								}
 							}
 						}
-					}
-					break;
-				case KMPCommon.ClientMessageID.SSYNC:
-					if (data != null)
-					{
-						int subspaceID = KMPCommon.intFromBytes(data,0);
-						if (subspaceID == -1)
+						break;
+					case KMPCommon.ClientMessageID.SSYNC:
+						if (data != null)
 						{
-							//Latest available subspace sync request	
-							SQLiteCommand cmd = universeDB.CreateCommand();
-							string sql = "SELECT ss1.ID FROM kmpSubspace ss1 LEFT JOIN kmpSubspace ss2 ON ss1.LastTick < ss2.LastTick WHERE ss2.ID IS NULL;";
-							cmd.CommandText = sql;
-							SQLiteDataReader reader = cmd.ExecuteReader(); 
-							try 
-							{ 
-								while(reader.Read()) 
+							int subspaceID = KMPCommon.intFromBytes(data,0);
+							if (subspaceID == -1)
+							{
+								//Latest available subspace sync request	
+								SQLiteCommand cmd = universeDB.CreateCommand();
+								string sql = "SELECT ss1.ID FROM kmpSubspace ss1 LEFT JOIN kmpSubspace ss2 ON ss1.LastTick < ss2.LastTick WHERE ss2.ID IS NULL;";
+								cmd.CommandText = sql;
+								SQLiteDataReader reader = cmd.ExecuteReader(); 
+								try 
 								{ 
-									subspaceID = reader.GetInt32(0);
-								} 
-							}
-							finally 
-							{ 
-								reader.Close();
-							}
-						} 
-						cl.currentSubspaceID = subspaceID;
-						Log.Info(cl.username + " sync request to subspace " + subspaceID);
-						sendSubspace(cl, true);
-					}
-					break;
+									while(reader.Read()) 
+									{ 
+										subspaceID = reader.GetInt32(0);
+									} 
+								}
+								finally 
+								{ 
+									reader.Close();
+								}
+							} 
+							cl.currentSubspaceID = subspaceID;
+							Log.Info(cl.username + " sync request to subspace " + subspaceID);
+							sendSubspace(cl, true);
+						}
+						break;
+				}
 			}
-
+			catch (NullReferenceException e)
+			{
+				
+			}
 		}
 		
 		private void sendHistoricalVesselUpdates(int toSubspace, double atTick, double lastTick)
@@ -1706,82 +1716,85 @@ namespace KMPServer
 		
 		public void handleClientTextMessage(Client cl, String message_text)
 		{
-			StringBuilder sb = new StringBuilder();
-
-			if (message_text.Length > 0 && message_text.First() == '!')
+			try
 			{
-				string message_lower = message_text.ToLower();
-
-				if (message_lower == "!list")
+				StringBuilder sb = new StringBuilder();
+	
+				if (message_text.Length > 0 && message_text.First() == '!')
 				{
-					//Compile list of usernames
-					sb.Append("Connected users:\n");
-
-                    foreach (var client in clients.ToList().Where(c => c.isReady))
-                    {
-                        sb.Append(client.username);
-                        sb.Append('\n');
-                    }
-
-					sendTextMessage(cl, sb.ToString());
-					return;
+					string message_lower = message_text.ToLower();
+	
+					if (message_lower == "!list")
+					{
+						//Compile list of usernames
+						sb.Append("Connected users:\n");
+	
+	                    foreach (var client in clients.ToList().Where(c => c.isReady))
+	                    {
+	                        sb.Append(client.username);
+	                        sb.Append('\n');
+	                    }
+	
+						sendTextMessage(cl, sb.ToString());
+						return;
+					}
+					else if (message_lower == "!quit")
+					{
+						markClientForDisconnect(cl, "Requested quit");
+						return;
+					}
+	                else if (message_lower == "!help")
+	                {
+	                    sb.Append("Available Server Commands:\n");
+	                    sb.Append("!help - Displays this message\n");
+	                    sb.Append("!list - View all connected players\n");
+	                    sb.Append("!quit - Leaves the server\n");
+	                    sb.Append("!getcraft <playername> - Gets the most recent craft shared by the specified player\n");
+	                    sb.Append(Environment.NewLine);
+	                    
+	                    sendTextMessage(cl, sb.ToString());
+	
+	                    return;
+	                }
+	                else if (message_lower.Length > (KMPCommon.GET_CRAFT_COMMAND.Length + 1)
+	                    && message_lower.Substring(0, KMPCommon.GET_CRAFT_COMMAND.Length) == KMPCommon.GET_CRAFT_COMMAND)
+	                {
+	                    String player_name = message_lower.Substring(KMPCommon.GET_CRAFT_COMMAND.Length + 1);
+	
+	                    //Find the player with the given name
+	                    Client target_client = getClientByName(player_name);
+	
+	                    if (target_client.isReady)
+	                    {
+	                        //Send the client the craft data
+	                        lock (target_client.sharedCraftLock)
+	                        {
+	                            if (target_client.sharedCraftName.Length > 0
+	                                && target_client.sharedCraftFile != null && target_client.sharedCraftFile.Length > 0)
+	                            {
+	                                sendCraftFile(cl,
+	                                    target_client.sharedCraftName,
+	                                    target_client.sharedCraftFile,
+	                                    target_client.sharedCraftType);
+	
+	                                Log.Info("Sent craft " + target_client.sharedCraftName
+	                                    + " to client " + cl.username);
+	                            }
+	                        }
+	                    }
+	
+	                    return;
+	                }
 				}
-				else if (message_lower == "!quit")
-				{
-					markClientForDisconnect(cl, "Requested quit");
-					return;
-				}
-                else if (message_lower == "!help")
-                {
-                    sb.Append("Available Server Commands:\n");
-                    sb.Append("!help - Displays this message\n");
-                    sb.Append("!list - View all connected players\n");
-                    sb.Append("!quit - Leaves the server\n");
-                    sb.Append("!getcraft <playername> - Gets the most recent craft shared by the specified player\n");
-                    sb.Append(Environment.NewLine);
-                    
-                    sendTextMessage(cl, sb.ToString());
-
-                    return;
-                }
-                else if (message_lower.Length > (KMPCommon.GET_CRAFT_COMMAND.Length + 1)
-                    && message_lower.Substring(0, KMPCommon.GET_CRAFT_COMMAND.Length) == KMPCommon.GET_CRAFT_COMMAND)
-                {
-                    String player_name = message_lower.Substring(KMPCommon.GET_CRAFT_COMMAND.Length + 1);
-
-                    //Find the player with the given name
-                    Client target_client = getClientByName(player_name);
-
-                    if (target_client.isReady)
-                    {
-                        //Send the client the craft data
-                        lock (target_client.sharedCraftLock)
-                        {
-                            if (target_client.sharedCraftName.Length > 0
-                                && target_client.sharedCraftFile != null && target_client.sharedCraftFile.Length > 0)
-                            {
-                                sendCraftFile(cl,
-                                    target_client.sharedCraftName,
-                                    target_client.sharedCraftFile,
-                                    target_client.sharedCraftType);
-
-                                Log.Info("Sent craft " + target_client.sharedCraftName
-                                    + " to client " + cl.username);
-                            }
-                        }
-                    }
-
-                    return;
-                }
-			}
-
-            string full_message = string.Format("<{0}> {1}", cl.username, message_text);
-
-            //Console.SetCursorPosition(0, Console.CursorTop);
-            Log.Chat(cl.username, message_text);
-
-			//Send the update to all other clients
-			sendTextMessageToAll(full_message, cl);
+	
+	            string full_message = string.Format("<{0}> {1}", cl.username, message_text);
+	
+	            //Console.SetCursorPosition(0, Console.CursorTop);
+	            Log.Chat(cl.username, message_text);
+	
+				//Send the update to all other clients
+				sendTextMessageToAll(full_message, cl);
+			} catch (NullReferenceException) {}
 		}
 
 		public static byte[] buildMessageArray(KMPCommon.ServerMessageID id, byte[] data)
@@ -2395,7 +2408,21 @@ namespace KMPServer
 			catch { Log.Info("Missing (or bad) universe database file."); }
 			finally
 			{
-				if (version != UNIVERSE_VERSION)
+				if (version == 1)
+				{
+					//Upgrade old universe to version 2
+					Log.Info("Upgrading universe database...");
+					SQLiteCommand cmd = diskDB.CreateCommand();
+					string sql = "CREATE INDEX IF NOT EXISTS kmpVesselIdxGuid on kmpVessel(Guid);" +
+                        "CREATE INDEX IF NOT EXISTS kmpVesselUpdateIdxGuid on kmpVesselUpdate(guid);" +
+                        "CREATE INDEX IF NOT EXISTS kmpVesselUpdateHistoryIdxTick on kmpVesselUpdateHistory(Tick);" +
+                        "UPDATE kmpInfo SET Version = '" + UNIVERSE_VERSION + "';";
+					cmd.CommandText = sql;
+					cmd.ExecuteNonQuery();
+					Log.Info("Loading universe...");
+					diskDB.BackupDatabase(universeDB, "main", "main",-1, null, 0);
+				}
+				else if (version != UNIVERSE_VERSION)
 				{
 					Log.Info("Creating new universe...");
 					try {
@@ -2409,7 +2436,10 @@ namespace KMPServer
 						"CREATE TABLE kmpPlayer (ID INTEGER PRIMARY KEY AUTOINCREMENT, Name NVARCHAR(100), Guid CHAR(40));" +
 						"CREATE TABLE kmpVessel (Guid CHAR(40), GameGuid CHAR(40), OwnerID INTEGER, Private BIT, Active BIT, ProtoVessel BLOB, Subspace INTEGER, Destroyed BIT);" +
 						"CREATE TABLE kmpVesselUpdate (ID INTEGER PRIMARY KEY AUTOINCREMENT, Guid CHAR(40), Subspace INTEGER, UpdateMessage BLOB);" +
-						"CREATE TABLE kmpVesselUpdateHistory (Guid CHAR(40), Subspace INTEGER, Tick DOUBLE, UpdateMessage BLOB);";
+						"CREATE TABLE kmpVesselUpdateHistory (Guid CHAR(40), Subspace INTEGER, Tick DOUBLE, UpdateMessage BLOB);" +
+						"CREATE INDEX kmpVesselIdxGuid on kmpVessel(Guid);" +
+                        "CREATE INDEX kmpVesselUpdateIdxGuid on kmpVesselUpdate(guid);" +
+                        "CREATE INDEX kmpVesselUpdateHistoryIdxTick on kmpVesselUpdateHistory(Tick);";
 					cmd.CommandText = sql;
 					cmd.ExecuteNonQuery();
 				}
@@ -2524,13 +2554,18 @@ namespace KMPServer
 
         private T ByteArrayToObject<T>(byte[] data)
         {
-            if (data == null)
+            if (data.Length == 0)
                 return default(T);
             BinaryFormatter bf = new BinaryFormatter();
             MemoryStream ms = new MemoryStream(data);
             try
             {
-                return (T)bf.Deserialize(ms);
+                Object o = bf.Deserialize(ms);
+                if(o is T) {
+                    return (T)o;
+                } else {
+                    return default(T);
+                }
             }
             catch
             {

@@ -18,10 +18,10 @@ public class KMPCommon
     }
 
 	public const Int32 FILE_FORMAT_VERSION = 10000;
-	public const Int32 NET_PROTOCOL_VERSION = 10001;
+	public const Int32 NET_PROTOCOL_VERSION = 10002;
 	public const int MSG_HEADER_LENGTH = 8;
     public const int MAX_MESSAGE_SIZE = 1024 * 1024; //Enough room for a max-size craft file
-	public const int MESSAGE_COMPRESSION_THRESHOLD = 1024;
+	public const int MESSAGE_COMPRESSION_THRESHOLD = 4096;
 	public const int INTEROP_MSG_HEADER_LENGTH = 8;
 
 	public const int SERVER_SETTINGS_LENGTH = 13;
@@ -133,7 +133,7 @@ public class KMPCommon
 				//Small message, don't compress
 				using (BinaryWriter writer = new BinaryWriter(ms))
 	            {
-					writer.Write((byte)0);
+					writer.Write(false);
 	                writer.Write(data, 0, data.Length);
 	                compressedData = ms.ToArray();
 	                ms.Close();                
@@ -146,7 +146,7 @@ public class KMPCommon
 	            Int32 size = data.Length;
 	            using (BinaryWriter writer = new BinaryWriter(ms))
 	            {
-					writer.Write((byte)1);
+					writer.Write(true);
 	                writer.Write(size);
 	                gzip = new GZipOutputStream(ms);
 	                gzip.Write(data, 0, data.Length);
@@ -176,8 +176,8 @@ public class KMPCommon
 			ms = new MemoryStream(data,false);
         	using (BinaryReader reader = new BinaryReader(ms))
             {
-				byte compressedFlag = reader.ReadByte();
-				if (compressedFlag == (byte) 0)
+				bool compressedFlag = reader.ReadBoolean();
+				if (compressedFlag == false)
 				{
 					//Uncompressed
 					decompressedData = reader.ReadBytes(data.Length - 1);
