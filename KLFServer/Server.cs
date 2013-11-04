@@ -624,6 +624,10 @@ namespace KMPServer
 								Log.Info("Accepted client. Handshaking...");
 								sendHandshakeMessage(cl);
 
+                                // Start UDP communication by sending an ACK as a signal that udp is live.
+                                cl.queueOutgoingMessage(KMPCommon.ServerMessageID.UDP_ACKNOWLEDGE, null);
+                                cl.lastUDPACKTime = currentMillisecond;
+
 								sendMessageDirect(client, KMPCommon.ServerMessageID.NULL, null);
 
 								//Send the join message to the client
@@ -947,7 +951,7 @@ namespace KMPServer
 		{
 			try
 			{
-
+                Log.Info("udo");
                 IPEndPoint endpoint = new IPEndPoint(IPAddress.Parse(settings.ipBinding), settings.port);
 				byte[] received = udpClient.EndReceive(result, ref endpoint);
 
