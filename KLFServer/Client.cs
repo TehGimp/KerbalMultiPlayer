@@ -213,13 +213,13 @@ namespace KMPServer
 			{
 				//parent.disconnectClient(this, "InvalidOperationException");
 				Log.Debug("Caught InvalidOperationException for player " + this.username + " in beginAsyncRead");
-				parent.markClientForDisconnect(this);
+				//parent.markClientForDisconnect(this);
 			}
 			catch (System.IO.IOException)
 			{
                 //parent.disconnectClient(this, "IOException");
 				Log.Debug("Caught IOException for player " + this.username + " in beginAsyncRead");
-				parent.markClientForDisconnect(this);
+				//parent.markClientForDisconnect(this);
 			}
 			catch (Exception e)
 			{
@@ -251,12 +251,12 @@ namespace KMPServer
             catch (InvalidOperationException) {
 				//parent.disconnectClient(this, "InvalidOperationException");
 				Log.Debug("Caught InvalidOperationException for player " + this.username + " in asyncReceive");
-				parent.markClientForDisconnect(this);
+				//parent.markClientForDisconnect(this);
 			}
             catch (System.IO.IOException) {
 				//parent.disconnectClient(this, "IOException");
 				Log.Debug("Caught IOException for player " + this.username + " in asyncReceive");
-				parent.markClientForDisconnect(this);
+				//parent.markClientForDisconnect(this);
 			}
             catch (NullReferenceException) { } // ignore,  gets thrown after a disconnect
             catch (ThreadAbortException) { }
@@ -341,7 +341,7 @@ namespace KMPServer
 						if (currentMessageDataIndex >= currentMessageData.Length)
 						{
 							//Handle received message
-							messageReceived(currentMessageID, currentMessageData);
+							messageReceived(currentMessageID, KMPCommon.Decompress(currentMessageData));
 
 							currentMessageData = null;
 
@@ -455,14 +455,14 @@ namespace KMPServer
             {
                 //parent.disconnectClient(this, "InvalidOperationException");
 				Log.Debug("Caught InvalidOperationException for player " + this.username + " in sendOutgoingMessages");
-				parent.markClientForDisconnect(this);
+				//parent.markClientForDisconnect(this);
             }
             // Raised by BeginWrite, can mean socket is down.
             catch (System.IO.IOException)
             {
                 //parent.disconnectClient(this, "IOException");
 				Log.Debug("Caught IOException for player " + this.username + " in sendOutgoingMessages");
-				parent.markClientForDisconnect(this);
+				//parent.markClientForDisconnect(this);
             }
             catch (System.NullReferenceException) { }
 			

@@ -599,7 +599,6 @@ namespace KMPServer
 			{
 				Log.Info("Listening for clients...");
 				tcpListener.Start(4);
-
 				while (true)
 				{
 
@@ -611,6 +610,8 @@ namespace KMPServer
 						if (tcpListener.Pending())
 						{
 							client = tcpListener.AcceptTcpClient(); //Accept a TCP client
+							client.NoDelay = true;
+							Log.Info("New client...");
 						}
 					}
 					catch (System.Net.Sockets.SocketException e)
@@ -623,8 +624,8 @@ namespace KMPServer
 					
 					if (client != null && client.Connected)
 					{
+						Log.Info("Client TCP connection established...");
 						//Try to add the client
-						client.NoDelay = true;
 						Client cl = addClient(client);
 						if (cl != null)
 						{
@@ -634,11 +635,15 @@ namespace KMPServer
 								Log.Info("Accepted client. Handshaking...");
 								sendHandshakeMessage(cl);
 
-								sendMessageHeaderDirect(client, KMPCommon.ServerMessageID.NULL, 0);
+								sendMessageDirect(client, KMPCommon.ServerMessageID.NULL, null);
 
 								//Send the join message to the client
 								if (settings.joinMessage.Length > 0)
 									sendServerMessage(cl, settings.joinMessage);
+							}
+							else
+							{
+								Log.Info("Client attempted to connect, but connection was lost.");
 							}
 
 							//Send a server setting update to all clients
@@ -992,7 +997,7 @@ namespace KMPServer
 						}
 
 						//Handle the message
-						handleMessage(client, id, data);
+						handleMessage(client, id, KMPCommon.Decompress(data));
 					}
 
 				}
@@ -1799,43 +1804,44 @@ namespace KMPServer
 		public static byte[] buildMessageArray(KMPCommon.ServerMessageID id, byte[] data)
 		{
 			//Construct the byte array for the message
+			byte[] compressed_data = null;
 			int msg_data_length = 0;
 			if (data != null)
-				msg_data_length = data.Length;
+			{
+				compressed_data = KMPCommon.Compress(data);
+				msg_data_length = compressed_data.Length;
+			}
 
 			byte[] message_bytes = new byte[KMPCommon.MSG_HEADER_LENGTH + msg_data_length];
 
 			KMPCommon.intToBytes((int)id).CopyTo(message_bytes, 0);
 			KMPCommon.intToBytes(msg_data_length).CopyTo(message_bytes, 4);
-			if (data != null)
-				data.CopyTo(message_bytes, KMPCommon.MSG_HEADER_LENGTH);
+			if (compressed_data != null)
+				compressed_data.CopyTo(message_bytes, KMPCommon.MSG_HEADER_LENGTH);
 
 			return message_bytes;
 		}
 
-		private void sendMessageHeaderDirect(TcpClient client, KMPCommon.ServerMessageID id, int msg_length)
+		private void sendMessageDirect(TcpClient client, KMPCommon.ServerMessageID id, byte[] data)
 		{
-			client.GetStream().Write(KMPCommon.intToBytes((int)id), 0, 4);
-			client.GetStream().Write(KMPCommon.intToBytes(msg_length), 0, 4);
+			try
+			{
+				byte[] message_bytes = buildMessageArray(id,data);
+				client.GetStream().Write(message_bytes,0,message_bytes.Length);
 
-			Log.Debug("Sending message: " + id.ToString());
+				Log.Debug("Sending message: " + id.ToString());
+			} catch {}
 		}
 
 		private void sendHandshakeRefusalMessageDirect(TcpClient client, String message)
 		{
 			try
 			{
-
 				//Encode message
 				UnicodeEncoding encoder = new UnicodeEncoding();
 				byte[] message_bytes = encoder.GetBytes(message);
 
-				sendMessageHeaderDirect(client, KMPCommon.ServerMessageID.HANDSHAKE_REFUSAL, message_bytes.Length);
-
-				client.GetStream().Write(message_bytes, 0, message_bytes.Length);
-
-				client.GetStream().Flush();
-
+				sendMessageDirect(client, KMPCommon.ServerMessageID.HANDSHAKE_REFUSAL, message_bytes);
 			}
 			catch (System.IO.IOException)
 			{
@@ -1852,17 +1858,11 @@ namespace KMPServer
 		{
 			try
 			{
-
 				//Encode message
 				UnicodeEncoding encoder = new UnicodeEncoding();
 				byte[] message_bytes = encoder.GetBytes(message);
 
-				sendMessageHeaderDirect(client, KMPCommon.ServerMessageID.CONNECTION_END, message_bytes.Length);
-
-				client.GetStream().Write(message_bytes, 0, message_bytes.Length);
-
-				client.GetStream().Flush();
-
+				sendMessageDirect(client, KMPCommon.ServerMessageID.CONNECTION_END, message_bytes);
 			}
 			catch (System.IO.IOException)
 			{
@@ -2448,29 +2448,28 @@ namespace KMPServer
 		public void backupDatabase()
 		{
 			try
-            		{
-        		   Log.Info("Deleting disk DB.");
-        		   File.Delete(DB_FILE);
-        		   Log.Info("Creating SQL Connection");
-        		   SQLiteConnection diskDB = new SQLiteConnection(DB_FILE_CONN);
-        	    	   Log.Info("Opening new database");
-                           diskDB.Open();
-                           Log.Info("Backing up to new database");
-                           universeDB.BackupDatabase(diskDB, "main", "main", -1, null, 0);
-                           SQLiteCommand cmd = diskDB.CreateCommand();
-                           string sql = "DELETE FROM kmpSubspace WHERE LastTick < (SELECT MIN(s.LastTick) FROM kmpSubspace s INNER JOIN kmpVessel v ON v.Subspace = s.ID);" +
-                           " DELETE FROM kmpVesselUpdateHistory;" +
-                           " DELETE FROM kmpVesselUpdate WHERE ID IN (SELECT ID FROM kmpVesselUpdate vu WHERE Subspace != (SELECT ID FROM kmpSubspace WHERE LastTick = (SELECT MAX(LastTick) FROM kmpSubspace WHERE ID IN (SELECT Subspace FROM kmpVesselUpdate WHERE Guid = vu.Guid))));";
-                           cmd.CommandText = sql;
-                           cmd.ExecuteNonQuery();
-                           Log.Info("Closing and releasing database");
-                           diskDB.Close();
-                           Log.Info("Universe saved to disk.");
-            		}
-            		catch (IOException)
-            		{
-        		    Log.Error("Backing up of database failed. Try again in a few seconds.");
-            		}
+            {
+				Log.Info("Backing up old disk DB...");
+				try {
+					File.Copy(DB_FILE, DB_FILE+".bak", true);
+					File.Delete(DB_FILE);
+				} catch {}
+				SQLiteConnection diskDB = new SQLiteConnection(DB_FILE_CONN);
+				diskDB.Open();
+				universeDB.BackupDatabase(diskDB, "main", "main", -1, null, 0);
+				SQLiteCommand cmd = diskDB.CreateCommand();
+				string sql = "DELETE FROM kmpSubspace WHERE LastTick < (SELECT MIN(s.LastTick) FROM kmpSubspace s INNER JOIN kmpVessel v ON v.Subspace = s.ID);" +
+				" DELETE FROM kmpVesselUpdateHistory;" +
+				" DELETE FROM kmpVesselUpdate WHERE ID IN (SELECT ID FROM kmpVesselUpdate vu WHERE Subspace != (SELECT ID FROM kmpSubspace WHERE LastTick = (SELECT MAX(LastTick) FROM kmpSubspace WHERE ID IN (SELECT Subspace FROM kmpVesselUpdate WHERE Guid = vu.Guid))));";
+				cmd.CommandText = sql;
+				cmd.ExecuteNonQuery();
+				diskDB.Close();
+				Log.Info("Universe saved to disk.");
+			}
+			catch (IOException)
+			{
+				Log.Error("Backing up of database failed. Try again in a few seconds.");
+			}
 		}
 		
 		public void cleanDatabase()

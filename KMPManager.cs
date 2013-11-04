@@ -424,7 +424,7 @@ namespace KMP
 					foreach (HighLogic.LogEntry logEntry in HighLogic.fetch.log.GetRange(HighLogic.fetch.log.Count-50,50))
 			        {
 						if (logEntry.condition.Contains("NullReferenceException")) nreCount++;
-						if (nreCount >= 40)
+						if (nreCount >= 30)
 						{
 							forceResync = true;
 							break;

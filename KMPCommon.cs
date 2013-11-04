@@ -3,6 +3,8 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Reflection;
+using System.IO;
+using ICSharpCode.SharpZipLib.BZip2;
 
 public class KMPCommon
 {
@@ -16,9 +18,10 @@ public class KMPCommon
     }
 
 	public const Int32 FILE_FORMAT_VERSION = 10000;
-	public const Int32 NET_PROTOCOL_VERSION = 10000;
+	public const Int32 NET_PROTOCOL_VERSION = 10001;
 	public const int MSG_HEADER_LENGTH = 8;
-    public const int MAX_MESSAGE_SIZE = 8192;
+    public const int MAX_MESSAGE_SIZE = 1024 * 1024; //Enough room for a max-size craft file
+	public const int MESSAGE_COMPRESSION_THRESHOLD = 2048;
 	public const int INTEROP_MSG_HEADER_LENGTH = 8;
 
 	public const int SERVER_SETTINGS_LENGTH = 13;
@@ -115,6 +118,89 @@ public class KMPCommon
 		WARPING /*data*/,
 		SSYNC /*data*/
 	}
+	
+    public static byte[] Compress(byte[] data)
+	{
+		if (data == null) return null;
+		byte[] compressedData = null;
+        MemoryStream ms = null;
+        BZip2OutputStream bz2 = null;
+		try
+        {
+			ms = new MemoryStream();
+			if (data.Length < MESSAGE_COMPRESSION_THRESHOLD)
+			{
+				//Small message, don't compress
+				using (BinaryWriter writer = new BinaryWriter(ms))
+	            {
+					writer.Write((byte)0);
+	                writer.Write(data, 0, data.Length);
+	                compressedData = ms.ToArray();
+	                ms.Close();                
+	                writer.Close();
+	            }
+			}
+			else
+			{
+				//Compression enabled
+	            Int32 size = data.Length;
+	            using (BinaryWriter writer = new BinaryWriter(ms))
+	            {
+					writer.Write((byte)1);
+	                writer.Write(size);
+	                bz2 = new BZip2OutputStream(ms);
+	                bz2.Write(data, 0, data.Length);
+	                bz2.Close();
+	                compressedData = ms.ToArray();
+	                ms.Close();                
+	                writer.Close();
+	            }
+	        }
+		}
+        finally
+        {
+            if (bz2 != null) bz2.Dispose();
+            if (ms != null) ms.Dispose();
+        }
+        return compressedData;
+    }
 
+    public static byte[] Decompress(byte[] data)
+    {
+		if (data == null) return null;
+		byte[] decompressedData = null;
+        MemoryStream ms = null;
+        BZip2InputStream bz2 = null;
+        try
+		{
+			ms = new MemoryStream(data,false);
+        	using (BinaryReader reader = new BinaryReader(ms))
+            {
+				byte compressedFlag = reader.ReadByte();
+				if (compressedFlag == (byte) 0)
+				{
+					//Uncompressed
+					decompressedData = reader.ReadBytes(data.Length - 1);
+				}
+				else
+				{
+					//Decompress
+	                Int32 size = reader.ReadInt32();
+	                bz2 = new BZip2InputStream(ms);
+	                decompressedData = new byte[size];
+	                bz2.Read(decompressedData, 0, decompressedData.Length);
+	                bz2.Close();
+	                ms.Close();
+				}
+				reader.Close();
+            }
+        }
+        finally
+        {
+            if (bz2 != null) bz2.Dispose();
+            if (ms != null) ms.Dispose();
+        }
+        return decompressedData;
+    } 
 }
 

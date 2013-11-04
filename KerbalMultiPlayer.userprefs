@@ -2,47 +2,18 @@
   <MonoDevelop.Ide.Workspace ActiveConfiguration="Debug" />
   <MonoDevelop.Ide.Workbench ActiveDocument="KLFServer/Server.cs">
     <Files>
-      <File FileName="KMPCommon.cs" Line="29" Column="43" />
-      <File FileName="KMPVesselUpdate.cs" Line="196" Column="25" />
-      <File FileName="KMPVessel.cs" Line="94" Column="33" />
-      <File FileName="KMPClientMain.cs" Line="1891" Column="6" />
-      <File FileName="KMPInfoDisplay.cs" Line="39" Column="49" />
-      <File FileName="KMPConnectionDisplay.cs" Line="19" Column="42" />
-      <File FileName="KLFServer/Server.cs" Line="1490" Column="112" />
-      <File FileName="KLFServer/ServerClient.cs" Line="433" Column="34" />
-      <File FileName="KLFServer/ServerSettings.cs" Line="27" Column="48" />
-      <File FileName="KLFServer/ServerMain.cs" Line="20" Column="73" />
-      <File FileName="KMPManager.cs" Line="2039" Column="219" />
-      <File FileName="KMPFlightCtrlState.cs" Line="18" Column="3" />
-      <File FileName="KMPScreenshotDisplay.cs" Line="1" Column="1" />
-      <File FileName="KMPCommon.cs" Line="29" Column="43" />
-      <File FileName="KMPVesselUpdate.cs" Line="196" Column="25" />
-      <File FileName="KMPVessel.cs" Line="94" Column="33" />
-      <File FileName="KMPClientMain.cs" Line="1891" Column="6" />
-      <File FileName="KMPInfoDisplay.cs" Line="39" Column="49" />
-      <File FileName="KMPConnectionDisplay.cs" Line="19" Column="42" />
-      <File FileName="KLFServer/Server.cs" Line="484" Column="70" />
-      <File FileName="KLFServer/ServerClient.cs" Line="433" Column="34" />
-      <File FileName="KLFServer/ServerSettings.cs" Line="38" Column="24" />
-      <File FileName="KLFServer/ServerMain.cs" Line="20" Column="73" />
-      <File FileName="KMPManager.cs" Line="1606" Column="15" />
-      <File FileName="KMPFlightCtrlState.cs" Line="18" Column="3" />
-      <File FileName="KMPScreenshotDisplay.cs" Line="1" Column="1" />
-      <File FileName="Properties/AssemblyInfo.cs" Line="37" Column="1" />
-      <File FileName="KLFServer/app.config" Line="1" Column="1" />
-      <File FileName="KLFServer/KMPServer.exe.config" Line="5" Column="1" />
-      <File FileName="KLFServer/Logger.cs" Line="23" Column="58" />
+      <File FileName="KLFServer/Server.cs" Line="1798" Column="3" />
+      <File FileName="KMPManager.cs" Line="407" Column="72" />
+      <File FileName="KLFServer/Logger.cs" Line="24" Column="27" />
+      <File FileName="ScreenshotSettings.cs" Line="44" Column="26" />
+      <File FileName="KMPCommon.cs" Line="157" Column="37" />
+      <File FileName="KMPClientMain.cs" Line="1680" Column="82" />
     </Files>
     <Pads>
       <Pad Id="ProjectPad">
         <State expanded="True">
-          <Node name="KerbalMultiPlayer" expanded="True">
-            <Node name="References" expanded="True" />
-            <Node name="Properties" expanded="True" />
-          </Node>
-          <Node name="KMPServer" expanded="True">
-            <Node name="Server.cs" selected="True" />
-          </Node>
+          <Node name="KerbalMultiPlayer" expanded="True" />
+          <Node name="KMPServer" expanded="True" />
         </State>
       </Pad>
     </Pads>
