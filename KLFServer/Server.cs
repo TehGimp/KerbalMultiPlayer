@@ -2404,9 +2404,9 @@ namespace KMPServer
 					//Upgrade old universe to version 2
 					Log.Info("Upgrading universe database...");
 					SQLiteCommand cmd = diskDB.CreateCommand();
-					string sql = "CREATE INDEX kmpVesselIdxGuid on kmpVessel(Guid);" +
-                        "CREATE INDEX kmpVesselUpdateIdxGuid on kmpVesselUpdate(guid);" +
-                        "CREATE INDEX kmpVesselUpdateHistoryIdxTick on kmpVesselUpdateHistory(Tick);" +
+					string sql = "CREATE INDEX IF NOT EXISTS kmpVesselIdxGuid on kmpVessel(Guid);" +
+                        "CREATE INDEX IF NOT EXISTS kmpVesselUpdateIdxGuid on kmpVesselUpdate(guid);" +
+                        "CREATE INDEX IF NOT EXISTS kmpVesselUpdateHistoryIdxTick on kmpVesselUpdateHistory(Tick);" +
                         "UPDATE kmpInfo SET Version = '" + UNIVERSE_VERSION + "';";
 					cmd.CommandText = sql;
 					cmd.ExecuteNonQuery();
