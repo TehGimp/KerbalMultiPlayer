@@ -60,7 +60,6 @@ namespace KMPServer
 		public Exception threadException;
 
 		public object threadExceptionLock = new object();
-		public object clientActivityCountLock = new object();
 		public static object consoleWriteLock = new object();
 
 		public Thread listenThread;
@@ -103,11 +102,8 @@ namespace KMPServer
 			{
 				float relevant_player_count = 0;
 
-				lock (clientActivityCountLock)
-				{
-					//Create a weighted count of clients in-flight and not in-flight to estimate the amount of update traffic
-					relevant_player_count = flight_clients.Count + (clients.Count - flight_clients.Count) * NOT_IN_FLIGHT_UPDATE_WEIGHT;
-				}
+				//Create a weighted count of clients in-flight and not in-flight to estimate the amount of update traffic
+				relevant_player_count = flight_clients.Count + (clients.Count - flight_clients.Count) * NOT_IN_FLIGHT_UPDATE_WEIGHT;
 
 				if (relevant_player_count <= 0)
 					return ServerSettings.MIN_UPDATE_INTERVAL;
@@ -131,11 +127,7 @@ namespace KMPServer
 			get
 			{
 				int relevant_player_count = 0;
-
-				lock (clientActivityCountLock)
-				{
-					relevant_player_count = flight_clients.Count;
-				}
+				relevant_player_count = flight_clients.Count;
 
 				if (relevant_player_count <= 0)
 					return settings.totalInactiveShips;
@@ -451,11 +443,8 @@ namespace KMPServer
 							}
 							else if (input == "/count")
 							{
-								lock (clientActivityCountLock)
-								{
-                                    Log.Info("In-Game Clients: " + clients.Count);
+									Log.Info("In-Game Clients: " + clients.Count);
                                     Log.Info("In-Flight Clients: " + flight_clients.Count);
-								}
 							}
 							else if (input == "/save")
 							{
