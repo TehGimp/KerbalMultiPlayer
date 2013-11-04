@@ -1710,82 +1710,85 @@ namespace KMPServer
 		
 		public void handleClientTextMessage(Client cl, String message_text)
 		{
-			StringBuilder sb = new StringBuilder();
-
-			if (message_text.Length > 0 && message_text.First() == '!')
+			try
 			{
-				string message_lower = message_text.ToLower();
-
-				if (message_lower == "!list")
+				StringBuilder sb = new StringBuilder();
+	
+				if (message_text.Length > 0 && message_text.First() == '!')
 				{
-					//Compile list of usernames
-					sb.Append("Connected users:\n");
-
-                    foreach (var client in clients.ToList().Where(c => c.isReady))
-                    {
-                        sb.Append(client.username);
-                        sb.Append('\n');
-                    }
-
-					sendTextMessage(cl, sb.ToString());
-					return;
+					string message_lower = message_text.ToLower();
+	
+					if (message_lower == "!list")
+					{
+						//Compile list of usernames
+						sb.Append("Connected users:\n");
+	
+	                    foreach (var client in clients.ToList().Where(c => c.isReady))
+	                    {
+	                        sb.Append(client.username);
+	                        sb.Append('\n');
+	                    }
+	
+						sendTextMessage(cl, sb.ToString());
+						return;
+					}
+					else if (message_lower == "!quit")
+					{
+						markClientForDisconnect(cl, "Requested quit");
+						return;
+					}
+	                else if (message_lower == "!help")
+	                {
+	                    sb.Append("Available Server Commands:\n");
+	                    sb.Append("!help - Displays this message\n");
+	                    sb.Append("!list - View all connected players\n");
+	                    sb.Append("!quit - Leaves the server\n");
+	                    sb.Append("!getcraft <playername> - Gets the most recent craft shared by the specified player\n");
+	                    sb.Append(Environment.NewLine);
+	                    
+	                    sendTextMessage(cl, sb.ToString());
+	
+	                    return;
+	                }
+	                else if (message_lower.Length > (KMPCommon.GET_CRAFT_COMMAND.Length + 1)
+	                    && message_lower.Substring(0, KMPCommon.GET_CRAFT_COMMAND.Length) == KMPCommon.GET_CRAFT_COMMAND)
+	                {
+	                    String player_name = message_lower.Substring(KMPCommon.GET_CRAFT_COMMAND.Length + 1);
+	
+	                    //Find the player with the given name
+	                    Client target_client = getClientByName(player_name);
+	
+	                    if (target_client.isReady)
+	                    {
+	                        //Send the client the craft data
+	                        lock (target_client.sharedCraftLock)
+	                        {
+	                            if (target_client.sharedCraftName.Length > 0
+	                                && target_client.sharedCraftFile != null && target_client.sharedCraftFile.Length > 0)
+	                            {
+	                                sendCraftFile(cl,
+	                                    target_client.sharedCraftName,
+	                                    target_client.sharedCraftFile,
+	                                    target_client.sharedCraftType);
+	
+	                                Log.Info("Sent craft " + target_client.sharedCraftName
+	                                    + " to client " + cl.username);
+	                            }
+	                        }
+	                    }
+	
+	                    return;
+	                }
 				}
-				else if (message_lower == "!quit")
-				{
-					markClientForDisconnect(cl, "Requested quit");
-					return;
-				}
-                else if (message_lower == "!help")
-                {
-                    sb.Append("Available Server Commands:\n");
-                    sb.Append("!help - Displays this message\n");
-                    sb.Append("!list - View all connected players\n");
-                    sb.Append("!quit - Leaves the server\n");
-                    sb.Append("!getcraft <playername> - Gets the most recent craft shared by the specified player\n");
-                    sb.Append(Environment.NewLine);
-                    
-                    sendTextMessage(cl, sb.ToString());
-
-                    return;
-                }
-                else if (message_lower.Length > (KMPCommon.GET_CRAFT_COMMAND.Length + 1)
-                    && message_lower.Substring(0, KMPCommon.GET_CRAFT_COMMAND.Length) == KMPCommon.GET_CRAFT_COMMAND)
-                {
-                    String player_name = message_lower.Substring(KMPCommon.GET_CRAFT_COMMAND.Length + 1);
-
-                    //Find the player with the given name
-                    Client target_client = getClientByName(player_name);
-
-                    if (target_client.isReady)
-                    {
-                        //Send the client the craft data
-                        lock (target_client.sharedCraftLock)
-                        {
-                            if (target_client.sharedCraftName.Length > 0
-                                && target_client.sharedCraftFile != null && target_client.sharedCraftFile.Length > 0)
-                            {
-                                sendCraftFile(cl,
-                                    target_client.sharedCraftName,
-                                    target_client.sharedCraftFile,
-                                    target_client.sharedCraftType);
-
-                                Log.Info("Sent craft " + target_client.sharedCraftName
-                                    + " to client " + cl.username);
-                            }
-                        }
-                    }
-
-                    return;
-                }
-			}
-
-            string full_message = string.Format("<{0}> {1}", cl.username, message_text);
-
-            //Console.SetCursorPosition(0, Console.CursorTop);
-            Log.Chat(cl.username, message_text);
-
-			//Send the update to all other clients
-			sendTextMessageToAll(full_message, cl);
+	
+	            string full_message = string.Format("<{0}> {1}", cl.username, message_text);
+	
+	            //Console.SetCursorPosition(0, Console.CursorTop);
+	            Log.Chat(cl.username, message_text);
+	
+				//Send the update to all other clients
+				sendTextMessageToAll(full_message, cl);
+			} catch (NullReferenceException) {}
 		}
 
 		public static byte[] buildMessageArray(KMPCommon.ServerMessageID id, byte[] data)
