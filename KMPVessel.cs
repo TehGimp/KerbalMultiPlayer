@@ -228,10 +228,6 @@ namespace KMP
 
         }
 
-		~KMPVessel()
-		{
-		}
-
 		public void generateActiveColor()
 		{
 			//Generate a display color from the owner name
