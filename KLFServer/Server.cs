@@ -2447,18 +2447,30 @@ namespace KMPServer
 		
 		public void backupDatabase()
 		{
-			File.Delete(DB_FILE);
-			SQLiteConnection diskDB = new SQLiteConnection(DB_FILE_CONN);
-			diskDB.Open();
-			universeDB.BackupDatabase(diskDB, "main", "main",-1, null, 0);
-			SQLiteCommand cmd = diskDB.CreateCommand();
-			string sql = "DELETE FROM kmpSubspace WHERE LastTick < (SELECT MIN(s.LastTick) FROM kmpSubspace s INNER JOIN kmpVessel v ON v.Subspace = s.ID);" + 
-				" DELETE FROM kmpVesselUpdateHistory;" +
-				" DELETE FROM kmpVesselUpdate WHERE ID IN (SELECT ID FROM kmpVesselUpdate vu WHERE Subspace != (SELECT ID FROM kmpSubspace WHERE LastTick = (SELECT MAX(LastTick) FROM kmpSubspace WHERE ID IN (SELECT Subspace FROM kmpVesselUpdate WHERE Guid = vu.Guid))));";
-			cmd.CommandText = sql;
-			cmd.ExecuteNonQuery();
-			diskDB.Close();
-			Log.Info("Universe saved to disk.");
+			try
+            		{
+        		   Log.Info("Deleting disk DB.");
+        		   File.Delete(DB_FILE);
+        		   Log.Info("Creating SQL Connection");
+        		   SQLiteConnection diskDB = new SQLiteConnection(DB_FILE_CONN);
+        	    	   Log.Info("Opening new database");
+                           diskDB.Open();
+                           Log.Info("Backing up to new database");
+                           universeDB.BackupDatabase(diskDB, "main", "main", -1, null, 0);
+                           SQLiteCommand cmd = diskDB.CreateCommand();
+                           string sql = "DELETE FROM kmpSubspace WHERE LastTick < (SELECT MIN(s.LastTick) FROM kmpSubspace s INNER JOIN kmpVessel v ON v.Subspace = s.ID);" +
+                           " DELETE FROM kmpVesselUpdateHistory;" +
+                           " DELETE FROM kmpVesselUpdate WHERE ID IN (SELECT ID FROM kmpVesselUpdate vu WHERE Subspace != (SELECT ID FROM kmpSubspace WHERE LastTick = (SELECT MAX(LastTick) FROM kmpSubspace WHERE ID IN (SELECT Subspace FROM kmpVesselUpdate WHERE Guid = vu.Guid))));";
+                           cmd.CommandText = sql;
+                           cmd.ExecuteNonQuery();
+                           Log.Info("Closing and releasing database");
+                           diskDB.Close();
+                           Log.Info("Universe saved to disk.");
+            		}
+            		catch (IOException)
+            		{
+        		    Log.Error("Backing up of database failed. Try again in a few seconds.");
+            		}
 		}
 		
 		public void cleanDatabase()
