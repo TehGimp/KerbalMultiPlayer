@@ -832,7 +832,7 @@ namespace KMPServer
 				//Only send the disconnect message if the client performed handshake successfully
 				if (cl.receivedHandshake)
 				{
-					Log.Info("Client #" + cl.playerID + " " + cl.username + " has disconnected: " + message);
+					Log.Info("Player #" + cl.playerID + " " + cl.username + " has disconnected: " + message);
 	
 					StringBuilder sb = new StringBuilder();
 	
