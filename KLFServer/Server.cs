@@ -1,4 +1,4 @@
-﻿//#define DEBUG_OUT
+﻿﻿//#define DEBUG_OUT
 //#define SEND_UPDATES_TO_SENDER
 
 using System;
@@ -316,19 +316,7 @@ namespace KMPServer
 				udpClient = null;
 			}
 
-			Log.Info("Commands:");
-            Log.Info("/quit - Quit server cleanly");
-            Log.Info("/stop - Stop hosting server");
-            Log.Info("/list - List players");
-            Log.Info("/count - Display player counts");
-            Log.Info("/kick <username> - Kick player <username>");
-            Log.Info("/ban <username> - Permanently ban player <username> and any known aliases");
-            Log.Info("/register <username> <token> - Add new roster entry for player <username> with authentication token <token> (BEWARE: will delete any matching roster entries)");
-            Log.Info("/update <username> <token> - Update existing roster entry for player <username>/token <token> (one param must match existing roster entry, other will be updated)");
-            Log.Info("/unregister <username/token> - Remove any player that has a matching username or token from the roster");
-            Log.Info("/save - Backup universe");
-            Log.Info("/help - Displays all commands in the server");
-            Log.Info("Non-commands will be sent to players as a chat message");
+			displayCommands();
 
 			commandThread.Start();
 			connectionThread.Start();
@@ -451,17 +439,15 @@ namespace KMPServer
 								//Save the universe!
                                 Log.Info("Saving the universe! ;-)");
 								backupDatabase();
-							} 
-                            else if (input == "/clearclients")
-                             {
-                                 var notReadyClients = clients.Where(c => !c.isReady);
-                                 foreach (Client client in notReadyClients)
-                                 {
-                                     disconnectClient(client, "Disconnected via clearclients.");
-                                     postDisconnectCleanup(client);
-                                     Log.Info("Force-Disconnected client: " + client.playerID);
-                                 }
-                             }
+							}
+							else if (input == "/clearclients")
+							{
+								foreach (Client client in clients.ToList().Where(c => !c.isReady))
+								{
+									markClientForDisconnect(client, "Disconnected via /clearclients command");
+									Log.Info("Force-disconnected client: {0}", client.playerID);
+								}
+							}
 							else if (input.Length > 5 && input.Substring(0, 5) == "/ban ")
 							{
 								String ban_name = input.Substring(5, input.Length - 5).ToLower();
@@ -631,12 +617,8 @@ namespace KMPServer
 							if (cl.isValid)
 							{
 								//Send a handshake to the client
-								Log.Info("Accepted client. Handshaking...");
+								Log.Info("Accepted client from {0}. Handshaking...", client.Client.RemoteEndPoint.ToString());
 								sendHandshakeMessage(cl);
-
-                                // Start UDP communication by sending an ACK as a signal that udp is live.
-                                //cl.queueOutgoingMessage(KMPCommon.ServerMessageID.UDP_ACKNOWLEDGE, null);
-                                //cl.lastUDPACKTime = currentMillisecond;
 
 								sendMessageDirect(client, KMPCommon.ServerMessageID.NULL, null);
 
@@ -724,7 +706,7 @@ namespace KMPServer
                             || (!handshook && (currentMillisecond - connection_start_time) > CLIENT_HANDSHAKE_TIMEOUT_DELAY))
                         {
                             //Disconnect the client
-                            markClientForDisconnect(client, "Handshake failed");
+                            markClientForDisconnect(client);
                         }
                         else
                         {
@@ -961,6 +943,7 @@ namespace KMPServer
 		{
 			try
 			{
+
                 IPEndPoint endpoint = new IPEndPoint(IPAddress.Parse(settings.ipBinding), settings.port);
 				byte[] received = udpClient.EndReceive(result, ref endpoint);
 
@@ -1245,7 +1228,7 @@ namespace KMPServer
 						sendServerMessage(cl, sb.ToString());
 						sendServerSettings(cl);
 
-						Log.Info(username + " has joined the server using client version " + version);
+                        Log.Info("{0} has joined the server using client version {1}", username, version);
 
 						//Build join message
 						//sb.Clear();
@@ -1447,7 +1430,7 @@ namespace KMPServer
 					{
 						double incomingTick = BitConverter.ToDouble(data,0);
 						double lastSubspaceTick = incomingTick;
-						double lastClientTick = cl.lastTick;
+
 						cl.lastTick = incomingTick;
 						if (!cl.warping)
 						{
@@ -2565,24 +2548,24 @@ namespace KMPServer
 
         private void displayCommands()
         {
-            Log.Info("Commands:");
-            Log.Info("/quit - Quit server cleanly");
-            Log.Info("/stop - Stop hosting server");
-            Log.Info("/list - List players");
-            Log.Info("/count - Display player counts");
-            Log.Info("/kick <username> - Kick player <username>");
-            Log.Info("/ban <username> - Permanently ban player <username> and any known aliases");
-            Log.Info("/register <username> <token> - Add new roster entry for player <username> with authentication token <token> (BEWARE: will delete any matching roster entries)");
-            Log.Info("/update <username> <token> - Update existing roster entry for player <username>/token <token> (one param must match existing roster entry, other will be updated)");
-            Log.Info("/unregister <username/token> - Remove any player that has a matching username or token from the roster");
-            Log.Info("/save - Backup universe");
-            Log.Info("/clearclients - Disconnect any clients that are marked as Not Ready.");
-            Log.Info("/help - Displays all commands in the server");
-            Log.Info("/set [key] [value] to modify a setting.");
-            Log.Info("/whitelist [add|del] [user] to update whitelist.");
-            Log.Info("Non-commands will be sent to players as a chat message");
-
-            // to add a new command to the command list just copy the Log.Info method and add how to use that command.
+			Log.Info("Commands:");
+			Log.Info("/quit - Quit server cleanly");
+			Log.Info("/stop - Stop hosting server");
+			Log.Info("/list - List players");
+			Log.Info("/count - Display player counts");
+			Log.Info("/kick <username> - Kick player <username>");
+			Log.Info("/ban <username> - Permanently ban player <username> and any known aliases");
+			Log.Info("/register <username> <token> - Add new roster entry for player <username> with authentication token <token> (BEWARE: will delete any matching roster entries)");
+			Log.Info("/update <username> <token> - Update existing roster entry for player <username>/token <token> (one param must match existing roster entry, other will be updated)");
+			Log.Info("/unregister <username/token> - Remove any player that has a matching username or token from the roster");
+			Log.Info("/clearclients - Disconnect any clients that are marked as Not Ready.");
+			Log.Info("/save - Backup universe");
+			Log.Info("/help - Displays all commands in the server");
+			Log.Info("/set [key] [value] to modify a setting.");
+			Log.Info("/whitelist [add|del] [user] to update whitelist.");
+			Log.Info("Non-commands will be sent to players as a chat message");
+			
+			// to add a new command to the command list just copy the Log.Info method and add how to use that command.
         }
 	}
 }
