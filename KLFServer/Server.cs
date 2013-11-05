@@ -370,16 +370,16 @@ namespace KMPServer
 			clearState();
 			stopwatch.Stop();
 
-            Log.Info("Server session ended.");
+			Log.Info("Server session ended.");
 			
 		}
 
-private void handleCommands()
+		private void handleCommands()
 		{
 			Thread.CurrentThread.CurrentCulture = new CultureInfo("en-GB");
 			try
 			{
-                Boolean bRunning = true;
+				Boolean bRunning = true;
 				while (bRunning)
 				{
 					String input = Console.ReadLine().ToLower();
@@ -393,7 +393,7 @@ private void handleCommands()
 						case "/kick": kickServerCommand(input); break;
 						case "/list": listServerCommand(); break;
 						case "/quit":
-                        case "/stop": quitServerCommand(input); bRunning = false; break;
+						case "/stop": quitServerCommand(input); bRunning = false; break;
 						case "/save": saveServerCommand(); break;
 						case "/register": registerServerCommand(input); break;
 						case "/update": updateServerCommand(input); break;
