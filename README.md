@@ -68,6 +68,7 @@ Hex-editing your game binary remedies this issue as discussed on the forums here
 http://forum.kerbalspaceprogram.com/threads/24529-The-Linux-compatibility-thread!?p=705281&viewfull=1#post705281
 
   echo "7cebc7: 00" | xxd -r - KSP.x86\_64
+
   echo "7cebcc: 00" | xxd -r - KSP.x86\_64
 
 
