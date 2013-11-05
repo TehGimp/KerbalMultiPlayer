@@ -195,6 +195,11 @@ public class KMPCommon
 				reader.Close();
             }
         }
+        catch
+        {
+            // Act clueless
+            return decompressedData;
+        }
         finally
         {
             if (gzip != null) gzip.Dispose();
