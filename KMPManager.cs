@@ -2708,170 +2708,210 @@ namespace KMP
 
 		//GUI
 
-		public void drawGUI()
-		{
-			if (forceQuit)
-			{
-				forceQuit = false;
-				gameRunning = false;
-				HighLogic.LoadScene(GameScenes.MAINMENU);
-			}
-			
-			//Init info display options
-			if (KMPInfoDisplay.layoutOptions == null)
-				KMPInfoDisplay.layoutOptions = new GUILayoutOption[6];
+        public void drawGUI()
+        {
+            if (forceQuit)
+            {
+                forceQuit = false;
+                gameRunning = false;
+                HighLogic.LoadScene(GameScenes.MAINMENU);
+            }
 
-			KMPInfoDisplay.layoutOptions[0] = GUILayout.ExpandHeight(true);
-			KMPInfoDisplay.layoutOptions[1] = GUILayout.ExpandWidth(true);
+            //Init info display options
+            if (KMPInfoDisplay.layoutOptions == null)
+                KMPInfoDisplay.layoutOptions = new GUILayoutOption[6];
 
-			if (KMPInfoDisplay.infoDisplayMinimized)
-			{
-				KMPInfoDisplay.layoutOptions[2] = GUILayout.MinHeight(KMPInfoDisplay.WINDOW_HEIGHT_MINIMIZED);
-				KMPInfoDisplay.layoutOptions[3] = GUILayout.MaxHeight(KMPInfoDisplay.WINDOW_HEIGHT_MINIMIZED);
+            KMPInfoDisplay.layoutOptions[0] = GUILayout.ExpandHeight(true);
+            KMPInfoDisplay.layoutOptions[1] = GUILayout.ExpandWidth(true);
 
-				KMPInfoDisplay.layoutOptions[4] = GUILayout.MinWidth(KMPInfoDisplay.WINDOW_WIDTH_MINIMIZED);
-				KMPInfoDisplay.layoutOptions[5] = GUILayout.MaxWidth(KMPInfoDisplay.WINDOW_WIDTH_MINIMIZED);
-			}
-			else
-			{
+            if (KMPInfoDisplay.infoDisplayMinimized)
+            {
+                KMPInfoDisplay.layoutOptions[2] = GUILayout.MinHeight(KMPInfoDisplay.WINDOW_HEIGHT_MINIMIZED);
+                KMPInfoDisplay.layoutOptions[3] = GUILayout.MaxHeight(KMPInfoDisplay.WINDOW_HEIGHT_MINIMIZED);
 
-				if (KMPGlobalSettings.instance.infoDisplayBig)
-				{
-					KMPInfoDisplay.layoutOptions[4] = GUILayout.MinWidth(KMPInfoDisplay.WINDOW_WIDTH_BIG);
-					KMPInfoDisplay.layoutOptions[5] = GUILayout.MaxWidth(KMPInfoDisplay.WINDOW_WIDTH_BIG);
+                KMPInfoDisplay.layoutOptions[4] = GUILayout.MinWidth(KMPInfoDisplay.WINDOW_WIDTH_MINIMIZED);
+                KMPInfoDisplay.layoutOptions[5] = GUILayout.MaxWidth(KMPInfoDisplay.WINDOW_WIDTH_MINIMIZED);
+            }
+            else
+            {
 
-					KMPInfoDisplay.layoutOptions[2] = GUILayout.MinHeight(KMPInfoDisplay.WINDOW_HEIGHT_BIG);
-					KMPInfoDisplay.layoutOptions[3] = GUILayout.MaxHeight(KMPInfoDisplay.WINDOW_HEIGHT_BIG);
-				}
-				else
-				{
-					KMPInfoDisplay.layoutOptions[4] = GUILayout.MinWidth(KMPInfoDisplay.WINDOW_WIDTH_DEFAULT);
-					KMPInfoDisplay.layoutOptions[5] = GUILayout.MaxWidth(KMPInfoDisplay.WINDOW_WIDTH_DEFAULT);
+                if (KMPGlobalSettings.instance.infoDisplayBig)
+                {
+                    KMPInfoDisplay.layoutOptions[4] = GUILayout.MinWidth(KMPInfoDisplay.WINDOW_WIDTH_BIG);
+                    KMPInfoDisplay.layoutOptions[5] = GUILayout.MaxWidth(KMPInfoDisplay.WINDOW_WIDTH_BIG);
 
-					KMPInfoDisplay.layoutOptions[2] = GUILayout.MinHeight(KMPInfoDisplay.WINDOW_HEIGHT);
-					KMPInfoDisplay.layoutOptions[3] = GUILayout.MaxHeight(KMPInfoDisplay.WINDOW_HEIGHT);
-				}
-			}
+                    KMPInfoDisplay.layoutOptions[2] = GUILayout.MinHeight(KMPInfoDisplay.WINDOW_HEIGHT_BIG);
+                    KMPInfoDisplay.layoutOptions[3] = GUILayout.MaxHeight(KMPInfoDisplay.WINDOW_HEIGHT_BIG);
+                }
+                else
+                {
+                    KMPInfoDisplay.layoutOptions[4] = GUILayout.MinWidth(KMPInfoDisplay.WINDOW_WIDTH_DEFAULT);
+                    KMPInfoDisplay.layoutOptions[5] = GUILayout.MaxWidth(KMPInfoDisplay.WINDOW_WIDTH_DEFAULT);
 
-			CheckEditorLock();
+                    KMPInfoDisplay.layoutOptions[2] = GUILayout.MinHeight(KMPInfoDisplay.WINDOW_HEIGHT);
+                    KMPInfoDisplay.layoutOptions[3] = GUILayout.MaxHeight(KMPInfoDisplay.WINDOW_HEIGHT);
+                }
+            }
 
-			//Init chat display options
-			if (KMPChatDisplay.layoutOptions == null)
-				KMPChatDisplay.layoutOptions = new GUILayoutOption[2];
+            CheckEditorLock();
 
-			KMPChatDisplay.layoutOptions[0] = GUILayout.MinWidth(KMPChatDisplay.windowWidth);
-			KMPChatDisplay.layoutOptions[1] = GUILayout.MaxWidth(KMPChatDisplay.windowWidth);
+            //Init chat display options
+            if (KMPChatDisplay.layoutOptions == null)
+                KMPChatDisplay.layoutOptions = new GUILayoutOption[2];
 
-			//Init screenshot display options
-			if (KMPScreenshotDisplay.layoutOptions == null)
-				KMPScreenshotDisplay.layoutOptions = new GUILayoutOption[2];
+            KMPChatDisplay.layoutOptions[0] = GUILayout.MinWidth(KMPChatDisplay.windowWidth);
+            KMPChatDisplay.layoutOptions[1] = GUILayout.MaxWidth(KMPChatDisplay.windowWidth);
 
-			KMPScreenshotDisplay.layoutOptions[0] = GUILayout.MaxHeight(KMPScreenshotDisplay.MIN_WINDOW_HEIGHT);
-			KMPScreenshotDisplay.layoutOptions[1] = GUILayout.MaxWidth(KMPScreenshotDisplay.MIN_WINDOW_WIDTH);
-			
-			//Init connection display options
-			if (KMPConnectionDisplay.layoutOptions == null)
-				KMPConnectionDisplay.layoutOptions = new GUILayoutOption[2];
+            //Init screenshot display options
+            if (KMPScreenshotDisplay.layoutOptions == null)
+                KMPScreenshotDisplay.layoutOptions = new GUILayoutOption[2];
 
-			KMPConnectionDisplay.layoutOptions[0] = GUILayout.MaxHeight(KMPConnectionDisplay.MIN_WINDOW_HEIGHT);
-			KMPConnectionDisplay.layoutOptions[1] = GUILayout.MaxWidth(KMPConnectionDisplay.MIN_WINDOW_WIDTH);
-			
-			//Init lock display options
-			if (KMPVesselLockDisplay.layoutOptions == null)
-				KMPVesselLockDisplay.layoutOptions = new GUILayoutOption[2];
+            KMPScreenshotDisplay.layoutOptions[0] = GUILayout.MaxHeight(KMPScreenshotDisplay.MIN_WINDOW_HEIGHT);
+            KMPScreenshotDisplay.layoutOptions[1] = GUILayout.MaxWidth(KMPScreenshotDisplay.MIN_WINDOW_WIDTH);
 
-			KMPVesselLockDisplay.layoutOptions[0] = GUILayout.MaxHeight(KMPVesselLockDisplay.MIN_WINDOW_HEIGHT);
-			KMPVesselLockDisplay.layoutOptions[1] = GUILayout.MaxWidth(KMPVesselLockDisplay.MIN_WINDOW_WIDTH);
-			
-			GUI.skin = HighLogic.Skin;
-			
-			if (!KMPConnectionDisplay.windowEnabled && HighLogic.LoadedScene == GameScenes.MAINMENU) KMPClientMain.clearConnectionState();
-			
-			KMPConnectionDisplay.windowEnabled = (HighLogic.LoadedScene == GameScenes.MAINMENU) && globalUIToggle;
-			
-			if (KMPConnectionDisplay.windowEnabled)
-			{
-				gameRunning = false;
-				try
-				{
-					GameEvents.onGameSceneLoadRequested.Remove(this.OnGameSceneLoadRequested);
-					GameEvents.onFlightReady.Remove(this.OnFlightReady);
-					GameEvents.onPartCouple.Remove(this.OnPartCouple);
-					GameEvents.onPartUndock.Remove(this.OnPartUndock);
-					GameEvents.onCrewOnEva.Remove(this.OnCrewOnEva);
-					GameEvents.onCrewBoardVessel.Remove(this.OnCrewBoardVessel);
-					GameEvents.onVesselLoaded.Remove(this.OnVesselLoaded);
-					GameEvents.onVesselTerminated.Remove(this.OnVesselTerminated);
-					GameEvents.onVesselDestroy.Remove(this.OnVesselDestroy);
-				} catch { }
-				GUILayout.Window(
-					999996,
-					KMPConnectionDisplay.windowPos,
-					connectionWindow,
-					"Connection Settings",
-					KMPConnectionDisplay.layoutOptions
-					);
-			}
-			
-			if (!KMPConnectionDisplay.windowEnabled && KMPClientMain.handshakeCompleted && KMPClientMain.tcpSocket != null)
-			{
-				if(KMPInfoDisplay.infoDisplayActive)
-				{
-					KMPInfoDisplay.infoWindowPos = GUILayout.Window(
-						999999,
-						KMPInfoDisplay.infoWindowPos,
-						infoDisplayWindow,
-						KMPInfoDisplay.infoDisplayMinimized ? "KMP" : "KerbalMP v"+KMPCommon.PROGRAM_VERSION+" ("+KMPGlobalSettings.instance.guiToggleKey+")",
-						KMPInfoDisplay.layoutOptions
-						);
-					
-					if (isInFlight && !syncing && !KMPInfoDisplay.infoDisplayMinimized)
-					{
-						GUILayout.Window(
-							999996,
-							KMPVesselLockDisplay.windowPos,
-							lockWindow,
-							"Lock",
-							KMPVesselLockDisplay.layoutOptions
-							);
-					}
-				}	
-			}
+            //Init connection display options
+            if (KMPConnectionDisplay.layoutOptions == null)
+                KMPConnectionDisplay.layoutOptions = new GUILayoutOption[2];
 
-			
-		    if(!gameRunning)
-     	    {
-         		//close the windows if not connected to a server 
-       	 	    KMPScreenshotDisplay.windowEnabled = false;
-      		    KMPGlobalSettings.instance.chatWindowEnabled = false;
- 		    }
-			
-			if (KMPScreenshotDisplay.windowEnabled)
-			{
-				KMPScreenshotDisplay.windowPos = GUILayout.Window(
-					999998,
-					KMPScreenshotDisplay.windowPos,
-					screenshotWindow,
-					"KerbalMP Viewer",
-					KMPScreenshotDisplay.layoutOptions
-					);
-			}
+            KMPConnectionDisplay.layoutOptions[0] = GUILayout.MaxHeight(KMPConnectionDisplay.MIN_WINDOW_HEIGHT);
+            KMPConnectionDisplay.layoutOptions[1] = GUILayout.MaxWidth(KMPConnectionDisplay.MIN_WINDOW_WIDTH);
 
-			if (KMPGlobalSettings.instance.chatWindowEnabled)
-			{
-				KMPChatDisplay.windowPos = GUILayout.Window(
-					999997,
-					KMPChatDisplay.windowPos,
-					chatWindow,
-					"KerbalMP Chat",
-					KMPChatDisplay.layoutOptions
-					);
-			}
+            //Init lock display options
+            if (KMPVesselLockDisplay.layoutOptions == null)
+                KMPVesselLockDisplay.layoutOptions = new GUILayoutOption[2];
 
-			KMPInfoDisplay.infoWindowPos = enforceWindowBoundaries(KMPInfoDisplay.infoWindowPos);
-			KMPScreenshotDisplay.windowPos = enforceWindowBoundaries(KMPScreenshotDisplay.windowPos);
-			KMPChatDisplay.windowPos = enforceWindowBoundaries(KMPChatDisplay.windowPos);
-		}
+            KMPVesselLockDisplay.layoutOptions[0] = GUILayout.MaxHeight(KMPVesselLockDisplay.MIN_WINDOW_HEIGHT);
+            KMPVesselLockDisplay.layoutOptions[1] = GUILayout.MaxWidth(KMPVesselLockDisplay.MIN_WINDOW_WIDTH);
+
+            GUI.skin = HighLogic.Skin;
+
+            if (!KMPConnectionDisplay.windowEnabled && HighLogic.LoadedScene == GameScenes.MAINMENU) KMPClientMain.clearConnectionState();
+
+            KMPConnectionDisplay.windowEnabled = (HighLogic.LoadedScene == GameScenes.MAINMENU) && globalUIToggle;
+
+            if (KMPConnectionDisplay.windowEnabled)
+            {
+                gameRunning = false;
+                try
+                {
+                    GameEvents.onGameSceneLoadRequested.Remove(this.OnGameSceneLoadRequested);
+                    GameEvents.onFlightReady.Remove(this.OnFlightReady);
+                    GameEvents.onPartCouple.Remove(this.OnPartCouple);
+                    GameEvents.onPartUndock.Remove(this.OnPartUndock);
+                    GameEvents.onCrewOnEva.Remove(this.OnCrewOnEva);
+                    GameEvents.onCrewBoardVessel.Remove(this.OnCrewBoardVessel);
+                    GameEvents.onVesselLoaded.Remove(this.OnVesselLoaded);
+                    GameEvents.onVesselTerminated.Remove(this.OnVesselTerminated);
+                    GameEvents.onVesselDestroy.Remove(this.OnVesselDestroy);
+                }
+                catch { }
+                GUILayout.Window(
+                    999996,
+                    KMPConnectionDisplay.windowPos,
+                    connectionWindow,
+                    "Connection Settings",
+                    KMPConnectionDisplay.layoutOptions
+                    );
+            }
+
+            if (!KMPConnectionDisplay.windowEnabled && KMPClientMain.handshakeCompleted && KMPClientMain.tcpSocket != null)
+            {
+                if (KMPInfoDisplay.infoDisplayActive)
+                {
+                    KMPInfoDisplay.infoWindowPos = GUILayout.Window(
+                        999999,
+                        KMPInfoDisplay.infoWindowPos,
+                        infoDisplayWindow,
+                        KMPInfoDisplay.infoDisplayMinimized ? "KMP" : "KerbalMP v" + KMPCommon.PROGRAM_VERSION + " (" + KMPGlobalSettings.instance.guiToggleKey + ")",
+                        KMPInfoDisplay.layoutOptions
+                        );
+
+                    if (isInFlight && !syncing && !KMPInfoDisplay.infoDisplayMinimized)
+                    {
+                        GUILayout.Window(
+                            999996,
+                            KMPVesselLockDisplay.windowPos,
+                            lockWindow,
+                            "Lock",
+                            KMPVesselLockDisplay.layoutOptions
+                            );
+                    }
+                }
+            }
+
+
+            if (!gameRunning)
+            {
+                //close the windows if not connected to a server 
+                KMPScreenshotDisplay.windowEnabled = false;
+                KMPGlobalSettings.instance.chatWindowEnabled = false;
+            }
+
+            if (KMPScreenshotDisplay.windowEnabled)
+            {
+                KMPScreenshotDisplay.windowPos = GUILayout.Window(
+                    999998,
+                    KMPScreenshotDisplay.windowPos,
+                    screenshotWindow,
+                    "KerbalMP Viewer",
+                    KMPScreenshotDisplay.layoutOptions
+                    );
+            }
+
+            if (KMPGlobalSettings.instance.chatWindowEnabled)
+            {
+                KMPChatDisplay.windowPos = GUILayout.Window(
+                    999997,
+                    KMPChatDisplay.windowPos,
+                    chatWindow,
+                    "KerbalMP Chat",
+                    KMPChatDisplay.layoutOptions
+                    );
+            }
+
+            KMPInfoDisplay.infoWindowPos = enforceWindowBoundaries(KMPInfoDisplay.infoWindowPos);
+            KMPScreenshotDisplay.windowPos = enforceWindowBoundaries(KMPScreenshotDisplay.windowPos);
+            KMPChatDisplay.windowPos = enforceWindowBoundaries(KMPChatDisplay.windowPos);
+
+            //This script was originally made by MythStrott
+
+            //I give anyone permission to use it
+
+            //Please share any useful edits you make to the script
+
+            var textField = new string[] { "Type your message message here.", "sadasdsA ", "sdsadsaD", "sadsadDADA", "", "saDSADsadADsAD" };
+
+            var chatboxWidth = 300;
+
+            var chatboxHeight = 20;
+
+
+
+
+
+            textField[0] = GUI.TextArea(new Rect(0, Screen.height - chatboxHeight, chatboxWidth, chatboxHeight), textField[0]);
+
+
+            GUI.Label(new Rect(0, Screen.height - chatboxHeight * 2, chatboxWidth, chatboxHeight), textField[1]);
+
+            GUI.Label(new Rect(0, Screen.height - chatboxHeight * 3, chatboxWidth, chatboxHeight), textField[2]);
+
+            GUI.Label(new Rect(0, Screen.height - chatboxHeight * 4, chatboxWidth, chatboxHeight), textField[3]);
+
+            GUI.Label(new Rect(0, Screen.height - chatboxHeight * 5, chatboxWidth, chatboxHeight), textField[4]);
+
+            GUI.Label(new Rect(0, Screen.height - chatboxHeight * 6, chatboxWidth, chatboxHeight), textField[5]);
+
+
+
+
+        }
+
+     
+
+
+
+ 
 		
 		private void lockWindow(int windowID)
 		{
