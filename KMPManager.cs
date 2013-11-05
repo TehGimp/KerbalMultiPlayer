@@ -1563,7 +1563,7 @@ namespace KMP
 														serverVessels_ObtSyncDelay[vessel_update.id] = UnityEngine.Time.realtimeSinceStartup + 1f;
 													}
 												}
-												KMPClientMain.DebugLog((FlightGlobals.ActiveVessel.mainBody == update_body) + " " + extant_vessel.loaded + " " + (vessel_update.relTime == RelativeTime.PRESENT));
+												
 												if (FlightGlobals.ActiveVessel.mainBody == update_body && vessel_update.relTime == RelativeTime.PRESENT)
 												{
 													KMPClientMain.DebugLog("full update");
