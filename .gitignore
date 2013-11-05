@@ -6,17 +6,17 @@
 .git
 
 # Logs etc.
+**/*.log
 
 # Windows project stuff
-/bin
-/obj
-KLFClient/bin
-KLFClient/obj
-KLFServer/bin
-KLFServer/obj
-KLFServerList/bin
-KLFServerList/obj
+**/bin
+**/obj
+**/*.suo
+*.cache
 
+# Monodevelop project stuff
+**/*.userprefs
+**/*.pidb
 
 # Windows runtime
 *.exe
@@ -27,17 +27,12 @@ KLFServerList/obj
 # Windows clutter
 *.db
 
-# KSP binaries
+# don't distribute KSP binaries
 Assembly-CSharp.dll
 Assembly-CSharp-firstpass.dll
 UnityEngine.dll
-/KMPServerList/obj/Release/DesignTimeResolveAssemblyReferencesInput.cache
-/KerbalMultiPlayer.v11.suo
-/KMPServerList/obj/Release/KMPServerList.dll
-/KMPServerList/bin/KMPServerList.dll
-/KMPServerList/obj/Release
-/KMPServerList/obj/Release/KMPServerList.csproj.FileListAbsolute.txt
-/KMPServerList/obj/Release/KMPServerList.csprojResolveAssemblyReference.cache
-*.cache
-*.dll
-/KMPServerList/obj/Debug/KMPServerList.csproj.FileListAbsolute.txt
+**/*.dll
+
+# retain select dlls
+!System.Data.SQLite.dll
+!SQLite.Interop.dll
