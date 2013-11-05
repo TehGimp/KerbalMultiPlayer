@@ -64,6 +64,12 @@ WARNING FOR LINUX USERS: A bug with Unity/KSP as of 0.21.1 causes issues with se
   screenshots. While these features may work normally in some cases, it is recommended that you
   avoid using them as they often cause the game to crash without warning.
 
+Hex-editing your game binary remedies this issue as discussed on the forums here:
+http://forum.kerbalspaceprogram.com/threads/24529-The-Linux-compatibility-thread!?p=705281&viewfull=1#post705281
+
+  echo "7cebc7: 00" | xxd -r - KSP.x86\_64
+  echo "7cebcc: 00" | xxd -r - KSP.x86\_64
+
 
 Warping & Relative Time
 -----------------------
