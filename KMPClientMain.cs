@@ -893,10 +893,18 @@ namespace KMP
 
 						if (udpConnected != udp_should_be_connected)
 						{
-							if (udp_should_be_connected)
-								enqueueTextMessage("UDP connection established.", false, true);
-							else
-								enqueueTextMessage("UDP connection lost.", false, true);
+                            if (udp_should_be_connected)
+                            {
+                                enqueueTextMessage("UDP connection established.", false, true);
+                                ScreenMessages.PostScreenMessage("UDP connection estabilished", 30f, ScreenMessageStyle.UPPER_CENTER);
+                            }
+
+                            else
+                            {
+                                enqueueTextMessage("UDP connection lost.", false, true);
+                                ScreenMessages.PostScreenMessage("UDP connection lost", 30f, ScreenMessageStyle.UPPER_CENTER);
+                            }
+
 
 							udpConnected = udp_should_be_connected;
 							if ((stopwatch.ElapsedMilliseconds - last_udp_ack) > UDP_TIMEOUT_DELAY*10)
