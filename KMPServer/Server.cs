@@ -2501,11 +2501,18 @@ namespace KMPServer
 		{
 			try
             {
-				Log.Info("Shrinking database...");
-				SQLiteCommand cmd = universeDB.CreateCommand();
-				string sql = "VACUUM;";
-				cmd.CommandText = sql;
-				cmd.ExecuteNonQuery();
+				Log.Info("Attempting to shrink database...");
+				try
+				{
+					SQLiteCommand cmd = universeDB.CreateCommand();
+					string sql = "VACUUM;";
+					cmd.CommandText = sql;
+					cmd.ExecuteNonQuery();
+				}
+				catch (System.Data.SQLite.SQLiteException ex)
+				{
+					Log.Error("Couldn't shrink database, probably in heavy use: {0}", ex.Message);
+				}
 				Log.Info("Backing up old disk DB...");
 				try {
 					File.Copy(DB_FILE, DB_FILE+".bak", true);
