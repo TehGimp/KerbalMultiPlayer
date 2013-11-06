@@ -2521,12 +2521,12 @@ namespace KMPServer
 				SQLiteConnection diskDB = new SQLiteConnection(DB_FILE_CONN);
 				diskDB.Open();
 				universeDB.BackupDatabase(diskDB, "main", "main", -1, null, 0);
-				cmd = diskDB.CreateCommand();
-				sql = "DELETE FROM kmpSubspace WHERE LastTick < (SELECT MIN(s.LastTick) FROM kmpSubspace s INNER JOIN kmpVessel v ON v.Subspace = s.ID);" +
+				SQLiteCommand cmd2 = diskDB.CreateCommand();
+				string sql2 = "DELETE FROM kmpSubspace WHERE LastTick < (SELECT MIN(s.LastTick) FROM kmpSubspace s INNER JOIN kmpVessel v ON v.Subspace = s.ID);" +
 				" DELETE FROM kmpVesselUpdateHistory;" +
 				" DELETE FROM kmpVesselUpdate WHERE ID IN (SELECT ID FROM kmpVesselUpdate vu WHERE Subspace != (SELECT ID FROM kmpSubspace WHERE LastTick = (SELECT MAX(LastTick) FROM kmpSubspace WHERE ID IN (SELECT Subspace FROM kmpVesselUpdate WHERE Guid = vu.Guid))));";
-				cmd.CommandText = sql;
-				cmd.ExecuteNonQuery();
+				cmd2.CommandText = sql2;
+				cmd2.ExecuteNonQuery();
 				diskDB.Close();
 				Log.Info("Universe saved to disk.");
 			}
