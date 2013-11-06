@@ -199,11 +199,6 @@ public class KMPCommon
 				reader.Close();
             }
         }
-        catch
-        {
-            // Act clueless
-            return decompressedData;
-        }
 		catch (GZipException)
 		{
 			return null;
