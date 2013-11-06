@@ -458,6 +458,19 @@ namespace KMPServer
 			foreach (Client client in clients.ToList().Where(c => !c.isReady))
 			{
 				markClientForDisconnect(client, "Disconnected via /clearclients command");
+
+                /*
+                    Let's be a bit more aggresive, immediately close the socket, but leave the object intact.
+                    That should get the handleConnections thread the break it needs to have a chance to disconnect the ghost.
+                 */
+                try
+                {
+                    if (client.tcpClient != null)
+                    {
+                        client.tcpClient.Close();
+                        
+                    } 
+                } catch(Exception) { };
 				Log.Info("Force-disconnected client: {0}", client.playerID);
 			}
 		}
@@ -2664,7 +2677,7 @@ namespace KMPServer
                 foreach (Client client in clients.ToList().Where(c => !c.isReady && currentMillisecond - c.connectionStartTime > CLIENT_HANDSHAKE_TIMEOUT_DELAY + CLIENT_TIMEOUT_DELAY))
                 {
                     markClientForDisconnect(client, "Disconnected via ghost-check command. Not a ghost? Sorry!");
-                    Log.Info("Force-disconnected client: {0}", client.playerID);
+                    Log.Debug("Force-disconnected client: {0}", client.playerID);
 
                     try
                     {
@@ -2674,7 +2687,7 @@ namespace KMPServer
                     finally { foundGhost++; }
 
                 }
-                Log.Info("Ghost check complete. Removed {0} ghosts.", foundGhost);
+                //Log.Info("Ghost check complete. Removed {0} ghosts.", foundGhost);
 
                 Thread.Sleep(GHOST_CHECK_DELAY);
             }
