@@ -1,0 +1,29 @@
+#!/usr/bin/env bash
+# build KerbalMultiPlayer.dll and KMPServer.exe
+
+cd $(dirname "$0")
+
+mcs \
+-langversion:4 \
+-r:Assembly-CSharp.dll \
+-r:Assembly-CSharp-firstpass.dll \
+-r:UnityEngine.dll \
+-r:ICSharpCode.SharpZipLib.dll \
+-t:library \
+*.cs -out:KerbalMultiPlayer.dll
+
+mcs \
+-langversion:4 \
+-r:System \
+-r:System.Data \
+-r:System.Runtime.Serialization \
+-r:System.ServiceModel \
+-r:System.Xml \
+-r:Assembly-CSharp.dll \
+-r:Assembly-CSharp-firstpass.dll \
+-r:UnityEngine.dll \
+-r:System.Data.SQLite.dll \
+-r:KerbalMultiPlayer.dll \
+KMPServer/Properties/AssemblyInfo.cs \
+"KMPServer/Service References/ServerList/Reference.cs" \
+KMPServer/*.cs -out:KMPServer.exe

@@ -3,7 +3,7 @@ Microsoft Visual Studio Solution File, Format Version 11.00
 # Visual Studio 2010
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "KerbalMultiPlayer", "KerbalMultiPlayer.csproj", "{D7FB689F-A23A-4FC9-9098-CCC20B9B9E6D}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "KMPServer", "KLFServer\KMPServer.csproj", "{5D0229A6-C66F-4FB4-8D63-CD955AFDC64B}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "KMPServer", "KMPServer\KMPServer.csproj", "{5D0229A6-C66F-4FB4-8D63-CD955AFDC64B}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "KMPServerList", "KMPServerList\KMPServerList.csproj", "{4FEE872E-5A08-4579-93F6-B700AA2D79F3}"
 EndProject

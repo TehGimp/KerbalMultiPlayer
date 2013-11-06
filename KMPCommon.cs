@@ -157,6 +157,10 @@ public class KMPCommon
 	            }
 	        }
 		}
+		catch (GZipException)
+		{
+			return null;
+		}
         finally
         {
             if (gzip != null) gzip.Dispose();
@@ -200,6 +204,10 @@ public class KMPCommon
             // Act clueless
             return decompressedData;
         }
+		catch (GZipException)
+		{
+			return null;
+		}
         finally
         {
             if (gzip != null) gzip.Dispose();
