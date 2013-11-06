@@ -1607,7 +1607,7 @@ namespace KMPServer
 						break;
 				}
 			}
-			catch (NullReferenceException e)
+			catch (NullReferenceException)
 			{
 				
 			}
@@ -2488,7 +2488,7 @@ namespace KMPServer
 			}
 			
 			SQLiteCommand cmd2 = universeDB.CreateCommand();
-			string sql2 = "UPDATE kmpVessel SET Active = 0;";
+			string sql2 = "VACUUM; UPDATE kmpVessel SET Active = 0;";
 			cmd2.CommandText = sql2;
 			cmd2.ExecuteNonQuery();
 			Log.Info("Universe OK.");
@@ -2498,6 +2498,11 @@ namespace KMPServer
 		{
 			try
             {
+				Log.Info("Shrinking database...");
+				SQLiteCommand cmd = universeDB.CreateCommand();
+				string sql = "VACUUM;";
+				cmd.CommandText = sql;
+				cmd.ExecuteNonQuery();
 				Log.Info("Backing up old disk DB...");
 				try {
 					File.Copy(DB_FILE, DB_FILE+".bak", true);
@@ -2506,8 +2511,8 @@ namespace KMPServer
 				SQLiteConnection diskDB = new SQLiteConnection(DB_FILE_CONN);
 				diskDB.Open();
 				universeDB.BackupDatabase(diskDB, "main", "main", -1, null, 0);
-				SQLiteCommand cmd = diskDB.CreateCommand();
-				string sql = "DELETE FROM kmpSubspace WHERE LastTick < (SELECT MIN(s.LastTick) FROM kmpSubspace s INNER JOIN kmpVessel v ON v.Subspace = s.ID);" +
+				cmd = diskDB.CreateCommand();
+				sql = "DELETE FROM kmpSubspace WHERE LastTick < (SELECT MIN(s.LastTick) FROM kmpSubspace s INNER JOIN kmpVessel v ON v.Subspace = s.ID);" +
 				" DELETE FROM kmpVesselUpdateHistory;" +
 				" DELETE FROM kmpVesselUpdate WHERE ID IN (SELECT ID FROM kmpVesselUpdate vu WHERE Subspace != (SELECT ID FROM kmpSubspace WHERE LastTick = (SELECT MAX(LastTick) FROM kmpSubspace WHERE ID IN (SELECT Subspace FROM kmpVesselUpdate WHERE Guid = vu.Guid))));";
 				cmd.CommandText = sql;
