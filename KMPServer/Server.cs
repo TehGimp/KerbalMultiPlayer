@@ -370,7 +370,7 @@ namespace KMPServer
 			clearState();
 			stopwatch.Stop();
 
-            Log.Info("Server session ended.");
+			Log.Info("Server session ended.");
 			
 		}
 
@@ -379,192 +379,26 @@ namespace KMPServer
 			Thread.CurrentThread.CurrentCulture = new CultureInfo("en-GB");
 			try
 			{
-				while (true)
+				Boolean bRunning = true;
+				while (bRunning)
 				{
 					String input = Console.ReadLine().ToLower();
 
-					if (input != null && input.Length > 0)
+					switch(input)
 					{
-
-						if (input.ElementAt(0) == '/')
-						{
-							if (input == "/quit" || input == "/stop")
-							{
-								quit = true;
-								if (input == "/stop")
-									stop = true;
-
-								//Disconnect all clients
-                                foreach (var c in clients.ToList())
-                                {
-                                    disconnectClient(c, "Server is shutting down");
-                                }
-								//No need to clean them all up, we're shutting down anyway
-								
-								break;
-							}
-							else if (input.Length > 6 && input.Substring(0, 6) == "/kick ")
-							{
-								String kick_name = input.Substring(6, input.Length - 6).ToLower();
-
-                                var clientToDisconnect = clients.Where(cl => cl.username.ToLower() == kick_name && cl.isReady).FirstOrDefault();
-
-                                if (clientToDisconnect != null)
-                                {
-                                    markClientForDisconnect(clientToDisconnect, "You were kicked from the server.");
-                                }
-							}
-							else if (input == "/list")
-							{
-								//Display player list
-								StringBuilder sb = new StringBuilder();
-
-                                foreach (var client in clients.ToList().Where(c => c.isReady))
-                                {
-                                    sb.Append(client.username);
-                                    sb.Append(" - ");
-                                    sb.Append(client.activityLevel.ToString());
-                                    sb.Append('\n');
-                                }
-
-                                Log.Info(sb.ToString());
-							}
-							else if (input == "/count")
-							{
-									Log.Info("In-Game Clients: " + clients.Count);
-                                    Log.Info("In-Flight Clients: " + flight_clients.Count);
-							}
-							else if (input == "/save")
-							{
-								//Save the universe!
-                                Log.Info("Saving the universe! ;-)");
-								backupDatabase();
-							}
-							else if (input == "/clearclients")
-							{
-								foreach (Client client in clients.ToList().Where(c => !c.isReady))
-								{
-									markClientForDisconnect(client, "Disconnected via /clearclients command");
-									Log.Info("Force-disconnected client: {0}", client.playerID);
-								}
-							}
-							else if (input.Length > 5 && input.Substring(0, 5) == "/ban ")
-							{
-								String ban_name = input.Substring(5, input.Length - 5).ToLower();
-								string guid = Guid.Empty.ToString();
-
-                                var userToBan = clients.Where(c => c.username.ToLower() == ban_name && c.isReady).FirstOrDefault();
-
-                                if (userToBan != null)
-                                {
-                                    markClientForDisconnect(userToBan, "You were banned from the server!");
-                                    guid = userToBan.guid;
-                                }
-
-								if (guid != Guid.Empty.ToString())
-								{
-									SQLiteCommand cmd = universeDB.CreateCommand();
-									string sql = "UPDATE kmpPlayer SET Guid = @newGuid WHERE Guid = @guid;";
-                                    cmd.Parameters.AddWithValue("newGuid", Guid.NewGuid().ToString());
-                                    cmd.Parameters.AddWithValue("guid", guid);
-									cmd.CommandText = sql;
-									cmd.ExecuteNonQuery();
-									cmd.Dispose();
-                                    Log.Info("Player '" + ban_name + "' and all known aliases banned from server permanently. Use /unregister to allow this user to reconnect.");
-								}
-								else
-								{
-                                    Log.Info("Failed to locate player '" + ban_name + "'.");
-								}
-							}
-							else if (input.Length > 10 && input.Substring(0, 10) == "/register ")
-							{
-								String[] args = input.Substring(10, input.Length - 10).Split(' ');
-								if (args.Length == 2)
-								{
-									try
-									{
-										Guid parser = new Guid(args[1]);
-										String guid = parser.ToString();
-										String username_lower = args[0].ToLower();
-
-										SQLiteCommand cmd = universeDB.CreateCommand();
-										string sql = "DELETE FROM kmpPlayer WHERE Name LIKE @username;" + 
-											" INSERT INTO kmpPlayer (Name, Guid) VALUES (@username,@guid);";
-                                        cmd.Parameters.AddWithValue("username", username_lower);
-                                        cmd.Parameters.AddWithValue("guid", guid);
-										cmd.CommandText = sql;
-										cmd.ExecuteNonQuery();
-										cmd.Dispose();
-                                        Log.Info("Player '" + args[0] + "' added to player roster with token '" + args[1] + "'.");
-									}
-									catch (FormatException)
-									{
-                                        Log.Info("Supplied token is invalid.");
-									}
-									catch (Exception)
-									{
-                                        Log.Info("Registration failed, possibly due to a malformed /register command.");
-									}
-								}
-								else
-								{
-                                    Log.Info("Could not parse register command. Format is \"/register <username> <token>\"");
-								}
-							}
-							else if (input.Length > 12 && input.Substring(0, 12) == "/unregister ")
-							{
-								String dereg = input.Substring(12, input.Length - 12);
-								SQLiteCommand cmd = universeDB.CreateCommand();
-								string sql = "DELETE FROM kmpPlayer WHERE Guid = @dereg OR Name LIKE @dereg;";
-								cmd.CommandText = sql;
-                                cmd.Parameters.AddWithValue("dereg", dereg);
-								cmd.ExecuteNonQuery();
-								cmd.Dispose();
-                                Log.Info("Players with name/token '" + dereg + "' removed from player roster.");
-							}
-							else if (input.Length > 8 && input.Substring(0, 8) == "/update ")
-							{
-								String[] args = input.Substring(8, input.Length - 8).Split(' ');
-								if (args.Length == 2)
-								{
-									try
-									{
-										Guid parser = new Guid(args[1]);
-										String guid = parser.ToString();
-										String username_lower = args[0].ToLower();
-										SQLiteCommand cmd = universeDB.CreateCommand();
-										string sql = "UPDATE kmpPlayer SET Name=@username, Guid=@guid WHERE Name LIKE @username OR Guid = @guid;";
-										cmd.CommandText = sql;
-                                        cmd.Parameters.AddWithValue("username", username_lower);
-                                        cmd.Parameters.AddWithValue("guid", guid);
-										cmd.ExecuteNonQuery();
-										cmd.Dispose();
-                                        Log.Info("Updated roster with player '" + args[0] + "' and token '" + args[1] + "'.");
-									}
-									catch (FormatException)
-									{
-                                        Log.Info("Supplied token is invalid.");
-									}
-									catch (Exception)
-									{
-                                        Log.Info("Update failed, possibly due to a malformed /update command.");
-									}
-								}
-								else
-								{
-                                    Log.Info("Could not parse update command. Format is \"/update <username> <token>\"");
-                                }
-                            }
-                            else if (input == "/help")
-                                displayCommands();
-						}
-						else
-						{
-							//Send a message to all clients
-							sendServerMessageToAll(input);
-						}
-
+						case "/ban": banServerCommand(input); break;
+						case "/clearclients": clearClientsServerCommand(); break;
+						case "/count": countServerCommand(); break;
+						case "/help": displayCommands(); break;
+						case "/kick": kickServerCommand(input); break;
+						case "/list": listServerCommand(); break;
+						case "/quit":
+						case "/stop": quitServerCommand(input); bRunning = false; break;
+						case "/save": saveServerCommand(); break;
+						case "/register": registerServerCommand(input); break;
+						case "/update": updateServerCommand(input); break;
+						case "/unregister": unregisterServerCommand(input); break;
+						default: sendServerMessageToAll(input); break;
 					}
 				}
 			}
@@ -574,6 +408,208 @@ namespace KMPServer
 			catch (Exception e)
 			{
 				passExceptionToMain(e);
+			}
+		}
+
+		//Ban specified user, by name, from the server
+		private void banServerCommand(String input)
+		{
+			if (input.Length > 5 && input.Substring(0, 5) == "/ban ")
+			{
+				String ban_name = input.Substring(5, input.Length - 5).ToLower();
+				string guid = Guid.Empty.ToString();
+
+				var userToBan = clients.Where(c => c.username.ToLower() == ban_name && c.isReady).FirstOrDefault();
+
+				if (userToBan != null)
+				{
+					markClientForDisconnect(userToBan, "You were banned from the server!");
+					guid = userToBan.guid;
+				}
+
+				if (guid != Guid.Empty.ToString())
+				{
+					SQLiteCommand cmd = universeDB.CreateCommand();
+					string sql = "UPDATE kmpPlayer SET Guid = @newGuid WHERE Guid = @guid;";
+					cmd.Parameters.AddWithValue("newGuid", Guid.NewGuid().ToString());
+					cmd.Parameters.AddWithValue("guid", guid);
+					cmd.CommandText = sql;
+					cmd.ExecuteNonQuery();
+					cmd.Dispose();
+					Log.Info("Player '" + ban_name + "' and all known aliases banned from server permanently. Use /unregister to allow this user to reconnect.");
+				}
+				else
+				{
+					Log.Info("Failed to locate player '" + ban_name + "'.");
+				}
+			}
+		}
+		
+		//Disconnects all valid clients
+		private void clearClientsServerCommand()
+		{
+			foreach (Client client in clients.ToList().Where(c => !c.isReady))
+			{
+				markClientForDisconnect(client, "Disconnected via /clearclients command");
+				Log.Info("Force-disconnected client: {0}", client.playerID);
+			}
+		}
+		
+		//Reports the number of clients connected to the server
+		private void countServerCommand()
+		{
+			Log.Info("In-Game Clients: " + clients.Count);
+			Log.Info("In-Flight Clients: " + flight_clients.Count);
+		}	
+		
+		//Kicks the specified user from the server
+		private void kickServerCommand(String input)
+		{
+			if(input.Length > 6 && input.Substring(0, 6) == "/kick ")
+			{
+				String kick_name = input.Substring(6, input.Length - 6).ToLower();
+                var clientToDisconnect = clients.Where(cl => cl.username.ToLower() == kick_name && cl.isReady).FirstOrDefault();
+				if (clientToDisconnect != null)
+                {
+                    markClientForDisconnect(clientToDisconnect, "You were kicked from the server.");
+				}
+			}
+		}
+		
+		//Lists the users currently connected
+		private void listServerCommand()
+		{
+			//Display player list
+			StringBuilder sb = new StringBuilder();
+			if(clients.Count > 0)
+			{
+				foreach (var client in clients.ToList().Where(c => c.isReady))
+				{
+					sb.Append(client.username);
+					sb.Append(" - ");
+					sb.Append(client.activityLevel.ToString());
+					sb.Append('\n');
+				}
+			}
+			else
+				sb.Append("No clients connected.");
+			Log.Info(sb.ToString());			
+		}
+		
+		//Quits or Stops the server, based on input
+		private void quitServerCommand(String input)
+		{
+			quit = true;
+			if (input == "/stop")
+				stop = true;
+
+			//Disconnect all clients
+			foreach (var c in clients.ToList())
+			{
+				disconnectClient(c, "Server is shutting down");
+			}
+			//No need to clean them all up, we're shutting down anyway
+		}
+		
+		//Registers the specified username to the server
+		private void registerServerCommand(String input)
+		{
+			if (input.Length > 10 && input.Substring(0, 10) == "/register ")
+			{
+				String[] args = input.Substring(10, input.Length - 10).Split(' ');
+				if (args.Length == 2)
+				{
+					try
+					{
+						Guid parser = new Guid(args[1]);
+						String guid = parser.ToString();
+						String username_lower = args[0].ToLower();
+
+						SQLiteCommand cmd = universeDB.CreateCommand();
+						string sql = "DELETE FROM kmpPlayer WHERE Name LIKE @username;" + 
+							" INSERT INTO kmpPlayer (Name, Guid) VALUES (@username,@guid);";
+						cmd.Parameters.AddWithValue("username", username_lower);
+						cmd.Parameters.AddWithValue("guid", guid);
+						cmd.CommandText = sql;
+						cmd.ExecuteNonQuery();
+						cmd.Dispose();
+						Log.Info("Player '" + args[0] + "' added to player roster with token '" + args[1] + "'.");
+					}
+					catch (FormatException)
+					{
+						Log.Info("Supplied token is invalid.");
+					}
+					catch (Exception)
+					{
+						Log.Info("Registration failed, possibly due to a malformed /register command.");
+					}
+				}
+				else
+				{
+					Log.Info("Could not parse register command. Format is \"/register <username> <token>\"");
+				}
+			}
+		}
+		
+		//Saves the database on request
+		private void saveServerCommand()
+		{
+			//Save the universe!
+			Log.Info("Saving the universe! ;-)");
+			backupDatabase();
+		}
+		
+		//Updates the specified username GUID
+		private void updateServerCommand(String input)
+		{
+			if (input.Length > 8 && input.Substring(0, 8) == "/update ")
+			{
+				String[] args = input.Substring(8, input.Length - 8).Split(' ');
+				if (args.Length == 2)
+				{
+					try
+					{
+						Guid parser = new Guid(args[1]);
+						String guid = parser.ToString();
+						String username_lower = args[0].ToLower();
+						SQLiteCommand cmd = universeDB.CreateCommand();
+						string sql = "UPDATE kmpPlayer SET Name=@username, Guid=@guid WHERE Name LIKE @username OR Guid = @guid;";
+						cmd.CommandText = sql;
+						cmd.Parameters.AddWithValue("username", username_lower);
+						cmd.Parameters.AddWithValue("guid", guid);
+						cmd.ExecuteNonQuery();
+						cmd.Dispose();
+						Log.Info("Updated roster with player '" + args[0] + "' and token '" + args[1] + "'.");
+					}
+					catch (FormatException)
+					{
+						Log.Info("Supplied token is invalid.");
+					}
+					catch (Exception)
+					{
+						Log.Info("Update failed, possibly due to a malformed /update command.");
+					}
+				}
+				else
+				{
+					Log.Info("Could not parse update command. Format is \"/update <username> <token>\"");
+				}
+			}
+		}
+
+		//Unregisters the specified username from the server
+		private void unregisterServerCommand(String input)
+		{
+			if (input.Length > 12 && input.Substring(0, 12) == "/unregister ")
+			{
+				String dereg = input.Substring(12, input.Length - 12);
+				SQLiteCommand cmd = universeDB.CreateCommand();
+				string sql = "DELETE FROM kmpPlayer WHERE Guid = @dereg OR Name LIKE @dereg;";
+				cmd.CommandText = sql;
+				cmd.Parameters.AddWithValue("dereg", dereg);
+				cmd.ExecuteNonQuery();
+				cmd.Dispose();
+				Log.Info("Players with name/token '" + dereg + "' removed from player roster.");
 			}
 		}
 
