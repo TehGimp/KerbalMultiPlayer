@@ -2558,8 +2558,8 @@ namespace KMP
 		
 		private void OnVesselTerminated(ProtoVessel data)
 		{
-            KMPClientMain.DebugLog("Vessel termination: " + data.vesselID + " " + serverVessels_RemoteID.ContainsKey(data.vesselID) + " " + (HighLogic.LoadedScene == GameScenes.TRACKSTATION) + " " + (!serverVessels_IsMine.ContainsKey(data.vesselID) || (serverVessels_IsMine.ContainsKey(data.vesselID) ? serverVessels_IsMine[data.vesselID] : false)));
-			if (serverVessels_RemoteID.ContainsKey(data.vesselID) && HighLogic.LoadedScene == GameScenes.TRACKSTATION && (!serverVessels_IsMine.ContainsKey(data.vesselID) || serverVessels_IsMine[data.vesselID]))
+            KMPClientMain.DebugLog("Vessel termination: " + data.vesselID + " " + serverVessels_RemoteID.ContainsKey(data.vesselID) + " " + (HighLogic.LoadedScene == GameScenes.TRACKSTATION) + " " + (data.vesselType == VesselType.Debris || (serverVessels_IsMine.ContainsKey(data.vesselID) ? serverVessels_IsMine[data.vesselID] : true)));
+			if (serverVessels_RemoteID.ContainsKey(data.vesselID) && HighLogic.LoadedScene == GameScenes.TRACKSTATION && (data.vesselType == VesselType.Debris || (serverVessels_IsMine.ContainsKey(data.vesselID) ? serverVessels_IsMine[data.vesselID] : true)))
 			{
 				activeTermination = true;
 			}
@@ -2567,7 +2567,7 @@ namespace KMP
 		
 		private void OnVesselDestroy(Vessel data)
 		{
-			if (!docking && serverVessels_RemoteID.ContainsKey(data.id) && (isInFlight && data.id == FlightGlobals.ActiveVessel.id || (HighLogic.LoadedScene == GameScenes.TRACKSTATION && activeTermination && (!serverVessels_IsMine.ContainsKey(data.id) || (serverVessels_IsMine.ContainsKey(data.id) ? serverVessels_IsMine[data.id] : false)))))
+			if (!docking && serverVessels_RemoteID.ContainsKey(data.id) && (isInFlight && data.id == FlightGlobals.ActiveVessel.id || (HighLogic.LoadedScene == GameScenes.TRACKSTATION && activeTermination && (data.vesselType == VesselType.Debris || (serverVessels_IsMine.ContainsKey(data.id) ? serverVessels_IsMine[data.id] : true)))))
 			{
 				activeTermination = false;
 				KMPClientMain.DebugLog("Vessel destroyed: " + data.id);
