@@ -157,6 +157,10 @@ public class KMPCommon
 	            }
 	        }
 		}
+		catch (GZipException ex)
+		{
+			return null;
+		}
         finally
         {
             if (gzip != null) gzip.Dispose();
@@ -195,6 +199,10 @@ public class KMPCommon
 				reader.Close();
             }
         }
+		catch (GZipException ex)
+		{
+			return null;
+		}
         finally
         {
             if (gzip != null) gzip.Dispose();
