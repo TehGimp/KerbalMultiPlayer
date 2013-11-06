@@ -383,8 +383,8 @@ namespace KMPServer
 				while (bRunning)
 				{
 					String input = Console.ReadLine().ToLower();
-
-					switch(input)
+                    String sTest = input.IndexOf(' ') != -1 ? input.Substring(0, input.IndexOf(' ')) : input;
+					switch(sTest)
 					{
 						case "/ban": banServerCommand(input); break;
 						case "/clearclients": clearClientsServerCommand(); break;
