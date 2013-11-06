@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -62,6 +62,8 @@ namespace KMP
 		public const float IDLE_DELAY = 120.0f;
 		public const float PLUGIN_DATA_WRITE_INTERVAL = 0.333f;
 		public const float GLOBAL_SETTINGS_SAVE_INTERVAL = 10.0f;
+        public const double SAFETY_BUBBLE_DIAMETER = 40000d;
+        public const double PROTO_SAFETY_BUBBLE_DIAMETER = 35000d;
 
 		public const int INTEROP_MAX_QUEUE_SIZE = 64;
 		public const float INTEROP_WRITE_INTERVAL = 0.333f;
@@ -227,8 +229,9 @@ namespace KMP
 						if (ssUIButton.tooltip == "Terminate") ssUIButton.Unlock();
 					}
 				}
-				
-				if (isInFlight && FlightGlobals.ActiveVessel.mainBody.name == "Kerbin" && FlightGlobals.ActiveVessel.altitude < 40000d) {
+
+                if (isInFlight && FlightGlobals.ActiveVessel.mainBody.name == "Kerbin" && FlightGlobals.ActiveVessel.altitude < SAFETY_BUBBLE_DIAMETER)
+                {
 					if (ksc == null) ksc = GameObject.Find("KSC");
 					kscPosition = new Vector3d(ksc.transform.position[0],ksc.transform.position[1],ksc.transform.position[2]);
 				} else kscPosition = Vector3d.zero;
@@ -251,7 +254,7 @@ namespace KMP
 					{
 						string baseName = vessel.vesselName;
 						if (baseName.StartsWith("* ")) baseName = baseName.Substring(2);
-						vessel.vesselName = (((serverVessels_InUse.ContainsKey(vessel.id) && serverVessels_InUse[vessel.id]) || (serverVessels_IsPrivate.ContainsKey(vessel.id) && serverVessels_IsPrivate[vessel.id] && serverVessels_IsMine.ContainsKey(vessel.id) && !serverVessels_IsMine[vessel.id])) ? "* " : "") + baseName;
+						vessel.vesselName = (((serverVessels_InUse.ContainsKey(vessel.id) ? serverVessels_InUse[vessel.id] : false) || ((serverVessels_IsPrivate.ContainsKey(vessel.id) ? serverVessels_IsPrivate[vessel.id]: false) && (serverVessels_IsMine.ContainsKey(vessel.id) ? !serverVessels_IsMine[vessel.id] : false))) ? "* " : "") + baseName;
 					}
 				}
 				else //Kill Kraken-debris, clean names
@@ -553,7 +556,7 @@ namespace KMP
 			writePrimaryUpdate();
 			
 			//nearby vessels
-			if (isInFlight && !syncing && !warping && (FlightGlobals.ActiveVessel.mainBody.bodyName != "Kerbin" || FlightGlobals.ActiveVessel.altitude > 35000d || kscPosition == Vector3d.zero || Vector3d.Distance(kscPosition,FlightGlobals.ActiveVessel.GetWorldPos3D()) > 40000d))
+            if (isInFlight && !syncing && !warping && (FlightGlobals.ActiveVessel.mainBody.bodyName != "Kerbin" || FlightGlobals.ActiveVessel.altitude > PROTO_SAFETY_BUBBLE_DIAMETER || kscPosition == Vector3d.zero || Vector3d.Distance(kscPosition, FlightGlobals.ActiveVessel.GetWorldPos3D()) > SAFETY_BUBBLE_DIAMETER))
 			{
 				writeSecondaryUpdates();
 			}
@@ -562,7 +565,7 @@ namespace KMP
 		private void writePrimaryUpdate()
 		{
 			if (!syncing && isInFlight && !warping
-			    && (FlightGlobals.ActiveVessel.mainBody.bodyName != "Kerbin" || FlightGlobals.ActiveVessel.altitude > 35000d || kscPosition == Vector3d.zero || Vector3d.Distance(kscPosition,FlightGlobals.ActiveVessel.GetWorldPos3D()) > 40000d))
+                && (FlightGlobals.ActiveVessel.mainBody.bodyName != "Kerbin" || FlightGlobals.ActiveVessel.altitude > 35000d || kscPosition == Vector3d.zero || Vector3d.Distance(kscPosition, FlightGlobals.ActiveVessel.GetWorldPos3D()) > SAFETY_BUBBLE_DIAMETER))
 			{
 				lastTick = Planetarium.GetUniversalTime();
 				//Write vessel status
@@ -691,7 +694,7 @@ namespace KMP
 							{
 								Part root = vessel.rootPart;
 								bool include = true;
-								if (serverVessels_InUse.ContainsKey(vessel.id) && !serverVessels_InUse[vessel.id])
+								if (serverVessels_InUse.ContainsKey(vessel.id) ? !serverVessels_InUse[vessel.id]: false)
 								{
 									foreach (Guid vesselID in serverVessels_Parts.Keys)
 									{
@@ -729,7 +732,7 @@ namespace KMP
 							update.situation = Situation.DESTROYED; //Don't keep sending a secondary vessel that will stay destroyed for any other client
 						update.distance = enumerator.Current.Key;
 						update.state = State.INACTIVE;
-						if (enumerator.Current.Value.loaded && serverVessels_InUse.ContainsKey(enumerator.Current.Value.id) && serverVessels_InUse[enumerator.Current.Value.id] && FlightGlobals.ActiveVessel.altitude > 10000d)
+						if (enumerator.Current.Value.loaded && (serverVessels_InUse.ContainsKey(enumerator.Current.Value.id) ? serverVessels_InUse[enumerator.Current.Value.id] : false) && FlightGlobals.ActiveVessel.altitude > 10000d)
 						{
 							//Rendezvous relative position data
 							KMPClientMain.DebugLog ("sending docking-mode update, distance: " + enumerator.Current.Key);
@@ -796,18 +799,26 @@ namespace KMP
 			
 			//Create a KMPVesselUpdate from the vessel data
 			KMPVesselUpdate update;
-			if (!forceFullUpdate
-			    && serverVessels_PartCounts.ContainsKey(vessel.id)
-			    && !(vessel.id == FlightGlobals.ActiveVessel.id && FlightGlobals.ActiveVessel.ctrlState.mainThrottle == 0f && (UnityEngine.Time.realtimeSinceStartup - lastFullProtovesselUpdate) > FULL_PROTOVESSEL_UPDATE_TIMEOUT))
+            //KMPClientMain.DebugLog("Vid: " + vessel.id);
+            //KMPClientMain.DebugLog("foreFullUpdate: " + forceFullUpdate);
+            //KMPClientMain.DebugLog("ParCountsContains: " + serverVessels_PartCounts.ContainsKey(vessel.id));
+            //KMPClientMain.DebugLog("TimeDelta: " + ((UnityEngine.Time.realtimeSinceStartup - lastFullProtovesselUpdate) < FULL_PROTOVESSEL_UPDATE_TIMEOUT));
+            //KMPClientMain.DebugLog("Throttle: " + (FlightGlobals.ActiveVessel.ctrlState.mainThrottle == 0f));
+
+
+			if (!forceFullUpdate && (serverVessels_PartCounts.ContainsKey(vessel.id) ? 
+                !(vessel.id == FlightGlobals.ActiveVessel.id && FlightGlobals.ActiveVessel.ctrlState.mainThrottle == 0f 
+                && (UnityEngine.Time.realtimeSinceStartup - lastFullProtovesselUpdate) > FULL_PROTOVESSEL_UPDATE_TIMEOUT) : false))
 			{
-				if (serverVessels_PartCounts.ContainsKey(vessel.id)
-				    && serverVessels_PartCounts[vessel.id] == vessel.Parts.Count
-				    && sentVessels_Situations.ContainsKey(vessel.id)
-				    && (sentVessels_Situations[vessel.id] == vessel.situation || sentVessels_Situations[vessel.id] == Vessel.Situations.LANDED))
+				if ((serverVessels_PartCounts.ContainsKey(vessel.id) ? serverVessels_PartCounts[vessel.id] == vessel.Parts.Count : false)
+				    && (sentVessels_Situations.ContainsKey(vessel.id) ? (sentVessels_Situations[vessel.id] == vessel.situation) : false)
+                    || (sentVessels_Situations.ContainsKey(vessel.id) ? (sentVessels_Situations[vessel.id] == Vessel.Situations.LANDED) : false))
 				{
-					if (!newFlags.ContainsKey(vessel.id) || (UnityEngine.Time.realtimeSinceStartup - newFlags[vessel.id]) < 65f) 
+					if (!newFlags.ContainsKey(vessel.id))
 						update = new KMPVesselUpdate(vessel,false);
-					else
+					else if ((UnityEngine.Time.realtimeSinceStartup - newFlags[vessel.id]) < 65f)
+                        update = new KMPVesselUpdate(vessel,false);
+                    else
 					{
 						update = new KMPVesselUpdate(vessel);
 						newFlags.Remove(vessel.id);
@@ -831,7 +842,7 @@ namespace KMP
 					KMPClientMain.DebugLog("First or forced proto update for active vessel: " + vessel.id);
 					lastFullProtovesselUpdate = UnityEngine.Time.realtimeSinceStartup;
 				}
-				if (!vessel.packed) serverVessels_PartCounts[vessel.id] = vessel.Parts.Count;
+                if (!vessel.packed && serverVessels_PartCounts.ContainsKey(vessel.id)) serverVessels_PartCounts[vessel.id] = vessel.Parts.Count;
 			}
 			
 			//Track vessel situation
@@ -1496,7 +1507,7 @@ namespace KMP
 							extant_vessel.name = vessel_update.name;
 							extant_vessel.vesselName = vessel_update.name;
 						}
-						if (!serverVessels_LoadDelay.ContainsKey(vessel_update.id) || serverVessels_LoadDelay[vessel_update.id] < UnityEngine.Time.realtimeSinceStartup)
+						if (!serverVessels_LoadDelay.ContainsKey(vessel_update.id) || (serverVessels_LoadDelay.ContainsKey(vessel_update.id) ? (serverVessels_LoadDelay[vessel_update.id] < UnityEngine.Time.realtimeSinceStartup) : false))
 						{
 							float incomingDistance = 2500f;
 							if (vessel.worldPosition != Vector3.zero && vessel_update.relTime == RelativeTime.PRESENT)
@@ -1567,7 +1578,7 @@ namespace KMP
 												if (FlightGlobals.ActiveVessel.mainBody == update_body && vessel_update.relTime == RelativeTime.PRESENT)
 												{
 													KMPClientMain.DebugLog("full update");
-													if (!serverVessels_InPresent.ContainsKey(vessel_update.id) || !serverVessels_InPresent[vessel_update.id])
+													if (!serverVessels_InPresent.ContainsKey(vessel_update.id) || serverVessels_InPresent.ContainsKey(vessel_update.id) ? !serverVessels_InPresent[vessel_update.id] : false)
 													{
 														serverVessels_InPresent[vessel_update.id] = true;
 														foreach (Part part in extant_vessel.Parts)
@@ -1663,7 +1674,7 @@ namespace KMP
 												{
 													KMPClientMain.DebugLog("update from past/future");
 													
-													if (!serverVessels_InPresent.ContainsKey(vessel_update.id) || serverVessels_InPresent[vessel_update.id])
+													if (!serverVessels_InPresent.ContainsKey(vessel_update.id) || serverVessels_InPresent.ContainsKey(vessel_update.id) ? serverVessels_InPresent[vessel_update.id]: false)
 													{
 														serverVessels_InPresent[vessel_update.id] = false;
 														foreach (Part part in extant_vessel.Parts)
@@ -1785,6 +1796,7 @@ namespace KMP
 							
 							if (!dockingRelVel.ContainsKey(updateFrom.id))
 								dockingRelVel[updateFrom.id] = updateFrom.GetObtVelocity();
+
 							Vector3d relVel = FlightGlobals.ActiveVessel.GetObtVelocity()-dockingRelVel[updateFrom.id];
 							Vector3d updateRelVel = new Vector3d(vessel_update.o_vel[0],vessel_update.o_vel[1],vessel_update.o_vel[2]);
 							Vector3d diffPos = updateRelPos - relPos;
@@ -1795,9 +1807,9 @@ namespace KMP
 							
 							bool applyUpdate = true;
 							double curTick = Planetarium.GetUniversalTime();
-							if (serverVessels_RendezvousSmoothPos.ContainsKey(updateFrom.id) && relPos.sqrMagnitude > (serverVessels_RendezvousSmoothPos[updateFrom.id].Key * 25) && serverVessels_RendezvousSmoothPos[updateFrom.id].Value > (curTick-5d))
+							if (serverVessels_RendezvousSmoothPos.ContainsKey(updateFrom.id) ? (relPos.sqrMagnitude > (serverVessels_RendezvousSmoothPos[updateFrom.id].Key * 25) && serverVessels_RendezvousSmoothPos[updateFrom.id].Value > (curTick-5d)): false)
 								applyUpdate = false;
-							if (serverVessels_RendezvousSmoothVel.ContainsKey(updateFrom.id) && relVel.sqrMagnitude > (serverVessels_RendezvousSmoothVel[updateFrom.id].Key * 25) && serverVessels_RendezvousSmoothVel[updateFrom.id].Value > (curTick-5d))
+							if (serverVessels_RendezvousSmoothVel.ContainsKey(updateFrom.id) ? (relVel.sqrMagnitude > (serverVessels_RendezvousSmoothVel[updateFrom.id].Key * 25) && serverVessels_RendezvousSmoothVel[updateFrom.id].Value > (curTick-5d)): false)
 								applyUpdate = false;
 							
 							double expectedDist = Vector3d.Distance(newPos, activeVesselPosition);
@@ -2046,8 +2058,8 @@ namespace KMP
 							return;
 					}
 				}
-				
-				if (!((update != null && update.bodyName != "Kerbin") || protovessel.altitude > 35000d || kscPosition == Vector3d.zero || Vector3d.Distance(kscPosition,protovessel.position) > 40000d)) //refuse to load anything too close to the KSC
+
+                if (!((update != null && update.bodyName != "Kerbin") || protovessel.altitude > 35000d || kscPosition == Vector3d.zero || Vector3d.Distance(kscPosition, protovessel.position) > SAFETY_BUBBLE_DIAMETER)) //refuse to load anything too close to the KSC
 				{
 					KMPClientMain.DebugLog("Tried to load vessel to close to KSC");
 					return;
@@ -2071,7 +2083,7 @@ namespace KMP
 						}
 					}
 				}
-				if (vessels.ContainsKey(vessel_id.ToString()) && (!serverVessels_LoadDelay.ContainsKey(vessel_id) || serverVessels_LoadDelay[vessel_id] < UnityEngine.Time.realtimeSinceStartup))
+				if (vessels.ContainsKey(vessel_id.ToString()) && (!serverVessels_LoadDelay.ContainsKey(vessel_id) || (serverVessels_LoadDelay.ContainsKey(vessel_id) ? serverVessels_LoadDelay[vessel_id] < UnityEngine.Time.realtimeSinceStartup : false)))
 				{
 					protovessel.Load(HighLogic.CurrentGame.flightState);
 					Vessel created_vessel = protovessel.vesselRef;
@@ -2546,7 +2558,7 @@ namespace KMP
 		
 		private void OnVesselTerminated(ProtoVessel data)
 		{
-			KMPClientMain.DebugLog("Vessel termination: " + data.vesselID + " " + serverVessels_RemoteID.ContainsKey(data.vesselID) + " " + (HighLogic.LoadedScene == GameScenes.TRACKSTATION) + " " + (!serverVessels_IsMine.ContainsKey(data.vesselID) || serverVessels_IsMine[data.vesselID]));
+            KMPClientMain.DebugLog("Vessel termination: " + data.vesselID + " " + serverVessels_RemoteID.ContainsKey(data.vesselID) + " " + (HighLogic.LoadedScene == GameScenes.TRACKSTATION) + " " + (!serverVessels_IsMine.ContainsKey(data.vesselID) || (serverVessels_IsMine.ContainsKey(data.vesselID) ? serverVessels_IsMine[data.vesselID] : false)));
 			if (serverVessels_RemoteID.ContainsKey(data.vesselID) && HighLogic.LoadedScene == GameScenes.TRACKSTATION && (!serverVessels_IsMine.ContainsKey(data.vesselID) || serverVessels_IsMine[data.vesselID]))
 			{
 				activeTermination = true;
@@ -2555,7 +2567,7 @@ namespace KMP
 		
 		private void OnVesselDestroy(Vessel data)
 		{
-			if (!docking && serverVessels_RemoteID.ContainsKey(data.id) && (isInFlight && data.id == FlightGlobals.ActiveVessel.id || (HighLogic.LoadedScene == GameScenes.TRACKSTATION && activeTermination && (!serverVessels_IsMine.ContainsKey(data.id) || serverVessels_IsMine[data.id]))))
+			if (!docking && serverVessels_RemoteID.ContainsKey(data.id) && (isInFlight && data.id == FlightGlobals.ActiveVessel.id || (HighLogic.LoadedScene == GameScenes.TRACKSTATION && activeTermination && (!serverVessels_IsMine.ContainsKey(data.id) || (serverVessels_IsMine.ContainsKey(data.id) ? serverVessels_IsMine[data.id] : false)))))
 			{
 				activeTermination = false;
 				KMPClientMain.DebugLog("Vessel destroyed: " + data.id);
@@ -2684,11 +2696,8 @@ namespace KMP
 					KeyCode key = KeyCode.F7;
 					if (getAnyKeyDown(ref key))
 					{
-						if (key != KeyCode.Mouse0)
-						{
-							KMPGlobalSettings.instance.guiToggleKey = key;
-							mappingGUIToggleKey = false;
-						}
+						KMPGlobalSettings.instance.guiToggleKey = key;
+						mappingGUIToggleKey = false;
 					}
 				}
 	
@@ -2930,7 +2939,7 @@ namespace KMP
 			{
 				KMPGlobalSettings.instance.infoDisplayBig = GUILayout.Toggle(
 					KMPGlobalSettings.instance.infoDisplayBig,
-					KMPGlobalSettings.instance.infoDisplayBig ? "– " : "+ ",
+					KMPGlobalSettings.instance.infoDisplayBig ? "� " : "+ ",
 					GUI.skin.button);
 				KMPInfoDisplay.infoDisplayDetailed = GUILayout.Toggle(KMPInfoDisplay.infoDisplayDetailed, "Detail", GUI.skin.button);
 				KMPInfoDisplay.infoDisplayOptions = GUILayout.Toggle(KMPInfoDisplay.infoDisplayOptions, "Options", GUI.skin.button);
