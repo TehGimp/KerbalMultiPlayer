@@ -39,6 +39,9 @@ namespace KMPServer
 		
 		public const long CLIENT_TIMEOUT_DELAY = 16000;
 		public const long CLIENT_HANDSHAKE_TIMEOUT_DELAY = 18000;
+
+        public const int GHOST_CHECK_DELAY = 30000;
+
 		public const int SLEEP_TIME = 10;
 		public const int MAX_SCREENSHOT_COUNT = 10000;
 		public const int UDP_ACK_THROTTLE = 1000;
@@ -66,6 +69,7 @@ namespace KMPServer
 		public Thread commandThread;
 		public Thread connectionThread;
 		public Thread outgoingMessageThread;
+        public Thread ghostCheckThread;
 
 		public TcpListener tcpListener;
 		public UdpClient udpClient;
@@ -300,6 +304,7 @@ namespace KMPServer
 			commandThread = new Thread(new ThreadStart(handleCommands));
 			connectionThread = new Thread(new ThreadStart(handleConnections));
 			outgoingMessageThread = new Thread(new ThreadStart(sendOutgoingMessages));
+            ghostCheckThread = new Thread(new ThreadStart(checkGhosts));
 
 			threadException = null;
 
@@ -321,6 +326,7 @@ namespace KMPServer
 			commandThread.Start();
 			connectionThread.Start();
 			outgoingMessageThread.Start();
+            ghostCheckThread.Start();
 			
 			//Begin listening for HTTP requests
 
@@ -446,6 +452,12 @@ namespace KMPServer
 								{
 									markClientForDisconnect(client, "Disconnected via /clearclients command");
 									Log.Info("Force-disconnected client: {0}", client.playerID);
+
+                                    try
+                                    {
+                                        client.tcpClient.Close();
+                                    }
+                                    catch (Exception) { }
 								}
 							}
 							else if (input.Length > 5 && input.Substring(0, 5) == "/ban ")
@@ -1755,7 +1767,7 @@ namespace KMPServer
 	                    sendTextMessage(cl, sb.ToString());
 	
 	                    return;
-	                }
+	                } 
 	                else if (message_lower.Length > (KMPCommon.GET_CRAFT_COMMAND.Length + 1)
 	                    && message_lower.Substring(0, KMPCommon.GET_CRAFT_COMMAND.Length) == KMPCommon.GET_CRAFT_COMMAND)
 	                {
@@ -2601,6 +2613,32 @@ namespace KMPServer
 			Log.Info("Non-commands will be sent to players as a chat message");
 			
 			// to add a new command to the command list just copy the Log.Info method and add how to use that command.
+        }
+
+        private void checkGhosts()
+        {
+            Thread.CurrentThread.CurrentCulture = new CultureInfo("en-GB");
+            Log.Debug("Starting ghost-check thread");
+            while (true)
+            {
+                int foundGhost = 0;
+                foreach (Client client in clients.ToList().Where(c => !c.isReady && currentMillisecond - c.connectionStartTime > CLIENT_HANDSHAKE_TIMEOUT_DELAY + CLIENT_TIMEOUT_DELAY))
+                {
+                    markClientForDisconnect(client, "Disconnected via ghost-check command. Not a ghost? Sorry!");
+                    Log.Info("Force-disconnected client: {0}", client.playerID);
+
+                    try
+                    {
+                        client.tcpClient.Close();
+                    }
+                    catch (Exception) { }
+                    finally { foundGhost++; }
+
+                }
+                Log.Info("Ghost check complete. Removed {0} ghosts.", foundGhost);
+
+                Thread.Sleep(GHOST_CHECK_DELAY);
+            }
         }
 	}
 }
