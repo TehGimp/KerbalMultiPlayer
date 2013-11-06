@@ -472,7 +472,10 @@ namespace KMPServer
 				if (clientToDisconnect != null)
                 {
                     markClientForDisconnect(clientToDisconnect, "You were kicked from the server.");
+                    Log.Info(clientToDisconnect.username + " was kicked from the server.");
 				}
+                else
+                    Log.Info("Username \"" + kick_name + "\" not found.");
 			}
 		}
 		
