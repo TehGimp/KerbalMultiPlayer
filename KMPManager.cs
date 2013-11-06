@@ -2696,8 +2696,11 @@ namespace KMP
 					KeyCode key = KeyCode.F7;
 					if (getAnyKeyDown(ref key))
 					{
-						KMPGlobalSettings.instance.guiToggleKey = key;
-						mappingGUIToggleKey = false;
+						if (key != KeyCode.Mouse0)
+ 			            {
+							KMPGlobalSettings.instance.guiToggleKey = key;
+							mappingGUIToggleKey = false;
+						}
 					}
 				}
 	
@@ -2939,7 +2942,7 @@ namespace KMP
 			{
 				KMPGlobalSettings.instance.infoDisplayBig = GUILayout.Toggle(
 					KMPGlobalSettings.instance.infoDisplayBig,
-					KMPGlobalSettings.instance.infoDisplayBig ? "– " : "+ ",
+					KMPGlobalSettings.instance.infoDisplayBig ? "- " : "+ ",
 					GUI.skin.button);
 				KMPInfoDisplay.infoDisplayDetailed = GUILayout.Toggle(KMPInfoDisplay.infoDisplayDetailed, "Detail", GUI.skin.button);
 				KMPInfoDisplay.infoDisplayOptions = GUILayout.Toggle(KMPInfoDisplay.infoDisplayOptions, "Options", GUI.skin.button);
