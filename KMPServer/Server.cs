@@ -1607,7 +1607,7 @@ namespace KMPServer
 						break;
 				}
 			}
-			catch (NullReferenceException e)
+			catch (NullReferenceException)
 			{
 				
 			}

@@ -157,7 +157,7 @@ public class KMPCommon
 	            }
 	        }
 		}
-		catch (GZipException ex)
+		catch (GZipException)
 		{
 			return null;
 		}
@@ -199,7 +199,7 @@ public class KMPCommon
 				reader.Close();
             }
         }
-		catch (GZipException ex)
+		catch (GZipException)
 		{
 			return null;
 		}
