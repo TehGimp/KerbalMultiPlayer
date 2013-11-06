@@ -249,12 +249,9 @@ namespace KMP
 				{
 					//Run the connection loop then determine if a reconnect attempt should be made
 					if (connectionLoop())
-					{
 						reconnectAttempts = 0;
-						allow_reconnect = autoReconnect && !intentionalConnectionEnd && reconnectAttempts < MAX_RECONNECT_ATTEMPTS;
-					}
-					else
-						allow_reconnect = autoReconnect && !intentionalConnectionEnd && reconnectAttempts < MAX_RECONNECT_ATTEMPTS;
+
+					allow_reconnect = autoReconnect && !intentionalConnectionEnd && reconnectAttempts < MAX_RECONNECT_ATTEMPTS;
 				}
 				catch (Exception e)
 				{
