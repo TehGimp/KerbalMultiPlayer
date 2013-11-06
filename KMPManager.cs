@@ -2684,8 +2684,11 @@ namespace KMP
 					KeyCode key = KeyCode.F7;
 					if (getAnyKeyDown(ref key))
 					{
-						KMPGlobalSettings.instance.guiToggleKey = key;
-						mappingGUIToggleKey = false;
+						if (key != KeyCode.Mouse0)
+						{
+							KMPGlobalSettings.instance.guiToggleKey = key;
+							mappingGUIToggleKey = false;
+						}
 					}
 				}
 	
