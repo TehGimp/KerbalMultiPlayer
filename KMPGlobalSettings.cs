@@ -22,8 +22,10 @@ namespace KMP
 
 		public bool infoDisplayBig = false;
 
-		public bool chatWindowEnabled = false;
+		public bool chatWindowEnabled = true;
 		public bool chatWindowWide = false;
+
+        public bool chatDXWindowEnabled = true;
 
 		public KeyCode guiToggleKey = KeyCode.F7;
 		public KeyCode screenshotKey = KeyCode.F8;

@@ -149,6 +149,8 @@ namespace KMP
 		private int chatMessagesWaiting = 0;
 		private Vessel lastEVAVessel = null;
 		private bool showServerSync = false;
+
+
 		
 		public bool globalUIToggle
 		{
@@ -2188,6 +2190,7 @@ namespace KMP
 			{
 				enqueuePluginInteropMessage(KMPCommon.PluginInteropMessageID.CHAT_SEND, encoder.GetBytes(line));
 				KMPChatDisplay.enqueueChatLine("[" + playerName + "] " + line);
+                KMPChatDX.enqueueChatLine("[" + playerName + "] " + line);
 			}
 		}
 
@@ -2301,6 +2304,7 @@ namespace KMP
 					case KMPCommon.ClientInteropMessageID.CHAT_RECEIVE:
 						if (data != null)
 						{
+                            KMPChatDX.enqueueChatLine(encoder.GetString(data));
 							KMPChatDisplay.enqueueChatLine(encoder.GetString(data));
 							chatMessagesWaiting++;
 						}
@@ -2453,6 +2457,10 @@ namespace KMP
 
 						KMPChatDisplay.windowPos.x = KMPGlobalSettings.instance.chatDisplayWindowX;
 						KMPChatDisplay.windowPos.y = KMPGlobalSettings.instance.chatDisplayWindowY;
+
+
+                
+
 					}
 				}
 			}
@@ -2762,6 +2770,19 @@ namespace KMP
             KMPChatDisplay.layoutOptions[0] = GUILayout.MinWidth(KMPChatDisplay.windowWidth);
             KMPChatDisplay.layoutOptions[1] = GUILayout.MaxWidth(KMPChatDisplay.windowWidth);
 
+            // Init chatDX display options
+            //Init chat display options
+            if (KMPChatDX.layoutOptions == null)
+                KMPChatDX.layoutOptions = new GUILayoutOption[4];
+
+            KMPChatDX.layoutOptions[0] = GUILayout.MinWidth(KMPChatDX.chatboxWidth);
+            KMPChatDX.layoutOptions[1] = GUILayout.MaxWidth(KMPChatDX.chatboxWidth);
+            KMPChatDX.layoutOptions[2] = GUILayout.MinHeight(KMPChatDX.chatboxHeight);
+            KMPChatDX.layoutOptions[3] = GUILayout.MaxHeight(KMPChatDX.chatboxHeight);
+
+            KMPChatDX.windowStyle.normal.background = null;
+
+
             //Init screenshot display options
             if (KMPScreenshotDisplay.layoutOptions == null)
                 KMPScreenshotDisplay.layoutOptions = new GUILayoutOption[2];
@@ -2829,7 +2850,7 @@ namespace KMP
                     if (isInFlight && !syncing && !KMPInfoDisplay.infoDisplayMinimized)
                     {
                         GUILayout.Window(
-                            999996,
+                            999995,
                             KMPVesselLockDisplay.windowPos,
                             lockWindow,
                             "Lock",
@@ -2858,7 +2879,7 @@ namespace KMP
                     );
             }
 
-            if (KMPGlobalSettings.instance.chatWindowEnabled)
+            if (KMPGlobalSettings.instance.chatWindowEnabled || true)
             {
                 KMPChatDisplay.windowPos = GUILayout.Window(
                     999997,
@@ -2868,42 +2889,23 @@ namespace KMP
                     KMPChatDisplay.layoutOptions
                     );
             }
-
+            
+            if (KMPGlobalSettings.instance.chatDXWindowEnabled)
+            {
+                KMPChatDX.windowPos = GUILayout.Window(
+                    999994,
+                    KMPChatDX.windowPos,
+                    chatWindowDX,
+                    "",
+                    KMPChatDX.windowStyle,
+                    KMPChatDX.layoutOptions
+                    );
+            }
+            
             KMPInfoDisplay.infoWindowPos = enforceWindowBoundaries(KMPInfoDisplay.infoWindowPos);
             KMPScreenshotDisplay.windowPos = enforceWindowBoundaries(KMPScreenshotDisplay.windowPos);
             KMPChatDisplay.windowPos = enforceWindowBoundaries(KMPChatDisplay.windowPos);
-
-            //This script was originally made by MythStrott
-
-            //I give anyone permission to use it
-
-            //Please share any useful edits you make to the script
-
-            var textField = new string[] { "Type your message message here.", "sadasdsA ", "sdsadsaD", "sadsadDADA", "", "saDSADsadADsAD" };
-
-            var chatboxWidth = 300;
-
-            var chatboxHeight = 20;
-
-
-
-
-
-            textField[0] = GUI.TextArea(new Rect(0, Screen.height - chatboxHeight, chatboxWidth, chatboxHeight), textField[0]);
-
-
-            GUI.Label(new Rect(0, Screen.height - chatboxHeight * 2, chatboxWidth, chatboxHeight), textField[1]);
-
-            GUI.Label(new Rect(0, Screen.height - chatboxHeight * 3, chatboxWidth, chatboxHeight), textField[2]);
-
-            GUI.Label(new Rect(0, Screen.height - chatboxHeight * 4, chatboxWidth, chatboxHeight), textField[3]);
-
-            GUI.Label(new Rect(0, Screen.height - chatboxHeight * 5, chatboxWidth, chatboxHeight), textField[4]);
-
-            GUI.Label(new Rect(0, Screen.height - chatboxHeight * 6, chatboxWidth, chatboxHeight), textField[5]);
-
-
-
+            KMPChatDX.windowPos = enforceWindowBoundaries(KMPChatDX.windowPos);
 
         }
 
@@ -3404,6 +3406,38 @@ namespace KMP
 
 			GUI.DragWindow();
 		}
+
+        private void chatWindowDX(int windowID)
+        {
+            /* Display Chat */
+
+            GUILayout.BeginVertical();
+            GUILayout.Space(1);
+            
+
+            KMPChatDX.setStyle();
+            //KMPChatDX.scrollPos = GUILayout.BeginScrollView(KMPChatDX.scrollPos);
+
+            foreach (KMPChatDX.ChatLine line in KMPChatDX.chatLineQueue)
+            {
+                GUILayout.BeginHorizontal();
+                KMPChatDX.chatStyle.normal.textColor = line.color;
+                if (line.name == "")
+                {
+                    GUILayout.Label(line.message, KMPChatDX.chatStyle);
+                }
+                else
+                {
+                    GUILayout.Label(line.name + ": " + line.message, KMPChatDX.chatStyle);
+                }
+
+                GUILayout.EndHorizontal();
+                GUILayout.Space(1);
+            }
+            GUILayout.EndVertical();
+            //GUILayout.EndScrollView();
+            GUI.DragWindow();
+        }
 
 		private void vesselStatusLabels(VesselStatusInfo status, bool big)
 		{
