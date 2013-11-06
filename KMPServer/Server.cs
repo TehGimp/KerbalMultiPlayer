@@ -383,8 +383,8 @@ namespace KMPServer
 				while (bRunning)
 				{
 					String input = Console.ReadLine().ToLower();
-
-					switch(input)
+                    String sTest = input.IndexOf(' ') != -1 ? input.Substring(0, input.IndexOf(' ')) : input;
+					switch(sTest)
 					{
 						case "/ban": banServerCommand(input); break;
 						case "/clearclients": clearClientsServerCommand(); break;
@@ -472,7 +472,10 @@ namespace KMPServer
 				if (clientToDisconnect != null)
                 {
                     markClientForDisconnect(clientToDisconnect, "You were kicked from the server.");
+                    Log.Info(clientToDisconnect.username + " was kicked from the server.");
 				}
+                else
+                    Log.Info("Username \"" + kick_name + "\" not found.");
 			}
 		}
 		
