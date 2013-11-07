@@ -3494,6 +3494,9 @@ namespace KMP
 
         private void chatWindowDX(int windowID)
         {
+            // Show the button for everyone.
+            platform = PlatformID.Unix;
+
             GUILayoutOption[] entry_field_options = new GUILayoutOption[2];
             
             entry_field_options[0] = GUILayout.MaxWidth(KMPChatDX.chatboxWidth);
