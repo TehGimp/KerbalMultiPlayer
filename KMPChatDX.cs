@@ -21,6 +21,8 @@ namespace KMP
         public static float chatboxHeight = 300;
         public static float chatboxWidth = 500;
 
+        public static bool showInput = false;
+
         public static bool displayCommands = false;
         public static Vector2 scrollPos = Vector2.zero;
 
@@ -57,7 +59,7 @@ namespace KMP
                         this.message = line.Substring(name_length + 2);
 
                         if (this.name == "Server")
-                            this.color = new Color(0.65f, 1.0f, 1.0f);
+                            this.color = Color.magenta;
                         else this.color = KMPVessel.generateActiveColor(name) * NAME_COLOR_SATURATION_FACTOR
                             + Color.white * (1.0f - NAME_COLOR_SATURATION_FACTOR);
                     }
