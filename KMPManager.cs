@@ -2468,7 +2468,7 @@ namespace KMP
 					}
 				}
 			}
-			catch (KSP.IO.IOException)
+			catch
 			{
 			}
 		}
@@ -2477,21 +2477,24 @@ namespace KMP
 
 		public void Awake()
 		{
-			Debug.Log("KMP loaded");
+            Debug.Log("KMP Loaded");
 			DontDestroyOnLoad(this);
 			CancelInvoke();
 			InvokeRepeating("updateStep", 1/30.0f, 1/30.0f);
 			loadGlobalSettings();
+
 		}
 		
 		private void Start()
 		{
-			KMPClientMain.DebugLog("Clearing ScaledSpace transforms, count: " + ScaledSpace.Instance.scaledSpaceTransforms.Count);
-			ScaledSpace.Instance.scaledSpaceTransforms.RemoveAll(sst => sst == null);
-			if (HighLogic.LoadedScene == GameScenes.MAINMENU) {
-				ScaledSpace.Instance.scaledSpaceTransforms.RemoveAll(sst => !FlightGlobals.Bodies.Find(b => b.name == sst.name));
-			}	
-			KMPClientMain.DebugLog("New count: " + ScaledSpace.Instance.scaledSpaceTransforms.Count);
+            if (ScaledSpace.Instance == null || ScaledSpace.Instance.scaledSpaceTransforms == null) { return; }
+            KMPClientMain.DebugLog("Clearing ScaledSpace transforms, count: " + ScaledSpace.Instance.scaledSpaceTransforms.Count);
+            ScaledSpace.Instance.scaledSpaceTransforms.RemoveAll(t => t == null);
+            if (HighLogic.LoadedScene == GameScenes.MAINMENU)
+            {
+                ScaledSpace.Instance.scaledSpaceTransforms.RemoveAll(t => !FlightGlobals.Bodies.Exists(b => b.name == t.name));
+            }
+            KMPClientMain.DebugLog("New count: " + ScaledSpace.Instance.scaledSpaceTransforms.Count);
 		}
 		
 		private void OnPartCouple(GameEvents.FromToAction<Part,Part> data)
@@ -2559,7 +2562,9 @@ namespace KMP
 		private void OnVesselTerminated(ProtoVessel data)
 		{
             KMPClientMain.DebugLog("Vessel termination: " + data.vesselID + " " + serverVessels_RemoteID.ContainsKey(data.vesselID) + " " + (HighLogic.LoadedScene == GameScenes.TRACKSTATION) + " " + (data.vesselType == VesselType.Debris || (serverVessels_IsMine.ContainsKey(data.vesselID) ? serverVessels_IsMine[data.vesselID] : true)));
-			if (serverVessels_RemoteID.ContainsKey(data.vesselID) && HighLogic.LoadedScene == GameScenes.TRACKSTATION && (data.vesselType == VesselType.Debris || (serverVessels_IsMine.ContainsKey(data.vesselID) ? serverVessels_IsMine[data.vesselID] : true)))
+			if (serverVessels_RemoteID.ContainsKey(data.vesselID) //"activeTermination" only if this is remote vessel
+			    && HighLogic.LoadedScene == GameScenes.TRACKSTATION //and at TrackStation
+			    && (data.vesselType == VesselType.Debris || (serverVessels_IsMine.ContainsKey(data.vesselID) ? serverVessels_IsMine[data.vesselID] : true))) //and is debris or owned vessel
 			{
 				activeTermination = true;
 			}
@@ -2567,7 +2572,12 @@ namespace KMP
 		
 		private void OnVesselDestroy(Vessel data)
 		{
-			if (!docking && serverVessels_RemoteID.ContainsKey(data.id) && (isInFlight && data.id == FlightGlobals.ActiveVessel.id || (HighLogic.LoadedScene == GameScenes.TRACKSTATION && activeTermination && (data.vesselType == VesselType.Debris || (serverVessels_IsMine.ContainsKey(data.id) ? serverVessels_IsMine[data.id] : true)))))
+			if (!docking //Send destroy message to server if not currently in docking event
+			    && serverVessels_RemoteID.ContainsKey(data.id) //and is a remote vessel
+			    && ((isInFlight && data.id == FlightGlobals.ActiveVessel.id) //and is in-flight/ours OR
+			    	|| (HighLogic.LoadedScene == GameScenes.TRACKSTATION //still at trackstation
+			    			&& activeTermination //and activeTermination is set
+			    			&& (data.vesselType == VesselType.Debris || (serverVessels_IsMine.ContainsKey(data.id) ? serverVessels_IsMine[data.id] : true))))) //and target is debris or owned vessel
 			{
 				activeTermination = false;
 				KMPClientMain.DebugLog("Vessel destroyed: " + data.id);
@@ -2786,10 +2796,12 @@ namespace KMP
 			
 			//Init connection display options
 			if (KMPConnectionDisplay.layoutOptions == null)
-				KMPConnectionDisplay.layoutOptions = new GUILayoutOption[2];
+				KMPConnectionDisplay.layoutOptions = new GUILayoutOption[4];
 
 			KMPConnectionDisplay.layoutOptions[0] = GUILayout.MaxHeight(KMPConnectionDisplay.MIN_WINDOW_HEIGHT);
 			KMPConnectionDisplay.layoutOptions[1] = GUILayout.MaxWidth(KMPConnectionDisplay.MIN_WINDOW_WIDTH);
+            KMPConnectionDisplay.layoutOptions[2] = GUILayout.MinHeight(KMPConnectionDisplay.MIN_WINDOW_HEIGHT);
+            KMPConnectionDisplay.layoutOptions[3] = GUILayout.MinWidth(KMPConnectionDisplay.MIN_WINDOW_WIDTH);
 			
 			//Init lock display options
 			if (KMPVesselLockDisplay.layoutOptions == null)
