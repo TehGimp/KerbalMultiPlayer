@@ -157,6 +157,7 @@ namespace KMPServer
 			safeAbort(commandThread);
 			safeAbort(connectionThread);
 			safeAbort(outgoingMessageThread);
+            safeAbort(ghostCheckThread);
 
 			if (clients != null)
 			{
@@ -2687,7 +2688,10 @@ namespace KMPServer
                     finally { foundGhost++; }
 
                 }
-                //Log.Info("Ghost check complete. Removed {0} ghosts.", foundGhost);
+                if (foundGhost > 0)
+                {
+                    Log.Debug("Ghost check complete. Removed {0} ghost(s).", foundGhost);
+                }
 
                 Thread.Sleep(GHOST_CHECK_DELAY);
             }
