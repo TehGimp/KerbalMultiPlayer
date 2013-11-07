@@ -2863,7 +2863,7 @@ namespace KMP
 					if (isInFlight && !syncing && !KMPInfoDisplay.infoDisplayMinimized)
 					{
 						GUILayout.Window(
-							999996,
+							999995,
 							KMPVesselLockDisplay.windowPos,
 							lockWindow,
 							"Lock",
