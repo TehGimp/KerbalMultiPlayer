@@ -2468,7 +2468,7 @@ namespace KMP
 					}
 				}
 			}
-			catch (KSP.IO.IOException)
+			catch
 			{
 			}
 		}
@@ -2477,21 +2477,24 @@ namespace KMP
 
 		public void Awake()
 		{
-			Debug.Log("KMP loaded");
+            Debug.Log("KMP Loaded");
 			DontDestroyOnLoad(this);
 			CancelInvoke();
 			InvokeRepeating("updateStep", 1/30.0f, 1/30.0f);
 			loadGlobalSettings();
+
 		}
 		
 		private void Start()
 		{
-			KMPClientMain.DebugLog("Clearing ScaledSpace transforms, count: " + ScaledSpace.Instance.scaledSpaceTransforms.Count);
-			ScaledSpace.Instance.scaledSpaceTransforms.RemoveAll(sst => sst == null);
-			if (HighLogic.LoadedScene == GameScenes.MAINMENU) {
-				ScaledSpace.Instance.scaledSpaceTransforms.RemoveAll(sst => !FlightGlobals.Bodies.Find(b => b.name == sst.name));
-			}	
-			KMPClientMain.DebugLog("New count: " + ScaledSpace.Instance.scaledSpaceTransforms.Count);
+            if (ScaledSpace.Instance == null || ScaledSpace.Instance.scaledSpaceTransforms == null) { return; }
+            KMPClientMain.DebugLog("Clearing ScaledSpace transforms, count: " + ScaledSpace.Instance.scaledSpaceTransforms.Count);
+            ScaledSpace.Instance.scaledSpaceTransforms.RemoveAll(t => t == null);
+            if (HighLogic.LoadedScene == GameScenes.MAINMENU)
+            {
+                ScaledSpace.Instance.scaledSpaceTransforms.RemoveAll(t => !FlightGlobals.Bodies.Exists(b => b.name == t.name));
+            }
+            KMPClientMain.DebugLog("New count: " + ScaledSpace.Instance.scaledSpaceTransforms.Count);
 		}
 		
 		private void OnPartCouple(GameEvents.FromToAction<Part,Part> data)
@@ -2793,10 +2796,12 @@ namespace KMP
 			
 			//Init connection display options
 			if (KMPConnectionDisplay.layoutOptions == null)
-				KMPConnectionDisplay.layoutOptions = new GUILayoutOption[2];
+				KMPConnectionDisplay.layoutOptions = new GUILayoutOption[4];
 
 			KMPConnectionDisplay.layoutOptions[0] = GUILayout.MaxHeight(KMPConnectionDisplay.MIN_WINDOW_HEIGHT);
 			KMPConnectionDisplay.layoutOptions[1] = GUILayout.MaxWidth(KMPConnectionDisplay.MIN_WINDOW_WIDTH);
+            KMPConnectionDisplay.layoutOptions[2] = GUILayout.MinHeight(KMPConnectionDisplay.MIN_WINDOW_HEIGHT);
+            KMPConnectionDisplay.layoutOptions[3] = GUILayout.MinWidth(KMPConnectionDisplay.MIN_WINDOW_WIDTH);
 			
 			//Init lock display options
 			if (KMPVesselLockDisplay.layoutOptions == null)
