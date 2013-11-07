@@ -119,7 +119,13 @@ public class KMPCommon
 		SSYNC /*data*/
 	}
 	
-    public static byte[] Compress(byte[] data)
+	
+	/* KMP message data format
+	 * Uncompressed data: [bool-false : data]
+	 * Compressed data: [bool-true : Int32-uncompressed length : compressed_data]
+	 */
+	
+    public static byte[] Compress(byte[] data, bool forceUncompressed = false)
 	{
 		if (data == null) return null;
 		byte[] compressedData = null;
@@ -128,7 +134,7 @@ public class KMPCommon
 		try
         {
 			ms = new MemoryStream();
-			if (data.Length < MESSAGE_COMPRESSION_THRESHOLD)
+			if (data.Length < MESSAGE_COMPRESSION_THRESHOLD || forceUncompressed)
 			{
 				//Small message, don't compress
 				using (BinaryWriter writer = new BinaryWriter(ms))
@@ -152,12 +158,12 @@ public class KMPCommon
 	                gzip.Write(data, 0, data.Length);
 	                gzip.Close();
 	                compressedData = ms.ToArray();
-	                ms.Close();                
+	                ms.Close();   
 	                writer.Close();
 	            }
 	        }
 		}
-		catch (GZipException)
+		catch
 		{
 			return null;
 		}
@@ -199,7 +205,7 @@ public class KMPCommon
 				reader.Close();
             }
         }
-		catch (GZipException)
+		catch
 		{
 			return null;
 		}
