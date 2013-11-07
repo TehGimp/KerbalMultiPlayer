@@ -106,7 +106,10 @@ namespace KMPServer
 							if ((parent.currentMillisecond - lastPollTime) > POLL_INTERVAL)
 							{
 							    lastPollTime = parent.currentMillisecond;
-							    return !(clientSocket.Available == 0 && clientSocket.Poll(10000, SelectMode.SelectRead));
+								
+								//KMP ISSUE #192: Fixed random disconnect issue
+								//Removed redundant "Socket.Available" check and increased the Poll "Timeout" from 10ms to 500ms - Dani
+							    return clientSocket.Poll(500000, SelectMode.SelectRead);
 							}
 							else
 							{

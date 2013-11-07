@@ -2561,8 +2561,10 @@ namespace KMP
 		
 		private void OnVesselTerminated(ProtoVessel data)
 		{
-            KMPClientMain.DebugLog("Vessel termination: " + data.vesselID + " " + serverVessels_RemoteID.ContainsKey(data.vesselID) + " " + (HighLogic.LoadedScene == GameScenes.TRACKSTATION) + " " + (!serverVessels_IsMine.ContainsKey(data.vesselID) || (serverVessels_IsMine.ContainsKey(data.vesselID) ? serverVessels_IsMine[data.vesselID] : false)));
-			if (serverVessels_RemoteID.ContainsKey(data.vesselID) && HighLogic.LoadedScene == GameScenes.TRACKSTATION && (!serverVessels_IsMine.ContainsKey(data.vesselID) || serverVessels_IsMine[data.vesselID]))
+            KMPClientMain.DebugLog("Vessel termination: " + data.vesselID + " " + serverVessels_RemoteID.ContainsKey(data.vesselID) + " " + (HighLogic.LoadedScene == GameScenes.TRACKSTATION) + " " + (data.vesselType == VesselType.Debris || (serverVessels_IsMine.ContainsKey(data.vesselID) ? serverVessels_IsMine[data.vesselID] : true)));
+			if (serverVessels_RemoteID.ContainsKey(data.vesselID) //"activeTermination" only if this is remote vessel
+			    && HighLogic.LoadedScene == GameScenes.TRACKSTATION //and at TrackStation
+			    && (data.vesselType == VesselType.Debris || (serverVessels_IsMine.ContainsKey(data.vesselID) ? serverVessels_IsMine[data.vesselID] : true))) //and is debris or owned vessel
 			{
 				activeTermination = true;
 			}
@@ -2570,7 +2572,12 @@ namespace KMP
 		
 		private void OnVesselDestroy(Vessel data)
 		{
-			if (!docking && serverVessels_RemoteID.ContainsKey(data.id) && (isInFlight && data.id == FlightGlobals.ActiveVessel.id || (HighLogic.LoadedScene == GameScenes.TRACKSTATION && activeTermination && (!serverVessels_IsMine.ContainsKey(data.id) || (serverVessels_IsMine.ContainsKey(data.id) ? serverVessels_IsMine[data.id] : false)))))
+			if (!docking //Send destroy message to server if not currently in docking event
+			    && serverVessels_RemoteID.ContainsKey(data.id) //and is a remote vessel
+			    && ((isInFlight && data.id == FlightGlobals.ActiveVessel.id) //and is in-flight/ours OR
+			    	|| (HighLogic.LoadedScene == GameScenes.TRACKSTATION //still at trackstation
+			    			&& activeTermination //and activeTermination is set
+			    			&& (data.vesselType == VesselType.Debris || (serverVessels_IsMine.ContainsKey(data.id) ? serverVessels_IsMine[data.id] : true))))) //and target is debris or owned vessel
 			{
 				activeTermination = false;
 				KMPClientMain.DebugLog("Vessel destroyed: " + data.id);
@@ -2699,8 +2706,11 @@ namespace KMP
 					KeyCode key = KeyCode.F7;
 					if (getAnyKeyDown(ref key))
 					{
-						KMPGlobalSettings.instance.guiToggleKey = key;
-						mappingGUIToggleKey = false;
+						if (key != KeyCode.Mouse0)
+ 			            {
+							KMPGlobalSettings.instance.guiToggleKey = key;
+							mappingGUIToggleKey = false;
+						}
 					}
 				}
 	
@@ -2944,7 +2954,7 @@ namespace KMP
 			{
 				KMPGlobalSettings.instance.infoDisplayBig = GUILayout.Toggle(
 					KMPGlobalSettings.instance.infoDisplayBig,
-					KMPGlobalSettings.instance.infoDisplayBig ? "– " : "+ ",
+					KMPGlobalSettings.instance.infoDisplayBig ? "- " : "+ ",
 					GUI.skin.button);
 				KMPInfoDisplay.infoDisplayDetailed = GUILayout.Toggle(KMPInfoDisplay.infoDisplayDetailed, "Detail", GUI.skin.button);
 				KMPInfoDisplay.infoDisplayOptions = GUILayout.Toggle(KMPInfoDisplay.infoDisplayOptions, "Options", GUI.skin.button);
