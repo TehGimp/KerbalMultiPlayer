@@ -2441,7 +2441,7 @@ namespace KMP
 				byte[] serialized = KSP.IO.IOUtils.SerializeToBinary(KMPGlobalSettings.instance);
 				KSP.IO.File.WriteAllBytes<KMPManager>(serialized, GLOBAL_SETTINGS_FILENAME);
 			}
-			catch (KSP.IO.IOException)
+			catch 
 			{
 			}
 		}
@@ -2512,14 +2512,16 @@ namespace KMP
 		}
 		
 		private void Start()
-		{
-			KMPClientMain.DebugLog("Clearing ScaledSpace transforms, count: " + ScaledSpace.Instance.scaledSpaceTransforms.Count);
-			ScaledSpace.Instance.scaledSpaceTransforms.RemoveAll(sst => sst == null);
-			if (HighLogic.LoadedScene == GameScenes.MAINMENU) {
-				ScaledSpace.Instance.scaledSpaceTransforms.RemoveAll(sst => !FlightGlobals.Bodies.Find(b => b.name == sst.name));
-			}	
-			KMPClientMain.DebugLog("New count: " + ScaledSpace.Instance.scaledSpaceTransforms.Count);
-		}
+		  {
+            if (ScaledSpace.Instance == null || ScaledSpace.Instance.scaledSpaceTransforms == null) { return; }
+            KMPClientMain.DebugLog("Clearing ScaledSpace transforms, count: " + ScaledSpace.Instance.scaledSpaceTransforms.Count);
+            ScaledSpace.Instance.scaledSpaceTransforms.RemoveAll(t => t == null);
+            if (HighLogic.LoadedScene == GameScenes.MAINMENU)
+            {
+                ScaledSpace.Instance.scaledSpaceTransforms.RemoveAll(t => !FlightGlobals.Bodies.Exists(b => b.name == t.name));
+            }
+            KMPClientMain.DebugLog("New count: " + ScaledSpace.Instance.scaledSpaceTransforms.Count);
+        }
 		
 		private void OnPartCouple(GameEvents.FromToAction<Part,Part> data)
 		{
