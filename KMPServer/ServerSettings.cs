@@ -27,6 +27,8 @@ namespace KMPServer
             public bool saveScreenshots = true;
             public String joinMessage = String.Empty;
             public String serverInfo = String.Empty;
+			public String serverMotd = String.Empty;
+			public String serverRules = String.Empty;
             public byte totalInactiveShips = 100;
             public Log.LogLevels LogLevel = Log.LogLevels.Info;
             public bool whitelisted = false;
