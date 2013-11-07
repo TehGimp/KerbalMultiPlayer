@@ -1,4 +1,4 @@
-﻿//#define DEBUG_OUT
+﻿﻿//#define DEBUG_OUT
 //#define SEND_UPDATES_TO_SENDER
 
 using System;

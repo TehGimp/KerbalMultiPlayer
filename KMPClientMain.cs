@@ -1918,3 +1918,4 @@ namespace KMP
 	    public byte[] data = new byte[BufferSize];
 	}
 }
+
