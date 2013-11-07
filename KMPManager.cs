@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -62,6 +62,8 @@ namespace KMP
 		public const float IDLE_DELAY = 120.0f;
 		public const float PLUGIN_DATA_WRITE_INTERVAL = 0.333f;
 		public const float GLOBAL_SETTINGS_SAVE_INTERVAL = 10.0f;
+        public const double SAFETY_BUBBLE_DIAMETER = 40000d;
+        public const double PROTO_SAFETY_BUBBLE_DIAMETER = 35000d;
 
 		public const int INTEROP_MAX_QUEUE_SIZE = 64;
 		public const float INTEROP_WRITE_INTERVAL = 0.333f;
@@ -149,8 +151,6 @@ namespace KMP
 		private int chatMessagesWaiting = 0;
 		private Vessel lastEVAVessel = null;
 		private bool showServerSync = false;
-
-
 		
 		public bool globalUIToggle
 		{
@@ -229,8 +229,9 @@ namespace KMP
 						if (ssUIButton.tooltip == "Terminate") ssUIButton.Unlock();
 					}
 				}
-				
-				if (isInFlight && FlightGlobals.ActiveVessel.mainBody.name == "Kerbin" && FlightGlobals.ActiveVessel.altitude < 40000d) {
+
+                if (isInFlight && FlightGlobals.ActiveVessel.mainBody.name == "Kerbin" && FlightGlobals.ActiveVessel.altitude < SAFETY_BUBBLE_DIAMETER)
+                {
 					if (ksc == null) ksc = GameObject.Find("KSC");
 					kscPosition = new Vector3d(ksc.transform.position[0],ksc.transform.position[1],ksc.transform.position[2]);
 				} else kscPosition = Vector3d.zero;
@@ -253,7 +254,7 @@ namespace KMP
 					{
 						string baseName = vessel.vesselName;
 						if (baseName.StartsWith("* ")) baseName = baseName.Substring(2);
-						vessel.vesselName = (((serverVessels_InUse.ContainsKey(vessel.id) && serverVessels_InUse[vessel.id]) || (serverVessels_IsPrivate.ContainsKey(vessel.id) && serverVessels_IsPrivate[vessel.id] && serverVessels_IsMine.ContainsKey(vessel.id) && !serverVessels_IsMine[vessel.id])) ? "* " : "") + baseName;
+						vessel.vesselName = (((serverVessels_InUse.ContainsKey(vessel.id) ? serverVessels_InUse[vessel.id] : false) || ((serverVessels_IsPrivate.ContainsKey(vessel.id) ? serverVessels_IsPrivate[vessel.id]: false) && (serverVessels_IsMine.ContainsKey(vessel.id) ? !serverVessels_IsMine[vessel.id] : false))) ? "* " : "") + baseName;
 					}
 				}
 				else //Kill Kraken-debris, clean names
@@ -555,7 +556,7 @@ namespace KMP
 			writePrimaryUpdate();
 			
 			//nearby vessels
-			if (isInFlight && !syncing && !warping && (FlightGlobals.ActiveVessel.mainBody.bodyName != "Kerbin" || FlightGlobals.ActiveVessel.altitude > 35000d || kscPosition == Vector3d.zero || Vector3d.Distance(kscPosition,FlightGlobals.ActiveVessel.GetWorldPos3D()) > 40000d))
+            if (isInFlight && !syncing && !warping && (FlightGlobals.ActiveVessel.mainBody.bodyName != "Kerbin" || FlightGlobals.ActiveVessel.altitude > PROTO_SAFETY_BUBBLE_DIAMETER || kscPosition == Vector3d.zero || Vector3d.Distance(kscPosition, FlightGlobals.ActiveVessel.GetWorldPos3D()) > SAFETY_BUBBLE_DIAMETER))
 			{
 				writeSecondaryUpdates();
 			}
@@ -564,7 +565,7 @@ namespace KMP
 		private void writePrimaryUpdate()
 		{
 			if (!syncing && isInFlight && !warping
-			    && (FlightGlobals.ActiveVessel.mainBody.bodyName != "Kerbin" || FlightGlobals.ActiveVessel.altitude > 35000d || kscPosition == Vector3d.zero || Vector3d.Distance(kscPosition,FlightGlobals.ActiveVessel.GetWorldPos3D()) > 40000d))
+                && (FlightGlobals.ActiveVessel.mainBody.bodyName != "Kerbin" || FlightGlobals.ActiveVessel.altitude > 35000d || kscPosition == Vector3d.zero || Vector3d.Distance(kscPosition, FlightGlobals.ActiveVessel.GetWorldPos3D()) > SAFETY_BUBBLE_DIAMETER))
 			{
 				lastTick = Planetarium.GetUniversalTime();
 				//Write vessel status
@@ -693,7 +694,7 @@ namespace KMP
 							{
 								Part root = vessel.rootPart;
 								bool include = true;
-								if (serverVessels_InUse.ContainsKey(vessel.id) && !serverVessels_InUse[vessel.id])
+								if (serverVessels_InUse.ContainsKey(vessel.id) ? !serverVessels_InUse[vessel.id]: false)
 								{
 									foreach (Guid vesselID in serverVessels_Parts.Keys)
 									{
@@ -731,7 +732,7 @@ namespace KMP
 							update.situation = Situation.DESTROYED; //Don't keep sending a secondary vessel that will stay destroyed for any other client
 						update.distance = enumerator.Current.Key;
 						update.state = State.INACTIVE;
-						if (enumerator.Current.Value.loaded && serverVessels_InUse.ContainsKey(enumerator.Current.Value.id) && serverVessels_InUse[enumerator.Current.Value.id] && FlightGlobals.ActiveVessel.altitude > 10000d)
+						if (enumerator.Current.Value.loaded && (serverVessels_InUse.ContainsKey(enumerator.Current.Value.id) ? serverVessels_InUse[enumerator.Current.Value.id] : false) && FlightGlobals.ActiveVessel.altitude > 10000d)
 						{
 							//Rendezvous relative position data
 							KMPClientMain.DebugLog ("sending docking-mode update, distance: " + enumerator.Current.Key);
@@ -798,18 +799,26 @@ namespace KMP
 			
 			//Create a KMPVesselUpdate from the vessel data
 			KMPVesselUpdate update;
-			if (!forceFullUpdate
-			    && serverVessels_PartCounts.ContainsKey(vessel.id)
-			    && !(vessel.id == FlightGlobals.ActiveVessel.id && FlightGlobals.ActiveVessel.ctrlState.mainThrottle == 0f && (UnityEngine.Time.realtimeSinceStartup - lastFullProtovesselUpdate) > FULL_PROTOVESSEL_UPDATE_TIMEOUT))
+            //KMPClientMain.DebugLog("Vid: " + vessel.id);
+            //KMPClientMain.DebugLog("foreFullUpdate: " + forceFullUpdate);
+            //KMPClientMain.DebugLog("ParCountsContains: " + serverVessels_PartCounts.ContainsKey(vessel.id));
+            //KMPClientMain.DebugLog("TimeDelta: " + ((UnityEngine.Time.realtimeSinceStartup - lastFullProtovesselUpdate) < FULL_PROTOVESSEL_UPDATE_TIMEOUT));
+            //KMPClientMain.DebugLog("Throttle: " + (FlightGlobals.ActiveVessel.ctrlState.mainThrottle == 0f));
+
+
+			if (!forceFullUpdate && (serverVessels_PartCounts.ContainsKey(vessel.id) ? 
+                !(vessel.id == FlightGlobals.ActiveVessel.id && FlightGlobals.ActiveVessel.ctrlState.mainThrottle == 0f 
+                && (UnityEngine.Time.realtimeSinceStartup - lastFullProtovesselUpdate) > FULL_PROTOVESSEL_UPDATE_TIMEOUT) : false))
 			{
-				if (serverVessels_PartCounts.ContainsKey(vessel.id)
-				    && serverVessels_PartCounts[vessel.id] == vessel.Parts.Count
-				    && sentVessels_Situations.ContainsKey(vessel.id)
-				    && (sentVessels_Situations[vessel.id] == vessel.situation || sentVessels_Situations[vessel.id] == Vessel.Situations.LANDED))
+				if ((serverVessels_PartCounts.ContainsKey(vessel.id) ? serverVessels_PartCounts[vessel.id] == vessel.Parts.Count : false)
+				    && (sentVessels_Situations.ContainsKey(vessel.id) ? (sentVessels_Situations[vessel.id] == vessel.situation) : false)
+                    || (sentVessels_Situations.ContainsKey(vessel.id) ? (sentVessels_Situations[vessel.id] == Vessel.Situations.LANDED) : false))
 				{
-					if (!newFlags.ContainsKey(vessel.id) || (UnityEngine.Time.realtimeSinceStartup - newFlags[vessel.id]) < 65f) 
+					if (!newFlags.ContainsKey(vessel.id))
 						update = new KMPVesselUpdate(vessel,false);
-					else
+					else if ((UnityEngine.Time.realtimeSinceStartup - newFlags[vessel.id]) < 65f)
+                        update = new KMPVesselUpdate(vessel,false);
+                    else
 					{
 						update = new KMPVesselUpdate(vessel);
 						newFlags.Remove(vessel.id);
@@ -833,7 +842,7 @@ namespace KMP
 					KMPClientMain.DebugLog("First or forced proto update for active vessel: " + vessel.id);
 					lastFullProtovesselUpdate = UnityEngine.Time.realtimeSinceStartup;
 				}
-				if (!vessel.packed) serverVessels_PartCounts[vessel.id] = vessel.Parts.Count;
+                if (!vessel.packed && serverVessels_PartCounts.ContainsKey(vessel.id)) serverVessels_PartCounts[vessel.id] = vessel.Parts.Count;
 			}
 			
 			//Track vessel situation
@@ -1498,7 +1507,7 @@ namespace KMP
 							extant_vessel.name = vessel_update.name;
 							extant_vessel.vesselName = vessel_update.name;
 						}
-						if (!serverVessels_LoadDelay.ContainsKey(vessel_update.id) || serverVessels_LoadDelay[vessel_update.id] < UnityEngine.Time.realtimeSinceStartup)
+						if (!serverVessels_LoadDelay.ContainsKey(vessel_update.id) || (serverVessels_LoadDelay.ContainsKey(vessel_update.id) ? (serverVessels_LoadDelay[vessel_update.id] < UnityEngine.Time.realtimeSinceStartup) : false))
 						{
 							float incomingDistance = 2500f;
 							if (vessel.worldPosition != Vector3.zero && vessel_update.relTime == RelativeTime.PRESENT)
@@ -1565,11 +1574,11 @@ namespace KMP
 														serverVessels_ObtSyncDelay[vessel_update.id] = UnityEngine.Time.realtimeSinceStartup + 1f;
 													}
 												}
-												KMPClientMain.DebugLog((FlightGlobals.ActiveVessel.mainBody == update_body) + " " + extant_vessel.loaded + " " + (vessel_update.relTime == RelativeTime.PRESENT));
+												
 												if (FlightGlobals.ActiveVessel.mainBody == update_body && vessel_update.relTime == RelativeTime.PRESENT)
 												{
 													KMPClientMain.DebugLog("full update");
-													if (!serverVessels_InPresent.ContainsKey(vessel_update.id) || !serverVessels_InPresent[vessel_update.id])
+													if (!serverVessels_InPresent.ContainsKey(vessel_update.id) || serverVessels_InPresent.ContainsKey(vessel_update.id) ? !serverVessels_InPresent[vessel_update.id] : false)
 													{
 														serverVessels_InPresent[vessel_update.id] = true;
 														foreach (Part part in extant_vessel.Parts)
@@ -1665,7 +1674,7 @@ namespace KMP
 												{
 													KMPClientMain.DebugLog("update from past/future");
 													
-													if (!serverVessels_InPresent.ContainsKey(vessel_update.id) || serverVessels_InPresent[vessel_update.id])
+													if (!serverVessels_InPresent.ContainsKey(vessel_update.id) || serverVessels_InPresent.ContainsKey(vessel_update.id) ? serverVessels_InPresent[vessel_update.id]: false)
 													{
 														serverVessels_InPresent[vessel_update.id] = false;
 														foreach (Part part in extant_vessel.Parts)
@@ -1787,6 +1796,7 @@ namespace KMP
 							
 							if (!dockingRelVel.ContainsKey(updateFrom.id))
 								dockingRelVel[updateFrom.id] = updateFrom.GetObtVelocity();
+
 							Vector3d relVel = FlightGlobals.ActiveVessel.GetObtVelocity()-dockingRelVel[updateFrom.id];
 							Vector3d updateRelVel = new Vector3d(vessel_update.o_vel[0],vessel_update.o_vel[1],vessel_update.o_vel[2]);
 							Vector3d diffPos = updateRelPos - relPos;
@@ -1797,9 +1807,9 @@ namespace KMP
 							
 							bool applyUpdate = true;
 							double curTick = Planetarium.GetUniversalTime();
-							if (serverVessels_RendezvousSmoothPos.ContainsKey(updateFrom.id) && relPos.sqrMagnitude > (serverVessels_RendezvousSmoothPos[updateFrom.id].Key * 25) && serverVessels_RendezvousSmoothPos[updateFrom.id].Value > (curTick-5d))
+							if (serverVessels_RendezvousSmoothPos.ContainsKey(updateFrom.id) ? (relPos.sqrMagnitude > (serverVessels_RendezvousSmoothPos[updateFrom.id].Key * 25) && serverVessels_RendezvousSmoothPos[updateFrom.id].Value > (curTick-5d)): false)
 								applyUpdate = false;
-							if (serverVessels_RendezvousSmoothVel.ContainsKey(updateFrom.id) && relVel.sqrMagnitude > (serverVessels_RendezvousSmoothVel[updateFrom.id].Key * 25) && serverVessels_RendezvousSmoothVel[updateFrom.id].Value > (curTick-5d))
+							if (serverVessels_RendezvousSmoothVel.ContainsKey(updateFrom.id) ? (relVel.sqrMagnitude > (serverVessels_RendezvousSmoothVel[updateFrom.id].Key * 25) && serverVessels_RendezvousSmoothVel[updateFrom.id].Value > (curTick-5d)): false)
 								applyUpdate = false;
 							
 							double expectedDist = Vector3d.Distance(newPos, activeVesselPosition);
@@ -2048,8 +2058,8 @@ namespace KMP
 							return;
 					}
 				}
-				
-				if (!((update != null && update.bodyName != "Kerbin") || protovessel.altitude > 35000d || kscPosition == Vector3d.zero || Vector3d.Distance(kscPosition,protovessel.position) > 40000d)) //refuse to load anything too close to the KSC
+
+                if (!((update != null && update.bodyName != "Kerbin") || protovessel.altitude > 35000d || kscPosition == Vector3d.zero || Vector3d.Distance(kscPosition, protovessel.position) > SAFETY_BUBBLE_DIAMETER)) //refuse to load anything too close to the KSC
 				{
 					KMPClientMain.DebugLog("Tried to load vessel to close to KSC");
 					return;
@@ -2073,7 +2083,7 @@ namespace KMP
 						}
 					}
 				}
-				if (vessels.ContainsKey(vessel_id.ToString()) && (!serverVessels_LoadDelay.ContainsKey(vessel_id) || serverVessels_LoadDelay[vessel_id] < UnityEngine.Time.realtimeSinceStartup))
+				if (vessels.ContainsKey(vessel_id.ToString()) && (!serverVessels_LoadDelay.ContainsKey(vessel_id) || (serverVessels_LoadDelay.ContainsKey(vessel_id) ? serverVessels_LoadDelay[vessel_id] < UnityEngine.Time.realtimeSinceStartup : false)))
 				{
 					protovessel.Load(HighLogic.CurrentGame.flightState);
 					Vessel created_vessel = protovessel.vesselRef;
@@ -2304,8 +2314,8 @@ namespace KMP
 					case KMPCommon.ClientInteropMessageID.CHAT_RECEIVE:
 						if (data != null)
 						{
-                            KMPChatDX.enqueueChatLine(encoder.GetString(data));
 							KMPChatDisplay.enqueueChatLine(encoder.GetString(data));
+                            KMPChatDX.enqueueChatLine(encoder.GetString(data));
 							chatMessagesWaiting++;
 						}
 						break;
@@ -2457,10 +2467,6 @@ namespace KMP
 
 						KMPChatDisplay.windowPos.x = KMPGlobalSettings.instance.chatDisplayWindowX;
 						KMPChatDisplay.windowPos.y = KMPGlobalSettings.instance.chatDisplayWindowY;
-
-
-                
-
 					}
 				}
 			}
@@ -2554,8 +2560,10 @@ namespace KMP
 		
 		private void OnVesselTerminated(ProtoVessel data)
 		{
-			KMPClientMain.DebugLog("Vessel termination: " + data.vesselID + " " + serverVessels_RemoteID.ContainsKey(data.vesselID) + " " + (HighLogic.LoadedScene == GameScenes.TRACKSTATION) + " " + (!serverVessels_IsMine.ContainsKey(data.vesselID) || serverVessels_IsMine[data.vesselID]));
-			if (serverVessels_RemoteID.ContainsKey(data.vesselID) && HighLogic.LoadedScene == GameScenes.TRACKSTATION && (!serverVessels_IsMine.ContainsKey(data.vesselID) || serverVessels_IsMine[data.vesselID]))
+            KMPClientMain.DebugLog("Vessel termination: " + data.vesselID + " " + serverVessels_RemoteID.ContainsKey(data.vesselID) + " " + (HighLogic.LoadedScene == GameScenes.TRACKSTATION) + " " + (data.vesselType == VesselType.Debris || (serverVessels_IsMine.ContainsKey(data.vesselID) ? serverVessels_IsMine[data.vesselID] : true)));
+			if (serverVessels_RemoteID.ContainsKey(data.vesselID) //"activeTermination" only if this is remote vessel
+			    && HighLogic.LoadedScene == GameScenes.TRACKSTATION //and at TrackStation
+			    && (data.vesselType == VesselType.Debris || (serverVessels_IsMine.ContainsKey(data.vesselID) ? serverVessels_IsMine[data.vesselID] : true))) //and is debris or owned vessel
 			{
 				activeTermination = true;
 			}
@@ -2563,7 +2571,12 @@ namespace KMP
 		
 		private void OnVesselDestroy(Vessel data)
 		{
-			if (!docking && serverVessels_RemoteID.ContainsKey(data.id) && (isInFlight && data.id == FlightGlobals.ActiveVessel.id || (HighLogic.LoadedScene == GameScenes.TRACKSTATION && activeTermination && (!serverVessels_IsMine.ContainsKey(data.id) || serverVessels_IsMine[data.id]))))
+			if (!docking //Send destroy message to server if not currently in docking event
+			    && serverVessels_RemoteID.ContainsKey(data.id) //and is a remote vessel
+			    && ((isInFlight && data.id == FlightGlobals.ActiveVessel.id) //and is in-flight/ours OR
+			    	|| (HighLogic.LoadedScene == GameScenes.TRACKSTATION //still at trackstation
+			    			&& activeTermination //and activeTermination is set
+			    			&& (data.vesselType == VesselType.Debris || (serverVessels_IsMine.ContainsKey(data.id) ? serverVessels_IsMine[data.id] : true))))) //and target is debris or owned vessel
 			{
 				activeTermination = false;
 				KMPClientMain.DebugLog("Vessel destroyed: " + data.id);
@@ -2692,8 +2705,11 @@ namespace KMP
 					KeyCode key = KeyCode.F7;
 					if (getAnyKeyDown(ref key))
 					{
-						KMPGlobalSettings.instance.guiToggleKey = key;
-						mappingGUIToggleKey = false;
+						if (key != KeyCode.Mouse0)
+ 			            {
+							KMPGlobalSettings.instance.guiToggleKey = key;
+							mappingGUIToggleKey = false;
+						}
 					}
 				}
 	
@@ -2716,62 +2732,61 @@ namespace KMP
 
 		//GUI
 
-        public void drawGUI()
-        {
-            if (forceQuit)
-            {
-                forceQuit = false;
-                gameRunning = false;
-                HighLogic.LoadScene(GameScenes.MAINMENU);
-            }
+		public void drawGUI()
+		{
+			if (forceQuit)
+			{
+				forceQuit = false;
+				gameRunning = false;
+				HighLogic.LoadScene(GameScenes.MAINMENU);
+			}
+			
+			//Init info display options
+			if (KMPInfoDisplay.layoutOptions == null)
+				KMPInfoDisplay.layoutOptions = new GUILayoutOption[6];
 
-            //Init info display options
-            if (KMPInfoDisplay.layoutOptions == null)
-                KMPInfoDisplay.layoutOptions = new GUILayoutOption[6];
+			KMPInfoDisplay.layoutOptions[0] = GUILayout.ExpandHeight(true);
+			KMPInfoDisplay.layoutOptions[1] = GUILayout.ExpandWidth(true);
 
-            KMPInfoDisplay.layoutOptions[0] = GUILayout.ExpandHeight(true);
-            KMPInfoDisplay.layoutOptions[1] = GUILayout.ExpandWidth(true);
+			if (KMPInfoDisplay.infoDisplayMinimized)
+			{
+				KMPInfoDisplay.layoutOptions[2] = GUILayout.MinHeight(KMPInfoDisplay.WINDOW_HEIGHT_MINIMIZED);
+				KMPInfoDisplay.layoutOptions[3] = GUILayout.MaxHeight(KMPInfoDisplay.WINDOW_HEIGHT_MINIMIZED);
 
-            if (KMPInfoDisplay.infoDisplayMinimized)
-            {
-                KMPInfoDisplay.layoutOptions[2] = GUILayout.MinHeight(KMPInfoDisplay.WINDOW_HEIGHT_MINIMIZED);
-                KMPInfoDisplay.layoutOptions[3] = GUILayout.MaxHeight(KMPInfoDisplay.WINDOW_HEIGHT_MINIMIZED);
+				KMPInfoDisplay.layoutOptions[4] = GUILayout.MinWidth(KMPInfoDisplay.WINDOW_WIDTH_MINIMIZED);
+				KMPInfoDisplay.layoutOptions[5] = GUILayout.MaxWidth(KMPInfoDisplay.WINDOW_WIDTH_MINIMIZED);
+			}
+			else
+			{
 
-                KMPInfoDisplay.layoutOptions[4] = GUILayout.MinWidth(KMPInfoDisplay.WINDOW_WIDTH_MINIMIZED);
-                KMPInfoDisplay.layoutOptions[5] = GUILayout.MaxWidth(KMPInfoDisplay.WINDOW_WIDTH_MINIMIZED);
-            }
-            else
-            {
+				if (KMPGlobalSettings.instance.infoDisplayBig)
+				{
+					KMPInfoDisplay.layoutOptions[4] = GUILayout.MinWidth(KMPInfoDisplay.WINDOW_WIDTH_BIG);
+					KMPInfoDisplay.layoutOptions[5] = GUILayout.MaxWidth(KMPInfoDisplay.WINDOW_WIDTH_BIG);
 
-                if (KMPGlobalSettings.instance.infoDisplayBig)
-                {
-                    KMPInfoDisplay.layoutOptions[4] = GUILayout.MinWidth(KMPInfoDisplay.WINDOW_WIDTH_BIG);
-                    KMPInfoDisplay.layoutOptions[5] = GUILayout.MaxWidth(KMPInfoDisplay.WINDOW_WIDTH_BIG);
+					KMPInfoDisplay.layoutOptions[2] = GUILayout.MinHeight(KMPInfoDisplay.WINDOW_HEIGHT_BIG);
+					KMPInfoDisplay.layoutOptions[3] = GUILayout.MaxHeight(KMPInfoDisplay.WINDOW_HEIGHT_BIG);
+				}
+				else
+				{
+					KMPInfoDisplay.layoutOptions[4] = GUILayout.MinWidth(KMPInfoDisplay.WINDOW_WIDTH_DEFAULT);
+					KMPInfoDisplay.layoutOptions[5] = GUILayout.MaxWidth(KMPInfoDisplay.WINDOW_WIDTH_DEFAULT);
 
-                    KMPInfoDisplay.layoutOptions[2] = GUILayout.MinHeight(KMPInfoDisplay.WINDOW_HEIGHT_BIG);
-                    KMPInfoDisplay.layoutOptions[3] = GUILayout.MaxHeight(KMPInfoDisplay.WINDOW_HEIGHT_BIG);
-                }
-                else
-                {
-                    KMPInfoDisplay.layoutOptions[4] = GUILayout.MinWidth(KMPInfoDisplay.WINDOW_WIDTH_DEFAULT);
-                    KMPInfoDisplay.layoutOptions[5] = GUILayout.MaxWidth(KMPInfoDisplay.WINDOW_WIDTH_DEFAULT);
+					KMPInfoDisplay.layoutOptions[2] = GUILayout.MinHeight(KMPInfoDisplay.WINDOW_HEIGHT);
+					KMPInfoDisplay.layoutOptions[3] = GUILayout.MaxHeight(KMPInfoDisplay.WINDOW_HEIGHT);
+				}
+			}
 
-                    KMPInfoDisplay.layoutOptions[2] = GUILayout.MinHeight(KMPInfoDisplay.WINDOW_HEIGHT);
-                    KMPInfoDisplay.layoutOptions[3] = GUILayout.MaxHeight(KMPInfoDisplay.WINDOW_HEIGHT);
-                }
-            }
+			CheckEditorLock();
 
-            CheckEditorLock();
+			//Init chat display options
+			if (KMPChatDisplay.layoutOptions == null)
+				KMPChatDisplay.layoutOptions = new GUILayoutOption[2];
 
-            //Init chat display options
-            if (KMPChatDisplay.layoutOptions == null)
-                KMPChatDisplay.layoutOptions = new GUILayoutOption[2];
+			KMPChatDisplay.layoutOptions[0] = GUILayout.MinWidth(KMPChatDisplay.windowWidth);
+			KMPChatDisplay.layoutOptions[1] = GUILayout.MaxWidth(KMPChatDisplay.windowWidth);
 
-            KMPChatDisplay.layoutOptions[0] = GUILayout.MinWidth(KMPChatDisplay.windowWidth);
-            KMPChatDisplay.layoutOptions[1] = GUILayout.MaxWidth(KMPChatDisplay.windowWidth);
-
-            // Init chatDX display options
-            //Init chat display options
+            // Chat DX
             if (KMPChatDX.layoutOptions == null)
                 KMPChatDX.layoutOptions = new GUILayoutOption[4];
 
@@ -2782,114 +2797,112 @@ namespace KMP
 
             KMPChatDX.windowStyle.normal.background = null;
 
+			//Init screenshot display options
+			if (KMPScreenshotDisplay.layoutOptions == null)
+				KMPScreenshotDisplay.layoutOptions = new GUILayoutOption[2];
 
-            //Init screenshot display options
-            if (KMPScreenshotDisplay.layoutOptions == null)
-                KMPScreenshotDisplay.layoutOptions = new GUILayoutOption[2];
+			KMPScreenshotDisplay.layoutOptions[0] = GUILayout.MaxHeight(KMPScreenshotDisplay.MIN_WINDOW_HEIGHT);
+			KMPScreenshotDisplay.layoutOptions[1] = GUILayout.MaxWidth(KMPScreenshotDisplay.MIN_WINDOW_WIDTH);
+			
+			//Init connection display options
+			if (KMPConnectionDisplay.layoutOptions == null)
+				KMPConnectionDisplay.layoutOptions = new GUILayoutOption[2];
 
-            KMPScreenshotDisplay.layoutOptions[0] = GUILayout.MaxHeight(KMPScreenshotDisplay.MIN_WINDOW_HEIGHT);
-            KMPScreenshotDisplay.layoutOptions[1] = GUILayout.MaxWidth(KMPScreenshotDisplay.MIN_WINDOW_WIDTH);
+			KMPConnectionDisplay.layoutOptions[0] = GUILayout.MaxHeight(KMPConnectionDisplay.MIN_WINDOW_HEIGHT);
+			KMPConnectionDisplay.layoutOptions[1] = GUILayout.MaxWidth(KMPConnectionDisplay.MIN_WINDOW_WIDTH);
+			
+			//Init lock display options
+			if (KMPVesselLockDisplay.layoutOptions == null)
+				KMPVesselLockDisplay.layoutOptions = new GUILayoutOption[2];
 
-            //Init connection display options
-            if (KMPConnectionDisplay.layoutOptions == null)
-                KMPConnectionDisplay.layoutOptions = new GUILayoutOption[2];
+			KMPVesselLockDisplay.layoutOptions[0] = GUILayout.MaxHeight(KMPVesselLockDisplay.MIN_WINDOW_HEIGHT);
+			KMPVesselLockDisplay.layoutOptions[1] = GUILayout.MaxWidth(KMPVesselLockDisplay.MIN_WINDOW_WIDTH);
+			
+			GUI.skin = HighLogic.Skin;
+			
+			if (!KMPConnectionDisplay.windowEnabled && HighLogic.LoadedScene == GameScenes.MAINMENU) KMPClientMain.clearConnectionState();
+			
+			KMPConnectionDisplay.windowEnabled = (HighLogic.LoadedScene == GameScenes.MAINMENU) && globalUIToggle;
+			
+			if (KMPConnectionDisplay.windowEnabled)
+			{
+				gameRunning = false;
+				try
+				{
+					GameEvents.onGameSceneLoadRequested.Remove(this.OnGameSceneLoadRequested);
+					GameEvents.onFlightReady.Remove(this.OnFlightReady);
+					GameEvents.onPartCouple.Remove(this.OnPartCouple);
+					GameEvents.onPartUndock.Remove(this.OnPartUndock);
+					GameEvents.onCrewOnEva.Remove(this.OnCrewOnEva);
+					GameEvents.onCrewBoardVessel.Remove(this.OnCrewBoardVessel);
+					GameEvents.onVesselLoaded.Remove(this.OnVesselLoaded);
+					GameEvents.onVesselTerminated.Remove(this.OnVesselTerminated);
+					GameEvents.onVesselDestroy.Remove(this.OnVesselDestroy);
+				} catch { }
+				GUILayout.Window(
+					999996,
+					KMPConnectionDisplay.windowPos,
+					connectionWindow,
+					"Connection Settings",
+					KMPConnectionDisplay.layoutOptions
+					);
+			}
+			
+			if (!KMPConnectionDisplay.windowEnabled && KMPClientMain.handshakeCompleted && KMPClientMain.tcpSocket != null)
+			{
+				if(KMPInfoDisplay.infoDisplayActive)
+				{
+					KMPInfoDisplay.infoWindowPos = GUILayout.Window(
+						999999,
+						KMPInfoDisplay.infoWindowPos,
+						infoDisplayWindow,
+						KMPInfoDisplay.infoDisplayMinimized ? "KMP" : "KerbalMP v"+KMPCommon.PROGRAM_VERSION+" ("+KMPGlobalSettings.instance.guiToggleKey+")",
+						KMPInfoDisplay.layoutOptions
+						);
+					
+					if (isInFlight && !syncing && !KMPInfoDisplay.infoDisplayMinimized)
+					{
+						GUILayout.Window(
+							999996,
+							KMPVesselLockDisplay.windowPos,
+							lockWindow,
+							"Lock",
+							KMPVesselLockDisplay.layoutOptions
+							);
+					}
+				}	
+			}
 
-            KMPConnectionDisplay.layoutOptions[0] = GUILayout.MaxHeight(KMPConnectionDisplay.MIN_WINDOW_HEIGHT);
-            KMPConnectionDisplay.layoutOptions[1] = GUILayout.MaxWidth(KMPConnectionDisplay.MIN_WINDOW_WIDTH);
+			
+		    if(!gameRunning)
+     	    {
+         		//close the windows if not connected to a server 
+       	 	    KMPScreenshotDisplay.windowEnabled = false;
+      		    KMPGlobalSettings.instance.chatWindowEnabled = false;
+ 		    }
+			
+			if (KMPScreenshotDisplay.windowEnabled)
+			{
+				KMPScreenshotDisplay.windowPos = GUILayout.Window(
+					999998,
+					KMPScreenshotDisplay.windowPos,
+					screenshotWindow,
+					"KerbalMP Viewer",
+					KMPScreenshotDisplay.layoutOptions
+					);
+			}
 
-            //Init lock display options
-            if (KMPVesselLockDisplay.layoutOptions == null)
-                KMPVesselLockDisplay.layoutOptions = new GUILayoutOption[2];
+			if (KMPGlobalSettings.instance.chatWindowEnabled)
+			{
+				KMPChatDisplay.windowPos = GUILayout.Window(
+					999997,
+					KMPChatDisplay.windowPos,
+					chatWindow,
+					"KerbalMP Chat",
+					KMPChatDisplay.layoutOptions
+					);
+			}
 
-            KMPVesselLockDisplay.layoutOptions[0] = GUILayout.MaxHeight(KMPVesselLockDisplay.MIN_WINDOW_HEIGHT);
-            KMPVesselLockDisplay.layoutOptions[1] = GUILayout.MaxWidth(KMPVesselLockDisplay.MIN_WINDOW_WIDTH);
-
-            GUI.skin = HighLogic.Skin;
-
-            if (!KMPConnectionDisplay.windowEnabled && HighLogic.LoadedScene == GameScenes.MAINMENU) KMPClientMain.clearConnectionState();
-
-            KMPConnectionDisplay.windowEnabled = (HighLogic.LoadedScene == GameScenes.MAINMENU) && globalUIToggle;
-
-            if (KMPConnectionDisplay.windowEnabled)
-            {
-                gameRunning = false;
-                try
-                {
-                    GameEvents.onGameSceneLoadRequested.Remove(this.OnGameSceneLoadRequested);
-                    GameEvents.onFlightReady.Remove(this.OnFlightReady);
-                    GameEvents.onPartCouple.Remove(this.OnPartCouple);
-                    GameEvents.onPartUndock.Remove(this.OnPartUndock);
-                    GameEvents.onCrewOnEva.Remove(this.OnCrewOnEva);
-                    GameEvents.onCrewBoardVessel.Remove(this.OnCrewBoardVessel);
-                    GameEvents.onVesselLoaded.Remove(this.OnVesselLoaded);
-                    GameEvents.onVesselTerminated.Remove(this.OnVesselTerminated);
-                    GameEvents.onVesselDestroy.Remove(this.OnVesselDestroy);
-                }
-                catch { }
-                GUILayout.Window(
-                    999996,
-                    KMPConnectionDisplay.windowPos,
-                    connectionWindow,
-                    "Connection Settings",
-                    KMPConnectionDisplay.layoutOptions
-                    );
-            }
-
-            if (!KMPConnectionDisplay.windowEnabled && KMPClientMain.handshakeCompleted && KMPClientMain.tcpSocket != null)
-            {
-                if (KMPInfoDisplay.infoDisplayActive)
-                {
-                    KMPInfoDisplay.infoWindowPos = GUILayout.Window(
-                        999999,
-                        KMPInfoDisplay.infoWindowPos,
-                        infoDisplayWindow,
-                        KMPInfoDisplay.infoDisplayMinimized ? "KMP" : "KerbalMP v" + KMPCommon.PROGRAM_VERSION + " (" + KMPGlobalSettings.instance.guiToggleKey + ")",
-                        KMPInfoDisplay.layoutOptions
-                        );
-
-                    if (isInFlight && !syncing && !KMPInfoDisplay.infoDisplayMinimized)
-                    {
-                        GUILayout.Window(
-                            999995,
-                            KMPVesselLockDisplay.windowPos,
-                            lockWindow,
-                            "Lock",
-                            KMPVesselLockDisplay.layoutOptions
-                            );
-                    }
-                }
-            }
-
-
-            if (!gameRunning)
-            {
-                //close the windows if not connected to a server 
-                KMPScreenshotDisplay.windowEnabled = false;
-                KMPGlobalSettings.instance.chatWindowEnabled = false;
-            }
-
-            if (KMPScreenshotDisplay.windowEnabled)
-            {
-                KMPScreenshotDisplay.windowPos = GUILayout.Window(
-                    999998,
-                    KMPScreenshotDisplay.windowPos,
-                    screenshotWindow,
-                    "KerbalMP Viewer",
-                    KMPScreenshotDisplay.layoutOptions
-                    );
-            }
-
-            if (KMPGlobalSettings.instance.chatWindowEnabled || true)
-            {
-                KMPChatDisplay.windowPos = GUILayout.Window(
-                    999997,
-                    KMPChatDisplay.windowPos,
-                    chatWindow,
-                    "KerbalMP Chat",
-                    KMPChatDisplay.layoutOptions
-                    );
-            }
-            
             if (KMPGlobalSettings.instance.chatDXWindowEnabled)
             {
                 KMPChatDX.windowPos = GUILayout.Window(
@@ -2901,19 +2914,12 @@ namespace KMP
                     KMPChatDX.layoutOptions
                     );
             }
-            
-            KMPInfoDisplay.infoWindowPos = enforceWindowBoundaries(KMPInfoDisplay.infoWindowPos);
-            KMPScreenshotDisplay.windowPos = enforceWindowBoundaries(KMPScreenshotDisplay.windowPos);
-            KMPChatDisplay.windowPos = enforceWindowBoundaries(KMPChatDisplay.windowPos);
+
+			KMPInfoDisplay.infoWindowPos = enforceWindowBoundaries(KMPInfoDisplay.infoWindowPos);
+			KMPScreenshotDisplay.windowPos = enforceWindowBoundaries(KMPScreenshotDisplay.windowPos);
+			KMPChatDisplay.windowPos = enforceWindowBoundaries(KMPChatDisplay.windowPos);
             KMPChatDX.windowPos = enforceWindowBoundaries(KMPChatDX.windowPos);
-
-        }
-
-     
-
-
-
- 
+		}
 		
 		private void lockWindow(int windowID)
 		{
@@ -2969,7 +2975,7 @@ namespace KMP
 			{
 				KMPGlobalSettings.instance.infoDisplayBig = GUILayout.Toggle(
 					KMPGlobalSettings.instance.infoDisplayBig,
-					KMPGlobalSettings.instance.infoDisplayBig ? "– " : "+ ",
+					KMPGlobalSettings.instance.infoDisplayBig ? "- " : "+ ",
 					GUI.skin.button);
 				KMPInfoDisplay.infoDisplayDetailed = GUILayout.Toggle(KMPInfoDisplay.infoDisplayDetailed, "Detail", GUI.skin.button);
 				KMPInfoDisplay.infoDisplayOptions = GUILayout.Toggle(KMPInfoDisplay.infoDisplayOptions, "Options", GUI.skin.button);
@@ -3413,7 +3419,7 @@ namespace KMP
 
             GUILayout.BeginVertical();
             GUILayout.Space(1);
-            
+
 
             KMPChatDX.setStyle();
             //KMPChatDX.scrollPos = GUILayout.BeginScrollView(KMPChatDX.scrollPos);

@@ -18,7 +18,7 @@ namespace KMP
         public const int MAX_CHAT_LINE_LENGTH = 128;
         public const float NAME_COLOR_SATURATION_FACTOR = 0.35f;
 
-        public static float chatboxHeight = 350;
+        public static float chatboxHeight = 300;
         public static float chatboxWidth = 500;
 
         public static bool displayCommands = false;
