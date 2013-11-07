@@ -1041,7 +1041,9 @@ namespace KMPServer
 						}
 
 						//Handle the message
-						handleMessage(client, id, KMPCommon.Decompress(data));
+						byte[] messageData = KMPCommon.Decompress(data);
+						if (messageData != null) handleMessage(client, id, messageData);
+						//Consider adding re-request here
 					}
 
 				}
@@ -1877,6 +1879,7 @@ namespace KMPServer
 			if (data != null)
 			{
 				compressed_data = KMPCommon.Compress(data);
+				if (compressed_data == null) compressed_data = KMPCommon.Compress(data, true);
 				msg_data_length = compressed_data.Length;
 			}
 
