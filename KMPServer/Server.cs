@@ -1789,12 +1789,26 @@ namespace KMPServer
 	                    sb.Append("!list - View all connected players\n");
 	                    sb.Append("!quit - Leaves the server\n");
 	                    sb.Append("!getcraft <playername> - Gets the most recent craft shared by the specified player\n");
+						sb.Append("!motd - Displays Server MOTD\n");
+						sb.Append("!rules - Displays Server Ruels\n");
 	                    sb.Append(Environment.NewLine);
 	                    
 	                    sendTextMessage(cl, sb.ToString());
 	
 	                    return;
 	                }
+					else if (message_lower == "!motd")
+					{
+						sb.Append(settings.serverMotd);
+						sendTextMessage(cl, sb.ToString());
+						return;
+					}
+					else if (message_lower == "!rules")
+					{
+						sb.Append(settings.serverRules);
+						sendTextMessage(cl, sb.ToString());
+						return;
+					}
 	                else if (message_lower.Length > (KMPCommon.GET_CRAFT_COMMAND.Length + 1)
 	                    && message_lower.Substring(0, KMPCommon.GET_CRAFT_COMMAND.Length) == KMPCommon.GET_CRAFT_COMMAND)
 	                {
