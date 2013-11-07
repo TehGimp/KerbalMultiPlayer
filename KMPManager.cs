@@ -3494,9 +3494,16 @@ namespace KMP
 
         private void chatWindowDX(int windowID)
         {
+            GUILayoutOption[] entry_field_options = new GUILayoutOption[2];
+            
+            entry_field_options[0] = GUILayout.MaxWidth(KMPChatDX.chatboxWidth);
+            entry_field_options[1] = GUILayout.MinWidth(KMPChatDX.chatboxWidth);
 
-            GUILayoutOption[] entry_field_options = new GUILayoutOption[1];
-            entry_field_options[0] = GUILayout.MaxWidth(KMPChatDisplay.windowWidth);
+            if (platform == PlatformID.Unix)
+            {
+                entry_field_options[0] = GUILayout.MaxWidth(KMPChatDX.chatboxWidth - 75);
+                entry_field_options[1] = GUILayout.MinWidth(KMPChatDX.chatboxWidth - 75);
+            }
 
             GUIStyle chat_entry_style = new GUIStyle(GUI.skin.textField);
             chat_entry_style.stretchWidth = true;
