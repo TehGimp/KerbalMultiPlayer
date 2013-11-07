@@ -2323,11 +2323,11 @@ namespace KMPServer
 					cmd.CommandText = sql;
 					cmd.ExecuteNonQuery();
 					cmd.Dispose();
-					if (vessel_update.situation == Situation.DESTROYED) 
+					if (!recentlyDestroyed.ContainsKey(vessel_update.kmpID) && vessel_update.situation == Situation.DESTROYED) //Only report first destruction event
 					{
 						Log.Activity("Vessel " + vessel_update.kmpID + " reported as destroyed");
 						recentlyDestroyed[vessel_update.kmpID] = currentMillisecond;
-					}
+					} else if (recentlyDestroyed.ContainsKey(vessel_update.kmpID)) recentlyDestroyed.Remove(vessel_update.kmpID); //Vessel was restored for whatever reason
 					return vessel_update.situation == Situation.DESTROYED;
 				} else return true;
 			} catch { }	
