@@ -325,6 +325,7 @@ namespace KMPServer
 			commandThread.Start();
 			connectionThread.Start();
 			outgoingMessageThread.Start();
+			ghostCheckThread.Start();
 			
 			//Begin listening for HTTP requests
 
