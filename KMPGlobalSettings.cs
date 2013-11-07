@@ -20,13 +20,20 @@ namespace KMP
 		public float chatDisplayWindowX;
 		public float chatDisplayWindowY;
 
+        public float chatDXDisplayWindowX;
+        public float chatDXDisplayWindowY;
+
 		public bool infoDisplayBig = false;
 
-		public bool chatWindowEnabled = false;
+		public bool chatWindowEnabled = true;
 		public bool chatWindowWide = false;
+
+        public bool chatDXWindowEnabled = true;
 
 		public KeyCode guiToggleKey = KeyCode.F7;
 		public KeyCode screenshotKey = KeyCode.F8;
+        public KeyCode chatTalkKey = KeyCode.Y;
+        public KeyCode chatHideKey = KeyCode.F9;
 
 		[OptionalField(VersionAdded = 1)]
 		public bool smoothScreens = true;
@@ -43,6 +50,8 @@ namespace KMP
 			smoothScreens = true;
 			guiToggleKey = KeyCode.F7;
 			screenshotKey = KeyCode.F8;
+            chatTalkKey = KeyCode.Y;
+            chatHideKey = KeyCode.F9;
 			chatColors = true;
 			showInactiveShips = true;
 		}
