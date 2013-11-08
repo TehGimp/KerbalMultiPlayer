@@ -1886,7 +1886,7 @@ namespace KMPServer
 	                    sb.Append("!quit - Leaves the server\n");
 	                    sb.Append("!getcraft <playername> - Gets the most recent craft shared by the specified player\n");
 						sb.Append("!motd - Displays Server MOTD\n");
-						sb.Append("!rules - Displays Server Ruels\n");
+						sb.Append("!rules - Displays Server Rules\n");
 	                    sb.Append(Environment.NewLine);
 	                    
 	                    sendTextMessage(cl, sb.ToString());
