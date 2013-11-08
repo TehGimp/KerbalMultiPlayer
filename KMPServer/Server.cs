@@ -1712,7 +1712,7 @@ namespace KMPServer
 
             //Check if this player is new to universe
             SQLiteCommand cmd = universeDB.CreateCommand();
-            string sql = "SELECT COUNT(*) FROM kmpPlayer WHERE Name = @username AND Guid != @guid;";
+            string sql = "SELECT COUNT(1) FROM kmpPlayer WHERE Name = @username AND Guid != @guid;";
             cmd.CommandText = sql;
             cmd.Parameters.AddWithValue("username", username_lower);
             cmd.Parameters.AddWithValue("guid", guid);
@@ -1726,7 +1726,7 @@ namespace KMPServer
                 //return;
             }
             cmd = universeDB.CreateCommand();
-            sql = "SELECT COUNT(*) FROM kmpPlayer WHERE Guid = @guid";
+            sql = "SELECT COUNT(1) FROM kmpPlayer WHERE Guid = @guid";
             cmd.CommandText = sql;
             cmd.Parameters.AddWithValue("guid", guid);
             Int32 player_exists = Convert.ToInt32(cmd.ExecuteScalar());
