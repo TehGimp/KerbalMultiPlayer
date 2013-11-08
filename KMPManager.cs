@@ -3276,6 +3276,12 @@ namespace KMP
 						String[] favorites = KMPClientMain.GetFavorites();
 						for (int i=0; i<8; ++i)
 						{
+							if ((newHost.Trim() + ":" + newPort.Trim()) == favorites[i])
+						    {
+								ScreenMessages.PostScreenMessage("This server is already on the list",300f,ScreenMessageStyle.UPPER_CENTER);
+								break;
+							}
+							
 							if (String.IsNullOrEmpty(favorites[i]) || i == 7) {
 								favorites[i] = newHost.Trim() + ":" + newPort.Trim();
 								break;
