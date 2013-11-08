@@ -109,7 +109,8 @@ namespace KMPServer
 								
 								//KMP ISSUE #192: Fixed random disconnect issue
 								//Removed redundant "Socket.Available" check and increased the Poll "Timeout" from 10ms to 500ms - Dani
-							    return clientSocket.Poll(500000, SelectMode.SelectRead);
+                                //Change SocketRead to SocketWrite. Also, no need for such high timeout.
+                                return clientSocket.Poll(150000, SelectMode.SelectWrite);
 							}
 							else
 							{
