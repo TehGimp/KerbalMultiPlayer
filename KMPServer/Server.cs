@@ -2016,6 +2016,9 @@ namespace KMPServer
                     }
                 }
 
+                if (settings.profanityFilter)
+                    message_text = WashMouthWithSoap(message_text);
+
                 string full_message = string.Format("<{0}> {1}", cl.username, message_text);
 
                 //Console.SetCursorPosition(0, Console.CursorTop);
@@ -2025,6 +2028,28 @@ namespace KMPServer
                 sendTextMessageToAll(full_message, cl);
             }
             catch (NullReferenceException) { }
+        }
+
+        private string[] profanity = { "fucker", "faggot", "shit", "fuck", "cunt", "piss", "fag", "dick", "cock", "asshole" };
+        private string[] replacements = { "kerper", "kerpot", "kerp", "guck", "kump", "heph", "olp", "derp", "beet", "hepderm" };
+
+        private string WashMouthWithSoap(string message_text)
+        {
+            var msg = message_text;
+
+            for (var i = 0; i < profanity.Length; i++)
+            {
+                string word = profanity[i];
+                int profIndex = msg.IndexOf(word, StringComparison.InvariantCultureIgnoreCase);
+
+                if (profIndex > -1)
+                {
+                    msg = msg.Remove(profIndex, word.Length);
+                    msg = msg.Insert(profIndex, replacements[i]);
+                }
+            }
+
+            return msg;
         }
 
         public static byte[] buildMessageArray(KMPCommon.ServerMessageID id, byte[] data)

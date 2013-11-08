@@ -45,6 +45,7 @@ namespace KMPServer
             public Log.LogLevels LogLevel = Log.LogLevels.Info;
             public bool whitelisted = false;
             public int screenshotHeight = 600;
+            public bool profanityFilter = true;
 
             private List<BanRecord> _bans = new List<BanRecord>();
             internal List<BanRecord> bans
