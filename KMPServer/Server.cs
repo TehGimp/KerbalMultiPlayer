@@ -445,7 +445,7 @@ namespace KMPServer
             if (count == 0)
                 Log.Info("No ships.");
             else if(!bList)
-                Log.Info("Number of ships: ");
+                Log.Info("Number of ships: {0}", count);
            
         }
 
