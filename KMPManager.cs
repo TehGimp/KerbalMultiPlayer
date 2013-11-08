@@ -1230,8 +1230,11 @@ namespace KMP
 			yield return new WaitForFixedUpdate();
 			if (FlightGlobals.ClearToSave() == ClearToSaveStatus.CLEAR || !isInFlight || FlightGlobals.ActiveVessel.state == Vessel.State.DEAD)
 			{
-				GamePersistence.SaveGame("persistent",HighLogic.SaveFolder,SaveMode.OVERWRITE);
-				HighLogic.LoadScene(GameScenes.SPACECENTER);
+				if (!forceQuit)
+				{
+					GamePersistence.SaveGame("persistent",HighLogic.SaveFolder,SaveMode.OVERWRITE);
+					HighLogic.LoadScene(GameScenes.SPACECENTER);
+				}
 				syncing = false;
 			} else StartCoroutine(returnToSpaceCenter());
 		}
@@ -1517,10 +1520,14 @@ namespace KMP
 						if (!serverVessels_LoadDelay.ContainsKey(vessel_update.id) || (serverVessels_LoadDelay.ContainsKey(vessel_update.id) ? (serverVessels_LoadDelay[vessel_update.id] < UnityEngine.Time.realtimeSinceStartup) : false))
 						{
 							float incomingDistance = 2500f;
-							if (vessel.worldPosition != Vector3.zero && vessel_update.relTime == RelativeTime.PRESENT)
+							if (!syncing && vessel.worldPosition != Vector3.zero && vessel_update.relTime == RelativeTime.PRESENT)
 								incomingDistance = Vector3.Distance(vessel.worldPosition,FlightGlobals.ActiveVessel.GetWorldPos3D());
 							if (vessel_update.relTime != RelativeTime.PRESENT) incomingDistance = 3000f; //Never treat vessels from another time as close by
-						 	if (vessel_update.state == State.ACTIVE || vessel_update.isDockUpdate || (incomingDistance > vessel_update.distance && (!serverVessels_LastUpdateDistanceTime.ContainsKey(vessel_update.id) || serverVessels_LastUpdateDistanceTime[vessel_update.id].Key > vessel_update.distance || serverVessels_LastUpdateDistanceTime[vessel_update.id].Value < Planetarium.GetUniversalTime())))
+							KMPClientMain.DebugLog("1: " + incomingDistance + " " + vessel_update.distance + " " + serverVessels_LastUpdateDistanceTime.ContainsKey(vessel_update.id) ); //!!
+						 	if (vessel_update.state == State.ACTIVE
+							    	|| vessel_update.isDockUpdate
+							    	|| (incomingDistance > vessel_update.distance
+							    		&& (serverVessels_LastUpdateDistanceTime.ContainsKey(vessel_update.id) ? (serverVessels_LastUpdateDistanceTime[vessel_update.id].Key > vessel_update.distance || serverVessels_LastUpdateDistanceTime[vessel_update.id].Value < Planetarium.GetUniversalTime()): true)))
 							{
 								serverVessels_LastUpdateDistanceTime[vessel_update.id] = new KeyValuePair<double, double>(vessel_update.distance,Planetarium.GetUniversalTime() + 0.75f);
 								if (extant_vessel != null)
@@ -2760,8 +2767,11 @@ namespace KMP
 					KeyCode key = KeyCode.F8;
 					if (getAnyKeyDown(ref key))
 					{
-						KMPGlobalSettings.instance.screenshotKey = key;
-						mappingScreenshotKey = false;
+						if (key != KeyCode.Mouse0)
+ 			            {
+							KMPGlobalSettings.instance.screenshotKey = key;
+							mappingScreenshotKey = false;
+						}
 					}
 				}
 
@@ -3137,8 +3147,8 @@ namespace KMP
 					if (GUILayout.Button("Disconnect & Exit"))
 					{
 						KMPClientMain.clearConnectionState();
-						HighLogic.LoadScene(GameScenes.MAINMENU);
 						gameRunning = false;
+						forceQuit = true;
 					}
 
 					GUILayout.EndHorizontal();
@@ -3217,6 +3227,28 @@ namespace KMP
 			{
 				if (KMPClientMain.tcpSocket.Connected && !gameRunning)
 				{
+					//Clear dictionaries
+					sentVessels_Situations.Clear();
+		
+					serverVessels_RemoteID.Clear();
+					serverVessels_PartCounts.Clear();
+					serverVessels_Parts.Clear();
+					serverVessels_ProtoVessels.Clear();
+					
+					serverVessels_InUse.Clear();
+					serverVessels_IsPrivate.Clear();
+					serverVessels_IsMine.Clear();
+					
+					serverVessels_LastUpdateDistanceTime.Clear();
+					serverVessels_LoadDelay.Clear();
+					serverVessels_InPresent.Clear();
+					serverVessels_ObtSyncDelay.Clear();
+					
+					serverVessels_RendezvousSmoothPos.Clear();
+					serverVessels_RendezvousSmoothVel.Clear();
+	
+					newFlags.Clear();
+					
 					//Start MP game
 					KMPConnectionDisplay.windowEnabled = false;
 					gameRunning = true;
