@@ -340,7 +340,7 @@ namespace KMPServer
             }
             catch (Exception e)
             {
-                Log.Error("Error starting http server: " + e);
+				Log.Error("Error starting http server: {0}",e);
                 Log.Error("Please try running the server as an administrator");
             }
 
@@ -1426,7 +1426,7 @@ namespace KMPServer
                     cl.lastTick = -1d;
                     sendSubspace(cl, false);
                     cl.warping = false;
-                    Log.Activity(cl.username + " set to new subspace " + newSubspace);
+					Log.Activity("{0} set to new subspace {1}",cl.username, newSubspace);
                 }
             }
             else
@@ -1435,7 +1435,7 @@ namespace KMPServer
                 {
                     cl.warping = true;
                     cl.currentSubspaceID = -1;
-                    Log.Activity(cl.username + " is warping");
+					Log.Activity("{0} is warping",cl.username);
                 }
             }
         }
@@ -1473,7 +1473,7 @@ namespace KMPServer
                     if (cl.syncOffset > 0.5d) cl.syncOffset = 0.5;
                     if (cl.receivedHandshake && cl.lastSyncTime < (currentMillisecond - 2500L))
                     {
-                        Log.Debug("Sending time-sync to " + cl.username + " current offset " + cl.syncOffset);
+						Log.Debug("Sending time-sync to {0} current offset {1}",cl.username, cl.syncOffset);
                         if (cl.lagWarning > 24)
                         {
                             cl.lastSyncTime = currentMillisecond;
@@ -1843,7 +1843,7 @@ namespace KMPServer
             if (!cl.warping)
             {
                 sendSubspaceSync(cl);
-                Log.Activity("Sending all vessels in current subspace for " + cl.username);
+				Log.Activity("Sending all vessels in current subspace for {0}", cl.username);
                 SQLiteCommand cmd = universeDB.CreateCommand();
                 string sql = "SELECT  vu.UpdateMessage, v.ProtoVessel, v.Private, v.OwnerID" +
                     " FROM kmpVesselUpdate vu" +
@@ -1925,7 +1925,7 @@ namespace KMPServer
                     reader.Close();
                 }
                 cl.currentSubspaceID = subspace;
-                Log.Activity(cl.username + " set to lead subspace " + subspace);
+				Log.Activity("{0} set to lead subspace {1}",cl.username, subspace);
                 sendSyncMessage(cl, tick);
             }
         }
@@ -2082,7 +2082,7 @@ namespace KMPServer
                 byte[] message_bytes = buildMessageArray(id, data);
                 client.GetStream().Write(message_bytes, 0, message_bytes.Length);
 
-                Log.Debug("Sending message: " + id.ToString());
+				Log.Debug("Sending message: {0}",id.ToString());
             }
             catch { }
         }
@@ -2518,7 +2518,7 @@ namespace KMPServer
                     cmd.Dispose();
                     if (!recentlyDestroyed.ContainsKey(vessel_update.kmpID) && vessel_update.situation == Situation.DESTROYED) //Only report first destruction event
                     {
-                        Log.Activity("Vessel " + vessel_update.kmpID + " reported as destroyed");
+						Log.Activity("Vessel {0} reported as destroyed",vessel_update.kmpID);
                         recentlyDestroyed[vessel_update.kmpID] = currentMillisecond;
                     }
                     else if (recentlyDestroyed.ContainsKey(vessel_update.kmpID)) recentlyDestroyed.Remove(vessel_update.kmpID); //Vessel was restored for whatever reason
