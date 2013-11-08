@@ -729,41 +729,43 @@ namespace KMP
 					KMPVesselUpdate update = getVesselUpdate(enumerator.Current.Value);
 					if (update != null)
 					{
-						if ((update.situation == Situation.DESCENDING || update.situation == Situation.FLYING)
-						    && enumerator.Current.Value.mainBody.atmosphere
-						    && enumerator.Current.Value.altitude < enumerator.Current.Value.mainBody.maxAtmosphereAltitude
-						    && !newVessel)
-							update.situation = Situation.DESTROYED; //Don't keep sending a secondary vessel that will stay destroyed for any other client
-						update.distance = enumerator.Current.Key;
-						update.state = State.INACTIVE;
-						if (enumerator.Current.Value.loaded && (serverVessels_InUse.ContainsKey(enumerator.Current.Value.id) ? serverVessels_InUse[enumerator.Current.Value.id] : false) && FlightGlobals.ActiveVessel.altitude > 10000d)
+						if (! //Don't keep sending a secondary vessel that will stay destroyed for any other client:
+						   ((update.situation == Situation.DESCENDING || update.situation == Situation.FLYING) //If other vessel is flying/descending
+						    && enumerator.Current.Value.mainBody.atmosphere //and is near a body with atmo
+						    && enumerator.Current.Value.altitude < enumerator.Current.Value.mainBody.maxAtmosphereAltitude //and is in atmo
+						    && !newVessel)) //and isn't news to the server, then it shouldn't be sent
 						{
-							//Rendezvous relative position data
-							KMPClientMain.DebugLog ("sending docking-mode update, distance: " + enumerator.Current.Key);
-							update.relativeTo = FlightGlobals.ActiveVessel.id;
-							Vector3d w_pos = Vector3d.zero;
-							try
+							update.distance = enumerator.Current.Key;
+							update.state = State.INACTIVE;
+							if (enumerator.Current.Value.loaded && (serverVessels_InUse.ContainsKey(enumerator.Current.Value.id) ? serverVessels_InUse[enumerator.Current.Value.id] : false) && FlightGlobals.ActiveVessel.altitude > 10000d)
 							{
-								w_pos = enumerator.Current.Value.findWorldCenterOfMass() - FlightGlobals.ActiveVessel.findWorldCenterOfMass();
-							} catch {
-								KMPClientMain.DebugLog("couldn't get CoM!");
-								w_pos = enumerator.Current.Value.GetWorldPos3D() - FlightGlobals.ActiveVessel.GetWorldPos3D();
+								//Rendezvous relative position data
+								KMPClientMain.DebugLog ("sending docking-mode update, distance: " + enumerator.Current.Key);
+								update.relativeTo = FlightGlobals.ActiveVessel.id;
+								Vector3d w_pos = Vector3d.zero;
+								try
+								{
+									w_pos = enumerator.Current.Value.findWorldCenterOfMass() - FlightGlobals.ActiveVessel.findWorldCenterOfMass();
+								} catch {
+									KMPClientMain.DebugLog("couldn't get CoM!");
+									w_pos = enumerator.Current.Value.GetWorldPos3D() - FlightGlobals.ActiveVessel.GetWorldPos3D();
+								}
+								Vector3d o_vel = enumerator.Current.Value.GetObtVelocity() - FlightGlobals.ActiveVessel.GetObtVelocity();
+								update.clearProtoVessel();
+								for (int i = 0; i < 3; i++)
+								{
+									update.w_pos[i] = w_pos[i];
+									update.o_vel[i] = o_vel[i];
+								}
 							}
-							Vector3d o_vel = enumerator.Current.Value.GetObtVelocity() - FlightGlobals.ActiveVessel.GetObtVelocity();
-							update.clearProtoVessel();
-							for (int i = 0; i < 3; i++)
-							{
-								update.w_pos[i] = w_pos[i];
-								update.o_vel[i] = o_vel[i];
-							}
+							byte[] update_bytes = KSP.IO.IOUtils.SerializeToBinary(update);
+							KMPClientMain.DebugLog ("sending secondary update for: " + enumerator.Current.Value.id);
+							if (newVessel)
+								enqueuePluginInteropMessage(KMPCommon.PluginInteropMessageID.PRIMARY_PLUGIN_UPDATE, update_bytes);
+							else
+								enqueuePluginInteropMessage(KMPCommon.PluginInteropMessageID.SECONDARY_PLUGIN_UPDATE, update_bytes);
+							num_written_vessels++;
 						}
-						byte[] update_bytes = KSP.IO.IOUtils.SerializeToBinary(update);
-						KMPClientMain.DebugLog ("sending secondary update for: " + enumerator.Current.Value.id);
-						if (newVessel)
-							enqueuePluginInteropMessage(KMPCommon.PluginInteropMessageID.PRIMARY_PLUGIN_UPDATE, update_bytes);
-						else
-							enqueuePluginInteropMessage(KMPCommon.PluginInteropMessageID.SECONDARY_PLUGIN_UPDATE, update_bytes);
-						num_written_vessels++;
 					}
 				}
 			}
