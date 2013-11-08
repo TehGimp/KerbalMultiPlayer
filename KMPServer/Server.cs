@@ -393,10 +393,10 @@ namespace KMPServer
 					{
 						case "/ban": banServerCommand(input); break;
 						case "/clearclients": clearClientsServerCommand(); break;
-						case "/count": countServerCommand(); break;
+						case "/countclients": countServerCommand(); break;
 						case "/help": displayCommands(); break;
 						case "/kick": kickServerCommand(input); break;
-						case "/list": listServerCommand(); break;
+						case "/listclients": listServerCommand(); break;
 						case "/quit":
 						case "/stop": quitServerCommand(input); bRunning = false; break;
 						case "/save": saveServerCommand(); break;
@@ -404,6 +404,8 @@ namespace KMPServer
 						case "/update": updateServerCommand(input); break;
 						case "/unregister": unregisterServerCommand(input); break;
 						case "/dekessler": dekesslerServerCommand(input); break;
+                        case "/countships": countShipsServerCommand(); break;
+                        case "/listships": listShipsServerCommand(); break;
 						default: sendServerMessageToAll(input); break;
 					}
 				}
@@ -416,6 +418,41 @@ namespace KMPServer
 				passExceptionToMain(e);
 			}
 		}
+
+        private void countShipsServerCommand(bool bList = false)
+        {
+            SQLiteCommand cmd = universeDB.CreateCommand();
+            String sql = "SELECT  vu.UpdateMessage, v.ProtoVessel, v.Guid" +
+                        " FROM kmpVesselUpdate vu" +
+                        " INNER JOIN kmpVessel v ON v.Guid = vu.Guid AND v.Destroyed != 1" +
+                        " INNER JOIN kmpSubspace s ON s.ID = vu.Subspace" +
+                        " INNER JOIN" +
+                        "  (SELECT vu.Guid, MAX(s.LastTick) AS LastTick" +
+                        "  FROM kmpVesselUpdate vu" +
+                        "  INNER JOIN kmpSubspace s ON s.ID = vu.Subspace" +
+                        "  GROUP BY vu.Guid) t ON t.Guid = vu.Guid AND t.LastTick = s.LastTick;";
+            cmd.CommandText = sql;
+            SQLiteDataReader reader = cmd.ExecuteReader();
+            int count = 0;
+            while (reader.Read())
+            {
+                KMPVesselUpdate vessel_update = (KMPVesselUpdate)ByteArrayToObject(GetDataReaderBytes(reader, 0));
+                if(bList)
+                    Log.Info("Name {0}\tID: {1}", vessel_update.name, vessel_update.kmpID);
+                count++;
+            }
+            
+            if (count == 0)
+                Log.Info("No ships.");
+            else if(!bList)
+                Log.Info("Number of ships: {0}", count);
+           
+        }
+
+        private void listShipsServerCommand()
+        {
+            countShipsServerCommand(true);
+        }
 
 		//Ban specified user, by name, from the server
 		private void banServerCommand(String input)
@@ -645,7 +682,8 @@ namespace KMPServer
 				if (input.Length >= 11)
 				{
 					String[] args = input.Substring(11, input.Length - 11).Split(' ');
-					if (args.Length == 1) minsToKeep = Convert.ToInt32(args[0]);
+					if (args.Length == 1) 
+                        minsToKeep = Convert.ToInt32(args[0]);
 					else
 						Log.Info("Could not parse dekessler command. Format is \"/dekessler <mins>\"");
 				}
@@ -709,6 +747,8 @@ namespace KMPServer
 				}
 			}
 		}
+
+        
 		
 		private void listenForClients()
 		{
@@ -2053,6 +2093,7 @@ namespace KMPServer
             {
                 client.queueOutgoingMessage(message_bytes);
             }
+            Log.Debug("[Server] message sent.");
 		}
 
 		private void sendServerMessage(Client cl, String message)
@@ -2756,8 +2797,8 @@ namespace KMPServer
 			Log.Info("Commands:");
 			Log.Info("/quit - Quit server cleanly");
 			Log.Info("/stop - Stop hosting server");
-			Log.Info("/list - List players");
-			Log.Info("/count - Display player counts");
+			Log.Info("/listclients - List players");
+			Log.Info("/countclients - Display player counts");
 			Log.Info("/kick <username> - Kick player <username>");
 			Log.Info("/ban <username> - Permanently ban player <username> and any known aliases");
 			Log.Info("/register <username> <token> - Add new roster entry for player <username> with authentication token <token> (BEWARE: will delete any matching roster entries)");
