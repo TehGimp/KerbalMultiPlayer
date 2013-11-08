@@ -1677,7 +1677,9 @@ namespace KMP
 						if (currentMessageDataIndex >= currentMessageData.Length)
 						{
 							//Handle received message
-							messageReceived(currentMessageID, KMPCommon.Decompress(currentMessageData));
+							byte[] messageData = KMPCommon.Decompress(currentMessageData);
+							if (messageData != null) messageReceived(currentMessageID, messageData);
+							//Consider adding re-request here
 	
 							currentMessageData = null;
 	
@@ -1860,6 +1862,7 @@ namespace KMP
 			if (data != null)
 			{				
 				compressed_data = KMPCommon.Compress(data);
+				if (compressed_data == null) compressed_data = KMPCommon.Compress(data, true);
 				msg_data_length = compressed_data.Length;
 			}
 

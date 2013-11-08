@@ -1,4 +1,4 @@
-﻿//#define DEBUG_OUT
+﻿﻿//#define DEBUG_OUT
 //#define SEND_UPDATES_TO_SENDER
 
 using System;
@@ -39,6 +39,7 @@ namespace KMPServer
 		
 		public const long CLIENT_TIMEOUT_DELAY = 16000;
 		public const long CLIENT_HANDSHAKE_TIMEOUT_DELAY = 18000;
+        public const int GHOST_CHECK_DELAY = 30000;
 		public const int SLEEP_TIME = 10;
 		public const int MAX_SCREENSHOT_COUNT = 10000;
 		public const int UDP_ACK_THROTTLE = 1000;
@@ -66,6 +67,7 @@ namespace KMPServer
 		public Thread commandThread;
 		public Thread connectionThread;
 		public Thread outgoingMessageThread;
+        public Thread ghostCheckThread;
 
 		public TcpListener tcpListener;
 		public UdpClient udpClient;
@@ -153,6 +155,7 @@ namespace KMPServer
 			safeAbort(commandThread);
 			safeAbort(connectionThread);
 			safeAbort(outgoingMessageThread);
+            safeAbort(ghostCheckThread);
 
 			if (clients != null)
 			{
@@ -300,6 +303,7 @@ namespace KMPServer
 			commandThread = new Thread(new ThreadStart(handleCommands));
 			connectionThread = new Thread(new ThreadStart(handleConnections));
 			outgoingMessageThread = new Thread(new ThreadStart(sendOutgoingMessages));
+            ghostCheckThread = new Thread(new ThreadStart(checkGhosts));
 
 			threadException = null;
 
@@ -321,6 +325,7 @@ namespace KMPServer
 			commandThread.Start();
 			connectionThread.Start();
 			outgoingMessageThread.Start();
+			ghostCheckThread.Start();
 			
 			//Begin listening for HTTP requests
 
@@ -398,6 +403,7 @@ namespace KMPServer
 						case "/register": registerServerCommand(input); break;
 						case "/update": updateServerCommand(input); break;
 						case "/unregister": unregisterServerCommand(input); break;
+						case "/dekessler": dekesslerServerCommand(input); break;
 						default: sendServerMessageToAll(input); break;
 					}
 				}
@@ -451,6 +457,20 @@ namespace KMPServer
 			foreach (Client client in clients.ToList().Where(c => !c.isReady))
 			{
 				markClientForDisconnect(client, "Disconnected via /clearclients command");
+
+                 /*
+                    Let's be a bit more aggresive, immediately close the socket, but leave the object intact.
+                    That should get the handleConnections thread the break it needs to have a chance to disconnect the ghost.
+                 */
+                try
+                {
+                    if (client.tcpClient != null)
+                    {
+                        client.tcpClient.Close();
+                        
+                    } 
+                } catch(Exception) { };
+
 				Log.Info("Force-disconnected client: {0}", client.playerID);
 			}
 		}
@@ -615,7 +635,81 @@ namespace KMPServer
 				Log.Info("Players with name/token '" + dereg + "' removed from player roster.");
 			}
 		}
+		
+		//Clears old debris
+		private void dekesslerServerCommand(String input)
+		{
+			if (input.Length >= 10 && input.Substring(0, 10) == "/dekessler") //argument is optional
+			{
+				int minsToKeep = 30;
+				if (input.Length >= 11)
+				{
+					String[] args = input.Substring(11, input.Length - 11).Split(' ');
+					if (args.Length == 1) minsToKeep = Convert.ToInt32(args[0]);
+					else
+						Log.Info("Could not parse dekessler command. Format is \"/dekessler <mins>\"");
+				}
 
+				try
+				{
+					//Get latest tick & calculate cut-off
+					SQLiteCommand cmd = universeDB.CreateCommand();
+					string sql = "SELECT MAX(LastTick) FROM kmpSubspace";
+					cmd.CommandText = sql;
+					double cutOffTick = Convert.ToDouble(cmd.ExecuteScalar()) - Convert.ToDouble(minsToKeep*60);
+					//Get all vessels, remove Debris that is too old
+					cmd = universeDB.CreateCommand();
+					sql = "SELECT  vu.UpdateMessage, v.ProtoVessel, v.Guid" +
+						" FROM kmpVesselUpdate vu" +
+						" INNER JOIN kmpVessel v ON v.Guid = vu.Guid AND v.Destroyed != 1" +
+						" INNER JOIN kmpSubspace s ON s.ID = vu.Subspace" +
+						" INNER JOIN" +
+						"  (SELECT vu.Guid, MAX(s.LastTick) AS LastTick" +
+						"  FROM kmpVesselUpdate vu" +
+						"  INNER JOIN kmpSubspace s ON s.ID = vu.Subspace" +
+						"  GROUP BY vu.Guid) t ON t.Guid = vu.Guid AND t.LastTick = s.LastTick;";
+					cmd.CommandText = sql;
+					SQLiteDataReader reader = cmd.ExecuteReader(); 
+					
+					int clearedCount = 0;
+					try 
+					{ 
+						while(reader.Read()) 
+						{ 
+							KMPVesselUpdate vessel_update = (KMPVesselUpdate) ByteArrayToObject(GetDataReaderBytes(reader,0));
+							if (vessel_update.tick < cutOffTick)
+							{
+								byte[] configNodeBytes = GetDataReaderBytes(reader,1);
+								string s = Encoding.UTF8.GetString(configNodeBytes, 0, configNodeBytes.Length);
+								if (s.IndexOf("type")>0 && s.Length > s.IndexOf("type")+20)
+								{
+									if (s.Substring(s.IndexOf("type"),20).Contains("Debris"))
+									{
+										SQLiteCommand cmd2 = universeDB.CreateCommand();
+										string sql2 = "UPDATE kmpVessel SET Destroyed = 1 WHERE Guid = @guid";
+										cmd2.CommandText = sql2;
+										cmd2.Parameters.AddWithValue("guid", reader.GetGuid(2).ToString());
+										cmd2.ExecuteNonQuery();
+										clearedCount++;
+									}
+								}
+							}
+						} 
+					} 
+					finally 
+					{ 
+						reader.Close();
+					}
+					
+					Log.Info("Debris older than {0} minutes cleared from universe database, {1} vessels affected.", minsToKeep, clearedCount);
+				}
+				catch (Exception e)
+				{
+					Log.Info("Universe cleanup failed! {0} {1}", e.Message, e.StackTrace);
+				}
+			}
+		}
+		
 		private void listenForClients()
 		{
 			Thread.CurrentThread.CurrentCulture = new CultureInfo("en-GB");
@@ -1022,7 +1116,9 @@ namespace KMPServer
 						}
 
 						//Handle the message
-						handleMessage(client, id, KMPCommon.Decompress(data));
+						byte[] messageData = KMPCommon.Decompress(data);
+						if (messageData != null) handleMessage(client, id, messageData);
+						//Consider adding re-request here
 					}
 
 				}
@@ -1789,12 +1885,26 @@ namespace KMPServer
 	                    sb.Append("!list - View all connected players\n");
 	                    sb.Append("!quit - Leaves the server\n");
 	                    sb.Append("!getcraft <playername> - Gets the most recent craft shared by the specified player\n");
+						sb.Append("!motd - Displays Server MOTD\n");
+						sb.Append("!rules - Displays Server Ruels\n");
 	                    sb.Append(Environment.NewLine);
 	                    
 	                    sendTextMessage(cl, sb.ToString());
 	
 	                    return;
 	                }
+					else if (message_lower == "!motd")
+					{
+						sb.Append(settings.serverMotd);
+						sendTextMessage(cl, sb.ToString());
+						return;
+					}
+					else if (message_lower == "!rules")
+					{
+						sb.Append(settings.serverRules);
+						sendTextMessage(cl, sb.ToString());
+						return;
+					}
 	                else if (message_lower.Length > (KMPCommon.GET_CRAFT_COMMAND.Length + 1)
 	                    && message_lower.Substring(0, KMPCommon.GET_CRAFT_COMMAND.Length) == KMPCommon.GET_CRAFT_COMMAND)
 	                {
@@ -1844,6 +1954,7 @@ namespace KMPServer
 			if (data != null)
 			{
 				compressed_data = KMPCommon.Compress(data);
+				if (compressed_data == null) compressed_data = KMPCommon.Compress(data, true);
 				msg_data_length = compressed_data.Length;
 			}
 
@@ -2287,11 +2398,11 @@ namespace KMPServer
 					cmd.CommandText = sql;
 					cmd.ExecuteNonQuery();
 					cmd.Dispose();
-					if (vessel_update.situation == Situation.DESTROYED) 
+					if (!recentlyDestroyed.ContainsKey(vessel_update.kmpID) && vessel_update.situation == Situation.DESTROYED) //Only report first destruction event
 					{
 						Log.Activity("Vessel " + vessel_update.kmpID + " reported as destroyed");
 						recentlyDestroyed[vessel_update.kmpID] = currentMillisecond;
-					}
+					} else if (recentlyDestroyed.ContainsKey(vessel_update.kmpID)) recentlyDestroyed.Remove(vessel_update.kmpID); //Vessel was restored for whatever reason
 					return vessel_update.situation == Situation.DESTROYED;
 				} else return true;
 			} catch { }	
@@ -2652,14 +2763,45 @@ namespace KMPServer
 			Log.Info("/register <username> <token> - Add new roster entry for player <username> with authentication token <token> (BEWARE: will delete any matching roster entries)");
 			Log.Info("/update <username> <token> - Update existing roster entry for player <username>/token <token> (one param must match existing roster entry, other will be updated)");
 			Log.Info("/unregister <username/token> - Remove any player that has a matching username or token from the roster");
-			Log.Info("/clearclients - Disconnect any clients that are marked as Not Ready.");
+			Log.Info("/clearclients - Attempt to clear 'ghosted' clients");
+			Log.Info("/dekessler <mins> - Remove debris that has not been updated for at least <mins> minutes (in-game time) (If no <mins> value is specified, debris that is older than 30 minutes will be cleared)");
 			Log.Info("/save - Backup universe");
 			Log.Info("/help - Displays all commands in the server");
-			Log.Info("/set [key] [value] to modify a setting.");
-			Log.Info("/whitelist [add|del] [user] to update whitelist.");
+			Log.Info("/set [key] [value] to modify a setting");
+			Log.Info("/whitelist [add|del] [user] to update whitelist");
 			Log.Info("Non-commands will be sent to players as a chat message");
 			
 			// to add a new command to the command list just copy the Log.Info method and add how to use that command.
         }
+
+        private void checkGhosts()
+        {
+            Thread.CurrentThread.CurrentCulture = new CultureInfo("en-GB");
+            Log.Debug("Starting ghost-check thread");
+            while (true)
+            {
+                int foundGhost = 0;
+                foreach (Client client in clients.ToList().Where(c => !c.isReady && currentMillisecond - c.connectionStartTime > CLIENT_HANDSHAKE_TIMEOUT_DELAY + CLIENT_TIMEOUT_DELAY))
+                {
+                    markClientForDisconnect(client, "Disconnected via ghost-check command. Not a ghost? Sorry!");
+                    Log.Debug("Force-disconnected client: {0}", client.playerID);
+
+                    try
+                    {
+                        client.tcpClient.Close();
+                    }
+                    catch (Exception) { }
+                    finally { foundGhost++; }
+
+                }
+                if (foundGhost > 0)
+                {
+                    Log.Debug("Ghost check complete. Removed {0} ghost(s).", foundGhost);
+                }
+
+                Thread.Sleep(GHOST_CHECK_DELAY);
+            }
+        }
 	}
+     
 }
