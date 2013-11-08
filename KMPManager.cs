@@ -1582,7 +1582,7 @@ namespace KMP
 												if (FlightGlobals.ActiveVessel.mainBody == update_body && vessel_update.relTime == RelativeTime.PRESENT)
 												{
 													KMPClientMain.DebugLog("full update");
-													if (!serverVessels_InPresent.ContainsKey(vessel_update.id) || serverVessels_InPresent.ContainsKey(vessel_update.id) ? !serverVessels_InPresent[vessel_update.id] : false)
+													if (serverVessels_InPresent.ContainsKey(vessel_update.id) ? !serverVessels_InPresent[vessel_update.id] : true)
 													{
 														serverVessels_InPresent[vessel_update.id] = true;
 														foreach (Part part in extant_vessel.Parts)
@@ -2020,18 +2020,24 @@ namespace KMP
 				if (oldVessel != null) {
 					KMPClientMain.DebugLog("killing extant vessel");
 					wasLoaded = oldVessel.loaded;
-					if (protovessel.vesselType == VesselType.EVA && wasLoaded) return; //Don't touch existing EVAs
-					setTarget = FlightGlobals.fetch.VesselTarget != null && FlightGlobals.fetch.VesselTarget.GetVessel().id == vessel_id;
-					if (oldVessel.loaded)
+					if (protovessel.vesselType == VesselType.EVA && wasLoaded)
 					{
-						newWorldPos = oldVessel.transform.position;
-						if (oldVessel.altitude > 10000d)
-							newOrbitVel = oldVessel.GetObtVelocity();
+						return; //Don't touch EVAs here
 					}
-					oldVessel.Die();
+					else
+					{
+						setTarget = FlightGlobals.fetch.VesselTarget != null && FlightGlobals.fetch.VesselTarget.GetVessel().id == vessel_id;
+						if (oldVessel.loaded)
+						{
+							newWorldPos = oldVessel.transform.position;
+							if (oldVessel.altitude > 10000d)
+								newOrbitVel = oldVessel.GetObtVelocity();
+						}
+						oldVessel.Die();
+					}
 				}
 				
-				if (serverVessels_Parts.ContainsKey(vessel_id))
+				if (protovessel.vesselType != VesselType.EVA && serverVessels_Parts.ContainsKey(vessel_id))
 				{
 					KMPClientMain.DebugLog("killing known precursor vessels");
 					foreach (Part part in serverVessels_Parts[vessel_id])
@@ -2065,7 +2071,7 @@ namespace KMP
 
                 if (!((update != null && update.bodyName != "Kerbin") || protovessel.altitude > 35000d || kscPosition == Vector3d.zero || Vector3d.Distance(kscPosition, protovessel.position) > SAFETY_BUBBLE_DIAMETER)) //refuse to load anything too close to the KSC
 				{
-					KMPClientMain.DebugLog("Tried to load vessel to close to KSC");
+					KMPClientMain.DebugLog("Tried to load vessel too close to KSC");
 					return;
 				}
 				
@@ -3002,6 +3008,8 @@ namespace KMP
 				{
 					serverVessels_IsPrivate[FlightGlobals.ActiveVessel.id] = locked;
 					serverVessels_IsMine[FlightGlobals.ActiveVessel.id] = true;
+					if (locked) ScreenMessages.PostScreenMessage("Your vessel is now marked Private",5,ScreenMessageStyle.UPPER_CENTER);
+					else ScreenMessages.PostScreenMessage("Your vessel is now marked Public",5,ScreenMessageStyle.UPPER_CENTER);
 					sendVesselMessage(FlightGlobals.ActiveVessel);
 				}
 				GUILayout.EndVertical();
