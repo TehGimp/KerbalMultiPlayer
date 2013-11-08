@@ -358,7 +358,9 @@ namespace KMPServer
 						if (currentMessageDataIndex >= currentMessageData.Length)
 						{
 							//Handle received message
-							messageReceived(currentMessageID, KMPCommon.Decompress(currentMessageData));
+							byte[] messageData = KMPCommon.Decompress(currentMessageData);
+							if (messageData != null) messageReceived(currentMessageID, messageData);
+							//Consider adding re-request here
 
 							currentMessageData = null;
 

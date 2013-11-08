@@ -325,6 +325,7 @@ namespace KMPServer
 			commandThread.Start();
 			connectionThread.Start();
 			outgoingMessageThread.Start();
+			ghostCheckThread.Start();
 			
 			//Begin listening for HTTP requests
 
@@ -402,6 +403,7 @@ namespace KMPServer
 						case "/register": registerServerCommand(input); break;
 						case "/update": updateServerCommand(input); break;
 						case "/unregister": unregisterServerCommand(input); break;
+						case "/dekessler": dekesslerServerCommand(input); break;
 						default: sendServerMessageToAll(input); break;
 					}
 				}
@@ -633,7 +635,81 @@ namespace KMPServer
 				Log.Info("Players with name/token '" + dereg + "' removed from player roster.");
 			}
 		}
+		
+		//Clears old debris
+		private void dekesslerServerCommand(String input)
+		{
+			if (input.Length >= 10 && input.Substring(0, 10) == "/dekessler") //argument is optional
+			{
+				int minsToKeep = 30;
+				if (input.Length >= 11)
+				{
+					String[] args = input.Substring(11, input.Length - 11).Split(' ');
+					if (args.Length == 1) minsToKeep = Convert.ToInt32(args[0]);
+					else
+						Log.Info("Could not parse dekessler command. Format is \"/dekessler <mins>\"");
+				}
 
+				try
+				{
+					//Get latest tick & calculate cut-off
+					SQLiteCommand cmd = universeDB.CreateCommand();
+					string sql = "SELECT MAX(LastTick) FROM kmpSubspace";
+					cmd.CommandText = sql;
+					double cutOffTick = Convert.ToDouble(cmd.ExecuteScalar()) - Convert.ToDouble(minsToKeep*60);
+					//Get all vessels, remove Debris that is too old
+					cmd = universeDB.CreateCommand();
+					sql = "SELECT  vu.UpdateMessage, v.ProtoVessel, v.Guid" +
+						" FROM kmpVesselUpdate vu" +
+						" INNER JOIN kmpVessel v ON v.Guid = vu.Guid AND v.Destroyed != 1" +
+						" INNER JOIN kmpSubspace s ON s.ID = vu.Subspace" +
+						" INNER JOIN" +
+						"  (SELECT vu.Guid, MAX(s.LastTick) AS LastTick" +
+						"  FROM kmpVesselUpdate vu" +
+						"  INNER JOIN kmpSubspace s ON s.ID = vu.Subspace" +
+						"  GROUP BY vu.Guid) t ON t.Guid = vu.Guid AND t.LastTick = s.LastTick;";
+					cmd.CommandText = sql;
+					SQLiteDataReader reader = cmd.ExecuteReader(); 
+					
+					int clearedCount = 0;
+					try 
+					{ 
+						while(reader.Read()) 
+						{ 
+							KMPVesselUpdate vessel_update = (KMPVesselUpdate) ByteArrayToObject(GetDataReaderBytes(reader,0));
+							if (vessel_update.tick < cutOffTick)
+							{
+								byte[] configNodeBytes = GetDataReaderBytes(reader,1);
+								string s = Encoding.UTF8.GetString(configNodeBytes, 0, configNodeBytes.Length);
+								if (s.IndexOf("type")>0 && s.Length > s.IndexOf("type")+20)
+								{
+									if (s.Substring(s.IndexOf("type"),20).Contains("Debris"))
+									{
+										SQLiteCommand cmd2 = universeDB.CreateCommand();
+										string sql2 = "UPDATE kmpVessel SET Destroyed = 1 WHERE Guid = @guid";
+										cmd2.CommandText = sql2;
+										cmd2.Parameters.AddWithValue("guid", reader.GetGuid(2).ToString());
+										cmd2.ExecuteNonQuery();
+										clearedCount++;
+									}
+								}
+							}
+						} 
+					} 
+					finally 
+					{ 
+						reader.Close();
+					}
+					
+					Log.Info("Debris older than {0} minutes cleared from universe database, {1} vessels affected.", minsToKeep, clearedCount);
+				}
+				catch (Exception e)
+				{
+					Log.Info("Universe cleanup failed! {0} {1}", e.Message, e.StackTrace);
+				}
+			}
+		}
+		
 		private void listenForClients()
 		{
 			Thread.CurrentThread.CurrentCulture = new CultureInfo("en-GB");
@@ -1040,7 +1116,9 @@ namespace KMPServer
 						}
 
 						//Handle the message
-						handleMessage(client, id, KMPCommon.Decompress(data));
+						byte[] messageData = KMPCommon.Decompress(data);
+						if (messageData != null) handleMessage(client, id, messageData);
+						//Consider adding re-request here
 					}
 
 				}
@@ -1876,6 +1954,7 @@ namespace KMPServer
 			if (data != null)
 			{
 				compressed_data = KMPCommon.Compress(data);
+				if (compressed_data == null) compressed_data = KMPCommon.Compress(data, true);
 				msg_data_length = compressed_data.Length;
 			}
 
@@ -2319,11 +2398,11 @@ namespace KMPServer
 					cmd.CommandText = sql;
 					cmd.ExecuteNonQuery();
 					cmd.Dispose();
-					if (vessel_update.situation == Situation.DESTROYED) 
+					if (!recentlyDestroyed.ContainsKey(vessel_update.kmpID) && vessel_update.situation == Situation.DESTROYED) //Only report first destruction event
 					{
 						Log.Activity("Vessel " + vessel_update.kmpID + " reported as destroyed");
 						recentlyDestroyed[vessel_update.kmpID] = currentMillisecond;
-					}
+					} else if (recentlyDestroyed.ContainsKey(vessel_update.kmpID)) recentlyDestroyed.Remove(vessel_update.kmpID); //Vessel was restored for whatever reason
 					return vessel_update.situation == Situation.DESTROYED;
 				} else return true;
 			} catch { }	
@@ -2684,11 +2763,12 @@ namespace KMPServer
 			Log.Info("/register <username> <token> - Add new roster entry for player <username> with authentication token <token> (BEWARE: will delete any matching roster entries)");
 			Log.Info("/update <username> <token> - Update existing roster entry for player <username>/token <token> (one param must match existing roster entry, other will be updated)");
 			Log.Info("/unregister <username/token> - Remove any player that has a matching username or token from the roster");
-			Log.Info("/clearclients - Disconnect any clients that are marked as Not Ready.");
+			Log.Info("/clearclients - Attempt to clear 'ghosted' clients");
+			Log.Info("/dekessler <mins> - Remove debris that has not been updated for at least <mins> minutes (in-game time) (If no <mins> value is specified, debris that is older than 30 minutes will be cleared)");
 			Log.Info("/save - Backup universe");
 			Log.Info("/help - Displays all commands in the server");
-			Log.Info("/set [key] [value] to modify a setting.");
-			Log.Info("/whitelist [add|del] [user] to update whitelist.");
+			Log.Info("/set [key] [value] to modify a setting");
+			Log.Info("/whitelist [add|del] [user] to update whitelist");
 			Log.Info("Non-commands will be sent to players as a chat message");
 			
 			// to add a new command to the command list just copy the Log.Info method and add how to use that command.
