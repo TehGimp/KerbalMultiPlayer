@@ -32,7 +32,7 @@ namespace KMPServer
 		}
 		public int clientIndex;
 		public String username;
-		public String guid;
+		public Guid guid;
 		public int playerID;
 		public Guid currentVessel = Guid.Empty;
 		public int currentSubspaceID = -1;
@@ -143,6 +143,15 @@ namespace KMPServer
             get
             {
                 return (isValid && this.receivedHandshake);
+            }
+        }
+
+        public IPAddress IPAddress
+        {
+            get
+            {
+                if (tcpClient == null) { return null; }
+                return (tcpClient.Client.RemoteEndPoint as IPEndPoint).Address;
             }
         }
 

@@ -13,6 +13,18 @@ namespace KMPServer
 	{
 		public const String SERVER_CONFIG_FILENAME = "KMPServerConfig.txt";
         public const string SERVER_WHITELIST_FILENAME = "KMPWhitelist.txt";
+        public const string SERVER_BANS_FILENAME = "KMPBans.txt";
+
+        public class BanRecord
+        {
+            public DateTime When {get;set;}
+            public DateTime Expires { get; set; }
+            public string WhoBy {get;set;}
+            public IPAddress BannedIP { get; set; }
+            public Guid BannedGUID { get; set; }
+            public string BannedName { get; set; }
+            public string Why {get;set;}
+        }
 
         public class ConfigStore
         {
@@ -33,7 +45,15 @@ namespace KMPServer
             public Log.LogLevels LogLevel = Log.LogLevels.Info;
             public bool whitelisted = false;
             public int screenshotHeight = 600;
-        
+
+            private List<BanRecord> _bans = new List<BanRecord>();
+            internal List<BanRecord> bans
+            {
+                get
+                {
+                    return _bans;
+                }
+            }
 
             private List<string> _whitelist = new List<string>();
             internal List<string> whitelist
@@ -120,6 +140,73 @@ namespace KMPServer
             }
 
             return result;
+        }
+
+        public static void saveBans(ConfigStore Store)
+        {
+            string FileName = SERVER_BANS_FILENAME;
+
+            try
+            {
+                if (File.Exists(FileName))
+                {
+                    File.SetAttributes(FileName, FileAttributes.Normal);
+                }
+
+                using (StreamWriter configWriter = new StreamWriter(FileName))
+                {
+                    configWriter.WriteLine("#When\tExpires\tWhoBy\tBannedIP\tBannedGUID\tBannedName\tWhy");
+
+                    foreach (var b in Store.bans.Where(b => b.Expires > DateTime.Now))
+                    {
+                        configWriter.WriteLine("{0}\t{1}\t{2}\t{3}\t{4}\t{5}\t{6}", b.When.ToString(), b.Expires.ToString(), b.WhoBy, b.BannedIP.ToString(), b.BannedGUID.ToString(), b.BannedName, b.Why);
+                    }
+                }
+            }
+            catch { }
+        }
+
+        public static void loadBans(ConfigStore Store)
+        {
+            string FileName = SERVER_BANS_FILENAME;
+
+            try
+            {
+                if (File.Exists(FileName))
+                {
+                    Store.bans.Clear();
+
+                    foreach (var l in File.ReadAllLines(FileName))
+                    {
+                        var Now = DateTime.Now;
+
+                        try
+                        {
+                            if (l.StartsWith("#")) { continue; }
+                            var parts = l.Split('\t');
+                            var newBan = new BanRecord()
+                            {
+                                When = DateTime.Parse(parts[0]),
+                                Expires = DateTime.Parse(parts[1]),
+                                WhoBy = parts[2],
+                                BannedIP = IPAddress.Parse(parts[3]),
+                                BannedGUID = Guid.Parse(parts[4]),
+                                BannedName = parts[5],
+                                Why = parts[6],
+                            };
+
+                            if (newBan.Expires > Now)
+                            {
+                                Store.bans.Add(newBan);
+                            }
+                        }
+                        catch {
+                            //Bad ban line. Don't care?
+                        }
+                    }
+                }
+            }
+            catch { }
         }
 
         public static void saveWhitelist(ConfigStore Store)
