@@ -2219,8 +2219,6 @@ namespace KMP
 			if (line.Length > 0)
 			{
 				enqueuePluginInteropMessage(KMPCommon.PluginInteropMessageID.CHAT_SEND, encoder.GetBytes(line));
-				KMPChatDisplay.enqueueChatLine("[" + playerName + "] " + line);
-                KMPChatDX.enqueueChatLine("[" + playerName + "] " + line);
 			}
 		}
 

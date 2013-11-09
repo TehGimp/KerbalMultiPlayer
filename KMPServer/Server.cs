@@ -2018,7 +2018,7 @@ namespace KMPServer
                 Log.Chat(cl.username, message_text);
 
                 //Send the update to all other clients
-                sendTextMessageToAll(full_message, cl);
+                sendTextMessageToAll(full_message);
             }
             catch (NullReferenceException) { }
         }
