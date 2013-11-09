@@ -1300,10 +1300,16 @@ namespace KMPServer
             clientMessageQueue.Enqueue(message);
         }
 
+        private KMPCommon.ClientMessageID[] AllowNullDataMessages = { };
+        private KMPCommon.ClientMessageID[] AllowClientNotReadyMessages = { KMPCommon.ClientMessageID.TEXT_MESSAGE, KMPCommon.ClientMessageID.SCREEN_WATCH_PLAYER };
+
         public void handleMessage(Client cl, KMPCommon.ClientMessageID id, byte[] data)
         {
             if (!cl.isValid)
             { return; }
+
+            if (!AllowNullDataMessages.Contains(id) && data == null) { return; }
+            if (!AllowClientNotReadyMessages.Contains(id) && !cl.isReady) { return; }
 
             try
             {
@@ -1321,11 +1327,9 @@ namespace KMPServer
                         HandePluginUpdate(cl, id, data);
                         break;
                     case KMPCommon.ClientMessageID.TEXT_MESSAGE:
-                        if (!cl.isReady) { break; }
                         handleClientTextMessage(cl, encoder.GetString(data, 0, data.Length));
                         break;
                     case KMPCommon.ClientMessageID.SCREEN_WATCH_PLAYER:
-                        if (!cl.isReady) { break; }
                         HandleScreenWatchPlayer(cl, data, encoder);
                         break;
                     case KMPCommon.ClientMessageID.SCREENSHOT_SHARE:
