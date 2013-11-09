@@ -812,20 +812,21 @@ namespace KMP
             //KMPClientMain.DebugLog("TimeDelta: " + ((UnityEngine.Time.realtimeSinceStartup - lastFullProtovesselUpdate) < FULL_PROTOVESSEL_UPDATE_TIMEOUT));
             //KMPClientMain.DebugLog("Throttle: " + (FlightGlobals.ActiveVessel.ctrlState.mainThrottle == 0f));
 
-
-			if (!forceFullUpdate && (serverVessels_PartCounts.ContainsKey(vessel.id) ? 
-                !(vessel.id == FlightGlobals.ActiveVessel.id && FlightGlobals.ActiveVessel.ctrlState.mainThrottle == 0f 
-                && (UnityEngine.Time.realtimeSinceStartup - lastFullProtovesselUpdate) > FULL_PROTOVESSEL_UPDATE_TIMEOUT) : false))
+			//Check for new/forced update
+			if (!forceFullUpdate //not a forced update
+			    && (serverVessels_PartCounts.ContainsKey(vessel.id) ? 
+			    	!(vessel.id == FlightGlobals.ActiveVessel.id && FlightGlobals.ActiveVessel.ctrlState.mainThrottle == 0f
+			  			&& (UnityEngine.Time.realtimeSinceStartup - lastFullProtovesselUpdate) > FULL_PROTOVESSEL_UPDATE_TIMEOUT) //full protovessel timeout hasn't passed
+			    	: false)) //have a serverVessels_PartCounts entry
 			{
-				if ((serverVessels_PartCounts.ContainsKey(vessel.id) ? serverVessels_PartCounts[vessel.id] == vessel.Parts.Count : false)
-				    && (sentVessels_Situations.ContainsKey(vessel.id) ? (sentVessels_Situations[vessel.id] == vessel.situation) : false)
-                    || (sentVessels_Situations.ContainsKey(vessel.id) ? (sentVessels_Situations[vessel.id] == Vessel.Situations.LANDED) : false))
+				if ((serverVessels_PartCounts.ContainsKey(vessel.id) ? serverVessels_PartCounts[vessel.id] == vessel.Parts.Count : false) //Part count is the same
+					&& (sentVessels_Situations.ContainsKey(vessel.id) ? (sentVessels_Situations[vessel.id] == vessel.situation) : false)) //Situation hasn't changed
 				{
-					if (!newFlags.ContainsKey(vessel.id))
+					if (!newFlags.ContainsKey(vessel.id))	//Not an un-updated flag
 						update = new KMPVesselUpdate(vessel,false);
-					else if ((UnityEngine.Time.realtimeSinceStartup - newFlags[vessel.id]) < 65f)
+					else if ((UnityEngine.Time.realtimeSinceStartup - newFlags[vessel.id]) < 65f) //Is a flag, but plaque timeout hasn't expired
                         update = new KMPVesselUpdate(vessel,false);
-                    else
+                    else //Is a flag, plaque timeout has expired so grab full update
 					{
 						update = new KMPVesselUpdate(vessel);
 						newFlags.Remove(vessel.id);
