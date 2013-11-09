@@ -1517,7 +1517,8 @@ namespace KMP
 							extant_vessel.name = vessel_update.name;
 							extant_vessel.vesselName = vessel_update.name;
 						}
-						if (!serverVessels_LoadDelay.ContainsKey(vessel_update.id) || (serverVessels_LoadDelay.ContainsKey(vessel_update.id) ? (serverVessels_LoadDelay[vessel_update.id] < UnityEngine.Time.realtimeSinceStartup) : false))
+						if (!serverVessels_LoadDelay.ContainsKey(vessel_update.id)
+						    || (serverVessels_LoadDelay.ContainsKey(vessel_update.id) ? (serverVessels_LoadDelay[vessel_update.id] < UnityEngine.Time.realtimeSinceStartup) : false))
 						{
 							float incomingDistance = 2500f;
 							if (!syncing && vessel.worldPosition != Vector3.zero && vessel_update.relTime == RelativeTime.PRESENT)

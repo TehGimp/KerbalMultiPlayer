@@ -85,7 +85,7 @@ namespace KMPServer
 
         public Stopwatch stopwatch = new Stopwatch();
 
-        public static DbConnection universeDB;
+        public static SQLiteConnection universeDB;
 
         private bool backedUpSinceEmpty = false;
         private Dictionary<Guid, long> recentlyDestroyed = new Dictionary<Guid, long>();
@@ -2703,7 +2703,7 @@ namespace KMPServer
                     cmd.CommandText = sql;
                     cmd.ExecuteNonQuery();
                     Log.Info("Loading universe...");
-                    backupDatabase();
+                    diskDB.BackupDatabase(universeDB, "main", "main", -1, null, 0);
                 }
                 else if (version != UNIVERSE_VERSION)
                 {
@@ -2731,7 +2731,7 @@ namespace KMPServer
                 else
                 {
                     Log.Info("Loading universe...");
-                    backupDatabase();
+                    diskDB.BackupDatabase(universeDB, "main", "main", -1, null, 0);
                 }
                 diskDB.Close();
             }
