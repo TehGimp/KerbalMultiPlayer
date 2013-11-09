@@ -231,17 +231,8 @@ namespace KMPServer
                 }
             }
 
-            //Build the filename
-            StringBuilder sb = new StringBuilder();
-            sb.Append(SCREENSHOT_DIR);
-            sb.Append('/');
-            sb.Append(KMPCommon.filteredFileName(player));
-            sb.Append(' ');
-            sb.Append(System.DateTime.Now.ToString("yyyy-MM-dd-HH-mm-ss"));
-            sb.Append(".png");
-
             //Write the screenshot to file
-            String filename = sb.ToString();
+            String filename = string.Format("{0}/{1} {2}.png", SCREENSHOT_DIR, KMPCommon.filteredFileName(player),System.DateTime.Now.ToString("yyyy-MM-dd-HH-mm-ss"))
             if (!File.Exists(filename))
             {
                 try
@@ -1018,15 +1009,8 @@ namespace KMPServer
                 {
                     Log.Info("Player #{0} {1} has disconnected: {2}", cl.playerID, cl.username, message);
 
-                    StringBuilder sb = new StringBuilder();
-
-                    //Build disconnect message
-                    sb.Append("User ");
-                    sb.Append(cl.username);
-                    sb.Append(" has disconnected : " + message);
-
                     //Send the disconnect message to all other clients
-                    sendServerMessageToAll(sb.ToString());
+                    sendServerMessageToAll(string.Format("User {0} has disconnected : {1}", cl.username, message));
 
                     //Update the database
                     if (cl.currentVessel != Guid.Empty)
