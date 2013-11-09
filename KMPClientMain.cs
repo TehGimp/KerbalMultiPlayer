@@ -474,6 +474,7 @@ namespace KMP
 					{
 						endSession = true;
 						intentionalConnectionEnd = true;
+						gameManager.disconnect("Your client is incompatible with this server");
 					}
 					else
 					{
