@@ -815,8 +815,7 @@ namespace KMP
 			//Check for new/forced update
 			if (!forceFullUpdate //not a forced update
 			    && (serverVessels_PartCounts.ContainsKey(vessel.id) ? 
-			    	!(vessel.id == FlightGlobals.ActiveVessel.id && FlightGlobals.ActiveVessel.ctrlState.mainThrottle == 0f
-			  			&& (UnityEngine.Time.realtimeSinceStartup - lastFullProtovesselUpdate) > FULL_PROTOVESSEL_UPDATE_TIMEOUT) //full protovessel timeout hasn't passed
+			    	(vessel.id != FlightGlobals.ActiveVessel.id || (UnityEngine.Time.realtimeSinceStartup - lastFullProtovesselUpdate) < FULL_PROTOVESSEL_UPDATE_TIMEOUT) //not active vessel, or full protovessel timeout hasn't passed
 			    	: false)) //have a serverVessels_PartCounts entry
 			{
 				if ((serverVessels_PartCounts.ContainsKey(vessel.id) ? serverVessels_PartCounts[vessel.id] == vessel.Parts.Count : false) //Part count is the same
