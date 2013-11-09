@@ -391,7 +391,7 @@ namespace KMPServer
                 {
                     String input = Console.ReadLine().ToLower();
                     var parts = input.Split(new char[] { ' ' }, 2);
-                    if (!parts[0].StartsWith("/")) { return; }
+                    //if (!parts[0].StartsWith("/")) { return; } //Allow server to send chat messages
                     switch (parts[0])
                     {
                         case "/ban": banServerCommand(parts); break;
@@ -1302,7 +1302,7 @@ namespace KMPServer
 
         public void handleMessage(Client cl, KMPCommon.ClientMessageID id, byte[] data)
         {
-            if (!cl.isValid || data == null)
+            if (!cl.isValid)
             { return; }
 
             try
@@ -1368,7 +1368,7 @@ namespace KMPServer
             int subspaceID = KMPCommon.intFromBytes(data, 0);
             if (subspaceID == -1)
             {
-                //Latest available subspace sync request	
+                //Latest available subspace sync request    
                 DbCommand cmd = universeDB.CreateCommand();
                 string sql = "SELECT ss1.ID FROM kmpSubspace ss1 LEFT JOIN kmpSubspace ss2 ON ss1.LastTick < ss2.LastTick WHERE ss2.ID IS NULL;";
                 cmd.CommandText = sql;
@@ -1442,65 +1442,68 @@ namespace KMPServer
 
         private void HandleUDPProbe(Client cl, byte[] data)
         {
-            double incomingTick = BitConverter.ToDouble(data, 0);
-            double lastSubspaceTick = incomingTick;
-
-            cl.lastTick = incomingTick;
-            if (!cl.warping)
-            {
-                DbCommand cmd = universeDB.CreateCommand();
-                string sql = "SELECT LastTick FROM kmpSubspace WHERE ID = @id;";
-                cmd.CommandText = sql;
-                cmd.Parameters.AddWithValue("id", cl.currentSubspaceID.ToString("D"));
-                DbDataReader reader = cmd.ExecuteReader();
-
-                try
-                {
-                    while (reader.Read())
-                    {
-                        lastSubspaceTick = reader.GetDouble(0);
-                    }
-                }
-                finally
-                {
-                    reader.Close();
-                    cmd.Dispose();
-                }
-
-                if (lastSubspaceTick - incomingTick > 0.2d)
-                {
-                    cl.syncOffset += 0.001d;
-                    if (cl.syncOffset > 0.5d) cl.syncOffset = 0.5;
-                    if (cl.receivedHandshake && cl.lastSyncTime < (currentMillisecond - 2500L))
-                    {
-                        Log.Debug("Sending time-sync to {0} current offset {1}", cl.username, cl.syncOffset);
-                        if (cl.lagWarning > 24)
-                        {
-                            cl.lastSyncTime = currentMillisecond;
-                            markClientForDisconnect(cl, "Your game was running too slowly compared to other players. Please try reconnecting in a moment.");
-                        }
-                        else
-                        {
-                            sendSyncMessage(cl, lastSubspaceTick + cl.syncOffset);
-                            cl.lastSyncTime = currentMillisecond;
-                            cl.lagWarning++;
-                        }
-                    }
-                }
-                else
-                {
-                    cl.lagWarning = 0;
-                    if (cl.syncOffset > 0.01d) cl.syncOffset -= 0.001d;
-                    cmd = universeDB.CreateCommand();
-                    sql = "UPDATE kmpSubspace SET LastTick = @tick WHERE ID = @subspaceID AND LastTick < @tick;";
-                    cmd.Parameters.AddWithValue("tick", incomingTick.ToString("0.0").Replace(",", "."));
-                    cmd.Parameters.AddWithValue("curSubspaceID", cl.currentSubspaceID.ToString("D"));
-                    cmd.CommandText = sql;
-                    cmd.ExecuteNonQuery();
-                    cmd.Dispose();
-                    sendHistoricalVesselUpdates(cl.currentSubspaceID, incomingTick, lastSubspaceTick);
-                }
-            }
+			if (data != null)
+			{
+	            double incomingTick = BitConverter.ToDouble(data, 0);
+	            double lastSubspaceTick = incomingTick;
+	
+	            cl.lastTick = incomingTick;
+	            if (!cl.warping)
+	            {
+	                DbCommand cmd = universeDB.CreateCommand();
+	                string sql = "SELECT LastTick FROM kmpSubspace WHERE ID = @id;";
+	                cmd.CommandText = sql;
+	                cmd.Parameters.AddWithValue("id", cl.currentSubspaceID.ToString("D"));
+	                DbDataReader reader = cmd.ExecuteReader();
+	
+	                try
+	                {
+	                    while (reader.Read())
+	                    {
+	                        lastSubspaceTick = reader.GetDouble(0);
+	                    }
+	                }
+	                finally
+	                {
+	                    reader.Close();
+	                    cmd.Dispose();
+	                }
+	
+	                if (lastSubspaceTick - incomingTick > 0.2d)
+	                {
+	                    cl.syncOffset += 0.001d;
+	                    if (cl.syncOffset > 0.5d) cl.syncOffset = 0.5;
+	                    if (cl.receivedHandshake && cl.lastSyncTime < (currentMillisecond - 2500L))
+	                    {
+	                        Log.Debug("Sending time-sync to {0} current offset {1}", cl.username, cl.syncOffset);
+	                        if (cl.lagWarning > 24)
+	                        {
+	                            cl.lastSyncTime = currentMillisecond;
+	                            markClientForDisconnect(cl, "Your game was running too slowly compared to other players. Please try reconnecting in a moment.");
+	                        }
+	                        else
+	                        {
+	                            sendSyncMessage(cl, lastSubspaceTick + cl.syncOffset);
+	                            cl.lastSyncTime = currentMillisecond;
+	                            cl.lagWarning++;
+	                        }
+	                    }
+	                }
+	                else
+	                {
+	                    cl.lagWarning = 0;
+	                    if (cl.syncOffset > 0.01d) cl.syncOffset -= 0.001d;
+	                    cmd = universeDB.CreateCommand();
+	                    sql = "UPDATE kmpSubspace SET LastTick = @tick WHERE ID = @subspaceID AND LastTick < @tick;";
+	                    cmd.Parameters.AddWithValue("tick", incomingTick.ToString("0.0").Replace(",", "."));
+	                    cmd.Parameters.AddWithValue("curSubspaceID", cl.currentSubspaceID.ToString("D"));
+	                    cmd.CommandText = sql;
+	                    cmd.ExecuteNonQuery();
+	                    cmd.Dispose();
+	                    sendHistoricalVesselUpdates(cl.currentSubspaceID, incomingTick, lastSubspaceTick);
+	                }
+	            }
+			}
         }
 
         private void HandleActivityUpdateInGame(Client cl)
@@ -1659,7 +1662,7 @@ namespace KMPServer
             if (cl.isReady)
             {
 #if SEND_UPDATES_TO_SENDER
-							sendPluginUpdateToAll(data, id == KMPCommon.ClientMessageID.SECONDARY_PLUGIN_UPDATE);
+                            sendPluginUpdateToAll(data, id == KMPCommon.ClientMessageID.SECONDARY_PLUGIN_UPDATE);
 #else
                 sendPluginUpdateToAll(data, id == KMPCommon.ClientMessageID.SECONDARY_PLUGIN_UPDATE, cl);
 #endif
@@ -1856,7 +1859,7 @@ namespace KMPServer
                     "  FROM kmpVesselUpdate vu" +
                     "  INNER JOIN kmpSubspace s ON s.ID = vu.Subspace AND s.LastTick <= (SELECT LastTick FROM kmpSubspace WHERE ID = @curSubspaceID)" +
                     "  GROUP BY vu.Guid) t ON t.Guid = vu.Guid AND t.LastTick = s.LastTick";
-                if (excludeOwnActive) sql += " AND NOT v.Guid = '@curVessel'";
+                if (excludeOwnActive) sql += " AND NOT v.Guid = @curVessel";
                 sql += ";";
                 cmd.CommandText = sql;
                 cmd.Parameters.AddWithValue("curSubspaceID", cl.currentSubspaceID.ToString("D"));
@@ -2226,7 +2229,7 @@ namespace KMPServer
                             byte[] protoVesselBlob = ObjectToByteArray(node);
                             cmd = universeDB.CreateCommand();
                             sql = "SELECT kmpVessel.Subspace FROM kmpVessel LEFT JOIN kmpSubspace ON kmpSubspace.ID = kmpVessel.Subspace" +
-                                " WHERE Guid = '@kmpID' ORDER BY kmpSubspace.LastTick DESC LIMIT 1;";
+                                " WHERE Guid = @kmpID ORDER BY kmpSubspace.LastTick DESC LIMIT 1;";
                             cmd.CommandText = sql;
                             cmd.Parameters.AddWithValue("kmpID", vessel_update.kmpID);
                             object result = cmd.ExecuteScalar();
@@ -2236,7 +2239,7 @@ namespace KMPServer
                                 Log.Info("New vessel {0} from {1} added to universe", vessel_update.kmpID, cl.username);
                                 cmd = universeDB.CreateCommand();
                                 sql = "INSERT INTO kmpVessel (Guid, GameGuid, OwnerID, Private, Active, ProtoVessel, Subspace)" +
-                                    " VALUES ('@kmpID','@ves_up_ID', @playerID, @ves_up_isPrivate, @ves_up_state, @protoVessel, @curSubspaceID);";
+                                    " VALUES (@kmpID,@ves_up_ID, @playerID, @ves_up_isPrivate, @ves_up_state, @protoVessel, @curSubspaceID);";
                                 cmd.Parameters.AddWithValue("protoVessel", protoVesselBlob);
                                 cmd.Parameters.AddWithValue("kmpID", vessel_update.kmpID);
                                 cmd.Parameters.AddWithValue("ves_up_ID", vessel_update.id);
@@ -2255,7 +2258,7 @@ namespace KMPServer
                                 {
                                     cmd = universeDB.CreateCommand();
                                     sql = "UPDATE kmpVessel SET Private = @ves_up_isPrivate, Active = @ves_up_state, OwnerID = @playerID," +
-                                        " ProtoVessel = @protoVessel WHERE Guid = '@kmpID';";
+                                        " ProtoVessel = @protoVessel WHERE Guid = @kmpID;";
                                     cmd.Parameters.AddWithValue("protoVessel", protoVesselBlob);
                                     cmd.Parameters.AddWithValue("ves_up_isPrivate", Convert.ToInt32(vessel_update.isPrivate));
                                     cmd.Parameters.AddWithValue("ves_up_state", Convert.ToInt32(vessel_update.state == State.ACTIVE));
@@ -2270,7 +2273,7 @@ namespace KMPServer
 
                                     cmd = universeDB.CreateCommand();
                                     sql = "UPDATE kmpVessel SET Private = @ves_up_isPrivate, Active = @ves_up_state, OwnerID = @playerID," +
-                                        " ProtoVessel = @protoVessel, Subspace = @curSubspace WHERE Guid = '@kmpID';";
+                                        " ProtoVessel = @protoVessel, Subspace = @curSubspace WHERE Guid = @kmpID;";
                                     cmd.Parameters.AddWithValue("protoVessel", protoVesselBlob);
                                     cmd.Parameters.AddWithValue("ves_up_isPrivate", Convert.ToInt32(vessel_update.isPrivate));
                                     cmd.Parameters.AddWithValue("ves_up_state", Convert.ToInt32(vessel_update.state == State.ACTIVE));
@@ -2309,7 +2312,7 @@ namespace KMPServer
                                 try
                                 {
                                     cmd = universeDB.CreateCommand();
-                                    sql = "UPDATE kmpVessel SET Active = 0 WHERE Guid = '@curVessel';";
+                                    sql = "UPDATE kmpVessel SET Active = 0 WHERE Guid = @curVessel;";
                                     cmd.CommandText = sql;
                                     cmd.Parameters.AddWithValue("curVessel", cl.currentVessel);
                                     cmd.ExecuteNonQuery();
@@ -2328,7 +2331,7 @@ namespace KMPServer
                             //No protovessel
                             cmd = universeDB.CreateCommand();
                             sql = "SELECT kmpVessel.Subspace FROM kmpVessel LEFT JOIN kmpSubspace ON kmpSubspace.ID = kmpVessel.Subspace" +
-                                " WHERE Guid = '@kmpID' ORDER BY kmpSubspace.LastTick DESC LIMIT 1;";
+                                " WHERE Guid = @kmpID ORDER BY kmpSubspace.LastTick DESC LIMIT 1;";
                             cmd.CommandText = sql;
                             cmd.Parameters.AddWithValue("kmpID", vessel_update.kmpID);
                             object result = cmd.ExecuteScalar();
@@ -2340,7 +2343,7 @@ namespace KMPServer
                                 {
                                     cmd = universeDB.CreateCommand();
                                     sql = "UPDATE kmpVessel SET Private = @ves_up_isPrivate, Active = @ves_up_state, OwnerID = @playerID" +
-                                        " WHERE Guid = '@kmpID';";
+                                        " WHERE Guid = @kmpID;";
                                     cmd.CommandText = sql;
                                     cmd.Parameters.AddWithValue("ves_up_isPrivate", Convert.ToInt32(vessel_update.isPrivate));
                                     cmd.Parameters.AddWithValue("ves_up_state", Convert.ToInt32(vessel_update.state == State.ACTIVE));
@@ -2354,7 +2357,7 @@ namespace KMPServer
 
                                     cmd = universeDB.CreateCommand();
                                     sql = "UPDATE kmpVessel SET Private = @ves_up_isPrivate, Active = @ves_up_state, OwnerID = @playerID," +
-                                        " Subspace = @curSubspace WHERE Guid = '@kmpID';";
+                                        " Subspace = @curSubspace WHERE Guid = @kmpID;";
                                     cmd.CommandText = sql;
                                     cmd.Parameters.AddWithValue("ves_up_isPrivate", Convert.ToInt32(vessel_update.isPrivate));
                                     cmd.Parameters.AddWithValue("ves_up_state", Convert.ToInt32(vessel_update.state == State.ACTIVE));
@@ -2392,7 +2395,7 @@ namespace KMPServer
                                 try
                                 {
                                     cmd = universeDB.CreateCommand();
-                                    sql = "UPDATE kmpVessel SET Active = 0 WHERE Guid = '@curVessel'";
+                                    sql = "UPDATE kmpVessel SET Active = 0 WHERE Guid = @curVessel";
                                     cmd.CommandText = sql;
                                     cmd.Parameters.AddWithValue("curVessel", cl.currentVessel);
                                     cmd.ExecuteNonQuery();
@@ -2435,7 +2438,7 @@ namespace KMPServer
                             bool active = false;
                             cmd = universeDB.CreateCommand();
                             sql = "SELECT kmpVessel.OwnerID, kmpVessel.Active FROM kmpVessel LEFT JOIN kmpSubspace" +
-                                " ON kmpSubspace.ID = kmpVessel.Subspace WHERE Guid = '@kmpID'" +
+                                " ON kmpSubspace.ID = kmpVessel.Subspace WHERE Guid = @kmpID" +
                                 " ORDER BY kmpSubspace.LastTick DESC LIMIT 1;";
                             cmd.CommandText = sql;
                             cmd.Parameters.AddWithValue("kmpID", vessel_update.kmpID);
@@ -2458,7 +2461,7 @@ namespace KMPServer
                                     //Store included protovessel, update subspace
                                     byte[] protoVesselBlob = ObjectToByteArray(vessel_update.getProtoVesselNode());
                                     cmd = universeDB.CreateCommand();
-                                    sql = "UPDATE kmpVessel SET ProtoVessel = @protoVessel, Subspace = @curSubspace WHERE Guid = '@kmpID';";
+                                    sql = "UPDATE kmpVessel SET ProtoVessel = @protoVessel, Subspace = @curSubspace WHERE Guid = @kmpID;";
                                     cmd.Parameters.AddWithValue("protoVessel", protoVesselBlob);
                                     cmd.Parameters.AddWithValue("curSubspace", cl.currentSubspaceID.ToString("D"));
                                     cmd.Parameters.AddWithValue("kmpID", vessel_update.kmpID);
@@ -2470,7 +2473,7 @@ namespace KMPServer
                                 {
                                     //Update Active status
                                     cmd = universeDB.CreateCommand();
-                                    sql = "UPDATE kmpVessel SET Active = 0 WHERE Guid = '@kmpID';";
+                                    sql = "UPDATE kmpVessel SET Active = 0 WHERE Guid = @kmpID;";
                                     cmd.CommandText = sql;
                                     cmd.Parameters.AddWithValue("kmpID", vessel_update.kmpID);
                                     cmd.ExecuteNonQuery();
@@ -2543,11 +2546,11 @@ namespace KMPServer
         {
             byte[] updateBlob = ObjectToByteArray(vessel_update);
             DbCommand cmd = universeDB.CreateCommand();
-            string sql = "DELETE FROM kmpVesselUpdate WHERE Guid = '@kmpID' AND Subspace = @curSubspace;" +
+            string sql = "DELETE FROM kmpVesselUpdate WHERE Guid = @kmpID AND Subspace = @curSubspace;" +
                 " INSERT INTO kmpVesselUpdate (Guid, Subspace, UpdateMessage)" +
-                " VALUES ('@kmpID', @curSubspace ,@update);";
+                " VALUES (@kmpID, @curSubspace ,@update);";
             if (!isSecondary) sql += " INSERT INTO kmpVesselUpdateHistory (Guid, Subspace, Tick, UpdateMessage)" +
-                " VALUES ('@kmpID', @curSubspace, @ves_tick, @update);";
+                " VALUES (@kmpID, @curSubspace, @ves_tick, @update);";
             cmd.Parameters.AddWithValue("update", updateBlob);
             cmd.CommandText = sql;
             cmd.Parameters.AddWithValue("kmpID", vessel_update.kmpID);
@@ -2564,7 +2567,7 @@ namespace KMPServer
                 if (!recentlyDestroyed.ContainsKey(vessel_update.kmpID) || (recentlyDestroyed[vessel_update.kmpID] + 1500L) < currentMillisecond)
                 {
                     DbCommand cmd = universeDB.CreateCommand();
-                    string sql = "UPDATE kmpVessel SET Destroyed = @ves_up_destroyed WHERE Guid = '@kmpID';";
+                    string sql = "UPDATE kmpVessel SET Destroyed = @ves_up_destroyed WHERE Guid = @kmpID;";
                     cmd.Parameters.AddWithValue("ves_up_destroyed", Convert.ToInt32(vessel_update.situation == Situation.DESTROYED));
                     cmd.Parameters.AddWithValue("kmpID", vessel_update.kmpID);
                     cmd.CommandText = sql;
@@ -2598,7 +2601,7 @@ namespace KMPServer
             string sql = "SELECT vu.UpdateMessage, v.ProtoVessel, v.Private, v.OwnerID, v.Active" +
                 " FROM kmpVesselUpdate vu" +
                 " INNER JOIN kmpVessel v ON v.Guid = vu.Guid" +
-                " WHERE vu.Subspace = @curSubspace AND v.Guid = '@vessel';";
+                " WHERE vu.Subspace = @curSubspace AND v.Guid = @vessel;";
             cmd.CommandText = sql;
             cmd.Parameters.AddWithValue("curSubspace", cl.currentSubspaceID.ToString("D"));
             cmd.Parameters.AddWithValue("vessel", vessel.ToString());
@@ -2750,7 +2753,7 @@ namespace KMPServer
                     sql = "CREATE INDEX IF NOT EXISTS kmpVesselIdxGuid on kmpVessel(Guid);" +
                         "CREATE INDEX IF NOT EXISTS kmpVesselUpdateIdxGuid on kmpVesselUpdate(guid);" +
                         "CREATE INDEX IF NOT EXISTS kmpVesselUpdateHistoryIdxTick on kmpVesselUpdateHistory(Tick);" +
-                        "UPDATE kmpInfo SET Version = '@uni_version';";
+                        "UPDATE kmpInfo SET Version = @uni_version;";
                     cmd.CommandText = sql;
                     cmd.Parameters.AddWithValue("uni_version", UNIVERSE_VERSION);
                     cmd.ExecuteNonQuery();
