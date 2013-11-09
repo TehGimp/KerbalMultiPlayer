@@ -506,7 +506,7 @@ namespace KMPServer
                 }
                 else
                 {
-                    Log.Info("Failed to locate player '{0}'.", ban_name);
+                    Log.Info("Failed to locate player {0}.", ban_name);
                 }
             }
         }
@@ -555,7 +555,7 @@ namespace KMPServer
             }
             else
             {
-                Log.Info("Username '{0}' not found.", kick_name);
+                Log.Info("Username {0} not found.", kick_name);
             }
         }
 
@@ -614,7 +614,7 @@ namespace KMPServer
                     cmd.CommandText = sql;
                     cmd.ExecuteNonQuery();
                     cmd.Dispose();
-                    Log.Info("Player '{0}' added to player roster with token '{1}'.", args[0], args[1]);
+                    Log.Info("Player {0} added to player roster with token {1}.", args[0], args[1]);
                 }
                 catch (FormatException)
                 {
@@ -659,7 +659,7 @@ namespace KMPServer
                         cmd.Parameters.AddWithValue("guid", guid);
                         cmd.ExecuteNonQuery();
                         cmd.Dispose();
-                        Log.Info("Updated roster with player '{0}' and token '{1}'.", args[0], args[1]);
+                        Log.Info("Updated roster with player {0} and token {1}.", args[0], args[1]);
                     }
                     catch (FormatException)
                     {
@@ -687,7 +687,7 @@ namespace KMPServer
             cmd.Parameters.AddWithValue("dereg", dereg);
             cmd.ExecuteNonQuery();
             cmd.Dispose();
-            Log.Info("Players with name/token '{0}' removed from player roster.", dereg);
+            Log.Info("Players with name/token {0} removed from player roster.", dereg);
         }
 
         //Clears old debris
