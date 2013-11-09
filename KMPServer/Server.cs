@@ -1309,7 +1309,7 @@ namespace KMPServer
             { return; }
 
             //if (!AllowNullDataMessages.Contains(id) && data == null) { return; }
-            if (!AllowClientNotReadyMessages.Contains(id) && !cl.isReady) { return; }
+            //if (!AllowClientNotReadyMessages.Contains(id) && !cl.isReady) { return; }
 
             try
             {
