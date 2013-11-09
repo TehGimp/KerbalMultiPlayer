@@ -474,6 +474,7 @@ namespace KMP
 					{
 						endSession = true;
 						intentionalConnectionEnd = true;
+						gameManager.disconnect("Your client is incompatible with this server");
 					}
 					else
 					{
@@ -569,28 +570,25 @@ namespace KMP
 					}
 					break;
 
-				case KMPCommon.ServerMessageID.CONNECTION_END:
-				
-					gameManager.disconnect();	
+				case KMPCommon.ServerMessageID.CONNECTION_END:	
 					if (data != null)
 					{
 						String message = encoder.GetString(data, 0, data.Length);
-
-						endSession = true;
-						handshakeCompleted = false;
-						receivedSettings = false;
+					
+						gameManager.disconnect(message);
+						clearConnectionState();
+					
 						//If the reason is not a timeout, connection end is intentional
 						intentionalConnectionEnd = message.ToLower() != "timeout";
 						enqueuePluginChatMessage("Server closed the connection: " + message, true);
-						clearConnectionState();
+						
 						SetMessage("Disconnected from server: " + message);
-						gameManager.disconnect(message);
 					}
 					else
 					{
+						gameManager.disconnect();	
 						clearConnectionState();
 						SetMessage("Disconnected from server");
-						gameManager.disconnect();	
 					}
 					
 					break;
@@ -1312,7 +1310,6 @@ namespace KMP
 
 		static void enqueuePluginChatMessage(String message, bool print = false)
 		{
-			SetMessage(message); //Show 'chat' disconnection messages on connection window
 			enqueueClientInteropMessage(
 				KMPCommon.ClientInteropMessageID.CHAT_RECEIVE,
 				encoder.GetBytes(message)
@@ -1677,7 +1674,9 @@ namespace KMP
 						if (currentMessageDataIndex >= currentMessageData.Length)
 						{
 							//Handle received message
-							messageReceived(currentMessageID, KMPCommon.Decompress(currentMessageData));
+							byte[] messageData = KMPCommon.Decompress(currentMessageData);
+							if (messageData != null) messageReceived(currentMessageID, messageData);
+							//Consider adding re-request here
 	
 							currentMessageData = null;
 	
@@ -1860,6 +1859,7 @@ namespace KMP
 			if (data != null)
 			{				
 				compressed_data = KMPCommon.Compress(data);
+				if (compressed_data == null) compressed_data = KMPCommon.Compress(data, true);
 				msg_data_length = compressed_data.Length;
 			}
 
