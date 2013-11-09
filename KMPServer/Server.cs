@@ -340,7 +340,7 @@ namespace KMPServer
             }
             catch (Exception e)
             {
-                Log.Error("Error starting http server: " + e);
+                Log.Error("Error starting http server: {0}", e);
                 Log.Error("Please try running the server as an administrator");
             }
 
@@ -1427,7 +1427,7 @@ namespace KMPServer
                     cl.lastTick = -1d;
                     sendSubspace(cl, false);
                     cl.warping = false;
-                    Log.Activity(cl.username + " set to new subspace " + newSubspace);
+                    Log.Activity("{0} set to new subspace {1}", cl.username, newSubspace);
                 }
             }
             else
@@ -1436,7 +1436,7 @@ namespace KMPServer
                 {
                     cl.warping = true;
                     cl.currentSubspaceID = -1;
-                    Log.Activity(cl.username + " is warping");
+                    Log.Activity("{0} is warping", cl.username);
                 }
             }
         }
@@ -1474,7 +1474,7 @@ namespace KMPServer
                     if (cl.syncOffset > 0.5d) cl.syncOffset = 0.5;
                     if (cl.receivedHandshake && cl.lastSyncTime < (currentMillisecond - 2500L))
                     {
-                        Log.Debug("Sending time-sync to " + cl.username + " current offset " + cl.syncOffset);
+                        Log.Debug("Sending time-sync to {0} current offset {1}", cl.username, cl.syncOffset);
                         if (cl.lagWarning > 24)
                         {
                             cl.lastSyncTime = currentMillisecond;
