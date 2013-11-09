@@ -18,6 +18,7 @@ namespace KMPServer
             ServerSettings.ConfigStore settings = new ServerSettings.ConfigStore();
             ServerSettings.readFromFile(settings);
             ServerSettings.loadWhitelist(settings);
+            ServerSettings.loadBans(settings);
 
             bool settingsChanged = false;
 
