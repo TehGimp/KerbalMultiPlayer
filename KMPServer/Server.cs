@@ -1500,7 +1500,7 @@ namespace KMPServer
 	                    cmd = universeDB.CreateCommand();
 	                    sql = "UPDATE kmpSubspace SET LastTick = @tick WHERE ID = @subspaceID AND LastTick < @tick;";
 	                    cmd.Parameters.AddWithValue("tick", incomingTick.ToString("0.0").Replace(",", "."));
-	                    cmd.Parameters.AddWithValue("curSubspaceID", cl.currentSubspaceID.ToString("D"));
+                        cmd.Parameters.AddWithValue("subspaceID", cl.currentSubspaceID.ToString("D"));
 	                    cmd.CommandText = sql;
 	                    cmd.ExecuteNonQuery();
 	                    cmd.Dispose();
