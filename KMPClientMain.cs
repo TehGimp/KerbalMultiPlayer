@@ -569,9 +569,7 @@ namespace KMP
 					}
 					break;
 
-				case KMPCommon.ServerMessageID.CONNECTION_END:
-				
-					gameManager.disconnect();	
+				case KMPCommon.ServerMessageID.CONNECTION_END:	
 					if (data != null)
 					{
 						String message = encoder.GetString(data, 0, data.Length);

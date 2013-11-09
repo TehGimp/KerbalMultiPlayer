@@ -1523,7 +1523,6 @@ namespace KMP
 							if (!syncing && vessel.worldPosition != Vector3.zero && vessel_update.relTime == RelativeTime.PRESENT)
 								incomingDistance = Vector3.Distance(vessel.worldPosition,FlightGlobals.ActiveVessel.GetWorldPos3D());
 							if (vessel_update.relTime != RelativeTime.PRESENT) incomingDistance = 3000f; //Never treat vessels from another time as close by
-							KMPClientMain.DebugLog("1: " + incomingDistance + " " + vessel_update.distance + " " + serverVessels_LastUpdateDistanceTime.ContainsKey(vessel_update.id) ); //!!
 						 	if (vessel_update.state == State.ACTIVE
 							    	|| vessel_update.isDockUpdate
 							    	|| (incomingDistance > vessel_update.distance
