@@ -85,7 +85,7 @@ namespace KMPServer
 
         public Stopwatch stopwatch = new Stopwatch();
 
-        public static SQLiteConnection universeDB;
+        public static DbConnection universeDB;
 
         private bool backedUpSinceEmpty = false;
         private Dictionary<Guid, long> recentlyDestroyed = new Dictionary<Guid, long>();
@@ -424,7 +424,7 @@ namespace KMPServer
 
         private void countShipsServerCommand(bool bList = false)
         {
-            SQLiteCommand cmd = universeDB.CreateCommand();
+            DbCommand cmd = universeDB.CreateCommand();
             String sql = "SELECT  vu.UpdateMessage, v.ProtoVessel, v.Guid" +
                         " FROM kmpVesselUpdate vu" +
                         " INNER JOIN kmpVessel v ON v.Guid = vu.Guid AND v.Destroyed != 1" +
@@ -435,7 +435,7 @@ namespace KMPServer
                         "  INNER JOIN kmpSubspace s ON s.ID = vu.Subspace" +
                         "  GROUP BY vu.Guid) t ON t.Guid = vu.Guid AND t.LastTick = s.LastTick;";
             cmd.CommandText = sql;
-            SQLiteDataReader reader = cmd.ExecuteReader();
+            DbDataReader reader = cmd.ExecuteReader();
             int count = 0;
             while (reader.Read())
             {
@@ -495,7 +495,7 @@ namespace KMPServer
 
                 if (!Guid.Empty.Equals(guid))
                 {
-                    SQLiteCommand cmd = universeDB.CreateCommand();
+                    DbCommand cmd = universeDB.CreateCommand();
                     string sql = "UPDATE kmpPlayer SET Guid = @newGuid WHERE Guid = @guid;";
                     cmd.Parameters.AddWithValue("newGuid", Guid.NewGuid().ToString());
                     cmd.Parameters.AddWithValue("guid", guid);
@@ -606,7 +606,7 @@ namespace KMPServer
                     String guid = parser.ToString();
                     String username_lower = args[0].ToLower();
 
-                    SQLiteCommand cmd = universeDB.CreateCommand();
+                    DbCommand cmd = universeDB.CreateCommand();
                     string sql = "DELETE FROM kmpPlayer WHERE Name LIKE @username;" +
                         " INSERT INTO kmpPlayer (Name, Guid) VALUES (@username,@guid);";
                     cmd.Parameters.AddWithValue("username", username_lower);
@@ -652,7 +652,7 @@ namespace KMPServer
                         Guid parser = new Guid(args[1]);
                         String guid = parser.ToString();
                         String username_lower = args[0].ToLower();
-                        SQLiteCommand cmd = universeDB.CreateCommand();
+                        DbCommand cmd = universeDB.CreateCommand();
                         string sql = "UPDATE kmpPlayer SET Name=@username, Guid=@guid WHERE Name LIKE @username OR Guid = @guid;";
                         cmd.CommandText = sql;
                         cmd.Parameters.AddWithValue("username", username_lower);
@@ -681,7 +681,7 @@ namespace KMPServer
         private void unregisterServerCommand(String[] parts)
         {
             String dereg = parts[1];
-            SQLiteCommand cmd = universeDB.CreateCommand();
+            DbCommand cmd = universeDB.CreateCommand();
             string sql = "DELETE FROM kmpPlayer WHERE Guid = @dereg OR Name LIKE @dereg;";
             cmd.CommandText = sql;
             cmd.Parameters.AddWithValue("dereg", dereg);
@@ -706,7 +706,7 @@ namespace KMPServer
             try
             {
                 //Get latest tick & calculate cut-off
-                SQLiteCommand cmd = universeDB.CreateCommand();
+                DbCommand cmd = universeDB.CreateCommand();
                 string sql = "SELECT MAX(LastTick) FROM kmpSubspace";
                 cmd.CommandText = sql;
                 double cutOffTick = Convert.ToDouble(cmd.ExecuteScalar()) - Convert.ToDouble(minsToKeep * 60);
@@ -722,7 +722,7 @@ namespace KMPServer
                     "  INNER JOIN kmpSubspace s ON s.ID = vu.Subspace" +
                     "  GROUP BY vu.Guid) t ON t.Guid = vu.Guid AND t.LastTick = s.LastTick;";
                 cmd.CommandText = sql;
-                SQLiteDataReader reader = cmd.ExecuteReader();
+                DbDataReader reader = cmd.ExecuteReader();
 
                 int clearedCount = 0;
                 try
@@ -738,7 +738,7 @@ namespace KMPServer
                             {
                                 if (s.Substring(s.IndexOf("type"), 20).Contains("Debris"))
                                 {
-                                    SQLiteCommand cmd2 = universeDB.CreateCommand();
+                                    DbCommand cmd2 = universeDB.CreateCommand();
                                     string sql2 = "UPDATE kmpVessel SET Destroyed = 1 WHERE Guid = @guid";
                                     cmd2.CommandText = sql2;
                                     cmd2.Parameters.AddWithValue("guid", reader.GetGuid(2).ToString());
@@ -1033,7 +1033,7 @@ namespace KMPServer
                     {
                         try
                         {
-                            SQLiteCommand cmd = universeDB.CreateCommand();
+                            DbCommand cmd = universeDB.CreateCommand();
                             string sql = "UPDATE kmpVessel SET Active = 0 WHERE Guid = @guid";
                             cmd.CommandText = sql;
                             cmd.Parameters.AddWithValue("guid", cl.currentVessel);
@@ -1057,7 +1057,7 @@ namespace KMPServer
 
                     if (emptySubspace)
                     {
-                        SQLiteCommand cmd = universeDB.CreateCommand();
+                        DbCommand cmd = universeDB.CreateCommand();
                         string sql = "DELETE FROM kmpSubspace WHERE ID = @id AND LastTick < (SELECT MIN(s.LastTick) FROM kmpSubspace s INNER JOIN kmpVessel v ON v.Subspace = s.ID);";
                         cmd.CommandText = sql;
                         cmd.Parameters.AddWithValue("id", cl.currentSubspaceID.ToString("D"));
@@ -1135,6 +1135,7 @@ namespace KMPServer
             {
 
                 IPEndPoint endpoint = new IPEndPoint(IPAddress.Parse(settings.ipBinding), settings.port);
+                if (udpClient == null) { return; }
                 byte[] received = udpClient.EndReceive(result, ref endpoint);
 
                 if (received.Length >= KMPCommon.MSG_HEADER_LENGTH + 4)
@@ -1369,10 +1370,10 @@ namespace KMPServer
             if (subspaceID == -1)
             {
                 //Latest available subspace sync request	
-                SQLiteCommand cmd = universeDB.CreateCommand();
+                DbCommand cmd = universeDB.CreateCommand();
                 string sql = "SELECT ss1.ID FROM kmpSubspace ss1 LEFT JOIN kmpSubspace ss2 ON ss1.LastTick < ss2.LastTick WHERE ss2.ID IS NULL;";
                 cmd.CommandText = sql;
-                SQLiteDataReader reader = cmd.ExecuteReader();
+                DbDataReader reader = cmd.ExecuteReader();
                 try
                 {
                     while (reader.Read())
@@ -1398,7 +1399,7 @@ namespace KMPServer
                 if (rate < 1.1f)
                 {
                     //stopped warping-create subspace & add player to it
-                    SQLiteCommand cmd = universeDB.CreateCommand();
+                    DbCommand cmd = universeDB.CreateCommand();
                     string sql = "INSERT INTO kmpSubspace (LastTick) VALUES (@tick);";
                     cmd.CommandText = sql;
                     cmd.Parameters.AddWithValue("tick", cl.lastTick.ToString("0.0").Replace(",", "."));
@@ -1407,7 +1408,7 @@ namespace KMPServer
                     cmd = universeDB.CreateCommand();
                     sql = "SELECT last_insert_rowid();";
                     cmd.CommandText = sql;
-                    SQLiteDataReader reader = cmd.ExecuteReader();
+                    DbDataReader reader = cmd.ExecuteReader();
                     int newSubspace = -1;
                     try
                     {
@@ -1448,11 +1449,11 @@ namespace KMPServer
             cl.lastTick = incomingTick;
             if (!cl.warping)
             {
-                SQLiteCommand cmd = universeDB.CreateCommand();
+                DbCommand cmd = universeDB.CreateCommand();
                 string sql = "SELECT LastTick FROM kmpSubspace WHERE ID = @id;";
                 cmd.CommandText = sql;
                 cmd.Parameters.AddWithValue("id", cl.currentSubspaceID.ToString("D"));
-                SQLiteDataReader reader = cmd.ExecuteReader();
+                DbDataReader reader = cmd.ExecuteReader();
 
                 try
                 {
@@ -1508,7 +1509,7 @@ namespace KMPServer
             {
                 try
                 {
-                    SQLiteCommand cmd = universeDB.CreateCommand();
+                    DbCommand cmd = universeDB.CreateCommand();
                     string sql = "UPDATE kmpVessel SET Active = 0 WHERE Guid = @id";
                     cmd.CommandText = sql;
                     cmd.Parameters.AddWithValue("id", cl.currentVessel);
@@ -1711,7 +1712,7 @@ namespace KMPServer
             //return;
 
             //Check if this player is new to universe
-            SQLiteCommand cmd = universeDB.CreateCommand();
+            DbCommand cmd = universeDB.CreateCommand();
             string sql = "SELECT COUNT(*) FROM kmpPlayer WHERE Name = @username AND Guid != @guid;";
             cmd.CommandText = sql;
             cmd.Parameters.AddWithValue("username", username_lower);
@@ -1795,7 +1796,7 @@ namespace KMPServer
 
         private void sendHistoricalVesselUpdates(int toSubspace, double atTick, double lastTick)
         {
-            SQLiteCommand cmd = universeDB.CreateCommand();
+            DbCommand cmd = universeDB.CreateCommand();
             string sql = "SELECT  vu.UpdateMessage, v.Private" +
                 " FROM kmpVesselUpdateHistory vu" +
                 " INNER JOIN kmpVessel v ON v.Guid = vu.Guid" +
@@ -1808,7 +1809,7 @@ namespace KMPServer
             cmd.Parameters.AddWithValue("lastTick", lastTick.ToString("0.0").Replace(",", "."));
             cmd.Parameters.AddWithValue("atTick", atTick.ToString("0.0").Replace(",", "."));
             cmd.Parameters.AddWithValue("toSubspace", toSubspace);
-            SQLiteDataReader reader = cmd.ExecuteReader();
+            DbDataReader reader = cmd.ExecuteReader();
             try
             {
                 while (reader.Read())
@@ -1844,7 +1845,7 @@ namespace KMPServer
             {
                 sendSubspaceSync(cl);
                 Log.Activity("Sending all vessels in current subspace for " + cl.username);
-                SQLiteCommand cmd = universeDB.CreateCommand();
+                DbCommand cmd = universeDB.CreateCommand();
                 string sql = "SELECT  vu.UpdateMessage, v.ProtoVessel, v.Private, v.OwnerID" +
                     " FROM kmpVesselUpdate vu" +
                     " INNER JOIN kmpVessel v ON v.Guid = vu.Guid AND v.Destroyed != 1" +
@@ -1857,7 +1858,7 @@ namespace KMPServer
                 if (excludeOwnActive) sql += " AND NOT v.Guid = '" + cl.currentVessel + "'";
                 sql += ";";
                 cmd.CommandText = sql;
-                SQLiteDataReader reader = cmd.ExecuteReader();
+                DbDataReader reader = cmd.ExecuteReader();
                 try
                 {
                     while (reader.Read())
@@ -1884,10 +1885,10 @@ namespace KMPServer
 
         private void sendSubspaceSync(Client cl, bool sendSync = true)
         {
-            SQLiteCommand cmd = universeDB.CreateCommand();
+            DbCommand cmd = universeDB.CreateCommand();
             string sql = "SELECT LastTick FROM kmpSubspace WHERE ID = " + cl.currentSubspaceID.ToString("D") + ";";
             cmd.CommandText = sql;
-            SQLiteDataReader reader = cmd.ExecuteReader();
+            DbDataReader reader = cmd.ExecuteReader();
             double tick = 0d;
             try
             {
@@ -1907,10 +1908,10 @@ namespace KMPServer
         {
             if (!cl.warping)
             {
-                SQLiteCommand cmd = universeDB.CreateCommand();
+                DbCommand cmd = universeDB.CreateCommand();
                 string sql = "SELECT ss1.ID, ss1.LastTick FROM kmpSubspace ss1 LEFT JOIN kmpSubspace ss2 ON ss1.LastTick < ss2.LastTick WHERE ss2.ID IS NULL;";
                 cmd.CommandText = sql;
-                SQLiteDataReader reader = cmd.ExecuteReader();
+                DbDataReader reader = cmd.ExecuteReader();
                 double tick = 0d; int subspace = 0;
                 try
                 {
@@ -2200,7 +2201,7 @@ namespace KMPServer
             int OwnerID = -1;
             try
             {
-                SQLiteCommand cmd;
+                DbCommand cmd;
                 string sql;
                 if (!secondaryUpdate && cl != null)
                 {
@@ -2230,7 +2231,8 @@ namespace KMPServer
                                 cmd = universeDB.CreateCommand();
                                 sql = "INSERT INTO kmpVessel (Guid, GameGuid, OwnerID, Private, Active, ProtoVessel, Subspace)" +
                                     "VALUES ('" + vessel_update.kmpID + "','" + vessel_update.id + "'," + cl.playerID + "," + Convert.ToInt32(vessel_update.isPrivate) + "," + Convert.ToInt32(vessel_update.state == State.ACTIVE) + ",@protoVessel," + cl.currentSubspaceID.ToString("D") + ")";
-                                cmd.Parameters.Add("@protoVessel", DbType.Binary, protoVesselBlob.Length).Value = protoVesselBlob;
+                                //cmd.Parameters.Add("@protoVessel", DbType.Binary, protoVesselBlob.Length).Value = protoVesselBlob;
+                                cmd.Parameters.AddWithValue("protoVessel", protoVesselBlob);
                                 cmd.CommandText = sql;
                                 cmd.ExecuteNonQuery();
                                 cmd.Dispose();
@@ -2242,7 +2244,8 @@ namespace KMPServer
                                 {
                                     cmd = universeDB.CreateCommand();
                                     sql = "UPDATE kmpVessel SET Private = " + Convert.ToInt32(vessel_update.isPrivate) + ", Active = " + Convert.ToInt32(vessel_update.state == State.ACTIVE) + ", OwnerID=" + cl.playerID + ", ProtoVessel = @protoVessel WHERE Guid = '" + vessel_update.kmpID + "';";
-                                    cmd.Parameters.Add("@protoVessel", DbType.Binary, protoVesselBlob.Length).Value = protoVesselBlob;
+                                    //cmd.Parameters.Add("@protoVessel", DbType.Binary, protoVesselBlob.Length).Value = protoVesselBlob;
+                                    cmd.Parameters.AddWithValue("protoVessel", protoVesselBlob);
                                     cmd.CommandText = sql;
                                     cmd.ExecuteNonQuery();
                                     cmd.Dispose();
@@ -2252,7 +2255,8 @@ namespace KMPServer
 
                                     cmd = universeDB.CreateCommand();
                                     sql = "UPDATE kmpVessel SET Private = " + Convert.ToInt32(vessel_update.isPrivate) + ", Active = " + Convert.ToInt32(vessel_update.state == State.ACTIVE) + ", OwnerID=" + cl.playerID + ", ProtoVessel = @protoVessel, Subspace = " + cl.currentSubspaceID.ToString("D") + " WHERE Guid = '" + vessel_update.kmpID + "';";
-                                    cmd.Parameters.Add("@protoVessel", DbType.Binary, protoVesselBlob.Length).Value = protoVesselBlob;
+                                    //cmd.Parameters.Add("@protoVessel", DbType.Binary, protoVesselBlob.Length).Value = protoVesselBlob;
+                                    cmd.Parameters.AddWithValue("protoVessel", protoVesselBlob);
                                     cmd.CommandText = sql;
                                     cmd.ExecuteNonQuery();
                                     cmd.Dispose();
@@ -2393,7 +2397,7 @@ namespace KMPServer
                             cmd = universeDB.CreateCommand();
                             sql = "SELECT kmpVessel.OwnerID, kmpVessel.Active FROM kmpVessel LEFT JOIN kmpSubspace ON kmpSubspace.ID = kmpVessel.Subspace WHERE Guid = '" + vessel_update.kmpID + "' ORDER BY kmpSubspace.LastTick DESC LIMIT 1";
                             cmd.CommandText = sql;
-                            SQLiteDataReader reader = cmd.ExecuteReader();
+                            DbDataReader reader = cmd.ExecuteReader();
                             try
                             {
                                 while (reader.Read())
@@ -2413,7 +2417,8 @@ namespace KMPServer
                                     byte[] protoVesselBlob = ObjectToByteArray(vessel_update.getProtoVesselNode());
                                     cmd = universeDB.CreateCommand();
                                     sql = "UPDATE kmpVessel SET ProtoVessel = @protoVessel, Subspace = " + cl.currentSubspaceID.ToString("D") + " WHERE Guid = '" + vessel_update.kmpID + "';";
-                                    cmd.Parameters.Add("@protoVessel", DbType.Binary, protoVesselBlob.Length).Value = protoVesselBlob;
+                                    //cmd.Parameters.Add("@protoVessel", DbType.Binary, protoVesselBlob.Length).Value = protoVesselBlob;
+                                    cmd.Parameters.AddWithValue("protoVessel", protoVesselBlob);
                                     cmd.CommandText = sql;
                                     cmd.ExecuteNonQuery();
                                     cmd.Dispose();
@@ -2493,13 +2498,14 @@ namespace KMPServer
         private void storeVesselUpdate(KMPVesselUpdate vessel_update, Client cl, bool isSecondary = false)
         {
             byte[] updateBlob = ObjectToByteArray(vessel_update);
-            SQLiteCommand cmd = universeDB.CreateCommand();
+            DbCommand cmd = universeDB.CreateCommand();
             string sql = "DELETE FROM kmpVesselUpdate WHERE Guid = '" + vessel_update.kmpID + "' AND Subspace = " + cl.currentSubspaceID.ToString("D") + ";" +
                 " INSERT INTO kmpVesselUpdate (Guid, Subspace, UpdateMessage)" +
                 " VALUES ('" + vessel_update.kmpID + "'," + cl.currentSubspaceID.ToString("D") + ",@update);";
             if (!isSecondary) sql += " INSERT INTO kmpVesselUpdateHistory (Guid, Subspace, Tick, UpdateMessage)" +
                 " VALUES ('" + vessel_update.kmpID + "'," + cl.currentSubspaceID.ToString("D") + "," + vessel_update.tick + ",@update);";
-            cmd.Parameters.Add("@update", DbType.Binary, updateBlob.Length).Value = updateBlob;
+            //cmd.Parameters.Add("@update", DbType.Binary, updateBlob.Length).Value = updateBlob;
+            cmd.Parameters.AddWithValue("update", updateBlob);
             cmd.CommandText = sql;
             cmd.ExecuteNonQuery();
             cmd.Dispose();
@@ -2511,7 +2517,7 @@ namespace KMPServer
             {
                 if (!recentlyDestroyed.ContainsKey(vessel_update.kmpID) || (recentlyDestroyed[vessel_update.kmpID] + 1500L) < currentMillisecond)
                 {
-                    SQLiteCommand cmd = universeDB.CreateCommand();
+                    DbCommand cmd = universeDB.CreateCommand();
                     string sql = "UPDATE kmpVessel SET Destroyed = " + Convert.ToInt32(vessel_update.situation == Situation.DESTROYED) + " WHERE Guid = '" + vessel_update.kmpID + "'";
                     cmd.CommandText = sql;
                     cmd.ExecuteNonQuery();
@@ -2540,13 +2546,13 @@ namespace KMPServer
 
         private void sendVesselStatusUpdate(Client cl, Guid vessel)
         {
-            SQLiteCommand cmd = universeDB.CreateCommand();
+            DbCommand cmd = universeDB.CreateCommand();
             string sql = "SELECT vu.UpdateMessage, v.ProtoVessel, v.Private, v.OwnerID, v.Active" +
                 " FROM kmpVesselUpdate vu" +
                 " INNER JOIN kmpVessel v ON v.Guid = vu.Guid" +
                 " WHERE vu.Subspace = " + cl.currentSubspaceID.ToString("D") + " AND v.Guid = '" + vessel.ToString() + "';";
             cmd.CommandText = sql;
-            SQLiteDataReader reader = cmd.ExecuteReader();
+            DbDataReader reader = cmd.ExecuteReader();
             try
             {
                 while (reader.Read())
@@ -2664,12 +2670,13 @@ namespace KMPServer
 
         public void startDatabase()
         {
-            SQLiteConnection diskDB = new SQLiteConnection(DB_FILE_CONN);
-            diskDB.Open();
             universeDB = new SQLiteConnection("Data Source=:memory:");
             universeDB.Open();
 
-            SQLiteCommand init_cmd = universeDB.CreateCommand();
+            SQLiteConnection diskDB = new SQLiteConnection(DB_FILE_CONN);
+            diskDB.Open();
+
+            DbCommand init_cmd = universeDB.CreateCommand();
             string sql = "PRAGMA auto_vacuum = 1;"; //"FULL" auto_vacuum
             init_cmd.CommandText = sql;
             init_cmd.ExecuteNonQuery();
@@ -2677,7 +2684,7 @@ namespace KMPServer
             Int32 version = 0;
             try
             {
-                SQLiteCommand cmd = diskDB.CreateCommand();
+                DbCommand cmd = diskDB.CreateCommand();
                 sql = "SELECT version FROM kmpInfo";
                 cmd.CommandText = sql;
                 version = Convert.ToInt32(cmd.ExecuteScalar());
@@ -2689,7 +2696,7 @@ namespace KMPServer
                 {
                     //Upgrade old universe to version 2
                     Log.Info("Upgrading universe database...");
-                    SQLiteCommand cmd = diskDB.CreateCommand();
+                    DbCommand cmd = diskDB.CreateCommand();
                     sql = "CREATE INDEX IF NOT EXISTS kmpVesselIdxGuid on kmpVessel(Guid);" +
                         "CREATE INDEX IF NOT EXISTS kmpVesselUpdateIdxGuid on kmpVesselUpdate(guid);" +
                         "CREATE INDEX IF NOT EXISTS kmpVesselUpdateHistoryIdxTick on kmpVesselUpdateHistory(Tick);" +
@@ -2697,7 +2704,7 @@ namespace KMPServer
                     cmd.CommandText = sql;
                     cmd.ExecuteNonQuery();
                     Log.Info("Loading universe...");
-                    diskDB.BackupDatabase(universeDB, "main", "main", -1, null, 0);
+                    backupDatabase();
                 }
                 else if (version != UNIVERSE_VERSION)
                 {
@@ -2707,7 +2714,7 @@ namespace KMPServer
                         File.Delete("KMP_universe.db");
                     }
                     catch { }
-                    SQLiteCommand cmd = universeDB.CreateCommand();
+                    DbCommand cmd = universeDB.CreateCommand();
                     sql = "CREATE TABLE kmpInfo (Version INTEGER);" +
                         "INSERT INTO kmpInfo (Version) VALUES (" + UNIVERSE_VERSION + ");" +
                         "CREATE TABLE kmpSubspace (ID INTEGER PRIMARY KEY AUTOINCREMENT, LastTick DOUBLE);" +
@@ -2725,12 +2732,12 @@ namespace KMPServer
                 else
                 {
                     Log.Info("Loading universe...");
-                    diskDB.BackupDatabase(universeDB, "main", "main", -1, null, 0);
+                    backupDatabase();
                 }
                 diskDB.Close();
             }
 
-            SQLiteCommand cmd2 = universeDB.CreateCommand();
+            DbCommand cmd2 = universeDB.CreateCommand();
             sql = "VACUUM; UPDATE kmpVessel SET Active = 0;";
             cmd2.CommandText = sql;
             cmd2.ExecuteNonQuery();
@@ -2739,6 +2746,10 @@ namespace KMPServer
 
         public void backupDatabase()
         {
+            var asSqlite = universeDB as SQLiteConnection;
+
+            if (asSqlite == null) { return; }
+
             try
             {
                 Log.Info("Backing up old disk DB...");
@@ -2750,8 +2761,8 @@ namespace KMPServer
                 catch { }
                 SQLiteConnection diskDB = new SQLiteConnection(DB_FILE_CONN);
                 diskDB.Open();
-                universeDB.BackupDatabase(diskDB, "main", "main", -1, null, 0);
-                SQLiteCommand cmd = diskDB.CreateCommand();
+                asSqlite.BackupDatabase(diskDB, "main", "main", -1, null, 0);
+                DbCommand cmd = diskDB.CreateCommand();
                 string sql = "DELETE FROM kmpSubspace WHERE LastTick < (SELECT MIN(s.LastTick) FROM kmpSubspace s INNER JOIN kmpVessel v ON v.Subspace = s.ID);" +
                 " DELETE FROM kmpVesselUpdateHistory;" +
                 " DELETE FROM kmpVesselUpdate WHERE ID IN (SELECT ID FROM kmpVesselUpdate vu WHERE Subspace != (SELECT ID FROM kmpSubspace WHERE LastTick = (SELECT MAX(LastTick) FROM kmpSubspace WHERE ID IN (SELECT Subspace FROM kmpVesselUpdate WHERE Guid = vu.Guid))));";
@@ -2772,7 +2783,7 @@ namespace KMPServer
             {
                 Log.Info("Attempting to optimize database...");
 
-                SQLiteCommand cmd = universeDB.CreateCommand();
+                DbCommand cmd = universeDB.CreateCommand();
                 string sql = "DELETE FROM kmpSubspace WHERE LastTick < (SELECT MIN(s.LastTick) FROM kmpSubspace s INNER JOIN kmpVessel v ON v.Subspace = s.ID);" +
                     " DELETE FROM kmpVesselUpdateHistory;" +
                     " DELETE FROM kmpVesselUpdate WHERE ID IN (SELECT ID FROM kmpVesselUpdate vu WHERE Subspace != (SELECT ID FROM kmpSubspace WHERE LastTick = (SELECT MAX(LastTick) FROM kmpSubspace WHERE ID IN (SELECT Subspace FROM kmpVesselUpdate WHERE Guid = vu.Guid))));";
@@ -2797,7 +2808,7 @@ namespace KMPServer
             if (comparisonSubspace == -1 || referenceSubspace == -1) return false;
             if (comparisonSubspace == referenceSubspace) return true;
             double refTime = 0d, compTime = 0d;
-            SQLiteCommand cmd = universeDB.CreateCommand();
+            DbCommand cmd = universeDB.CreateCommand();
             string sql = "SELECT LastTick FROM kmpSubspace WHERE ID = " + referenceSubspace;
             cmd.CommandText = sql;
             refTime = Convert.ToDouble(cmd.ExecuteScalar());
@@ -2812,7 +2823,7 @@ namespace KMPServer
             return (compTime >= refTime);
         }
 
-        static byte[] GetDataReaderBytes(SQLiteDataReader reader, int column)
+        static byte[] GetDataReaderBytes(DbDataReader reader, int column)
         {
             const int CHUNK_SIZE = 2 * 1024;
             byte[] buffer = new byte[CHUNK_SIZE];

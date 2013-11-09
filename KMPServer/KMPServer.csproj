@@ -32,6 +32,9 @@
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
   <ItemGroup>
+    <Reference Include="MySql.Data">
+      <HintPath>..\packages\MySql.Data.6.7.4\lib\net40\MySql.Data.dll</HintPath>
+    </Reference>
     <Reference Include="System" />
     <Reference Include="System.Data" />
     <Reference Include="System.Runtime.Serialization" />
@@ -48,6 +51,7 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="DBExtensions.cs" />
     <Compile Include="Logger.cs" />
     <Compile Include="Client.cs" />
     <Compile Include="Server.cs" />
@@ -77,6 +81,7 @@
   <ItemGroup>
     <None Include="app.config" />
     <None Include="KMPServer.exe.config" />
+    <None Include="packages.config" />
     <None Include="Service References\ServerList\Report.wsdl" />
     <None Include="Service References\ServerList\Report.xsd">
       <SubType>Designer</SubType>
