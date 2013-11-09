@@ -232,7 +232,7 @@ namespace KMPServer
             }
 
             //Write the screenshot to file
-            String filename = string.Format("{0}/{1} {2}.png", SCREENSHOT_DIR, KMPCommon.filteredFileName(player),System.DateTime.Now.ToString("yyyy-MM-dd-HH-mm-ss"))
+            String filename = string.Format("{0}/{1} {2}.png", SCREENSHOT_DIR, KMPCommon.filteredFileName(player), System.DateTime.Now.ToString("yyyy-MM-dd-HH-mm-ss"));
             if (!File.Exists(filename))
             {
                 try
