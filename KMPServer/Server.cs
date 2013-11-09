@@ -1308,7 +1308,7 @@ namespace KMPServer
             if (!cl.isValid)
             { return; }
 
-            if (!AllowNullDataMessages.Contains(id) && data == null) { return; }
+            //if (!AllowNullDataMessages.Contains(id) && data == null) { return; }
             if (!AllowClientNotReadyMessages.Contains(id) && !cl.isReady) { return; }
 
             try
