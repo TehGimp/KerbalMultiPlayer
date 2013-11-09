@@ -573,22 +573,21 @@ namespace KMP
 					if (data != null)
 					{
 						String message = encoder.GetString(data, 0, data.Length);
-
-						endSession = true;
-						handshakeCompleted = false;
-						receivedSettings = false;
+					
+						gameManager.disconnect(message);
+						clearConnectionState();
+					
 						//If the reason is not a timeout, connection end is intentional
 						intentionalConnectionEnd = message.ToLower() != "timeout";
 						enqueuePluginChatMessage("Server closed the connection: " + message, true);
-						clearConnectionState();
+						
 						SetMessage("Disconnected from server: " + message);
-						gameManager.disconnect(message);
 					}
 					else
 					{
+						gameManager.disconnect();	
 						clearConnectionState();
 						SetMessage("Disconnected from server");
-						gameManager.disconnect();	
 					}
 					
 					break;
@@ -1310,7 +1309,6 @@ namespace KMP
 
 		static void enqueuePluginChatMessage(String message, bool print = false)
 		{
-			SetMessage(message); //Show 'chat' disconnection messages on connection window
 			enqueueClientInteropMessage(
 				KMPCommon.ClientInteropMessageID.CHAT_RECEIVE,
 				encoder.GetBytes(message)
