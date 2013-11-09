@@ -1308,7 +1308,6 @@ namespace KMPServer
             try
             {
                 //Log.Info("Message id: " + id.ToString() + " from client: " + cl + " data: " + (data != null ? data.Length.ToString() : "0"));
-                //Console.WriteLine("Message id: " + id.ToString() + " data: " + (data != null ? System.Text.Encoding.ASCII.GetString(data) : ""));
 
                 UnicodeEncoding encoder = new UnicodeEncoding();
 

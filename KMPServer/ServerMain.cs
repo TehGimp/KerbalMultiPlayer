@@ -197,7 +197,7 @@ namespace KMPServer
             }
             else
             {
-                Console.WriteLine("Server " + Enum.GetName(typeof(ServerStatus), status).ToLower());
+                Log.Info("Server {0}",Enum.GetName(typeof(ServerStatus), status).ToLower()); 
             }
         }
 
