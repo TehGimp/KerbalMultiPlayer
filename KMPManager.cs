@@ -849,7 +849,7 @@ namespace KMP
 					KMPClientMain.DebugLog("First or forced proto update for active vessel: " + vessel.id);
 					lastFullProtovesselUpdate = UnityEngine.Time.realtimeSinceStartup;
 				}
-                if (!vessel.packed && serverVessels_PartCounts.ContainsKey(vessel.id)) serverVessels_PartCounts[vessel.id] = vessel.Parts.Count;
+                if (!vessel.packed) serverVessels_PartCounts[vessel.id] = vessel.Parts.Count;
 			}
 			
 			//Track vessel situation
