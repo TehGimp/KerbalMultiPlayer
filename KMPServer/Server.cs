@@ -1300,16 +1300,16 @@ namespace KMPServer
             clientMessageQueue.Enqueue(message);
         }
 
-        private KMPCommon.ClientMessageID[] AllowNullDataMessages = { };
-        private KMPCommon.ClientMessageID[] AllowClientNotReadyMessages = { KMPCommon.ClientMessageID.TEXT_MESSAGE, KMPCommon.ClientMessageID.SCREEN_WATCH_PLAYER };
+        private KMPCommon.ClientMessageID[] AllowNullDataMessages = { KMPCommon.ClientMessageID.SCREEN_WATCH_PLAYER, KMPCommon.ClientMessageID.CONNECTION_END, KMPCommon.ClientMessageID.ACTIVITY_UPDATE_IN_FLIGHT, KMPCommon.ClientMessageID.ACTIVITY_UPDATE_IN_GAME, KMPCommon.ClientMessageID.PING };
+        private KMPCommon.ClientMessageID[] AllowClientNotReadyMessages = { KMPCommon.ClientMessageID.HANDSHAKE, KMPCommon.ClientMessageID.TEXT_MESSAGE, KMPCommon.ClientMessageID.SCREENSHOT_SHARE, KMPCommon.ClientMessageID.CONNECTION_END, KMPCommon.ClientMessageID.ACTIVITY_UPDATE_IN_FLIGHT, KMPCommon.ClientMessageID.ACTIVITY_UPDATE_IN_GAME, KMPCommon.ClientMessageID.PING, KMPCommon.ClientMessageID.UDP_PROBE, KMPCommon.ClientMessageID.WARPING, KMPCommon.ClientMessageID.SSYNC };
 
         public void handleMessage(Client cl, KMPCommon.ClientMessageID id, byte[] data)
         {
             if (!cl.isValid)
             { return; }
 
-            //if (!AllowNullDataMessages.Contains(id) && data == null) { return; }
-            //if (!AllowClientNotReadyMessages.Contains(id) && !cl.isReady) { return; }
+            if (!AllowNullDataMessages.Contains(id) && data == null) { return; }
+            if (!AllowClientNotReadyMessages.Contains(id) && !cl.isReady) { return; }
 
             try
             {
@@ -1446,68 +1446,65 @@ namespace KMPServer
 
         private void HandleUDPProbe(Client cl, byte[] data)
         {
-			if (data != null)
-			{
-	            double incomingTick = BitConverter.ToDouble(data, 0);
-	            double lastSubspaceTick = incomingTick;
-	
-	            cl.lastTick = incomingTick;
-	            if (!cl.warping)
-	            {
-	                DbCommand cmd = universeDB.CreateCommand();
-	                string sql = "SELECT LastTick FROM kmpSubspace WHERE ID = @id;";
-	                cmd.CommandText = sql;
-	                cmd.Parameters.AddWithValue("id", cl.currentSubspaceID.ToString("D"));
-	                DbDataReader reader = cmd.ExecuteReader();
-	
-	                try
-	                {
-	                    while (reader.Read())
-	                    {
-	                        lastSubspaceTick = reader.GetDouble(0);
-	                    }
-	                }
-	                finally
-	                {
-	                    reader.Close();
-	                    cmd.Dispose();
-	                }
-	
-	                if (lastSubspaceTick - incomingTick > 0.2d)
-	                {
-	                    cl.syncOffset += 0.001d;
-	                    if (cl.syncOffset > 0.5d) cl.syncOffset = 0.5;
-	                    if (cl.receivedHandshake && cl.lastSyncTime < (currentMillisecond - 2500L))
-	                    {
-	                        Log.Debug("Sending time-sync to {0} current offset {1}", cl.username, cl.syncOffset);
-	                        if (cl.lagWarning > 24)
-	                        {
-	                            cl.lastSyncTime = currentMillisecond;
-	                            markClientForDisconnect(cl, "Your game was running too slowly compared to other players. Please try reconnecting in a moment.");
-	                        }
-	                        else
-	                        {
-	                            sendSyncMessage(cl, lastSubspaceTick + cl.syncOffset);
-	                            cl.lastSyncTime = currentMillisecond;
-	                            cl.lagWarning++;
-	                        }
-	                    }
-	                }
-	                else
-	                {
-	                    cl.lagWarning = 0;
-	                    if (cl.syncOffset > 0.01d) cl.syncOffset -= 0.001d;
-	                    cmd = universeDB.CreateCommand();
-	                    sql = "UPDATE kmpSubspace SET LastTick = @tick WHERE ID = @subspaceID AND LastTick < @tick;";
-	                    cmd.Parameters.AddWithValue("tick", incomingTick.ToString("0.0").Replace(",", "."));
-                        cmd.Parameters.AddWithValue("subspaceID", cl.currentSubspaceID.ToString("D"));
-	                    cmd.CommandText = sql;
-	                    cmd.ExecuteNonQuery();
-	                    cmd.Dispose();
-	                    sendHistoricalVesselUpdates(cl.currentSubspaceID, incomingTick, lastSubspaceTick);
-	                }
-	            }
-			}
+            double incomingTick = BitConverter.ToDouble(data, 0);
+            double lastSubspaceTick = incomingTick;
+
+            cl.lastTick = incomingTick;
+            if (!cl.warping)
+            {
+                DbCommand cmd = universeDB.CreateCommand();
+                string sql = "SELECT LastTick FROM kmpSubspace WHERE ID = @id;";
+                cmd.CommandText = sql;
+                cmd.Parameters.AddWithValue("id", cl.currentSubspaceID.ToString("D"));
+                DbDataReader reader = cmd.ExecuteReader();
+
+                try
+                {
+                    while (reader.Read())
+                    {
+                        lastSubspaceTick = reader.GetDouble(0);
+                    }
+                }
+                finally
+                {
+                    reader.Close();
+                    cmd.Dispose();
+                }
+
+                if (lastSubspaceTick - incomingTick > 0.2d)
+                {
+                    cl.syncOffset += 0.001d;
+                    if (cl.syncOffset > 0.5d) cl.syncOffset = 0.5;
+                    if (cl.receivedHandshake && cl.lastSyncTime < (currentMillisecond - 2500L))
+                    {
+                        Log.Debug("Sending time-sync to {0} current offset {1}", cl.username, cl.syncOffset);
+                        if (cl.lagWarning > 24)
+                        {
+                            cl.lastSyncTime = currentMillisecond;
+                            markClientForDisconnect(cl, "Your game was running too slowly compared to other players. Please try reconnecting in a moment.");
+                        }
+                        else
+                        {
+                            sendSyncMessage(cl, lastSubspaceTick + cl.syncOffset);
+                            cl.lastSyncTime = currentMillisecond;
+                            cl.lagWarning++;
+                        }
+                    }
+                }
+                else
+                {
+                    cl.lagWarning = 0;
+                    if (cl.syncOffset > 0.01d) cl.syncOffset -= 0.001d;
+                    cmd = universeDB.CreateCommand();
+                    sql = "UPDATE kmpSubspace SET LastTick = @tick WHERE ID = @subspaceID AND LastTick < @tick;";
+                    cmd.Parameters.AddWithValue("tick", incomingTick.ToString("0.0").Replace(",", "."));
+                    cmd.Parameters.AddWithValue("subspaceID", cl.currentSubspaceID.ToString("D"));
+                    cmd.CommandText = sql;
+                    cmd.ExecuteNonQuery();
+                    cmd.Dispose();
+                    sendHistoricalVesselUpdates(cl.currentSubspaceID, incomingTick, lastSubspaceTick);
+                }
+            }
         }
 
         private void HandleActivityUpdateInGame(Client cl)
