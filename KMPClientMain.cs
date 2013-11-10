@@ -1468,6 +1468,25 @@ namespace KMP
 				}
 				reader.Close();
 				partList = lines;
+
+				bool changed = false;
+				if (!lines.Contains("kerbalEVA"))
+				{
+					partList.Add("kerbalEVA");
+					changed = true;
+				}
+				if (!lines.Contains("flag"))
+				{
+					partList.Add("flag");
+					changed = true;
+				}
+				if (changed)
+				{
+					KSP.IO.TextWriter writer = KSP.IO.File.CreateText<KMPClientMain>(PART_LIST_FILENAME);
+					foreach (string part in partList)
+						writer.WriteLine(part);
+					writer.Close();
+				}
 			}
 			catch
 			{
