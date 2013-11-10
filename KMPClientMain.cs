@@ -23,6 +23,7 @@ namespace KMP
 		public struct InTextMessage
 		{
 			public bool fromServer;
+			public bool isMOTD;
 			public String message;
 		}
 
@@ -509,12 +510,27 @@ namespace KMP
 						InTextMessage in_message = new InTextMessage();
 
 						in_message.fromServer = (id == KMPCommon.ServerMessageID.SERVER_MESSAGE);
+						in_message.isMOTD = (id == KMPCommon.ServerMessageID.MOTD_MESSAGE);
 						in_message.message = encoder.GetString(data, 0, data.Length);
 
 						//Queue the message
 						enqueueTextMessage(in_message);
 					}
 
+					break;
+
+				case KMPCommon.ServerMessageID.MOTD_MESSAGE:
+					
+					if(data != null)
+					{
+						InTextMessage in_message = new InTextMessage();
+						in_message.fromServer = (id == KMPCommon.ServerMessageID.SERVER_MESSAGE);
+						in_message.isMOTD = (id == KMPCommon.ServerMessageID.MOTD_MESSAGE);
+						in_message.message = encoder.GetString(data, 0, data.Length);
+
+						enqueueTextMessage(in_message);
+					}
+					
 					break;
 
 				case KMPCommon.ServerMessageID.PLUGIN_UPDATE:
@@ -543,10 +559,12 @@ namespace KMP
 									lastClientDataChangeTime = stopwatch.ElapsedMilliseconds;
 									enqueueTextMessage("Screenshot Height has been set to " + screenshotSettings.maxHeight);
 								}
-
-								if (inactiveShipsPerUpdate != data[12])
+							
+								gameManager.safetyBubbleRadius = BitConverter.ToDouble(data, 12);
+							
+								if (inactiveShipsPerUpdate != data[20])
 								{
-									inactiveShipsPerUpdate = data[12];
+									inactiveShipsPerUpdate = data[20];
 									lastClientDataChangeTime = stopwatch.ElapsedMilliseconds;
 								}
 							}
@@ -1151,6 +1169,7 @@ namespace KMP
 
 						InTextMessage message = new InTextMessage();
 						message.fromServer = false;
+						message.isMOTD = false;
 						message.message = "[" + username + "] " + line;
 						enqueueTextMessage(message, false);
 
@@ -1282,7 +1301,7 @@ namespace KMP
 
 		}
 
-		static void enqueueTextMessage(String message, bool from_server = false, bool to_plugin = true)
+		static void enqueueTextMessage(String message, bool from_server = false, bool to_plugin = true, bool isMOTD = false)
 		{
 			InTextMessage text_message = new InTextMessage();
 			text_message.message = message;
@@ -1304,6 +1323,8 @@ namespace KMP
 			{
 				if (message.fromServer)
 					enqueuePluginChatMessage("[Server] " + message.message, false);
+				else if (message.isMOTD)
+					enqueuePluginChatMessage("[MOTD] " + message.message, false);
 				else
 					enqueuePluginChatMessage(message.message);
 			}

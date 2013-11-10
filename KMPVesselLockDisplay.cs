@@ -9,8 +9,8 @@ namespace KMP
 {
 	class KMPVesselLockDisplay
 	{
-		public const float MIN_WINDOW_WIDTH = 56;
-		public const float MIN_WINDOW_HEIGHT = 32;
+		public const float MIN_WINDOW_WIDTH = 60;
+		public const float MIN_WINDOW_HEIGHT = 34;
 		
 		public static Rect windowPos 
 		{

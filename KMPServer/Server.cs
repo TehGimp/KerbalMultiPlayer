@@ -52,7 +52,7 @@ namespace KMPServer
         public const string DB_FILE_CONN = "Data Source=KMP_universe.db";
         public const string DB_FILE = "KMP_universe.db";
 
-        public const int UNIVERSE_VERSION = 2;
+        public const int UNIVERSE_VERSION = 3;
 
         public bool quit = false;
         public bool stop = false;
@@ -231,17 +231,8 @@ namespace KMPServer
                 }
             }
 
-            //Build the filename
-            StringBuilder sb = new StringBuilder();
-            sb.Append(SCREENSHOT_DIR);
-            sb.Append('/');
-            sb.Append(KMPCommon.filteredFileName(player));
-            sb.Append(' ');
-            sb.Append(System.DateTime.Now.ToString("yyyy-MM-dd-HH-mm-ss"));
-            sb.Append(".png");
-
             //Write the screenshot to file
-            String filename = sb.ToString();
+            String filename = string.Format("{0}/{1} {2}.png", SCREENSHOT_DIR, KMPCommon.filteredFileName(player), System.DateTime.Now.ToString("yyyy-MM-dd-HH-mm-ss"));
             if (!File.Exists(filename))
             {
                 try
@@ -409,7 +400,8 @@ namespace KMPServer
                         case "/dekessler": dekesslerServerCommand(parts); break;
                         case "/countships": countShipsServerCommand(); break;
                         case "/listships": listShipsServerCommand(); break;
-                        default: sendServerMessageToAll(input); break;
+						case "/say": sayServerCommand(parts); break;
+                        default: Log.Info("Unknown Command: "+input); break;
                     }
                 }
             }
@@ -421,6 +413,41 @@ namespace KMPServer
                 passExceptionToMain(e);
             }
         }
+
+		//Sends messages from Server
+		private void sayServerCommand(string[] parts)
+		{
+			if(parts.Length > 1)
+			{
+				if(parts[1].IndexOf("-u") == 0)
+				{
+					parts = parts[1].Split(new char[] { ' ' }, 3);
+					if (parts.Length > 2)
+					{
+						String sName = parts[1];
+						var clientToMessage = clients.Where(cl => cl.username.ToLower() == sName && cl.isReady).FirstOrDefault();
+
+						if (clientToMessage != null)
+						{
+							string message = parts[2];
+							sendServerMessage(clientToMessage, message);
+						}
+						else
+							Log.Info("Username " + sName + " not found.");
+					}
+					else
+						Log.Info("Error: -u flag found but missing message.");
+				}
+				else if (parts[1].IndexOf("-u") != -1)
+				{
+					Log.Info("Error: -u flag found but in wrong location.");
+				}
+				else
+					sendServerMessageToAll(parts[1]);
+			}
+			else
+				Log.Info("Error: /say command improperly formatted.  Missing message.  /say <-u username> [message]");
+		}
 
         private void countShipsServerCommand(bool bList = false)
         {
@@ -506,7 +533,7 @@ namespace KMPServer
                 }
                 else
                 {
-                    Log.Info("Failed to locate player '{0}'.", ban_name);
+                    Log.Info("Failed to locate player {0}.", ban_name);
                 }
             }
         }
@@ -555,7 +582,7 @@ namespace KMPServer
             }
             else
             {
-                Log.Info("Username '{0}' not found.", kick_name);
+                Log.Info("Username {0} not found.", kick_name);
             }
         }
 
@@ -614,7 +641,7 @@ namespace KMPServer
                     cmd.CommandText = sql;
                     cmd.ExecuteNonQuery();
                     cmd.Dispose();
-                    Log.Info("Player '{0}' added to player roster with token '{1}'.", args[0], args[1]);
+                    Log.Info("Player {0} added to player roster with token {1}.", args[0], args[1]);
                 }
                 catch (FormatException)
                 {
@@ -659,7 +686,7 @@ namespace KMPServer
                         cmd.Parameters.AddWithValue("guid", guid);
                         cmd.ExecuteNonQuery();
                         cmd.Dispose();
-                        Log.Info("Updated roster with player '{0}' and token '{1}'.", args[0], args[1]);
+                        Log.Info("Updated roster with player {0} and token {1}.", args[0], args[1]);
                     }
                     catch (FormatException)
                     {
@@ -687,7 +714,7 @@ namespace KMPServer
             cmd.Parameters.AddWithValue("dereg", dereg);
             cmd.ExecuteNonQuery();
             cmd.Dispose();
-            Log.Info("Players with name/token '{0}' removed from player roster.", dereg);
+            Log.Info("Players with name/token {0} removed from player roster.", dereg);
         }
 
         //Clears old debris
@@ -1018,15 +1045,8 @@ namespace KMPServer
                 {
                     Log.Info("Player #{0} {1} has disconnected: {2}", cl.playerID, cl.username, message);
 
-                    StringBuilder sb = new StringBuilder();
-
-                    //Build disconnect message
-                    sb.Append("User ");
-                    sb.Append(cl.username);
-                    sb.Append(" has disconnected : " + message);
-
                     //Send the disconnect message to all other clients
-                    sendServerMessageToAll(sb.ToString());
+                    sendServerMessageToAll(string.Format("User {0} has disconnected : {1}", cl.username, message));
 
                     //Update the database
                     if (cl.currentVessel != Guid.Empty)
@@ -1678,10 +1698,18 @@ namespace KMPServer
             Int32 username_length = KMPCommon.intFromBytes(data, 0);
             String username = encoder.GetString(data, 4, username_length);
 
-
+			Guid guid = Guid.Empty;
             Int32 guid_length = KMPCommon.intFromBytes(data, 4 + username_length);
             int offset = 4 + username_length + 4;
-            Guid guid = new Guid(encoder.GetString(data, offset, guid_length));
+			try
+			{
+            	guid = new Guid(encoder.GetString(data, offset, guid_length));
+			}
+			catch
+			{
+				markClientForDisconnect(cl, "You're authentication token is not valid.");
+				Log.Info("Rejected client due to invalid guid: {0}", encoder.GetString(data, offset, guid_length));
+			}
             offset = 4 + username_length + 4 + guid_length;
             String version = encoder.GetString(data, offset, data.Length - offset);
 
@@ -1713,8 +1741,8 @@ namespace KMPServer
                 accepted = false;
             }
 
-            //if (!accepted)
-            //return;
+            if (!accepted)
+            return;
 
             //Check if this player is new to universe
             DbCommand cmd = universeDB.CreateCommand();
@@ -1778,6 +1806,7 @@ namespace KMPServer
                 }
             }
 
+
             cl.username = username;
             cl.receivedHandshake = true;
             cl.guid = guid;
@@ -1785,6 +1814,11 @@ namespace KMPServer
 
             sendServerMessage(cl, sb.ToString());
             sendServerSettings(cl);
+
+			//Send the MOTD
+			sb.Remove(0, sb.Length);
+			sb.Append(settings.serverMotd);
+			sendMotdMessage(cl, sb.ToString());
 
             Log.Info("{0} has joined the server using client version {1}", username, version);
 
@@ -1797,6 +1831,8 @@ namespace KMPServer
 
             //Send the join message to all other clients
             sendServerMessageToAll(sb.ToString(), cl);
+
+			
         }
 
         private void sendHistoricalVesselUpdates(int toSubspace, double atTick, double lastTick)
@@ -1986,7 +2022,7 @@ namespace KMPServer
                     else if (message_lower == "!motd")
                     {
                         sb.Append(settings.serverMotd);
-                        sendTextMessage(cl, sb.ToString());
+                        sendMotdMessage(cl, sb.ToString());
                         return;
                     }
                     else if (message_lower == "!rules")
@@ -2034,7 +2070,7 @@ namespace KMPServer
                 Log.Chat(cl.username, message_text);
 
                 //Send the update to all other clients
-                sendTextMessageToAll(full_message, cl);
+                sendTextMessageToAll(full_message);
             }
             catch (NullReferenceException) { }
         }
@@ -2170,7 +2206,7 @@ namespace KMPServer
             {
                 client.queueOutgoingMessage(message_bytes);
             }
-            Log.Debug("[Server] message sent.");
+            Log.Debug("[Server] message sent to all.");
         }
 
         private void sendServerMessage(Client cl, String message)
@@ -2195,6 +2231,24 @@ namespace KMPServer
             UnicodeEncoding encoder = new UnicodeEncoding();
             cl.queueOutgoingMessage(KMPCommon.ServerMessageID.SERVER_MESSAGE, encoder.GetBytes(message));
         }
+
+		private void sendMotdMessage(Client cl, String message)
+		{
+			UnicodeEncoding encoder = new UnicodeEncoding();
+			cl.queueOutgoingMessage(KMPCommon.ServerMessageID.MOTD_MESSAGE, encoder.GetBytes(message));
+		}
+
+		private void sendMotdMessageToAll(String message, Client exclude = null)
+		{
+			UnicodeEncoding encoder = new UnicodeEncoding();
+			byte[] message_bytes = buildMessageArray(KMPCommon.ServerMessageID.MOTD_MESSAGE, encoder.GetBytes(message));
+
+			foreach (var client in clients.ToList().Where(cl => cl.isReady && cl != exclude))
+			{
+				client.queueOutgoingMessage(message_bytes);
+			}
+			Log.Debug("[MOTD] sent to all.");
+		}
 
         private void sendPluginUpdateToAll(byte[] data, bool secondaryUpdate, Client cl = null)
         {
@@ -2715,7 +2769,8 @@ namespace KMPServer
             KMPCommon.intToBytes(updateInterval).CopyTo(bytes, 0); //Update interval
             KMPCommon.intToBytes(settings.screenshotInterval).CopyTo(bytes, 4); //Screenshot interval
             KMPCommon.intToBytes(settings.screenshotSettings.maxHeight).CopyTo(bytes, 8); //Screenshot height
-            bytes[12] = inactiveShipsPerClient; //Inactive ships per client
+			BitConverter.GetBytes(settings.safetyBubbleRadius).CopyTo(bytes,12); //Safety bubble radius
+            bytes[20] = inactiveShipsPerClient; //Inactive ships per client
 
             return bytes;
         }
@@ -2746,20 +2801,145 @@ namespace KMPServer
             catch { Log.Info("Missing (or bad) universe database file."); }
             finally
             {
-                if (version == 1)
+                if (version > 0 && version < UNIVERSE_VERSION)
                 {
-                    //Upgrade old universe to version 2
-                    Log.Info("Upgrading universe database...");
-                    DbCommand cmd = diskDB.CreateCommand();
-                    sql = "CREATE INDEX IF NOT EXISTS kmpVesselIdxGuid on kmpVessel(Guid);" +
-                        "CREATE INDEX IF NOT EXISTS kmpVesselUpdateIdxGuid on kmpVesselUpdate(guid);" +
-                        "CREATE INDEX IF NOT EXISTS kmpVesselUpdateHistoryIdxTick on kmpVesselUpdateHistory(Tick);" +
-                        "UPDATE kmpInfo SET Version = @uni_version;";
+					DbCommand cmd;
+					if (version == 1)
+					{
+	                    //Upgrade old universe to version 2
+	                    Log.Info("Upgrading universe database...");
+	                    cmd = diskDB.CreateCommand();
+	                    sql = "CREATE INDEX IF NOT EXISTS kmpVesselIdxGuid on kmpVessel(Guid);" +
+	                        "CREATE INDEX IF NOT EXISTS kmpVesselUpdateIdxGuid on kmpVesselUpdate(guid);" +
+	                        "CREATE INDEX IF NOT EXISTS kmpVesselUpdateHistoryIdxTick on kmpVesselUpdateHistory(Tick);";
+	                    cmd.CommandText = sql;
+	                    cmd.ExecuteNonQuery();
+					}
+					
+					//Upgrade old universe to version 3
+                    Log.Info("Upgrading universe database to current version...");
+					diskDB.BackupDatabase(universeDB, "main", "main", -1, null, 0);
+					
+					cmd = universeDB.CreateCommand();
+                    sql = "SELECT Guid FROM kmpPlayer;";
+                    cmd.CommandText = sql;
+                    cmd.Parameters.AddWithValue("uni_version", UNIVERSE_VERSION);
+                    DbDataReader reader = cmd.ExecuteReader();
+					while (reader.Read())
+		            {
+		                string old_guid = reader.GetString(0);
+						Guid guid = Guid.Empty;
+						try {
+							guid = new Guid(old_guid);
+						}
+						catch
+						{
+							//Already converted?
+							try 
+							{
+								guid = new Guid(System.Text.Encoding.ASCII.GetBytes(old_guid.Substring(0,16)));
+							}
+							catch
+							{
+								guid = Guid.Empty;	
+							}
+						}
+						DbCommand cmd2 = universeDB.CreateCommand();
+	                    string sql2 = "UPDATE kmpPlayer SET Guid = @guid WHERE Guid = @old_guid;";
+	                    cmd2.CommandText = sql2;
+	                    cmd2.Parameters.AddWithValue("guid", guid);
+						cmd2.Parameters.AddWithValue("old_guid", old_guid);
+	                    cmd2.ExecuteNonQuery();
+		            }
+					
+					cmd = universeDB.CreateCommand();
+                    sql = "SELECT Guid, GameGuid FROM kmpVessel;";
+                    cmd.CommandText = sql;
+                    cmd.Parameters.AddWithValue("uni_version", UNIVERSE_VERSION);
+                    reader = cmd.ExecuteReader();
+					while (reader.Read())
+		            {
+		                string old_guid = reader.GetString(0);
+						string old_guid2 = reader.GetString(1);
+						Guid guid = Guid.Empty;
+						Guid guid2 = Guid.Empty;
+						try {
+							guid = new Guid(old_guid);
+						}
+						catch
+						{
+							//Already converted?
+							try 
+							{
+								guid = new Guid(System.Text.Encoding.ASCII.GetBytes(old_guid.Substring(0,16)));
+							}
+							catch
+							{
+								guid = Guid.Empty;	
+							}
+						}
+						try {
+							guid2 = new Guid(old_guid2);
+						}
+						catch
+						{
+							//Already converted?
+							try 
+							{
+								guid = new Guid(System.Text.Encoding.ASCII.GetBytes(old_guid2.Substring(0,16)));
+							}
+							catch
+							{
+								guid = Guid.Empty;	
+							}
+						}
+						DbCommand cmd2 = universeDB.CreateCommand();
+	                    string sql2 = "UPDATE kmpVessel SET Guid = @guid, GameGuid = @guid2 WHERE Guid = @old_guid;";
+	                    cmd2.CommandText = sql2;
+	                    cmd2.Parameters.AddWithValue("guid", guid);
+						cmd2.Parameters.AddWithValue("guid2", guid2);
+						cmd2.Parameters.AddWithValue("old_guid", old_guid);
+	                    cmd2.ExecuteNonQuery();
+		            }
+					
+					cmd = universeDB.CreateCommand();
+                    sql = "SELECT Guid FROM kmpVesselUpdate;";
+                    cmd.CommandText = sql;
+                    cmd.Parameters.AddWithValue("uni_version", UNIVERSE_VERSION);
+                    reader = cmd.ExecuteReader();
+					while (reader.Read())
+		            {
+		                string old_guid = reader.GetString(0);
+						Guid guid = Guid.Empty;
+						try {
+							guid = new Guid(old_guid);
+						}
+						catch
+						{
+							//Already converted?
+							try 
+							{
+								guid = new Guid(System.Text.Encoding.ASCII.GetBytes(old_guid.Substring(0,16)));
+							}
+							catch
+							{
+								guid = Guid.Empty;	
+							}
+						}
+						DbCommand cmd2 = universeDB.CreateCommand();
+	                    string sql2 = "UPDATE kmpVesselUpdate SET Guid = @guid WHERE Guid = @old_guid;";
+	                    cmd2.CommandText = sql2;
+	                    cmd2.Parameters.AddWithValue("guid", guid);
+						cmd2.Parameters.AddWithValue("old_guid", old_guid);
+	                    cmd2.ExecuteNonQuery();
+		            }
+					
+                    cmd = universeDB.CreateCommand();
+                    sql = "UPDATE kmpInfo SET Version = @uni_version;";
                     cmd.CommandText = sql;
                     cmd.Parameters.AddWithValue("uni_version", UNIVERSE_VERSION);
                     cmd.ExecuteNonQuery();
                     Log.Info("Loading universe...");
-                    diskDB.BackupDatabase(universeDB, "main", "main", -1, null, 0);
                 }
                 else if (version != UNIVERSE_VERSION)
                 {
@@ -2774,10 +2954,10 @@ namespace KMPServer
                         "INSERT INTO kmpInfo (Version) VALUES (@uni_version);" +
                         "CREATE TABLE kmpSubspace (ID INTEGER PRIMARY KEY AUTOINCREMENT, LastTick DOUBLE);" +
                         "INSERT INTO kmpSubspace (LastTick) VALUES (100);" +
-                        "CREATE TABLE kmpPlayer (ID INTEGER PRIMARY KEY AUTOINCREMENT, Name NVARCHAR(100), Guid CHAR(40));" +
-                        "CREATE TABLE kmpVessel (Guid CHAR(40), GameGuid CHAR(40), OwnerID INTEGER, Private BIT, Active BIT, ProtoVessel BLOB, Subspace INTEGER, Destroyed BIT);" +
-                        "CREATE TABLE kmpVesselUpdate (ID INTEGER PRIMARY KEY AUTOINCREMENT, Guid CHAR(40), Subspace INTEGER, UpdateMessage BLOB);" +
-                        "CREATE TABLE kmpVesselUpdateHistory (Guid CHAR(40), Subspace INTEGER, Tick DOUBLE, UpdateMessage BLOB);" +
+                        "CREATE TABLE kmpPlayer (ID INTEGER PRIMARY KEY AUTOINCREMENT, Name NVARCHAR(100), Guid CHAR(16));" +
+                        "CREATE TABLE kmpVessel (Guid CHAR(16), GameGuid CHAR(16), OwnerID INTEGER, Private BIT, Active BIT, ProtoVessel BLOB, Subspace INTEGER, Destroyed BIT);" +
+                        "CREATE TABLE kmpVesselUpdate (ID INTEGER PRIMARY KEY AUTOINCREMENT, Guid CHAR(16), Subspace INTEGER, UpdateMessage BLOB);" +
+                        "CREATE TABLE kmpVesselUpdateHistory (Guid CHAR(16), Subspace INTEGER, Tick DOUBLE, UpdateMessage BLOB);" +
                         "CREATE INDEX kmpVesselIdxGuid on kmpVessel(Guid);" +
                         "CREATE INDEX kmpVesselUpdateIdxGuid on kmpVesselUpdate(guid);" +
                         "CREATE INDEX kmpVesselUpdateHistoryIdxTick on kmpVesselUpdateHistory(Tick);";
@@ -2793,10 +2973,10 @@ namespace KMPServer
                 diskDB.Close();
             }
 
-            DbCommand cmd2 = universeDB.CreateCommand();
+            DbCommand cmd3 = universeDB.CreateCommand();
             sql = "VACUUM; UPDATE kmpVessel SET Active = 0;";
-            cmd2.CommandText = sql;
-            cmd2.ExecuteNonQuery();
+            cmd3.CommandText = sql;
+            cmd3.ExecuteNonQuery();
             Log.Info("Universe OK.");
         }
 
@@ -2946,7 +3126,7 @@ namespace KMPServer
                 return default(T);
             }
         }
-
+		
         private string CleanInput(string strIn)
         {
             // Replace invalid characters with empty strings. 
@@ -2974,8 +3154,8 @@ namespace KMPServer
             Log.Info("/save - Backup universe");
             Log.Info("/help - Displays all commands in the server");
             Log.Info("/set [key] [value] to modify a setting");
-            Log.Info("/whitelist [add|del] [user] to update whitelist");
-            Log.Info("Non-commands will be sent to players as a chat message");
+            Log.Info("/whitelist [add|del] [user] to update whitelist\n");
+            Log.Info("/say <-u username> [message] to send a Server message <to specified user>");
 
             // to add a new command to the command list just copy the Log.Info method and add how to use that command.
         }
