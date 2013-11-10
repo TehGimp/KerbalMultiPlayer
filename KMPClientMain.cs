@@ -558,10 +558,12 @@ namespace KMP
 									lastClientDataChangeTime = stopwatch.ElapsedMilliseconds;
 									enqueueTextMessage("Screenshot Height has been set to " + screenshotSettings.maxHeight);
 								}
-
-								if (inactiveShipsPerUpdate != data[12])
+							
+								gameManager.safetyBubbleRadius = BitConverter.ToDouble(data, 12);
+							
+								if (inactiveShipsPerUpdate != data[20])
 								{
-									inactiveShipsPerUpdate = data[12];
+									inactiveShipsPerUpdate = data[20];
 									lastClientDataChangeTime = stopwatch.ElapsedMilliseconds;
 								}
 							}
