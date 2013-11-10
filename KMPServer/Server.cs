@@ -400,7 +400,8 @@ namespace KMPServer
                         case "/dekessler": dekesslerServerCommand(parts); break;
                         case "/countships": countShipsServerCommand(); break;
                         case "/listships": listShipsServerCommand(); break;
-                        default: sendServerMessageToAll(input); break;
+						case "/say": sayServerCommand(parts); break;
+                        default: Log.Info("Unknown Command: "+input); break;
                     }
                 }
             }
@@ -412,6 +413,41 @@ namespace KMPServer
                 passExceptionToMain(e);
             }
         }
+
+		//Sends messages from Server
+		private void sayServerCommand(string[] parts)
+		{
+			if(parts.Length > 1)
+			{
+				if(parts[1].IndexOf("-u") == 0)
+				{
+					parts = parts[1].Split(new char[] { ' ' }, 3);
+					if (parts.Length > 2)
+					{
+						String sName = parts[1];
+						var clientToMessage = clients.Where(cl => cl.username.ToLower() == sName && cl.isReady).FirstOrDefault();
+
+						if (clientToMessage != null)
+						{
+							string message = parts[2];
+							sendServerMessage(clientToMessage, message);
+						}
+						else
+							Log.Info("Username " + sName + " not found.");
+					}
+					else
+						Log.Info("Error: -u flag found but missing message.");
+				}
+				else if (parts[1].IndexOf("-u") != -1)
+				{
+					Log.Info("Error: -u flag found but in wrong location.");
+				}
+				else
+					sendServerMessageToAll(parts[1]);
+			}
+			else
+				Log.Info("Error: /say command improperly formatted.  Missing message.  /say <-u username> [message]");
+		}
 
         private void countShipsServerCommand(bool bList = false)
         {
@@ -1770,6 +1806,7 @@ namespace KMPServer
                 }
             }
 
+
             cl.username = username;
             cl.receivedHandshake = true;
             cl.guid = guid;
@@ -1777,6 +1814,11 @@ namespace KMPServer
 
             sendServerMessage(cl, sb.ToString());
             sendServerSettings(cl);
+
+			//Send the MOTD
+			sb.Remove(0, sb.Length);
+			sb.Append(settings.serverMotd);
+			sendMotdMessage(cl, sb.ToString());
 
             Log.Info("{0} has joined the server using client version {1}", username, version);
 
@@ -1789,6 +1831,8 @@ namespace KMPServer
 
             //Send the join message to all other clients
             sendServerMessageToAll(sb.ToString(), cl);
+
+			
         }
 
         private void sendHistoricalVesselUpdates(int toSubspace, double atTick, double lastTick)
@@ -1978,7 +2022,7 @@ namespace KMPServer
                     else if (message_lower == "!motd")
                     {
                         sb.Append(settings.serverMotd);
-                        sendTextMessage(cl, sb.ToString());
+                        sendMotdMessage(cl, sb.ToString());
                         return;
                     }
                     else if (message_lower == "!rules")
@@ -2162,7 +2206,7 @@ namespace KMPServer
             {
                 client.queueOutgoingMessage(message_bytes);
             }
-            Log.Debug("[Server] message sent.");
+            Log.Debug("[Server] message sent to all.");
         }
 
         private void sendServerMessage(Client cl, String message)
@@ -2187,6 +2231,24 @@ namespace KMPServer
             UnicodeEncoding encoder = new UnicodeEncoding();
             cl.queueOutgoingMessage(KMPCommon.ServerMessageID.SERVER_MESSAGE, encoder.GetBytes(message));
         }
+
+		private void sendMotdMessage(Client cl, String message)
+		{
+			UnicodeEncoding encoder = new UnicodeEncoding();
+			cl.queueOutgoingMessage(KMPCommon.ServerMessageID.MOTD_MESSAGE, encoder.GetBytes(message));
+		}
+
+		private void sendMotdMessageToAll(String message, Client exclude = null)
+		{
+			UnicodeEncoding encoder = new UnicodeEncoding();
+			byte[] message_bytes = buildMessageArray(KMPCommon.ServerMessageID.MOTD_MESSAGE, encoder.GetBytes(message));
+
+			foreach (var client in clients.ToList().Where(cl => cl.isReady && cl != exclude))
+			{
+				client.queueOutgoingMessage(message_bytes);
+			}
+			Log.Debug("[MOTD] sent to all.");
+		}
 
         private void sendPluginUpdateToAll(byte[] data, bool secondaryUpdate, Client cl = null)
         {
@@ -3063,8 +3125,8 @@ namespace KMPServer
             Log.Info("/save - Backup universe");
             Log.Info("/help - Displays all commands in the server");
             Log.Info("/set [key] [value] to modify a setting");
-            Log.Info("/whitelist [add|del] [user] to update whitelist");
-            Log.Info("Non-commands will be sent to players as a chat message");
+            Log.Info("/whitelist [add|del] [user] to update whitelist\n");
+            Log.Info("/say <-u username> [message] to send a Server message <to specified user>");
 
             // to add a new command to the command list just copy the Log.Info method and add how to use that command.
         }

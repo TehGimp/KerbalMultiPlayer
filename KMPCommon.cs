@@ -85,6 +85,7 @@ public class KMPCommon
 		HANDSHAKE_REFUSAL /*Refusal message*/,
 		SERVER_MESSAGE /*Message text*/,
 		TEXT_MESSAGE /*Message text*/,
+		MOTD_MESSAGE /*Message text*/,
 		PLUGIN_UPDATE /*data*/,
 		SERVER_SETTINGS /*UpdateInterval (4) : Screenshot Interval (4) : Screenshot Height (4): InactiveShips (1)*/,
 		SCREENSHOT_SHARE /*Description Length : Description : data*/,
