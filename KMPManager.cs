@@ -62,8 +62,8 @@ namespace KMP
 		public const float IDLE_DELAY = 120.0f;
 		public const float PLUGIN_DATA_WRITE_INTERVAL = 0.333f;
 		public const float GLOBAL_SETTINGS_SAVE_INTERVAL = 10.0f;
-        public const double SAFETY_BUBBLE_DIAMETER = 40000d;
-        public const double PROTO_SAFETY_BUBBLE_DIAMETER = 35000d;
+        public const double SAFETY_BUBBLE_RADIUS = 5000d;
+        public const double SAFETY_BUBBLE_CEILING = 35000d;
 
 		public const int INTEROP_MAX_QUEUE_SIZE = 64;
 		public const float INTEROP_WRITE_INTERVAL = 0.333f;
@@ -234,7 +234,7 @@ namespace KMP
 					}
 				}
 
-                if (isInFlight && FlightGlobals.ActiveVessel.mainBody.name == "Kerbin" && FlightGlobals.ActiveVessel.altitude < SAFETY_BUBBLE_DIAMETER)
+                if (isInFlight && FlightGlobals.ActiveVessel.mainBody.name == "Kerbin" && FlightGlobals.ActiveVessel.altitude < SAFETY_BUBBLE_CEILING)
                 {
 					if (ksc == null) ksc = GameObject.Find("KSC");
 					kscPosition = new Vector3d(ksc.transform.position[0],ksc.transform.position[1],ksc.transform.position[2]);
@@ -561,7 +561,7 @@ namespace KMP
 			writePrimaryUpdate();
 			
 			//nearby vessels
-            if (isInFlight && !syncing && !warping && (FlightGlobals.ActiveVessel.mainBody.bodyName != "Kerbin" || FlightGlobals.ActiveVessel.altitude > PROTO_SAFETY_BUBBLE_DIAMETER || kscPosition == Vector3d.zero || Vector3d.Distance(kscPosition, FlightGlobals.ActiveVessel.GetWorldPos3D()) > SAFETY_BUBBLE_DIAMETER))
+            if (isInFlight && !syncing && !warping && !isInSafetyBubble(FlightGlobals.ActiveVessel.GetWorldPos3D(),FlightGlobals.ActiveVessel.mainBody,FlightGlobals.ActiveVessel.altitude))
 			{
 				writeSecondaryUpdates();
 			}
@@ -570,7 +570,7 @@ namespace KMP
 		private void writePrimaryUpdate()
 		{
 			if (!syncing && isInFlight && !warping
-                && (FlightGlobals.ActiveVessel.mainBody.bodyName != "Kerbin" || FlightGlobals.ActiveVessel.altitude > 35000d || kscPosition == Vector3d.zero || Vector3d.Distance(kscPosition, FlightGlobals.ActiveVessel.GetWorldPos3D()) > SAFETY_BUBBLE_DIAMETER))
+                && !isInSafetyBubble(FlightGlobals.ActiveVessel.GetWorldPos3D(),FlightGlobals.ActiveVessel.mainBody,FlightGlobals.ActiveVessel.altitude))
 			{
 				lastTick = Planetarium.GetUniversalTime();
 				//Write vessel status
@@ -2068,18 +2068,24 @@ namespace KMP
 				}
 				//Don't bother with suborbital debris
 				else if (protovessel.vesselType == VesselType.Debris && protovessel.situation == Vessel.Situations.SUB_ORBITAL) return;
-				if (update != null && update.situation != Situation.LANDED && update.situation != Situation.SPLASHED)
+				
+				CelestialBody body = null;
+				
+				if (update != null)
 				{
-					CelestialBody body = FlightGlobals.Bodies.Find(b => b.name == update.bodyName);
-					if (body.atmosphere && body.maxAtmosphereAltitude > protovessel.altitude)
+					body = FlightGlobals.Bodies.Find(b => b.name == update.bodyName);
+					if (update.situation != Situation.LANDED && update.situation != Situation.SPLASHED)
 					{
-						//In-atmo vessel--only load if within visible range
-						if (distance > 500d)
-							return;
+						if (body.atmosphere && body.maxAtmosphereAltitude > protovessel.altitude)
+						{
+							//In-atmo vessel--only load if within visible range
+							if (distance > 500d)
+								return;
+						}
 					}
 				}
 
-                if (!((update != null && update.bodyName != "Kerbin") || protovessel.altitude > 35000d || kscPosition == Vector3d.zero || Vector3d.Distance(kscPosition, protovessel.position) > SAFETY_BUBBLE_DIAMETER)) //refuse to load anything too close to the KSC
+                if (isInSafetyBubble(protovessel.position, body, protovessel.altitude)) //refuse to load anything too close to the KSC
 				{
 					KMPClientMain.DebugLog("Tried to load vessel too close to KSC");
 					return;
@@ -3878,7 +3884,24 @@ namespace KMP
 
 			return window;
 		}
-
+		
+		private bool isInSafetyBubble(Vector3d pos, CelestialBody body, double altitude)
+		{
+			//Assume Kerbin if body isn't supplied for some reason
+			if (body == null) body = FlightGlobals.Bodies.Find(b => b.name == "Kerbin");
+			
+			//If KSC out of range, syncing, not at Kerbin, or past ceiling we're definitely clear
+			if (kscPosition == Vector3d.zero || syncing || body.name != "Kerbin" || altitude > SAFETY_BUBBLE_CEILING)
+				return false;
+			
+			//Cylindrical safety bubble -- project vessel position to a plane positioned at KSC with normal pointed away from surface
+			Vector3d kscNormal = body.GetSurfaceNVector(-0.102668048654,-74.5753856554);
+			double projectionDistance = Vector3d.Dot(kscNormal, (pos - kscPosition)) * -1;
+			Vector3d projectedPos = pos + (Vector3d.Normalize(kscNormal)*projectionDistance);
+			
+			return Vector3d.Distance(kscPosition, projectedPos) < SAFETY_BUBBLE_RADIUS;
+		}
+		
 		//This code adapted from Kerbal Engineer Redux source
 		private void CheckEditorLock()
 		{
