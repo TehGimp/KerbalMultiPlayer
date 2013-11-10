@@ -5,6 +5,7 @@ using System.Text;
 
 using System.Net;
 using System.IO;
+using System.Net.Sockets;
 
 namespace KMPServer
 {
@@ -213,20 +214,25 @@ namespace KMPServer
 			{
 				server.hostingLoop();
 			}
-			catch (System.Net.Sockets.SocketException e)
+			catch (SocketException e)
 			{
-				Log.Error("Unexpected exception encountered! Crash report written to log file");
-				Log.Error(e.ToString());
-                		Log.Error("NOTICE:");
-                		Log.Error("This exception is usually caused by an incorrect ip binding. If this occurs again, try resetting the ip binding to 0.0.0.0");
-                		Log.Error("");
-				if (server.threadExceptionStackTrace != null && server.threadExceptionStackTrace.Length > 0)
-				{
-					Log.Error("Stacktrace: ");
-					Log.Error(server.threadExceptionStackTrace);
-				}
-				//server.clearState();
-				//return ServerStatus.CRASHED;
+                var se = (SocketError)e.ErrorCode;
+                switch (se)
+                {
+                    case SocketError.AddressAlreadyInUse:
+                        Log.Error("Specified port number {0} is already in use by another process.", settings.port);
+                        break;
+                    case SocketError.AddressNotAvailable:
+                        Log.Error("Your specified IP binding ({0}) is not valid. You must use an IP address belonging to a network interface on this system. Use 0.0.0.0 to use all available interfaces.", settings.ipBinding);
+                        break;
+                    case SocketError.AccessDenied:
+                        Log.Error("You do not have permission to open a socket. Make sure the port number you are using is above 1000");
+                        break;
+                    default:
+                        Log.Error("Unable to start server. Error code was {0} ({1}).", e.ErrorCode, se.ToString());
+                        Log.Error(e.Message);
+                        break;
+                }
 			}
 			catch (Exception e)
 			{
