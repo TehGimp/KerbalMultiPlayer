@@ -49,9 +49,9 @@ namespace KMP
                 this.message = line;
 
                 //Check if the message has a name
-                if (line.Length > 3 && line.First() == '[')
+                if (line.Length > 3 && line.First() == '<')
                 {
-                    int name_length = line.IndexOf(']');
+                    int name_length = line.IndexOf('>');
                     if (name_length > 0)
                     {
                         name_length = name_length - 1;
