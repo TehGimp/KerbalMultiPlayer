@@ -18,13 +18,13 @@ public class KMPCommon
     }
 
 	public const Int32 FILE_FORMAT_VERSION = 10000;
-	public const Int32 NET_PROTOCOL_VERSION = 10003;
+	public const Int32 NET_PROTOCOL_VERSION = 10004;
 	public const int MSG_HEADER_LENGTH = 8;
     public const int MAX_MESSAGE_SIZE = 1024 * 1024; //Enough room for a max-size craft file
 	public const int MESSAGE_COMPRESSION_THRESHOLD = 4096;
 	public const int INTEROP_MSG_HEADER_LENGTH = 8;
 
-	public const int SERVER_SETTINGS_LENGTH = 13;
+	public const int SERVER_SETTINGS_LENGTH = 21;
 
 	public const int MAX_CRAFT_FILE_BYTES = 1024 * 1024;
 
@@ -86,7 +86,7 @@ public class KMPCommon
 		SERVER_MESSAGE /*Message text*/,
 		TEXT_MESSAGE /*Message text*/,
 		PLUGIN_UPDATE /*data*/,
-		SERVER_SETTINGS /*UpdateInterval (4) : Screenshot Interval (4) : Screenshot Height (4): InactiveShips (1)*/,
+		SERVER_SETTINGS /*UpdateInterval (4) : Screenshot Interval (4) : Screenshot Height (4) :  Bubble Size (8) : InactiveShips (1)*/,
 		SCREENSHOT_SHARE /*Description Length : Description : data*/,
 		KEEPALIVE,
 		CONNECTION_END /*Message*/,

@@ -62,7 +62,6 @@ namespace KMP
 		public const float IDLE_DELAY = 120.0f;
 		public const float PLUGIN_DATA_WRITE_INTERVAL = 0.333f;
 		public const float GLOBAL_SETTINGS_SAVE_INTERVAL = 10.0f;
-        public const double SAFETY_BUBBLE_RADIUS = 5000d;
         public const double SAFETY_BUBBLE_CEILING = 35000d;
 
 		public const int INTEROP_MAX_QUEUE_SIZE = 64;
@@ -155,6 +154,8 @@ namespace KMP
 		private int chatMessagesWaiting = 0;
 		private Vessel lastEVAVessel = null;
 		private bool showServerSync = false;
+		
+		public double safetyBubbleRadius = 20000d;
 		
 		public bool globalUIToggle
 		{
@@ -3899,7 +3900,7 @@ namespace KMP
 			double projectionDistance = Vector3d.Dot(kscNormal, (pos - kscPosition)) * -1;
 			Vector3d projectedPos = pos + (Vector3d.Normalize(kscNormal)*projectionDistance);
 			
-			return Vector3d.Distance(kscPosition, projectedPos) < SAFETY_BUBBLE_RADIUS;
+			return Vector3d.Distance(kscPosition, projectedPos) < safetyBubbleRadius;
 		}
 		
 		//This code adapted from Kerbal Engineer Redux source

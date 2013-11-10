@@ -2707,7 +2707,8 @@ namespace KMPServer
             KMPCommon.intToBytes(updateInterval).CopyTo(bytes, 0); //Update interval
             KMPCommon.intToBytes(settings.screenshotInterval).CopyTo(bytes, 4); //Screenshot interval
             KMPCommon.intToBytes(settings.screenshotSettings.maxHeight).CopyTo(bytes, 8); //Screenshot height
-            bytes[12] = inactiveShipsPerClient; //Inactive ships per client
+			BitConverter.GetBytes(settings.safetyBubbleRadius).CopyTo(bytes,12); //Safety bubble radius
+            bytes[20] = inactiveShipsPerClient; //Inactive ships per client
 
             return bytes;
         }
@@ -2772,7 +2773,14 @@ namespace KMPServer
 						catch
 						{
 							//Already converted?
-							guid = new Guid(System.Text.Encoding.ASCII.GetBytes(old_guid.Substring(0,16)));
+							try 
+							{
+								guid = new Guid(System.Text.Encoding.ASCII.GetBytes(old_guid.Substring(0,16)));
+							}
+							catch
+							{
+								guid = Guid.Empty;	
+							}
 						}
 						DbCommand cmd2 = universeDB.CreateCommand();
 	                    string sql2 = "UPDATE kmpPlayer SET Guid = @guid WHERE Guid = @old_guid;";
@@ -2799,7 +2807,14 @@ namespace KMPServer
 						catch
 						{
 							//Already converted?
-							guid = new Guid(System.Text.Encoding.ASCII.GetBytes(old_guid.Substring(0,16)));
+							try 
+							{
+								guid = new Guid(System.Text.Encoding.ASCII.GetBytes(old_guid.Substring(0,16)));
+							}
+							catch
+							{
+								guid = Guid.Empty;	
+							}
 						}
 						try {
 							guid2 = new Guid(old_guid2);
@@ -2807,7 +2822,14 @@ namespace KMPServer
 						catch
 						{
 							//Already converted?
-							guid2 = new Guid(System.Text.Encoding.ASCII.GetBytes(old_guid2.Substring(0,16)));
+							try 
+							{
+								guid = new Guid(System.Text.Encoding.ASCII.GetBytes(old_guid2.Substring(0,16)));
+							}
+							catch
+							{
+								guid = Guid.Empty;	
+							}
 						}
 						DbCommand cmd2 = universeDB.CreateCommand();
 	                    string sql2 = "UPDATE kmpVessel SET Guid = @guid, GameGuid = @guid2 WHERE Guid = @old_guid;";
@@ -2833,7 +2855,14 @@ namespace KMPServer
 						catch
 						{
 							//Already converted?
-							guid = new Guid(System.Text.Encoding.ASCII.GetBytes(old_guid.Substring(0,16)));
+							try 
+							{
+								guid = new Guid(System.Text.Encoding.ASCII.GetBytes(old_guid.Substring(0,16)));
+							}
+							catch
+							{
+								guid = Guid.Empty;	
+							}
 						}
 						DbCommand cmd2 = universeDB.CreateCommand();
 	                    string sql2 = "UPDATE kmpVesselUpdate SET Guid = @guid WHERE Guid = @old_guid;";
