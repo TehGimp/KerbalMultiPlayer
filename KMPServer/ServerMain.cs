@@ -210,6 +210,21 @@ namespace KMPServer
 			{
 				server.hostingLoop();
 			}
+			catch (System.Net.Sockets.SocketException e)
+			{
+				Log.Error("Unexpected exception encountered! Crash report written to log file");
+				Log.Error(e.ToString());
+                		Log.Error("NOTICE:");
+                		Log.Error("This exception is usually caused by an incorrect ip binding. If this occurs again, try resetting the ip binding to 0.0.0.0");
+                		Log.Error("");
+				if (server.threadExceptionStackTrace != null && server.threadExceptionStackTrace.Length > 0)
+				{
+					Log.Error("Stacktrace: ");
+					Log.Error(server.threadExceptionStackTrace);
+				}
+				//server.clearState();
+				//return ServerStatus.CRASHED;
+			}
 			catch (Exception e)
 			{
 				Log.Error("Unexpected exception encountered! Crash report written to log file");
