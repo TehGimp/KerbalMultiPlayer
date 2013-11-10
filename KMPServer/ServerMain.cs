@@ -152,6 +152,7 @@ namespace KMPServer
 
                         ServerSettings.saveWhitelist(settings);
                         break;
+
                     case "/set":
                         if (parts.Length < 3)
                         {
@@ -166,6 +167,7 @@ namespace KMPServer
                                 ServerSettings.modifySetting(settings, parts[1], val);
                                 Log.Info("{0} changed to {1}", parts[1], val);
                                 ServerSettings.writeToFile(settings);
+                                Log.MinLogLevel = settings.LogLevel;
                             }
                             catch
                             {
@@ -173,6 +175,7 @@ namespace KMPServer
                             }
                         }
                         break;
+
                     case "/start":
                         startServer(settings);
                         break;
