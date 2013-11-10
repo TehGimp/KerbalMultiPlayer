@@ -10,6 +10,8 @@ using System.Diagnostics;
 
 using System.Collections;
 
+using System.Xml;
+
 using KSP.IO;
 using UnityEngine;
 
@@ -190,7 +192,6 @@ namespace KMP
 		
 		public static String GetUsername()
 		{
-			readConfigFile();
 			return username;
 		}
 		
@@ -1380,48 +1381,30 @@ namespace KMP
 		{
 			try
 			{
-				KSP.IO.TextReader reader = KSP.IO.File.OpenText<KMPClientMain>(CLIENT_CONFIG_FILENAME);
-
-				String line = reader.ReadLine();
-
-				while (line != null)
-				{
-					String label = line; //Store the last line read as the label
-					line = reader.ReadLine(); //Read the value from the next line
-
-					if (line != null)
-					{
-						//Update the value with the given label
-						if (label == USERNAME_LABEL)
-							username = line;
-						else if (label == IP_LABEL)
-							hostname = line;
-						else if (label == AUTO_RECONNECT_LABEL)
-							bool.TryParse(line, out autoReconnect);
-						else if (label.Substring(0, FAVORITE_LABEL.Length) == FAVORITE_LABEL && label.Length > FAVORITE_LABEL.Length)
-						{
-							String index_string = label.Substring(FAVORITE_LABEL.Length);
-							int index = -1;
-							if (int.TryParse(index_string, out index) && index >= 0 && index < favorites.Length)
-								favorites[index] = line.Trim();
-						}
-
-					}
-
-					line = reader.ReadLine();
-				}
-
-				reader.Close();
-			
+				XmlDocument xmlDoc = new XmlDocument();
 				
+				xmlDoc.Load(KSP.IO.IOUtils.GetFilePathFor(typeof(KMPClientMain), "KMPClientConfig.xml"));
+				username = xmlDoc.SelectSingleNode("/settings/global/@username").Value; //Get Username attribute
+				hostname = xmlDoc.SelectSingleNode("/settings/global/@hostname").Value; //Get hostname attribute
+				bool.TryParse(xmlDoc.SelectSingleNode("/settings/global/@reconnect").Value, out autoReconnect); //Get reconnect as bool
+
+				XmlNodeList favList = xmlDoc.GetElementsByTagName("favourite");
+				for (int i = 0; i < favorites.Length; i++)
+				{
+					int nPos = 0;
+					int.TryParse(favList[i].Attributes["pos"].Value, out nPos);
+					favorites[nPos] = favList[i].Attributes["hostname"].Value;
+				} 
 			}
-			catch
+			catch(Exception excep)
 			{
+				DebugLog(excep.Message);
 			}
 			
 			try
 			{
 				//Get the player's token if available
+				
 				KSP.IO.TextReader reader = KSP.IO.File.OpenText<KMPClientMain>(CLIENT_TOKEN_FILENAME);
 				String line = reader.ReadLine();
 				reader.Close();
@@ -1503,6 +1486,11 @@ namespace KMP
 					writer.WriteLine(part);
 				writer.Close();
 			}
+		}
+
+		private static String getPath(string sFileName)
+		{
+			return sFileName;
 		}
 
 		static void writeConfigFile()
