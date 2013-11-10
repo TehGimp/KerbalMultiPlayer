@@ -197,7 +197,7 @@ namespace KMP
 		{
 			get
 			{
-				return HighLogic.LoadedScene == GameScenes.TRACKSTATION|| isInFlight;
+				return HighLogic.LoadedScene == GameScenes.TRACKSTATION || isInFlight;
 			}
 		}
 
