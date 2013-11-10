@@ -1513,7 +1513,8 @@ namespace KMP
 				
 				partList.Add("stackBiCoupler"); partList.Add("stackDecouplerMini"); partList.Add("stackPoint1"); partList.Add("stackQuadCoupler"); partList.Add("stackSeparator");
 				partList.Add("stackSeparatorBig"); partList.Add("stackSeparatorMini"); partList.Add("stackTriCoupler"); partList.Add("telescopicLadder"); partList.Add("telescopicLadderBay");
-				partList.Add("SmallGearBay"); partList.Add("roverWheel1"); partList.Add("roverWheel2"); partList.Add("roverWheel3"); partList.Add("wheelMed");
+				partList.Add("SmallGearBay"); partList.Add("roverWheel1"); partList.Add("roverWheel2"); partList.Add("roverWheel3"); partList.Add("wheelMed"); partList.Add("flag");
+				partList.Add("kerbalEVA");
 				
 				//0.22 parts
 				partList.Add("mediumDishAntenna"); partList.Add("GooExperiment"); partList.Add("science.module");
