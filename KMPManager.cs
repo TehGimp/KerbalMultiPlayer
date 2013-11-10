@@ -3269,7 +3269,7 @@ namespace KMP
 					HighLogic.CurrentGame.Parameters.Flight.CanSwitchVesselsFar = false;
 					HighLogic.CurrentGame.Title = "KMP";
 					HighLogic.CurrentGame.Description = "Kerbal Multi Player session";
-					HighLogic.CurrentGame.flagURL = "Squad/Flags/default";
+					HighLogic.CurrentGame.flagURL = "KMP/Flags/default";
 					GamePersistence.SaveGame("persistent",HighLogic.SaveFolder,SaveMode.OVERWRITE);
 					GameEvents.onFlightReady.Add(this.OnFirstFlightReady);
 					syncing = true;
