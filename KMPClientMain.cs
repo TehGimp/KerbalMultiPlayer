@@ -183,7 +183,7 @@ namespace KMP
 
 			stopwatch = new Stopwatch();
 			stopwatch.Start();
-			
+
 			for (int i = 0; i < favorites.Length; i++)
 				favorites[i] = String.Empty;
 		}
@@ -191,7 +191,6 @@ namespace KMP
 		
 		public static String GetUsername()
 		{
-			readConfigFile();
 			return username;
 		}
 		
@@ -1397,7 +1396,7 @@ namespace KMP
 
 		//Config
 
-		static void readConfigFile()
+		public static void readConfigFile()
 		{
 			try
 			{
