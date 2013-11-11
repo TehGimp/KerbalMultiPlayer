@@ -154,7 +154,9 @@ namespace KMP
 		private int chatMessagesWaiting = 0;
 		private Vessel lastEVAVessel = null;
 		private bool showServerSync = false;
-		
+
+		private bool configRead = false;
+
 		public double safetyBubbleRadius = 20000d;
 		
 		public bool globalUIToggle
@@ -3236,6 +3238,11 @@ namespace KMP
 		
 		private void connectionWindow(int windowID)
 		{
+			if(!configRead)
+			{
+				KMPClientMain.readConfigFile();
+				configRead = true;
+			}
 			if (KMPClientMain.handshakeCompleted && KMPClientMain.tcpSocket != null)
 			{
 				if (KMPClientMain.tcpSocket.Connected && !gameRunning)
