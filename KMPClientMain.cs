@@ -1451,6 +1451,25 @@ namespace KMP
 				}
 				reader.Close();
 				partList = lines;
+
+				bool changed = false;
+				if (!lines.Contains("kerbalEVA"))
+				{
+					partList.Add("kerbalEVA");
+					changed = true;
+				}
+				if (!lines.Contains("flag"))
+				{
+					partList.Add("flag");
+					changed = true;
+				}
+				if (changed)
+				{
+					KSP.IO.TextWriter writer = KSP.IO.File.CreateText<KMPClientMain>(PART_LIST_FILENAME);
+					foreach (string part in partList)
+						writer.WriteLine(part);
+					writer.Close();
+				}
 			}
 			catch
 			{
@@ -1496,7 +1515,8 @@ namespace KMP
 				
 				partList.Add("stackBiCoupler"); partList.Add("stackDecouplerMini"); partList.Add("stackPoint1"); partList.Add("stackQuadCoupler"); partList.Add("stackSeparator");
 				partList.Add("stackSeparatorBig"); partList.Add("stackSeparatorMini"); partList.Add("stackTriCoupler"); partList.Add("telescopicLadder"); partList.Add("telescopicLadderBay");
-				partList.Add("SmallGearBay"); partList.Add("roverWheel1"); partList.Add("roverWheel2"); partList.Add("roverWheel3"); partList.Add("wheelMed");
+				partList.Add("SmallGearBay"); partList.Add("roverWheel1"); partList.Add("roverWheel2"); partList.Add("roverWheel3"); partList.Add("wheelMed"); partList.Add("flag");
+				partList.Add("kerbalEVA");
 				
 				//0.22 parts
 				partList.Add("mediumDishAntenna"); partList.Add("GooExperiment"); partList.Add("science.module");

@@ -192,6 +192,14 @@ namespace KMP
 				return FlightGlobals.ready && FlightGlobals.ActiveVessel != null && KMPClientMain.handshakeCompleted && KMPClientMain.receivedSettings;
 			}
 		}
+		
+		public static bool isInFlightOrTracking
+		{
+			get
+			{
+				return HighLogic.LoadedScene == GameScenes.TRACKSTATION || isInFlight;
+			}
+		}
 
 		public bool isIdle
 		{
@@ -1499,7 +1507,7 @@ namespace KMP
 				//Store protovessel if included
 				if (vessel_update.getProtoVesselNode() != null && (!isInFlight || vessel_update.id != FlightGlobals.ActiveVessel.id)) serverVessels_ProtoVessels[vessel_update.id] = vessel_update.getProtoVesselNode();
 			}
-			if (isInFlight)
+			if (isInFlightOrTracking)
 			{
 				if (vessel_update.id != FlightGlobals.ActiveVessel.id)
 				{
@@ -3269,7 +3277,7 @@ namespace KMP
 					HighLogic.CurrentGame.Parameters.Flight.CanSwitchVesselsFar = false;
 					HighLogic.CurrentGame.Title = "KMP";
 					HighLogic.CurrentGame.Description = "Kerbal Multi Player session";
-					HighLogic.CurrentGame.flagURL = "Squad/Flags/default";
+					HighLogic.CurrentGame.flagURL = "KMP/Flags/default";
 					GamePersistence.SaveGame("persistent",HighLogic.SaveFolder,SaveMode.OVERWRITE);
 					GameEvents.onFlightReady.Add(this.OnFirstFlightReady);
 					syncing = true;

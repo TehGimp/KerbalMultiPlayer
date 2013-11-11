@@ -5,6 +5,7 @@ using System.Text;
 
 using System.Net;
 using System.IO;
+using System.Net.Sockets;
 
 namespace KMPServer
 {
@@ -152,6 +153,7 @@ namespace KMPServer
 
                         ServerSettings.saveWhitelist(settings);
                         break;
+
                     case "/set":
                         if (parts.Length < 3)
                         {
@@ -166,6 +168,7 @@ namespace KMPServer
                                 ServerSettings.modifySetting(settings, parts[1], val);
                                 Log.Info("{0} changed to {1}", parts[1], val);
                                 ServerSettings.writeToFile(settings);
+                                Log.MinLogLevel = settings.LogLevel;
                             }
                             catch
                             {
@@ -173,6 +176,7 @@ namespace KMPServer
                             }
                         }
                         break;
+
                     case "/start":
                         startServer(settings);
                         break;
@@ -209,6 +213,26 @@ namespace KMPServer
 			try
 			{
 				server.hostingLoop();
+			}
+			catch (SocketException e)
+			{
+                var se = (SocketError)e.ErrorCode;
+                switch (se)
+                {
+                    case SocketError.AddressAlreadyInUse:
+                        Log.Error("Specified port number {0} is already in use by another process.", settings.port);
+                        break;
+                    case SocketError.AddressNotAvailable:
+                        Log.Error("Your specified IP binding ({0}) is not valid. You must use an IP address belonging to a network interface on this system. Use 0.0.0.0 to use all available interfaces.", settings.ipBinding);
+                        break;
+                    case SocketError.AccessDenied:
+                        Log.Error("You do not have permission to open a socket. Make sure the port number you are using is above 1000");
+                        break;
+                    default:
+                        Log.Error("Unable to start server. Error code was {0} ({1}).", e.ErrorCode, se.ToString());
+                        Log.Error(e.Message);
+                        break;
+                }
 			}
 			catch (Exception e)
 			{
