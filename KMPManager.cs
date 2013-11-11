@@ -1595,7 +1595,7 @@ namespace KMP
 													//Update orbit whenever out of sync or other vessel in past/future, or not in docking range
 													if (!throttled && (vessel_update.relTime == RelativeTime.PRESENT && ourDistance > (INACTIVE_VESSEL_RANGE+500f)) || (vessel_update.relTime != RelativeTime.PRESENT && Math.Abs(tick-vessel_update.tick) > 1.5d))
 													{
-														StartCoroutine(syncExtantVesselOrbit(vessel,vessel_update.tick,extant_vessel,vessel_update.w_pos[0])); //!!
+														StartCoroutine(syncExtantVesselOrbit(vessel,vessel_update.tick,extant_vessel,vessel_update.w_pos[0]));
 														serverVessels_ObtSyncDelay[vessel_update.id] = UnityEngine.Time.realtimeSinceStartup + 1f;
 													}
 												}
@@ -1959,30 +1959,6 @@ namespace KMP
 			yield return new WaitForFixedUpdate();
 			KMPClientMain.DebugLog("updating Orbit: " + extant_vessel.id);
 			
-			double tick = Planetarium.GetUniversalTime();
-			KMPClientMain.DebugLog("current vel mag: " + extant_vessel.orbit.getOrbitalVelocityAtUT(tick).magnitude);
-			
-			extant_vessel.GoOnRails();
-			
-            //Update orbit
-			Planetarium.SetUniversalTime(fromTick);
-			Vector3 orbit_pos = kvessel.translationFromBody;
-            Vector3 orbit_vel = kvessel.worldVelocity;
-			
-            //Swap the y and z values of the orbital position/velocities
-            float temp = orbit_pos.y;
-            orbit_pos.y = orbit_pos.z;
-            orbit_pos.z = temp;
-			
-            temp = orbit_vel.y;
-            orbit_vel.y = orbit_vel.z;
-            orbit_vel.z = temp;
-			
-			OrbitDriver orbitDriver = extant_vessel.orbitDriver;
-			orbitDriver.orbit.UpdateFromStateVectors(orbit_pos, orbit_vel, kvessel.mainBody, fromTick);
-			Orbit newOrbit = orbitDriver.orbit;
-			newOrbit.LAN = LAN;
-			
 			bool victimAvailable = true;
 			Vessel victim = FlightGlobals.ActiveVessel;
 			
@@ -2002,6 +1978,30 @@ namespace KMP
 			
 			if (victimAvailable)
 			{
+				double tick = Planetarium.GetUniversalTime();
+				KMPClientMain.DebugLog("current vel mag: " + extant_vessel.orbit.getOrbitalVelocityAtUT(tick).magnitude);
+				
+				extant_vessel.GoOnRails();
+				
+	            //Update orbit
+				Planetarium.SetUniversalTime(fromTick);
+				Vector3 orbit_pos = kvessel.translationFromBody;
+	            Vector3 orbit_vel = kvessel.worldVelocity;
+				
+	            //Swap the y and z values of the orbital position/velocities
+	            float temp = orbit_pos.y;
+	            orbit_pos.y = orbit_pos.z;
+	            orbit_pos.z = temp;
+				
+	            temp = orbit_vel.y;
+	            orbit_vel.y = orbit_vel.z;
+	            orbit_vel.z = temp;
+				
+				OrbitDriver orbitDriver = extant_vessel.orbitDriver;
+				orbitDriver.orbit.UpdateFromStateVectors(orbit_pos, orbit_vel, kvessel.mainBody, fromTick);
+				Orbit newOrbit = orbitDriver.orbit;
+				newOrbit.LAN = LAN;
+				
 				OrbitDriver oldDriver = victim.orbitDriver;
 				victim.patchedConicSolver.obtDriver = orbitDriver;
 				victim.orbitDriver = orbitDriver;
@@ -2044,10 +2044,11 @@ namespace KMP
 				
 				extant_vessel.orbitDriver.pos = extant_vessel.orbit.pos.xzy;
 	            extant_vessel.orbitDriver.vel = extant_vessel.orbit.vel;
-			}
-			Planetarium.SetUniversalTime(tick);
-			KMPClientMain.DebugLog("new vel mag: " + extant_vessel.orbit.getOrbitalVelocityAtUT(tick).magnitude);
-			KMPClientMain.DebugLog("Orbit updated to target: " + tick);
+				
+				Planetarium.SetUniversalTime(tick);
+				KMPClientMain.DebugLog("new vel mag: " + extant_vessel.orbit.getOrbitalVelocityAtUT(tick).magnitude);
+				KMPClientMain.DebugLog("Orbit updated to target: " + tick);
+			} else { KMPClientMain.DebugLog("no victim available!"); }
 		}
 		
 		private void addRemoteVessel(ProtoVessel protovessel, Guid vessel_id, KMPVesselUpdate update = null, double distance = 501d)
