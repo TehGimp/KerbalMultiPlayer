@@ -403,6 +403,7 @@ namespace KMPServer
 						case "/say": sayServerCommand(parts); break;
 						case "/motd": motdServerCommand(parts); break;
 						case "/rules": rulesServerCommand(parts); break;
+						case "/setinfo": serverInfoServerCommand(parts);break;
                         default: Log.Info("Unknown Command: "+input); break;
                     }
                 }
@@ -512,6 +513,19 @@ namespace KMPServer
 				{
 					Log.Info("You forgot to type the rules!");
 				}
+		}
+		private void serverInfoServerCommand(string[] parts)
+		{
+			if(parts.Length > 1)
+			{
+				settings.serverInfo = (String) parts[1];
+				ServerSettings.writeToFile(settings);
+				Log.Info("Server Info Updated");
+			}
+			else
+			{
+				Log.Info("You forgot to add info");
+			}
 		}
         //Ban specified user, by name, from the server
         private void banServerCommand(string[] parts)
@@ -3181,6 +3195,7 @@ namespace KMPServer
             Log.Info("/clearclients - Attempt to clear 'ghosted' clients");
             Log.Info("/dekessler <mins> - Remove debris that has not been updated for at least <mins> minutes (in-game time) (If no <mins> value is specified, debris that is older than 30 minutes will be cleared)");
             Log.Info("/save - Backup universe");
+			Log.Info("/setinfo [info] - Updates the server info seen on master server list");
 			Log.Info("/motd [message] - Sets message of the day, leave blank for none");
 			Log.Info("/rules [rules] - Sets server rules, leave blank for none");
             Log.Info("/say <-u username> [message] to send a Server message <to specified user>");
