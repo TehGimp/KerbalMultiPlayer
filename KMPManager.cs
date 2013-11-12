@@ -1518,15 +1518,18 @@ namespace KMP
 					{
 						Vessel extant_vessel = vessel.vesselRef;
 						if (extant_vessel == null) extant_vessel = FlightGlobals.Vessels.Find(v => v.id == vessel_update.id);
-						if (extant_vessel != null && vessel_update.state == State.ACTIVE && !vessel_update.isSyncOnlyUpdate) 
+						if (isInFlight)
 						{
-							 extant_vessel.name = vessel_update.name + " <" + vessel_update.player + ">";
-							 extant_vessel.vesselName = vessel_update.name + " <" + vessel_update.player + ">";
-						}
-						else if (extant_vessel != null)
-						{
-							extant_vessel.name = vessel_update.name;
-							extant_vessel.vesselName = vessel_update.name;
+							if (extant_vessel != null && vessel_update.state == State.ACTIVE && !vessel_update.isSyncOnlyUpdate) 
+							{
+								 extant_vessel.name = vessel_update.name + " <" + vessel_update.player + ">";
+								 extant_vessel.vesselName = vessel_update.name + " <" + vessel_update.player + ">";
+							}
+							else if (extant_vessel != null)
+							{
+								extant_vessel.name = vessel_update.name;
+								extant_vessel.vesselName = vessel_update.name;
+							}
 						}
 						if (!serverVessels_LoadDelay.ContainsKey(vessel_update.id)
 						    || (serverVessels_LoadDelay.ContainsKey(vessel_update.id) ? (serverVessels_LoadDelay[vessel_update.id] < UnityEngine.Time.realtimeSinceStartup) : false))
