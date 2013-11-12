@@ -811,7 +811,7 @@ namespace KMPServer
                                     DbCommand cmd2 = universeDB.CreateCommand();
                                     string sql2 = "UPDATE kmpVessel SET Destroyed = 1 WHERE Guid = @guid";
                                     cmd2.CommandText = sql2;
-                                    cmd2.Parameters.AddWithValue("guid", reader.GetGuid(2).ToString());
+                                    cmd2.Parameters.AddWithValue("guid", reader.GetGuid(2));
                                     cmd2.ExecuteNonQuery();
                                     clearedCount++;
                                 }
