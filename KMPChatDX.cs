@@ -21,6 +21,9 @@ namespace KMP
         public static float chatboxWidth = Screen.width / 4.5f;
         public static float chatboxHeight = Screen.height / 3.5f;
 
+        public static float chatboxX = 0;
+        public static float chatboxY = 20;
+
         public static bool showInput = false;
 
         public static bool displayCommands = false;
@@ -31,7 +34,7 @@ namespace KMP
 
 
         public static GUILayoutOption[] layoutOptions;
-        public static Rect windowPos = new Rect(0, 20, chatboxWidth, chatboxHeight);
+        public static Rect windowPos = new Rect(chatboxX, chatboxY, chatboxWidth, chatboxHeight);
 
         public static Queue<ChatLine> chatLineQueue = new Queue<ChatLine>();
         public static String chatEntryString = String.Empty;
@@ -64,6 +67,24 @@ namespace KMP
                             + Color.white * (1.0f - NAME_COLOR_SATURATION_FACTOR);
                     }
                 } 
+            }
+        }
+
+        public static Rect getWindowPos()
+        {
+            if (HighLogic.LoadedScene == GameScenes.TRACKSTATION)
+            {
+                windowPos.x = chatboxX + 200;
+                windowPos.y = chatboxY + 20;
+
+                return windowPos;
+            }
+            else
+            {
+                windowPos.x = chatboxX;
+                windowPos.y = chatboxY;
+
+                return windowPos;
             }
         }
 
