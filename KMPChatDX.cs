@@ -18,8 +18,8 @@ namespace KMP
         public const int MAX_CHAT_LINE_LENGTH = 128;
         public const float NAME_COLOR_SATURATION_FACTOR = 0.35f;
 
-        public static float chatboxWidth = 300;
-        public static float chatboxHeight = 500;
+        public static float chatboxWidth = Screen.width / 5;
+        public static float chatboxHeight = Screen.height / 3.5f;
 
         public static bool showInput = false;
 
@@ -31,7 +31,7 @@ namespace KMP
 
 
         public static GUILayoutOption[] layoutOptions;
-        public static Rect windowPos = new Rect(20, 0, chatboxWidth, chatboxHeight);
+        public static Rect windowPos = new Rect(0, 20, chatboxWidth, chatboxHeight);
 
         public static Queue<ChatLine> chatLineQueue = new Queue<ChatLine>();
         public static String chatEntryString = String.Empty;

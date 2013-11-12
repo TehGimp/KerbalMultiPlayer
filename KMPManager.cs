@@ -3571,8 +3571,11 @@ namespace KMP
             GUIStyle chat_entry_style = new GUIStyle(GUI.skin.textField);
             chat_entry_style.stretchWidth = true;
             chat_entry_style.alignment = TextAnchor.LowerLeft;
-            //chat_entry_style.normal.background = null;
-            chat_entry_style.normal.textColor = Color.yellow;
+            Texture2D tex = new Texture2D(1, 1);
+
+            tex.SetPixel(0, 0, new Color(1, 1, 1, 0.4f));
+
+            chat_entry_style.normal.background = tex;// new Color(1, 1, 1, 0.4f);
             /* Display Chat */
 
             GUI.depth = 2;
@@ -3580,8 +3583,10 @@ namespace KMP
             GUILayout.BeginVertical();
             GUILayout.Space(1);
 
-
             KMPChatDX.setStyle();
+
+            GUILayout.FlexibleSpace();
+
 
             foreach (KMPChatDX.ChatLine line in KMPChatDX.chatLineQueue)
             {
@@ -3600,7 +3605,6 @@ namespace KMP
                 GUILayout.Space(1);
             }
 
-            GUILayout.FlexibleSpace();
 
             if(KMPChatDX.showInput)
             {
@@ -3609,11 +3613,17 @@ namespace KMP
 
                 GUILayout.BeginHorizontal();
 
+                var oldColor = GUI.color;
+
+                //GUI.color = new Color(1, 1, 1, 0.4f);
+
                 KMPChatDX.chatEntryString = GUILayout.TextField(
                     KMPChatDX.chatEntryString,
                     KMPChatDX.MAX_CHAT_LINE_LENGTH,
                     chat_entry_style,
                     entry_field_options);
+
+                GUI.color = oldColor;
 
                 if (KMPChatDX.chatEntryString.Contains('\n') || (platform == PlatformID.Unix && GUILayout.Button("Send")))
                 {
