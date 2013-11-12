@@ -2702,6 +2702,8 @@ namespace KMP
 		{
 			if (syncing)
 			{
+				//Enable debug log for sync
+				KMPClientMain.debugging = true;
 				GameEvents.onFlightReady.Remove(this.OnFirstFlightReady);
 				GameEvents.onFlightReady.Add(this.OnFlightReady);
 				MapView.EnterMapView();
