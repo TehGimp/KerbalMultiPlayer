@@ -3174,7 +3174,7 @@ namespace KMP
 					StartCoroutine(shareScreenshot());
 				
 				GUIStyle syncButtonStyle = new GUIStyle(GUI.skin.button);
-				if (showServerSync && isInFlight)
+				if (showServerSync && isInFlight && FlightGlobals.ActiveVessel.ctrlState.mainThrottle == 0f)
 				{
 					syncButtonStyle.normal.textColor = new Color(0.28f, 0.86f, 0.94f);
 					syncButtonStyle.hover.textColor = new Color(0.48f, 0.96f, 0.96f);
@@ -3757,7 +3757,7 @@ namespace KMP
 			}
 			bool syncRequest = false;
 			if (!isInFlight) GUI.enabled = false;
-			if (showSync) syncRequest |= GUILayout.Button("Sync",syncButtonStyle);
+			if (showSync && FlightGlobals.ActiveVessel.ctrlState.mainThrottle == 0f) syncRequest |= GUILayout.Button("Sync",syncButtonStyle);
 			GUI.enabled = true;
 			
 			if (big)
