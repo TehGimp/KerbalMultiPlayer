@@ -12,6 +12,7 @@ using System.Collections;
 
 using KSP.IO;
 using UnityEngine;
+using System.Xml;
 
 namespace KMP
 {
@@ -34,13 +35,13 @@ namespace KMP
 		//Constants
 
 		public const String USERNAME_LABEL = "username";
-		public const String IP_LABEL = "ip";
+		public const String IP_LABEL = "hostname";
 		public const String AUTO_RECONNECT_LABEL = "reconnect";
-		public const String FAVORITE_LABEL = "fav";
+		public const String FAVORITE_LABEL = "pos";
 
 		//public const String INTEROP_CLIENT_FILENAME = "interopclient.txt";
 		//public const String INTEROP_PLUGIN_FILENAME = "interopplugin.txt";
-		public const String CLIENT_CONFIG_FILENAME = "KMPClientConfig.txt";
+		public const String CLIENT_CONFIG_FILENAME = "KMPClientConfig.xml";
 		public const String CLIENT_TOKEN_FILENAME = "KMPPlayerToken.txt";
 		public const String PART_LIST_FILENAME = "KMPPartList.txt";
 		public const String CRAFT_FILE_EXTENSION = ".craft";
@@ -1400,44 +1401,37 @@ namespace KMP
 		{
 			try
 			{
-				DebugLog("Ding.");
-				KSP.IO.TextReader reader = KSP.IO.File.OpenText<KMPClientMain>(CLIENT_CONFIG_FILENAME);
+				
+				XmlDocument xmlDoc = new XmlDocument();
+				String sPath = KSP.IO.IOUtils.GetFilePathFor(typeof(KMPClientMain), CLIENT_CONFIG_FILENAME);  // Get the Client config file path
 
-				String line = reader.ReadLine();
-
-				while (line != null)
+				if (!System.IO.File.Exists(sPath))  // Build a default style
 				{
-					String label = line; //Store the last line read as the label
-					line = reader.ReadLine(); //Read the value from the next line
-
-					if (line != null)
-					{
-						//Update the value with the given label
-						if (label == USERNAME_LABEL)
-							username = line;
-						else if (label == IP_LABEL)
-							hostname = line;
-						else if (label == AUTO_RECONNECT_LABEL)
-							bool.TryParse(line, out autoReconnect);
-						else if (label.Substring(0, FAVORITE_LABEL.Length) == FAVORITE_LABEL && label.Length > FAVORITE_LABEL.Length)
-						{
-							String index_string = label.Substring(FAVORITE_LABEL.Length);
-							int index = -1;
-							if (int.TryParse(index_string, out index) && index >= 0 && index < favorites.Length)
-								favorites[index] = line.Trim();
-						}
-
-					}
-
-					line = reader.ReadLine();
+					xmlDoc.LoadXml(String.Format("<?xml version=\"1.0\"?><settings><global {0}=\"\" {1}=\"\" {2}=\"\"/><favourites></favourites></settings>", USERNAME_LABEL, IP_LABEL, AUTO_RECONNECT_LABEL));
+					xmlDoc.Save(sPath);
 				}
+				
+				xmlDoc.Load(sPath);
 
-				reader.Close();
-			
+				username = xmlDoc.SelectSingleNode("/settings/global/@"+USERNAME_LABEL).Value;
+				hostname = xmlDoc.SelectSingleNode("/settings/global/@" + IP_LABEL).Value;
+				bool.TryParse(xmlDoc.SelectSingleNode("/settings/global/@" + AUTO_RECONNECT_LABEL).Value, out autoReconnect);
+
+				XmlNodeList elemList = xmlDoc.GetElementsByTagName("favourite");
+				foreach(XmlNode xmlNode in elemList)
+				{
+					int nPos = -1;
+					int.TryParse(xmlNode.Attributes[FAVORITE_LABEL].Value, out nPos);
+					if(nPos >= 0 && nPos < favorites.Length)
+					{
+						favorites[nPos] = xmlNode.Attributes[IP_LABEL].Value;
+					}
+				}
 				
 			}
 			catch
 			{
+
 			}
 			
 			try
@@ -1548,32 +1542,38 @@ namespace KMP
 
 		static void writeConfigFile()
 		{
-			KSP.IO.TextWriter writer = KSP.IO.File.CreateText<KMPClientMain>(CLIENT_CONFIG_FILENAME);
 			
-			//username
-			writer.WriteLine(USERNAME_LABEL);
-			writer.WriteLine(username);
+			XmlDocument xmlDoc = new XmlDocument();
+			String sPath = KSP.IO.IOUtils.GetFilePathFor(typeof(KMPClientMain), CLIENT_CONFIG_FILENAME); // Get the path to the config file
 
-			//ip
-			writer.WriteLine(IP_LABEL);
-			writer.WriteLine(hostname);
-
-			//port
-			writer.WriteLine(AUTO_RECONNECT_LABEL);
-			writer.WriteLine(autoReconnect);
-
-			//favorites
-			for (int i = 0; i < favorites.Length; i++)
+			if (!System.IO.File.Exists(sPath))  // Build a default style
 			{
-				if (favorites[i].Length > 0)
-				{
-					writer.Write(FAVORITE_LABEL);
-					writer.WriteLine(i);
-					writer.WriteLine(favorites[i]);
-				}
+				xmlDoc.LoadXml(String.Format("<?xml version=\"1.0\"?><settings><global {0}=\"\" {1}=\"\" {2}=\"\"/><favourites></favourites></settings>", USERNAME_LABEL, IP_LABEL, AUTO_RECONNECT_LABEL));
+				xmlDoc.Save(sPath);
 			}
 
-			writer.Close();
+			xmlDoc.Load(sPath);
+
+			xmlDoc.SelectSingleNode("/settings/global/@" + USERNAME_LABEL).Value = username; // Set the username attribute
+			xmlDoc.SelectSingleNode("/settings/global/@" + IP_LABEL).Value = hostname; // Set the hostname attribute
+			xmlDoc.SelectSingleNode("/settings/global/@" + AUTO_RECONNECT_LABEL).Value = autoReconnect.ToString(); // Set the reconnect attribute
+			
+			XmlNode xFav = xmlDoc.SelectSingleNode("/settings/favourites");
+			xFav.RemoveAll(); // Delete all the favourites
+			
+			for (int i = 0; i < favorites.Length; i++) // Rebuild the favourites from memory
+			{
+				if (!(favorites[i] == ""))
+				{
+					XmlElement xEl = xmlDoc.CreateElement("favourite");
+
+					xEl.SetAttribute(FAVORITE_LABEL, "" + i);
+					xEl.SetAttribute(IP_LABEL, favorites[i]);
+					xFav.AppendChild(xEl);
+				}
+			}
+			
+			xmlDoc.Save(sPath); // Save :)
 		}
 
 		//Messages
