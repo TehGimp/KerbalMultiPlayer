@@ -32,7 +32,7 @@ namespace KMP
 
 		public KeyCode guiToggleKey = KeyCode.F7;
 		public KeyCode screenshotKey = KeyCode.F8;
-        public KeyCode chatTalkKey = KeyCode.Y;
+        public KeyCode chatTalkKey = KeyCode.BackQuote;
         public KeyCode chatHideKey = KeyCode.F9;
 
 		[OptionalField(VersionAdded = 1)]
@@ -50,7 +50,7 @@ namespace KMP
 			smoothScreens = true;
 			guiToggleKey = KeyCode.F7;
 			screenshotKey = KeyCode.F8;
-            chatTalkKey = KeyCode.Y;
+            chatTalkKey = KeyCode.BackQuote;
             chatHideKey = KeyCode.F9;
 			chatColors = true;
 			showInactiveShips = true;

@@ -2531,7 +2531,7 @@ namespace KMP
 							KMPGlobalSettings.instance.screenshotKey = KeyCode.F8;
 
                         if (KMPGlobalSettings.instance.chatTalkKey == KeyCode.None)
-                            KMPGlobalSettings.instance.chatTalkKey = KeyCode.Y;
+                            KMPGlobalSettings.instance.chatTalkKey = KeyCode.BackQuote;
 
                         if (KMPGlobalSettings.instance.chatHideKey == KeyCode.None)
                             KMPGlobalSettings.instance.chatHideKey = KeyCode.F9;
@@ -2940,6 +2940,20 @@ namespace KMP
 			if (!KMPConnectionDisplay.windowEnabled && HighLogic.LoadedScene == GameScenes.MAINMENU) KMPClientMain.clearConnectionState();
 			
 			KMPConnectionDisplay.windowEnabled = (HighLogic.LoadedScene == GameScenes.MAINMENU) && globalUIToggle;
+
+            
+            if (KMPGlobalSettings.instance.chatDXWindowEnabled)
+            {
+                KMPChatDX.windowPos = GUILayout.Window(
+                    999994,
+                    KMPChatDX.windowPos,
+                    chatWindowDX,
+                    "",
+                    KMPChatDX.windowStyle,
+                    KMPChatDX.layoutOptions
+                    );
+            }
+
 			
 			if (KMPConnectionDisplay.windowEnabled)
 			{
@@ -3020,22 +3034,12 @@ namespace KMP
 					);
 			}
 
-            if (KMPGlobalSettings.instance.chatDXWindowEnabled)
-            {
-                KMPChatDX.windowPos = GUILayout.Window(
-                    999994,
-                    KMPChatDX.windowPos,
-                    chatWindowDX,
-                    "",
-                    KMPChatDX.windowStyle,
-                    KMPChatDX.layoutOptions
-                    );
-            }
-           
+
+            KMPChatDX.windowPos = enforceWindowBoundaries(KMPChatDX.windowPos);
 			KMPInfoDisplay.infoWindowPos = enforceWindowBoundaries(KMPInfoDisplay.infoWindowPos);
 			KMPScreenshotDisplay.windowPos = enforceWindowBoundaries(KMPScreenshotDisplay.windowPos);
 			KMPChatDisplay.windowPos = enforceWindowBoundaries(KMPChatDisplay.windowPos);
-            KMPChatDX.windowPos = enforceWindowBoundaries(KMPChatDX.windowPos);
+            
 		}
 		
 		private void lockWindow(int windowID)
@@ -3612,16 +3616,20 @@ namespace KMP
             GUIStyle chat_entry_style = new GUIStyle(GUI.skin.textField);
             chat_entry_style.stretchWidth = true;
             chat_entry_style.alignment = TextAnchor.LowerLeft;
-            //chat_entry_style.normal.background = null;
-            chat_entry_style.normal.textColor = Color.yellow;
+
             /* Display Chat */
 
+            GUI.depth = 2;
+        
+
             GUILayout.BeginVertical();
+            GUILayout.MinHeight(KMPChatDX.chatboxHeight);
             GUILayout.Space(1);
 
-
             KMPChatDX.setStyle();
-            //KMPChatDX.scrollPos = GUILayout.BeginScrollView(KMPChatDX.scrollPos);
+
+            GUILayout.FlexibleSpace();
+
 
             foreach (KMPChatDX.ChatLine line in KMPChatDX.chatLineQueue)
             {
@@ -3633,14 +3641,34 @@ namespace KMP
                 }
                 else
                 {
-                    GUILayout.Label(line.name + ": " + line.message, KMPChatDX.chatStyle);
+                    var text = line.name + ": " + line.message;
+                    GUILayout.Label(text, KMPChatDX.chatStyle);
+
+                    var position = GUILayoutUtility.GetLastRect();
+
+                    var style = KMPChatDX.chatStyle;
+                    style.normal.textColor = new Color(0, 0, 0);
+
+                    position.x--;
+                    GUI.Label(position, text, style);
+                    position.x += 2;
+                    GUI.Label(position, text, style);
+                    position.x--;
+                    position.y--;
+                    GUI.Label(position, text, style);
+                    position.y += 2;
+                    GUI.Label(position, text, style);
+
+                    KMPChatDX.chatStyle.normal.textColor = line.color;
+                    position.y--;
+                    GUI.Label(position, text, style);
+
                 }
 
                 GUILayout.EndHorizontal();
                 GUILayout.Space(1);
             }
 
-            GUILayout.FlexibleSpace();
 
             if(KMPChatDX.showInput)
             {
@@ -3675,9 +3703,11 @@ namespace KMP
           
 
             GUILayout.EndVertical();
-            //GUILayout.EndScrollView();
-            GUI.DragWindow();
+            GUI.depth = 2;
+            GUI.BringWindowToBack(windowID);
         }
+
+
 
 		private void vesselStatusLabels(VesselStatusInfo status, bool big)
 		{
