@@ -3181,12 +3181,10 @@ namespace KMPServer
             Log.Info("/clearclients - Attempt to clear 'ghosted' clients");
             Log.Info("/dekessler <mins> - Remove debris that has not been updated for at least <mins> minutes (in-game time) (If no <mins> value is specified, debris that is older than 30 minutes will be cleared)");
             Log.Info("/save - Backup universe");
-            Log.Info("/help - Displays all commands in the server");
-            Log.Info("/set [key] [value] to modify a setting");
-            Log.Info("/whitelist [add|del] [user] to update whitelist\n");
 			Log.Info("/motd [message] - Sets message of the day, leave blank for none");
 			Log.Info("/rules [rules] - Sets server rules, leave blank for none");
             Log.Info("/say <-u username> [message] to send a Server message <to specified user>");
+			Log.Info("/help - Displays all commands in the server\n");
 
             // to add a new command to the command list just copy the Log.Info method and add how to use that command.
         }
