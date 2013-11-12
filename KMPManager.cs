@@ -437,13 +437,13 @@ namespace KMP
 				
 				
 				//Prevent cases of remaining unfixed NREs from remote vessel updates from creating an inconsistent game state
-				if (HighLogic.fetch.log.Count > 1000 && isInFlight && !syncing)
+				if (HighLogic.fetch.log.Count > 500 && isInFlight && !syncing)
 				{
 					bool forceResync = false; int nreCount = 0;
-					foreach (HighLogic.LogEntry logEntry in HighLogic.fetch.log.GetRange(HighLogic.fetch.log.Count-50,50))
+					foreach (HighLogic.LogEntry logEntry in HighLogic.fetch.log.GetRange(HighLogic.fetch.log.Count-100,100))
 			        {
 						if (logEntry.condition.Contains("NullReferenceException")) nreCount++;
-						if (nreCount >= 30)
+						if (nreCount >= 60)
 						{
 							forceResync = true;
 							break;
@@ -2749,8 +2749,8 @@ namespace KMP
 			{
 				ScreenMessages.PostScreenMessage("Universe synchronized",1f,ScreenMessageStyle.UPPER_RIGHT);
 				StartCoroutine(returnToSpaceCenter());
-				//Don't disable debug log automatically in first release
-				//KMPClientMain.debugging = false;
+				//Disable debug logging once synced unless explicitly enabled
+				KMPClientMain.debugging = false;
 			}
 		}
 
