@@ -2788,7 +2788,10 @@ namespace KMP
                     KMPChatDX.showInput = true;
 
                 if (Input.GetKeyDown(KMPGlobalSettings.instance.chatHideKey))
+				{
                     KMPGlobalSettings.instance.chatDXWindowEnabled = !KMPGlobalSettings.instance.chatDXWindowEnabled;
+					if (KMPGlobalSettings.instance.chatDXWindowEnabled) KMPChatDX.enqueueChatLine("Press Chat key (" + (KMPGlobalSettings.instance.chatTalkKey == KeyCode.BackQuote ? "~" : KMPGlobalSettings.instance.chatTalkKey.ToString()) + ") to send a message");
+				}
 
 				if (Input.anyKeyDown)
 					lastKeyPressTime = UnityEngine.Time.realtimeSinceStartup;
@@ -2896,12 +2899,12 @@ namespace KMP
 
 			CheckEditorLock();
 
-			//Init chat display options
-			if (KMPChatDisplay.layoutOptions == null)
-				KMPChatDisplay.layoutOptions = new GUILayoutOption[2];
-
-			KMPChatDisplay.layoutOptions[0] = GUILayout.MinWidth(KMPChatDisplay.windowWidth);
-			KMPChatDisplay.layoutOptions[1] = GUILayout.MaxWidth(KMPChatDisplay.windowWidth);
+//			//Init chat display options
+//			if (KMPChatDisplay.layoutOptions == null)
+//				KMPChatDisplay.layoutOptions = new GUILayoutOption[2];
+//
+//			KMPChatDisplay.layoutOptions[0] = GUILayout.MinWidth(KMPChatDisplay.windowWidth);
+//			KMPChatDisplay.layoutOptions[1] = GUILayout.MaxWidth(KMPChatDisplay.windowWidth);
 
             // Chat DX
             if (KMPChatDX.layoutOptions == null)
@@ -3009,7 +3012,7 @@ namespace KMP
      	    {
          		//close the windows if not connected to a server 
        	 	    KMPScreenshotDisplay.windowEnabled = false;
-      		    KMPGlobalSettings.instance.chatWindowEnabled = false;
+      		    KMPGlobalSettings.instance.chatDXWindowEnabled = false;
  		    }
 			
 			if (KMPScreenshotDisplay.windowEnabled)
@@ -3023,22 +3026,22 @@ namespace KMP
 					);
 			}
 
-			if (KMPGlobalSettings.instance.chatWindowEnabled)
-			{
-				KMPChatDisplay.windowPos = GUILayout.Window(
-					999997,
-					KMPChatDisplay.windowPos,
-					chatWindow,
-					"KerbalMP Chat",
-					KMPChatDisplay.layoutOptions
-					);
-			}
+//			if (KMPGlobalSettings.instance.chatWindowEnabled)
+//			{
+//				KMPChatDisplay.windowPos = GUILayout.Window(
+//					999997,
+//					KMPChatDisplay.windowPos,
+//					chatWindow,
+//					"KerbalMP Chat",
+//					KMPChatDisplay.layoutOptions
+//					);
+//			}
 
 
             KMPChatDX.windowPos = enforceWindowBoundaries(KMPChatDX.windowPos);
 			KMPInfoDisplay.infoWindowPos = enforceWindowBoundaries(KMPInfoDisplay.infoWindowPos);
 			KMPScreenshotDisplay.windowPos = enforceWindowBoundaries(KMPScreenshotDisplay.windowPos);
-			KMPChatDisplay.windowPos = enforceWindowBoundaries(KMPChatDisplay.windowPos);
+//			KMPChatDisplay.windowPos = enforceWindowBoundaries(KMPChatDisplay.windowPos);
             
 		}
 		
@@ -3164,7 +3167,7 @@ namespace KMP
 				{
 					chatButtonStyle.normal.textColor = new Color(0.27f, 0.92f, 0.09f);
 				}
-				KMPGlobalSettings.instance.chatWindowEnabled = GUILayout.Toggle(KMPGlobalSettings.instance.chatWindowEnabled, "Chat", chatButtonStyle);
+				KMPGlobalSettings.instance.chatDXWindowEnabled = GUILayout.Toggle(KMPGlobalSettings.instance.chatDXWindowEnabled, "Chat ("+KMPGlobalSettings.instance.chatHideKey+")", chatButtonStyle);
 				KMPScreenshotDisplay.windowEnabled = GUILayout.Toggle(KMPScreenshotDisplay.windowEnabled, "Viewer", GUI.skin.button);
 				if (GUILayout.Button("Share Screen ("+KMPGlobalSettings.instance.screenshotKey+")"))
 					StartCoroutine(shareScreenshot());
@@ -3241,12 +3244,12 @@ namespace KMP
 
                     mappingChatKey = GUILayout.Toggle(
                         mappingChatKey,
-                        mappingChatKey ? "Press key" : "Chat: " + KMPGlobalSettings.instance.chatTalkKey,
+                        mappingChatKey ? "Press key" : "Send Chat: " + KMPGlobalSettings.instance.chatTalkKey,
                         GUI.skin.button);
 
                     mappingChatDXToggleKey = GUILayout.Toggle(
                         mappingChatDXToggleKey,
-                        mappingChatDXToggleKey ? "Press key" : "Toggle Chat: " + KMPGlobalSettings.instance.chatHideKey,
+                        mappingChatDXToggleKey ? "Press key" : "Chat Toggle: " + KMPGlobalSettings.instance.chatHideKey,
                         GUI.skin.button);
 
                     GUILayout.EndHorizontal();
@@ -3341,6 +3344,9 @@ namespace KMP
 					GameEvents.onVesselTerminated.Add(this.OnVesselTerminated);
 					GameEvents.onVesselDestroy.Add(this.OnVesselDestroy);
 					writePluginData();
+					//Make sure user knows how to use new chat
+					KMPChatDX.enqueueChatLine("Press Chat key (" + (KMPGlobalSettings.instance.chatTalkKey == KeyCode.BackQuote ? "~" : KMPGlobalSettings.instance.chatTalkKey.ToString()) + ") to send a message");
+					KMPGlobalSettings.instance.chatDXWindowEnabled = true;
 					
 					return;
 				}
@@ -3987,7 +3993,7 @@ namespace KMP
 			bool should_lock = HighLogic.LoadedSceneIsEditor && shouldDrawGUI && (
 					KMPInfoDisplay.infoWindowPos.Contains(mousePos)
 					|| (KMPScreenshotDisplay.windowEnabled && KMPScreenshotDisplay.windowPos.Contains(mousePos))
-					|| (KMPGlobalSettings.instance.chatWindowEnabled && KMPChatDisplay.windowPos.Contains(mousePos))
+					|| (KMPGlobalSettings.instance.chatDXWindowEnabled && KMPChatDisplay.windowPos.Contains(mousePos))
 					);
 
 			if (should_lock && !isEditorLocked && !EditorLogic.editorLocked)
