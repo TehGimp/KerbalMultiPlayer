@@ -154,7 +154,9 @@ namespace KMP
 		private int chatMessagesWaiting = 0;
 		private Vessel lastEVAVessel = null;
 		private bool showServerSync = false;
-		
+
+		private bool configRead = false;
+
 		public double safetyBubbleRadius = 20000d;
 		
 		public bool globalUIToggle
@@ -190,6 +192,14 @@ namespace KMP
 			get
 			{
 				return FlightGlobals.ready && FlightGlobals.ActiveVessel != null && KMPClientMain.handshakeCompleted && KMPClientMain.receivedSettings;
+			}
+		}
+		
+		public static bool isInFlightOrTracking
+		{
+			get
+			{
+				return HighLogic.LoadedScene == GameScenes.TRACKSTATION || isInFlight;
 			}
 		}
 
@@ -1499,7 +1509,7 @@ namespace KMP
 				//Store protovessel if included
 				if (vessel_update.getProtoVesselNode() != null && (!isInFlight || vessel_update.id != FlightGlobals.ActiveVessel.id)) serverVessels_ProtoVessels[vessel_update.id] = vessel_update.getProtoVesselNode();
 			}
-			if (isInFlight)
+			if (isInFlightOrTracking)
 			{
 				if (vessel_update.id != FlightGlobals.ActiveVessel.id)
 				{
@@ -1508,15 +1518,18 @@ namespace KMP
 					{
 						Vessel extant_vessel = vessel.vesselRef;
 						if (extant_vessel == null) extant_vessel = FlightGlobals.Vessels.Find(v => v.id == vessel_update.id);
-						if (extant_vessel != null && vessel_update.state == State.ACTIVE && !vessel_update.isSyncOnlyUpdate) 
+						if (isInFlight)
 						{
-							 extant_vessel.name = vessel_update.name + " <" + vessel_update.player + ">";
-							 extant_vessel.vesselName = vessel_update.name + " <" + vessel_update.player + ">";
-						}
-						else if (extant_vessel != null)
-						{
-							extant_vessel.name = vessel_update.name;
-							extant_vessel.vesselName = vessel_update.name;
+							if (extant_vessel != null && vessel_update.state == State.ACTIVE && !vessel_update.isSyncOnlyUpdate) 
+							{
+								 extant_vessel.name = vessel_update.name + " <" + vessel_update.player + ">";
+								 extant_vessel.vesselName = vessel_update.name + " <" + vessel_update.player + ">";
+							}
+							else if (extant_vessel != null)
+							{
+								extant_vessel.name = vessel_update.name;
+								extant_vessel.vesselName = vessel_update.name;
+							}
 						}
 						if (!serverVessels_LoadDelay.ContainsKey(vessel_update.id)
 						    || (serverVessels_LoadDelay.ContainsKey(vessel_update.id) ? (serverVessels_LoadDelay[vessel_update.id] < UnityEngine.Time.realtimeSinceStartup) : false))
@@ -1585,7 +1598,7 @@ namespace KMP
 													//Update orbit whenever out of sync or other vessel in past/future, or not in docking range
 													if (!throttled && (vessel_update.relTime == RelativeTime.PRESENT && ourDistance > (INACTIVE_VESSEL_RANGE+500f)) || (vessel_update.relTime != RelativeTime.PRESENT && Math.Abs(tick-vessel_update.tick) > 1.5d))
 													{
-														syncExtantVesselOrbit(vessel,vessel_update.tick,extant_vessel,vessel_update.w_pos[0]);
+														StartCoroutine(syncExtantVesselOrbit(vessel,vessel_update.tick,extant_vessel,vessel_update.w_pos[0]));
 														serverVessels_ObtSyncDelay[vessel_update.id] = UnityEngine.Time.realtimeSinceStartup + 1f;
 													}
 												}
@@ -1944,83 +1957,110 @@ namespace KMP
 			return protovessel;	
 		}
 		
-		private void syncExtantVesselOrbit(KMPVessel kvessel, double fromTick, Vessel extant_vessel, double LAN)
+		private IEnumerator<WaitForFixedUpdate> syncExtantVesselOrbit(KMPVessel kvessel, double fromTick, Vessel extant_vessel, double LAN)
 		{
+			yield return new WaitForFixedUpdate();
 			KMPClientMain.DebugLog("updating Orbit: " + extant_vessel.id);
 			
-			double tick = Planetarium.GetUniversalTime();
-			KMPClientMain.DebugLog("current vel mag: " + extant_vessel.orbit.getOrbitalVelocityAtUT(tick).magnitude);
-			
-			extant_vessel.GoOnRails();
-			
-            //Update orbit
-			Planetarium.SetUniversalTime(fromTick);
-			Vector3 orbit_pos = kvessel.translationFromBody;
-            Vector3 orbit_vel = kvessel.worldVelocity;
-			
-            //Swap the y and z values of the orbital position/velocities
-            float temp = orbit_pos.y;
-            orbit_pos.y = orbit_pos.z;
-            orbit_pos.z = temp;
-			
-            temp = orbit_vel.y;
-            orbit_vel.y = orbit_vel.z;
-            orbit_vel.z = temp;
-			
-			OrbitDriver orbitDriver = extant_vessel.orbitDriver;
-			orbitDriver.orbit.UpdateFromStateVectors(orbit_pos, orbit_vel, kvessel.mainBody, fromTick);
-			Orbit newOrbit = orbitDriver.orbit;
-			newOrbit.LAN = LAN;
-			
+			bool victimAvailable = true;
 			Vessel victim = FlightGlobals.ActiveVessel;
-			OrbitDriver oldDriver = victim.orbitDriver;
-			victim.orbitDriver = orbitDriver;
-			victim.patchedConicSolver.obtDriver = orbitDriver;
-			victim.orbitDriver.UpdateOrbit();
-			victim.patchedConicSolver.Update();
 			
-			newOrbit = victim.patchedConicSolver.orbit;
-			if (newOrbit.referenceBody == null) newOrbit.referenceBody = FlightGlobals.Bodies.Find(b => b.name == "Sun");
-//			KMPClientMain.DebugLog("aP:" + newOrbit.activePatch);
-//			KMPClientMain.DebugLog("eUT:" + newOrbit.EndUT);
-//			KMPClientMain.DebugLog("sUT:" + newOrbit.StartUT);
-//			KMPClientMain.DebugLog("gOA:" + newOrbit.getObtAtUT(tick));
-//			KMPClientMain.DebugLog("nPnull:" + (newOrbit.nextPatch == null));
-//			KMPClientMain.DebugLog("pPnull:" + (newOrbit.previousPatch == null));
-//			KMPClientMain.DebugLog("sI:" + newOrbit.sampleInterval);
-//			KMPClientMain.DebugLog("UTsoi:" + newOrbit.UTsoi);
-//			KMPClientMain.DebugLog("body:" + newOrbit.referenceBody.name);
-			if (newOrbit.EndUT > 0)
+			foreach (ManeuverNode mNode in victim.patchedConicSolver.maneuverNodes)
 			{
-				double lastEndUT =  newOrbit.EndUT;
-				while (newOrbit.EndUT > 0 && newOrbit.EndUT < tick && newOrbit.EndUT > lastEndUT && newOrbit.nextPatch != null)
+				if (mNode.attachedGizmo != null)
 				{
-					KMPClientMain.DebugLog("orbit EndUT < target: " + newOrbit.EndUT + " vs " + tick);
-					lastEndUT =  newOrbit.EndUT;
-					newOrbit = newOrbit.nextPatch;
-					if (newOrbit.referenceBody == null) newOrbit.referenceBody = FlightGlobals.Bodies.Find(b => b.name == "Sun");
-					KMPClientMain.DebugLog("updated to next patch");
+					ManeuverGizmo mGizmo = mNode.attachedGizmo;
+					if (mGizmo.handleAntiNormal.Drag) { victimAvailable = false; break; }
+					if (mGizmo.handleNormal.Drag) { victimAvailable = false; break; }
+					if (mGizmo.handlePrograde.Drag) { victimAvailable = false; break; }
+					if (mGizmo.handleRadialIn.Drag) { victimAvailable = false; break; }
+					if (mGizmo.handleRadialOut.Drag) { victimAvailable = false; break; }
+					if (mGizmo.handleRetrograde.Drag) { victimAvailable = false; break; }
 				}
 			}
-			newOrbit.UpdateFromUT(tick);
 			
-			//Swap orbits
-			extant_vessel.orbitDriver = orbitDriver;
-			extant_vessel.orbitDriver.orbit = newOrbit;
-			victim.patchedConicSolver.obtDriver = oldDriver;
-			victim.orbitDriver = oldDriver;
-			victim.orbitDriver.UpdateOrbit();
-			
-			extant_vessel.orbitDriver.pos = extant_vessel.orbit.pos.xzy;
-            extant_vessel.orbitDriver.vel = extant_vessel.orbit.vel;	
-			
-			Planetarium.SetUniversalTime(tick);
-			KMPClientMain.DebugLog("new vel mag: " + extant_vessel.orbit.getOrbitalVelocityAtUT(tick).magnitude);
-			KMPClientMain.DebugLog("Orbit updated to target: " + tick);
+			if (victimAvailable)
+			{
+				double tick = Planetarium.GetUniversalTime();
+				KMPClientMain.DebugLog("current vel mag: " + extant_vessel.orbit.getOrbitalVelocityAtUT(tick).magnitude);
+				
+				extant_vessel.GoOnRails();
+				
+	            //Update orbit
+				Planetarium.SetUniversalTime(fromTick);
+				Vector3 orbit_pos = kvessel.translationFromBody;
+	            Vector3 orbit_vel = kvessel.worldVelocity;
+				
+	            //Swap the y and z values of the orbital position/velocities
+	            float temp = orbit_pos.y;
+	            orbit_pos.y = orbit_pos.z;
+	            orbit_pos.z = temp;
+				
+	            temp = orbit_vel.y;
+	            orbit_vel.y = orbit_vel.z;
+	            orbit_vel.z = temp;
+				
+				OrbitDriver orbitDriver = extant_vessel.orbitDriver;
+				orbitDriver.orbit.UpdateFromStateVectors(orbit_pos, orbit_vel, kvessel.mainBody, fromTick);
+				Orbit newOrbit = orbitDriver.orbit;
+				newOrbit.LAN = LAN;
+				
+				OrbitDriver oldDriver = victim.orbitDriver;
+				victim.patchedConicSolver.obtDriver = orbitDriver;
+				victim.orbitDriver = orbitDriver;
+				victim.orbitDriver.UpdateOrbit();
+				victim.patchedConicSolver.Update();
+				
+				newOrbit = victim.patchedConicSolver.orbit;
+				
+				if (newOrbit.referenceBody == null) newOrbit.referenceBody = FlightGlobals.Bodies.Find(b => b.name == "Sun");
+//				KMPClientMain.DebugLog("aP:" + newOrbit.activePatch);
+//				KMPClientMain.DebugLog("eUT:" + newOrbit.EndUT);
+//				KMPClientMain.DebugLog("sUT:" + newOrbit.StartUT);
+//				KMPClientMain.DebugLog("gOA:" + newOrbit.getObtAtUT(tick));
+//				KMPClientMain.DebugLog("nPnull:" + (newOrbit.nextPatch == null));
+//				KMPClientMain.DebugLog("pPnull:" + (newOrbit.previousPatch == null));
+//				KMPClientMain.DebugLog("sI:" + newOrbit.sampleInterval);
+//				KMPClientMain.DebugLog("UTsoi:" + newOrbit.UTsoi);
+//				KMPClientMain.DebugLog("body:" + newOrbit.referenceBody.name);
+				if (newOrbit.EndUT > 0)
+				{
+					double lastEndUT =  newOrbit.EndUT;
+					while (newOrbit.EndUT > 0 && newOrbit.EndUT < tick && newOrbit.EndUT > lastEndUT && newOrbit.nextPatch != null)
+					{
+						KMPClientMain.DebugLog("orbit EndUT < target: " + newOrbit.EndUT + " vs " + tick);
+						lastEndUT =  newOrbit.EndUT;
+						newOrbit = newOrbit.nextPatch;
+						if (newOrbit.referenceBody == null) newOrbit.referenceBody = FlightGlobals.Bodies.Find(b => b.name == "Sun");
+						KMPClientMain.DebugLog("updated to next patch");
+					}
+				}
+				newOrbit.UpdateFromUT(tick);
+				
+				//Swap orbits
+				extant_vessel.orbitDriver = orbitDriver;
+				extant_vessel.orbitDriver.orbit = newOrbit;
+				victim.patchedConicSolver.obtDriver = oldDriver;
+				victim.patchedConicRenderer.solver = victim.patchedConicSolver;
+				victim.orbitDriver = oldDriver;
+				victim.orbitDriver.UpdateOrbit();
+				
+				extant_vessel.orbitDriver.pos = extant_vessel.orbit.pos.xzy;
+	            extant_vessel.orbitDriver.vel = extant_vessel.orbit.vel;
+				
+				Planetarium.SetUniversalTime(tick);
+				KMPClientMain.DebugLog("new vel mag: " + extant_vessel.orbit.getOrbitalVelocityAtUT(tick).magnitude);
+				KMPClientMain.DebugLog("Orbit updated to target: " + tick);
+			} else { KMPClientMain.DebugLog("no victim available!"); }
 		}
 		
 		private void addRemoteVessel(ProtoVessel protovessel, Guid vessel_id, KMPVesselUpdate update = null, double distance = 501d)
 		{
+			if (isInFlight && vessel_id == FlightGlobals.ActiveVessel.id)
+			{
+				KMPClientMain.DebugLog("Attempted to update controlled vessel!");
+				return;
+			}
 			KMPClientMain.DebugLog("addRemoteVessel");
 			Vector3 newWorldPos = Vector3.zero, newOrbitVel = Vector3.zero;
 			bool setTarget = false, wasLoaded = false;
@@ -3232,6 +3272,11 @@ namespace KMP
 		
 		private void connectionWindow(int windowID)
 		{
+			if(!configRead)
+			{
+				KMPClientMain.readConfigFile();
+				configRead = true;
+			}
 			if (KMPClientMain.handshakeCompleted && KMPClientMain.tcpSocket != null)
 			{
 				if (KMPClientMain.tcpSocket.Connected && !gameRunning)

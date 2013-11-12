@@ -191,7 +191,6 @@ namespace KMP
 		
 		public static String GetUsername()
 		{
-			readConfigFile();
 			return username;
 		}
 		
@@ -1397,10 +1396,11 @@ namespace KMP
 
 		//Config
 
-		static void readConfigFile()
+		public static void readConfigFile()
 		{
 			try
 			{
+				DebugLog("Ding.");
 				KSP.IO.TextReader reader = KSP.IO.File.OpenText<KMPClientMain>(CLIENT_CONFIG_FILENAME);
 
 				String line = reader.ReadLine();
