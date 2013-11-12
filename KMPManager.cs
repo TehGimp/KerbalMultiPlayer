@@ -2946,7 +2946,7 @@ namespace KMP
             {
                 KMPChatDX.windowPos = GUILayout.Window(
                     999994,
-                    KMPChatDX.windowPos,
+                    KMPChatDX.getWindowPos(),
                     chatWindowDX,
                     "",
                     KMPChatDX.windowStyle,
