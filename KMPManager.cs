@@ -2056,6 +2056,11 @@ namespace KMP
 		
 		private void addRemoteVessel(ProtoVessel protovessel, Guid vessel_id, KMPVesselUpdate update = null, double distance = 501d)
 		{
+			if (isInFlight && vessel_id == FlightGlobals.ActiveVessel.id)
+			{
+				KMPClientMain.DebugLog("Attempted to update controlled vessel!");
+				return;
+			}
 			KMPClientMain.DebugLog("addRemoteVessel");
 			Vector3 newWorldPos = Vector3.zero, newOrbitVel = Vector3.zero;
 			bool setTarget = false, wasLoaded = false;
