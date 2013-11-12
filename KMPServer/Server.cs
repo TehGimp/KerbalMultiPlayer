@@ -1,4 +1,4 @@
-﻿﻿//#define DEBUG_OUT
+﻿//#define DEBUG_OUT
 //#define SEND_UPDATES_TO_SENDER
 
 using System;
@@ -401,6 +401,8 @@ namespace KMPServer
                         case "/countships": countShipsServerCommand(); break;
                         case "/listships": listShipsServerCommand(); break;
 						case "/say": sayServerCommand(parts); break;
+						case "/motd": motdServerCommand(parts); break;
+						case "/rules": rulesServerCommand(parts); break;
                         default: Log.Info("Unknown Command: "+input); break;
                     }
                 }
@@ -483,7 +485,34 @@ namespace KMPServer
         {
             countShipsServerCommand(true);
         }
-
+		//Sets MOTD
+		private void motdServerCommand(string[] parts)
+		{
+			if(parts.Length > 1)
+			{
+				settings.serverMotd = (String) parts[1];
+				ServerSettings.writeToFile(settings);
+				Log.Info("Message of the day updated");
+			}
+			else
+			{
+				Log.Info("You forgot to add the MOTD");
+			}
+		}
+		//Sets Rules
+		private void rulesServerCommand(string[] parts)
+		{
+			if(parts.Length > 1)
+				{
+					settings.serverRules = (String) parts[1];
+					ServerSettings.writeToFile(settings);
+					Log.Info("Rules Updated");
+				}
+			else
+				{
+					Log.Info("You forgot to type the rules!");
+				}
+		}
         //Ban specified user, by name, from the server
         private void banServerCommand(string[] parts)
         {
@@ -3155,6 +3184,8 @@ namespace KMPServer
             Log.Info("/help - Displays all commands in the server");
             Log.Info("/set [key] [value] to modify a setting");
             Log.Info("/whitelist [add|del] [user] to update whitelist\n");
+			Log.Info("/motd [message] - Sets message of the day, leave blank for none");
+			Log.Info("/rules [rules] - Sets server rules, leave blank for none");
             Log.Info("/say <-u username> [message] to send a Server message <to specified user>");
 
             // to add a new command to the command list just copy the Log.Info method and add how to use that command.
