@@ -1,4 +1,4 @@
-﻿﻿//#define DEBUG_OUT
+﻿//#define DEBUG_OUT
 //#define SEND_UPDATES_TO_SENDER
 
 using System;
@@ -401,6 +401,9 @@ namespace KMPServer
                         case "/countships": countShipsServerCommand(); break;
                         case "/listships": listShipsServerCommand(); break;
 						case "/say": sayServerCommand(parts); break;
+						case "/motd": motdServerCommand(parts); break;
+						case "/rules": rulesServerCommand(parts); break;
+						case "/setinfo": serverInfoServerCommand(parts);break;
                         default: Log.Info("Unknown Command: "+input); break;
                     }
                 }
@@ -483,7 +486,47 @@ namespace KMPServer
         {
             countShipsServerCommand(true);
         }
-
+		//Sets MOTD
+		private void motdServerCommand(string[] parts)
+		{
+			if(parts.Length > 1)
+			{
+				settings.serverMotd = (String) parts[1];
+				ServerSettings.writeToFile(settings);
+				Log.Info("Message of the day updated");
+			}
+			else
+			{
+				Log.Info("You forgot to add the MOTD");
+			}
+		}
+		//Sets Rules
+		private void rulesServerCommand(string[] parts)
+		{
+			if(parts.Length > 1)
+				{
+					settings.serverRules = (String) parts[1];
+					ServerSettings.writeToFile(settings);
+					Log.Info("Rules Updated");
+				}
+			else
+				{
+					Log.Info("You forgot to type the rules!");
+				}
+		}
+		private void serverInfoServerCommand(string[] parts)
+		{
+			if(parts.Length > 1)
+			{
+				settings.serverInfo = (String) parts[1];
+				ServerSettings.writeToFile(settings);
+				Log.Info("Server Info Updated");
+			}
+			else
+			{
+				Log.Info("You forgot to add info");
+			}
+		}
         //Ban specified user, by name, from the server
         private void banServerCommand(string[] parts)
         {
@@ -3140,22 +3183,22 @@ namespace KMPServer
         private void displayCommands()
         {
             Log.Info("Commands:");
-            Log.Info("/quit - Quit server cleanly");
-            Log.Info("/stop - Stop hosting server");
+            Log.Info("/quit or /stop - Quit server cleanly");
             Log.Info("/listclients - List players");
             Log.Info("/countclients - Display player counts");
-            Log.Info("/kick <username> - Kick player <username>");
-            Log.Info("/ban <username> - Permanently ban player <username> and any known aliases");
-            Log.Info("/register <username> <token> - Add new roster entry for player <username> with authentication token <token> (BEWARE: will delete any matching roster entries)");
-            Log.Info("/update <username> <token> - Update existing roster entry for player <username>/token <token> (one param must match existing roster entry, other will be updated)");
-            Log.Info("/unregister <username/token> - Remove any player that has a matching username or token from the roster");
+            Log.Info("/kick [username] - Kick player <username>");
+            Log.Info("/ban [username] - Permanently ban player <username> and any known aliases");
+            Log.Info("/register [username] [token] - Add new roster entry for player <username> with authentication token <token> (BEWARE: will delete any matching roster entries)");
+            Log.Info("/update [username] [token] - Update existing roster entry for player <username>/token <token> (one param must match existing roster entry, other will be updated)");
+            Log.Info("/unregister [username/token] - Remove any player that has a matching username or token from the roster");
             Log.Info("/clearclients - Attempt to clear 'ghosted' clients");
             Log.Info("/dekessler <mins> - Remove debris that has not been updated for at least <mins> minutes (in-game time) (If no <mins> value is specified, debris that is older than 30 minutes will be cleared)");
             Log.Info("/save - Backup universe");
-            Log.Info("/help - Displays all commands in the server");
-            Log.Info("/set [key] [value] to modify a setting");
-            Log.Info("/whitelist [add|del] [user] to update whitelist\n");
-            Log.Info("/say <-u username> [message] to send a Server message <to specified user>");
+			Log.Info("/setinfo [info] - Updates the server info seen on master server list");
+			Log.Info("/motd [message] - Sets message of the day, leave blank for none");
+			Log.Info("/rules [rules] - Sets server rules, leave blank for none");
+            Log.Info("/say <-u username> [message] - Send a Server message <to specified user>");
+			Log.Info("/help - Displays all commands in the server\n");
 
             // to add a new command to the command list just copy the Log.Info method and add how to use that command.
         }

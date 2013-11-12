@@ -48,10 +48,10 @@ namespace KMP
 		private void SetDefault(StreamingContext sc)
 		{
 			smoothScreens = true;
-			guiToggleKey = KeyCode.F7;
-			screenshotKey = KeyCode.F8;
-            chatTalkKey = KeyCode.BackQuote;
-            chatHideKey = KeyCode.F9;
+//			guiToggleKey = KeyCode.F7;
+//			screenshotKey = KeyCode.F8;
+//            chatTalkKey = KeyCode.BackQuote;
+//            chatHideKey = KeyCode.F9;
 			chatColors = true;
 			showInactiveShips = true;
 		}
