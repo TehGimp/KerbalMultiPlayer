@@ -380,8 +380,10 @@ namespace KMPServer
                 Boolean bRunning = true;
                 while (bRunning)
                 {
-                    String input = Console.ReadLine().ToLower();
-                    var parts = input.Split(new char[] { ' ' }, 2);
+                    String rawInput = Console.ReadLine();
+					String input = rawInput.ToLower();
+                    var rawParts = rawInput.Split(new char[] { ' ' }, 2);
+					var parts = input.Split(new char[] { ' ' }, 2);
                     //if (!parts[0].StartsWith("/")) { return; } //Allow server to send chat messages
                     switch (parts[0])
                     {
@@ -400,10 +402,10 @@ namespace KMPServer
                         case "/dekessler": dekesslerServerCommand(parts); break;
                         case "/countships": countShipsServerCommand(); break;
                         case "/listships": listShipsServerCommand(); break;
-						case "/say": sayServerCommand(parts); break;
-						case "/motd": motdServerCommand(parts); break;
-						case "/rules": rulesServerCommand(parts); break;
-						case "/setinfo": serverInfoServerCommand(parts);break;
+						case "/say": sayServerCommand(rawParts); break;
+						case "/motd": motdServerCommand(rawParts); break;
+						case "/rules": rulesServerCommand(rawParts); break;
+						case "/setinfo": serverInfoServerCommand(rawParts);break;
                         default: Log.Info("Unknown Command: "+input); break;
                     }
                 }
