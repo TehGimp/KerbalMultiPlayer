@@ -1598,7 +1598,7 @@ namespace KMP
 													//Update orbit whenever out of sync or other vessel in past/future, or not in docking range
 													if (!throttled && (vessel_update.relTime == RelativeTime.PRESENT && ourDistance > (INACTIVE_VESSEL_RANGE+500f)) || (vessel_update.relTime != RelativeTime.PRESENT && Math.Abs(tick-vessel_update.tick) > 1.5d))
 													{
-														StartCoroutine(syncExtantVesselOrbit(vessel,vessel_update.tick,extant_vessel,vessel_update.w_pos[0]));
+														syncExtantVesselOrbit(vessel,vessel_update.tick,extant_vessel,vessel_update.w_pos[0]);
 														serverVessels_ObtSyncDelay[vessel_update.id] = UnityEngine.Time.realtimeSinceStartup + 1f;
 													}
 												}
@@ -1957,9 +1957,8 @@ namespace KMP
 			return protovessel;	
 		}
 		
-		private IEnumerator<WaitForFixedUpdate> syncExtantVesselOrbit(KMPVessel kvessel, double fromTick, Vessel extant_vessel, double LAN)
+		private void syncExtantVesselOrbit(KMPVessel kvessel, double fromTick, Vessel extant_vessel, double LAN)
 		{
-			yield return new WaitForFixedUpdate();
 			KMPClientMain.DebugLog("updating Orbit: " + extant_vessel.id);
 			
 			bool victimAvailable = true;
