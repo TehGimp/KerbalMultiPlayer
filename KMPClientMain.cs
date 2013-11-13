@@ -710,21 +710,21 @@ namespace KMP
 			{
 				if (quitHelperMessageShow && (line == "q" || line == "Q"))
 				{
-					enqueuePluginChatMessage("If you are trying to quit, use the /quit command.", true);
+					enqueuePluginChatMessage("If you are trying to quit, use the !quit command.", true);
 					quitHelperMessageShow = false;
 				}
 
-				if (line.ElementAt(0) == '/')
+				if (line.ElementAt(0) == '!')
 				{
 					String line_lower = line.ToLower();
 
-					if (line_lower == "/quit")
+					if (line_lower == "!quit")
 					{
 						intentionalConnectionEnd = true;
 						endSession = true;
 						sendConnectionEndMessage("Quit");
 					}
-					else if (line_lower == "/ping")
+					else if (line_lower == "!ping")
 					{
 						if (!pingStopwatch.IsRunning)
 						{
@@ -732,7 +732,7 @@ namespace KMP
 							pingStopwatch.Start();
 						}
 					}
-					else if (line_lower == "/debug")
+					else if (line_lower == "!debug")
 					{
 						debugging = !debugging;
 						enqueuePluginChatMessage("debug " + debugging);
