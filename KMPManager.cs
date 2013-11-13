@@ -277,7 +277,7 @@ namespace KMP
 				{
 					foreach (Vessel vessel in FlightGlobals.Vessels.FindAll(v => v.vesselName.Contains("> Debris")))
 					{
-						try {vessel.Die();} catch {}
+						try { if (!part.vessel.isEVA) vessel.Die();} catch {}
 					}
 				}
 				
@@ -541,7 +541,7 @@ namespace KMP
 						serverVessels_PartCounts[vessel.id] = 0;
 						foreach (Part part in serverVessels_Parts[vessel.id])
 						{
-							try { part.vessel.Die(); } catch {}
+							try { if (!part.vessel.isEVA) part.vessel.Die(); } catch {}
 						}
 						ProtoVessel protovessel = new ProtoVessel(serverVessels_ProtoVessels[vessel.id], HighLogic.CurrentGame);
 						addRemoteVessel(protovessel,vessel.id);
@@ -1286,7 +1286,7 @@ namespace KMP
 			try {
 				foreach (Vessel vessel in clearVessels)
 				{
-					if (FlightGlobals.ActiveVessel == null || vessel != FlightGlobals.ActiveVessel)
+					if (!vessel.isEVA && (FlightGlobals.ActiveVessel == null || vessel != FlightGlobals.ActiveVessel))
 					{
 						KMPClientMain.DebugLog("clearing vessel");
 						try {vessel.Die();} catch {}
@@ -1511,7 +1511,7 @@ namespace KMP
 					{
 						KMPClientMain.DebugLog("killing vessel");
 						Vessel extant_vessel = FlightGlobals.Vessels.Find(v => v.id == vessel_update.id);
-						if (extant_vessel != null) try { extant_vessel.Die(); } catch {}
+						if (extant_vessel != null && !extant_vessel.isEVA) try { extant_vessel.Die(); } catch {}
 						return;
 					}
 				}
@@ -2102,7 +2102,7 @@ namespace KMP
 					KMPClientMain.DebugLog("killing known precursor vessels");
 					foreach (Part part in serverVessels_Parts[vessel_id])
 					{
-						try { part.vessel.Die(); } catch {}
+						try { if (!part.vessel.isEVA) part.vessel.Die(); } catch {}
 					}
 				}
 			} catch {}
