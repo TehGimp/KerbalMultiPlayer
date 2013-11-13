@@ -1811,13 +1811,15 @@ namespace KMPServer
                 //return;
             }
             cmd = universeDB.CreateCommand();
-            sql = "SELECT COUNT(*) FROM kmpPlayer WHERE Guid = @guid";
+            sql = "SELECT COUNT(*) FROM kmpPlayer WHERE Guid = @guid AND Name LIKE @username";
             cmd.CommandText = sql;
+			cmd.Parameters.AddWithValue("username", username_lower);
             cmd.Parameters.AddWithValue("guid", guid);
             Int32 player_exists = Convert.ToInt32(cmd.ExecuteScalar());
             cmd.Dispose();
             if (player_exists == 0) //New user
             {
+				Log.Info("New user");
                 cmd = universeDB.CreateCommand();
                 sql = "INSERT INTO kmpPlayer (Name, Guid) VALUES (@username,@guid);";
                 cmd.CommandText = sql;
@@ -1871,7 +1873,7 @@ namespace KMPServer
 			sb.Append(settings.serverMotd);
 			sendMotdMessage(cl, sb.ToString());
 
-            Log.Info("{0} has joined the server using client version {1}", username, version);
+            Log.Info("{0} (#{2}) has joined the server using client version {1}", username, version, playerID);
 
             //Build join message
             //sb.Clear();
