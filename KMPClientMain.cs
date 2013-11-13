@@ -1946,6 +1946,34 @@ namespace KMP
 //				debugLog.Close();
 //			}
 		}
+
+		internal static void verifyShipsDirectory()
+		{
+			char cSep = '/';
+			String sPath = String.Format(System.IO.Directory.GetCurrentDirectory()+"{0}saves{1}KMP", cSep, cSep);
+			if (!System.IO.Directory.Exists(sPath))
+				System.IO.Directory.CreateDirectory(sPath);
+			sPath += cSep+"Ships";
+			DebugLog(sPath);
+			if(!System.IO.Directory.Exists(sPath))
+				System.IO.Directory.CreateDirectory(sPath);
+
+			if(!System.IO.Directory.Exists(sPath + cSep + "VAB"))
+				System.IO.Directory.CreateDirectory(sPath + cSep + "VAB");
+
+			if(!System.IO.Directory.Exists(sPath + cSep + "SPH"))
+				System.IO.Directory.CreateDirectory(sPath + cSep + "SPH");
+		}
+
+		internal static bool startSaveExists()
+		{
+			char cSep = '/';
+			String sPath = String.Format(System.IO.Directory.GetCurrentDirectory()+"{0}saves{1}KMP{2}", cSep, cSep, cSep);
+			if (!System.IO.File.Exists(sPath + "start.sfs"))
+				return false;
+			else
+				return true;
+		}
 	}
 	
 	public class StateObject {
