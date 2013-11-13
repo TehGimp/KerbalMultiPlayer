@@ -920,8 +920,10 @@ namespace KMP
 						}
 
 						//Send a probe message to try to establish a udp connection
-						if ((stopwatch.ElapsedMilliseconds - last_udp_send) > UDP_PROBE_DELAY)
-							sendUDPProbeMessage();
+						if ((stopwatch.ElapsedMilliseconds - last_udp_send) > UDP_TIMEOUT_DELAY)
+							sendUDPProbeMessage(true);
+						else if ((stopwatch.ElapsedMilliseconds - last_udp_send) > UDP_PROBE_DELAY)
+							sendUDPProbeMessage(false);
 
 					}
 
@@ -1862,11 +1864,12 @@ namespace KMP
 //		    }
 //		}
 
-		private static void sendUDPProbeMessage()
+		private static void sendUDPProbeMessage(bool forceUDP)
 		{
 			byte[] time = null;
 			if (gameManager.lastTick > 0d) time = BitConverter.GetBytes(gameManager.lastTick);
-			if (udpConnected) sendMessageUDP(KMPCommon.ClientMessageID.UDP_PROBE, time);
+			if (udpConnected || forceUDP)//Always try UDP periodically
+				sendMessageUDP(KMPCommon.ClientMessageID.UDP_PROBE, time);
 			else sendMessageTCP(KMPCommon.ClientMessageID.UDP_PROBE, time);
 		}
 

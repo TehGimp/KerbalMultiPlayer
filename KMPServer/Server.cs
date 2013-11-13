@@ -1244,9 +1244,16 @@ namespace KMPServer
                         }
 
                         //Handle the message
-                        byte[] messageData = KMPCommon.Decompress(data);
-                        if (messageData != null) handleMessage(client, id, messageData);
-                        //Consider adding re-request here
+						if (data == null)
+						{
+							handleMessage(client, id, data);
+						}
+						else
+						{
+                    		byte[] messageData = KMPCommon.Decompress(data);
+                    		if (messageData != null) handleMessage(client, id, messageData);
+							//Consider adding re-request here
+						}
                     }
 
                 }
