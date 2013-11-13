@@ -301,19 +301,27 @@ namespace KMP
 						return;
 					}
 				}
-				if (isInFlight && !docking)
+				if (isInFlight && !docking && FlightGlobals.fetch.VesselTarget != null)
 				{
-					if (FlightGlobals.fetch.VesselTarget != null && FlightGlobals.fetch.VesselTarget is ModuleDockingNode)
+					//Get targeted vessel
+					Vessel vesselTarget = null;
+					if (FlightGlobals.fetch.VesselTarget is ModuleDockingNode)
 					{
-						ModuleDockingNode vesselTarget = (ModuleDockingNode) FlightGlobals.fetch.VesselTarget;
-						if (vesselTarget.part.vessel != null && serverVessels_IsPrivate.ContainsKey(vesselTarget.part.vessel.id) && serverVessels_IsMine.ContainsKey(vesselTarget.part.vessel.id))
+						ModuleDockingNode moduleTarget = (ModuleDockingNode) FlightGlobals.fetch.VesselTarget;
+						if (moduleTarget.part.vessel != null) vesselTarget = moduleTarget.part.vessel;
+					}
+					if (FlightGlobals.fetch.VesselTarget is Vessel)
+					{
+						vesselTarget = (Vessel) FlightGlobals.fetch.VesselTarget;
+					}
+					//Check if target is private
+					if (vesselTarget != null && serverVessels_IsPrivate.ContainsKey(vesselTarget.id) && serverVessels_IsMine.ContainsKey(vesselTarget.id))
+					{
+						if (!serverVessels_IsMine[vesselTarget.id] && serverVessels_IsPrivate[vesselTarget.id])
 						{
-							if (!serverVessels_IsMine[vesselTarget.part.vessel.id] && serverVessels_IsPrivate[vesselTarget.part.vessel.id])
-							{
-								KMPClientMain.DebugLog("Tried to dock with private vessel");
-								ScreenMessages.PostScreenMessage("Can't dock - Target vessel is Private", 4f, ScreenMessageStyle.UPPER_CENTER);
-								FlightGlobals.fetch.SetVesselTarget(null);
-							}
+							KMPClientMain.DebugLog("Tried to target private vessel");
+							ScreenMessages.PostScreenMessage("Can't dock - Target vessel is Private", 4f, ScreenMessageStyle.UPPER_CENTER);
+							FlightGlobals.fetch.SetVesselTarget(null);
 						}
 					}
 				}
@@ -1497,6 +1505,7 @@ namespace KMP
 					serverVessels_InUse[vessel_update.id] = vessel_update.state == State.ACTIVE;
 					serverVessels_IsPrivate[vessel_update.id] = vessel_update.isPrivate;
 					serverVessels_IsMine[vessel_update.id] = vessel_update.isMine;
+					KMPClientMain.DebugLog("status flags updated: " + (vessel_update.state == State.ACTIVE) + " " + vessel_update.isPrivate + " " + vessel_update.isMine);
 					if (vessel_update.situation == Situation.DESTROYED)
 					{
 						KMPClientMain.DebugLog("killing vessel");
