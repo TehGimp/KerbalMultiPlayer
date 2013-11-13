@@ -4005,6 +4005,36 @@ namespace KMP
 			return Vector3d.Distance(kscPosition, projectedPos) < safetyBubbleRadius;
 		}
 		
+		private double horizontalDistanceToSafetyBubbleEdge(Vector3d pos, CelestialBody body, double altitude)
+		{
+			//Assume Kerbin if body isn't supplied for some reason
+			if (body == null) body = FlightGlobals.Bodies.Find(b => b.name == "Kerbin");
+			
+			//If KSC out of range, syncing, not at Kerbin, or past ceiling we're definitely clear
+			if (kscPosition == Vector3d.zero || syncing || body.name != "Kerbin" || altitude > SAFETY_BUBBLE_CEILING)
+				return -1d;
+			
+			//Cylindrical safety bubble -- project vessel position to a plane positioned at KSC with normal pointed away from surface
+			Vector3d kscNormal = body.GetSurfaceNVector(-0.102668048654,-74.5753856554);
+			double projectionDistance = Vector3d.Dot(kscNormal, (pos - kscPosition)) * -1;
+			Vector3d projectedPos = pos + (Vector3d.Normalize(kscNormal)*projectionDistance);
+			
+			return safetyBubbleRadius - Vector3d.Distance(kscPosition, projectedPos);
+		}
+		
+		private double verticalDistanceToSafetyBubbleEdge(Vector3d pos, CelestialBody body, double altitude)
+		{
+			//Assume Kerbin if body isn't supplied for some reason
+			if (body == null) body = FlightGlobals.Bodies.Find(b => b.name == "Kerbin");
+			
+			//If KSC out of range, syncing, not at Kerbin, or past ceiling we're definitely clear
+			if (kscPosition == Vector3d.zero || syncing || body.name != "Kerbin" || altitude > SAFETY_BUBBLE_CEILING)
+				return -1d;
+			
+			
+			return SAFETY_BUBBLE_CEILING - altitude;
+		}
+		
 		//This code adapted from Kerbal Engineer Redux source
 		private void CheckEditorLock()
 		{
