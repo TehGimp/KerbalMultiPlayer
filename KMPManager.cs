@@ -2508,40 +2508,39 @@ namespace KMP
 		{
 			try
 			{
-				if (KSP.IO.File.Exists<KMPManager>(GLOBAL_SETTINGS_FILENAME))
+				//Deserialize global settings from file
+				//byte[] bytes = KSP.IO.File.ReadAllBytes<KMPManager>(GLOBAL_SETTINGS_FILENAME); //Apparently KSP.IO.File.ReadAllBytes is broken
+				byte[] bytes = System.IO.File.ReadAllBytes("GameData/KMP/Plugins/PluginData/KerbalMultiPlayer/" + GLOBAL_SETTINGS_FILENAME);
+				object deserialized = KSP.IO.IOUtils.DeserializeFromBinary(bytes);
+
+				if (deserialized is KMPGlobalSettings)
 				{
-					//Deserialize global settings from file
-					byte[] bytes = KSP.IO.File.ReadAllBytes<KMPManager>(GLOBAL_SETTINGS_FILENAME);
-					object deserialized = KSP.IO.IOUtils.DeserializeFromBinary(bytes);
-					if (deserialized is KMPGlobalSettings)
-					{
-						KMPGlobalSettings.instance = (KMPGlobalSettings)deserialized;
+					KMPGlobalSettings.instance = (KMPGlobalSettings)deserialized;
 
-						//Apply deserialized global settings
-						KMPInfoDisplay.infoWindowPos.x = KMPGlobalSettings.instance.infoDisplayWindowX;
-						KMPInfoDisplay.infoWindowPos.y = KMPGlobalSettings.instance.infoDisplayWindowY;
+					//Apply deserialized global settings
+					KMPInfoDisplay.infoWindowPos.x = KMPGlobalSettings.instance.infoDisplayWindowX;
+					KMPInfoDisplay.infoWindowPos.y = KMPGlobalSettings.instance.infoDisplayWindowY;
 
-						if (KMPGlobalSettings.instance.guiToggleKey == KeyCode.None)
-							KMPGlobalSettings.instance.guiToggleKey = KeyCode.F7;
+					if (KMPGlobalSettings.instance.guiToggleKey == KeyCode.None)
+						KMPGlobalSettings.instance.guiToggleKey = KeyCode.F7;
 
-						if (KMPGlobalSettings.instance.screenshotKey != KeyCode.None)
-							KMPGlobalSettings.instance.screenshotKey = KeyCode.F8;
+					if (KMPGlobalSettings.instance.screenshotKey != KeyCode.None)
+						KMPGlobalSettings.instance.screenshotKey = KeyCode.F8;
 
-                        if (KMPGlobalSettings.instance.chatTalkKey == KeyCode.None)
-                            KMPGlobalSettings.instance.chatTalkKey = KeyCode.BackQuote;
+                    if (KMPGlobalSettings.instance.chatTalkKey == KeyCode.None)
+                        KMPGlobalSettings.instance.chatTalkKey = KeyCode.BackQuote;
 
-                        if (KMPGlobalSettings.instance.chatHideKey == KeyCode.None)
-                            KMPGlobalSettings.instance.chatHideKey = KeyCode.F9;
+                    if (KMPGlobalSettings.instance.chatHideKey == KeyCode.None)
+                        KMPGlobalSettings.instance.chatHideKey = KeyCode.F9;
 
-						KMPScreenshotDisplay.windowPos.x = KMPGlobalSettings.instance.screenshotDisplayWindowX;
-						KMPScreenshotDisplay.windowPos.y = KMPGlobalSettings.instance.screenshotDisplayWindowY;
+					KMPScreenshotDisplay.windowPos.x = KMPGlobalSettings.instance.screenshotDisplayWindowX;
+					KMPScreenshotDisplay.windowPos.y = KMPGlobalSettings.instance.screenshotDisplayWindowY;
 
-						KMPChatDisplay.windowPos.x = KMPGlobalSettings.instance.chatDisplayWindowX;
-						KMPChatDisplay.windowPos.y = KMPGlobalSettings.instance.chatDisplayWindowY;
+					KMPChatDisplay.windowPos.x = KMPGlobalSettings.instance.chatDisplayWindowX;
+					KMPChatDisplay.windowPos.y = KMPGlobalSettings.instance.chatDisplayWindowY;
 
-                        KMPChatDX.windowPos.x = KMPGlobalSettings.instance.chatDXDisplayWindowX;
-                        KMPChatDisplay.windowPos.y = KMPGlobalSettings.instance.chatDXDisplayWindowY;
-					}
+                    KMPChatDX.windowPos.x = KMPGlobalSettings.instance.chatDXDisplayWindowX;
+                    KMPChatDisplay.windowPos.y = KMPGlobalSettings.instance.chatDXDisplayWindowY;
 				}
 			}
 			catch (KSP.IO.IOException)
@@ -2553,7 +2552,6 @@ namespace KMP
 
 		public void Awake()
 		{
-			Debug.Log("KMP loaded");
 			DontDestroyOnLoad(this);
 			CancelInvoke();
 			InvokeRepeating("updateStep", 1/30.0f, 1/30.0f);
@@ -2567,6 +2565,7 @@ namespace KMP
             {
                 platform = PlatformID.Unix;
             }
+			Debug.Log("KMP loaded");
 		}
 		
 		private void Start()
