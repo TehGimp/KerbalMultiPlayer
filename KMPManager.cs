@@ -158,6 +158,7 @@ namespace KMP
 		private bool configRead = false;
 
 		public double safetyBubbleRadius = 20000d;
+		private bool isVerified = false;
 		
 		public bool globalUIToggle
 		{
@@ -3290,6 +3291,11 @@ namespace KMP
 				KMPClientMain.readConfigFile();
 				configRead = true;
 			}
+			if (!isVerified)
+			{
+				KMPClientMain.verifyShipsDirectory();
+				isVerified = true;
+			}
 			if (KMPClientMain.handshakeCompleted && KMPClientMain.tcpSocket != null)
 			{
 				if (KMPClientMain.tcpSocket.Connected && !gameRunning)
@@ -3471,9 +3477,14 @@ namespace KMP
 					GUILayoutOption[] status_options = new GUILayoutOption[1];
 					status_options[0] = GUILayout.MaxWidth(310);
 
-					if (String.IsNullOrEmpty(KMPClientMain.GetUsername())) GUILayout.Label("Please specify a username",status_options);
-					else if (String.IsNullOrEmpty(KMPConnectionDisplay.activeHostname)) GUILayout.Label("Please add or select a server",status_options);
-					else GUILayout.Label(KMPClientMain.message,status_options);
+					if (String.IsNullOrEmpty(KMPClientMain.GetUsername()))
+						GUILayout.Label("Please specify a username", status_options);
+					else if (String.IsNullOrEmpty(KMPConnectionDisplay.activeHostname))
+						GUILayout.Label("Please add or select a server", status_options);
+					else if (!KMPClientMain.startSaveExists())
+						GUILayout.Label("ERROR!  Start save missing!  Verify client installation!", status_options);
+					else
+						GUILayout.Label(KMPClientMain.message, status_options);
 			
 				GUILayout.EndVertical();
 			GUILayout.EndHorizontal();
