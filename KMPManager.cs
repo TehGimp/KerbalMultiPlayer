@@ -4005,7 +4005,7 @@ namespace KMP
 			return Vector3d.Distance(kscPosition, projectedPos) < safetyBubbleRadius;
 		}
 		
-		private double horizontalDistanceToSafetyBubbleEdge(Vector3d pos, CelestialBody body, double altitude)
+		public double horizontalDistanceToSafetyBubbleEdge(Vector3d pos, CelestialBody body, double altitude)
 		{
 			//Assume Kerbin if body isn't supplied for some reason
 			if (body == null) body = FlightGlobals.Bodies.Find(b => b.name == "Kerbin");
@@ -4022,7 +4022,7 @@ namespace KMP
 			return safetyBubbleRadius - Vector3d.Distance(kscPosition, projectedPos);
 		}
 		
-		private double verticalDistanceToSafetyBubbleEdge(Vector3d pos, CelestialBody body, double altitude)
+		public double verticalDistanceToSafetyBubbleEdge(Vector3d pos, CelestialBody body, double altitude)
 		{
 			//Assume Kerbin if body isn't supplied for some reason
 			if (body == null) body = FlightGlobals.Bodies.Find(b => b.name == "Kerbin");
