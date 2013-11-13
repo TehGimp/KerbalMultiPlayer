@@ -2054,6 +2054,7 @@ namespace KMPServer
                         sb.Append("!help - Displays this message\n");
                         sb.Append("!list - View all connected players\n");
                         sb.Append("!quit - Leaves the server\n");
+                        sb.Append("!sharecraft <craftname> - Shares the craft of name <craftname> with all other players\n")
                         sb.Append("!getcraft <playername> - Gets the most recent craft shared by the specified player\n");
                         sb.Append("!motd - Displays Server MOTD\n");
                         sb.Append("!rules - Displays Server Rules\n");
