@@ -2052,7 +2052,7 @@ namespace KMPServer
                     }
                     else if (message_lower == "!help")
                     {
-                        sb.Append("Available Server Commands:\n");
+                        sb.Append("Available Chat Commands:\n");
                         sb.Append("!help - Displays this message\n");
                         sb.Append("!list - View all connected players\n");
                         sb.Append("!quit - Leaves the server\n");
