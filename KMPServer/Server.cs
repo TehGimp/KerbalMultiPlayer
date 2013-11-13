@@ -721,8 +721,7 @@ namespace KMPServer
                 {
                     try
                     {
-                        Guid parser = new Guid(args[1]);
-                        String guid = parser.ToString();
+                        Guid guid = new Guid(args[1]);
                         String username_lower = args[0].ToLower();
                         DbCommand cmd = universeDB.CreateCommand();
                         string sql = "UPDATE kmpPlayer SET Name=@username, Guid=@guid WHERE Name LIKE @username OR Guid = @guid;";
