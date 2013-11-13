@@ -2546,6 +2546,9 @@ namespace KMP
 			catch (KSP.IO.IOException)
 			{
 			}
+			catch (System.IO.IOException)
+			{
+			}
 		}
 
 		//MonoBehaviour
