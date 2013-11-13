@@ -380,34 +380,41 @@ namespace KMPServer
                 Boolean bRunning = true;
                 while (bRunning)
                 {
-                    String rawInput = Console.ReadLine();
-					String input = rawInput.ToLower();
-                    var rawParts = rawInput.Split(new char[] { ' ' }, 2);
-					var parts = input.Split(new char[] { ' ' }, 2);
-                    //if (!parts[0].StartsWith("/")) { return; } //Allow server to send chat messages
-                    switch (parts[0])
-                    {
-                        case "/ban": banServerCommand(parts); break;
-                        case "/clearclients": clearClientsServerCommand(); break;
-                        case "/countclients": countServerCommand(); break;
-                        case "/help": displayCommands(); break;
-                        case "/kick": kickServerCommand(parts); break;
-                        case "/listclients": listServerCommand(); break;
-                        case "/quit":
-                        case "/stop": quitServerCommand(parts); bRunning = false; break;
-                        case "/save": saveServerCommand(); break;
-                        case "/register": registerServerCommand(parts); break;
-                        case "/update": updateServerCommand(input); break;
-                        case "/unregister": unregisterServerCommand(parts); break;
-                        case "/dekessler": dekesslerServerCommand(parts); break;
-                        case "/countships": countShipsServerCommand(); break;
-                        case "/listships": listShipsServerCommand(); break;
-						case "/say": sayServerCommand(rawParts); break;
-						case "/motd": motdServerCommand(rawParts); break;
-						case "/rules": rulesServerCommand(rawParts); break;
-						case "/setinfo": serverInfoServerCommand(rawParts);break;
-                        default: Log.Info("Unknown Command: "+input); break;
-                    }
+					try
+					{
+	                    String rawInput = Console.ReadLine();
+						String cleanInput = rawInput.ToLower().Trim();
+	                    var rawParts = rawInput.Split(new char[] { ' ' }, 2);
+						var parts = cleanInput.Split(new char[] { ' ' }, 2);
+	                    //if (!parts[0].StartsWith("/")) { return; } //Allow server to send chat messages
+	                    switch (parts[0])
+	                    {
+	                        case "/ban": banServerCommand(parts); break;
+	                        case "/clearclients": clearClientsServerCommand(); break;
+	                        case "/countclients": countServerCommand(); break;
+	                        case "/help": displayCommands(); break;
+	                        case "/kick": kickServerCommand(parts); break;
+	                        case "/listclients": listServerCommand(); break;
+	                        case "/quit":
+	                        case "/stop": quitServerCommand(parts); bRunning = false; break;
+	                        case "/save": saveServerCommand(); break;
+	                        case "/register": registerServerCommand(parts); break;
+	                        case "/update": updateServerCommand(cleanInput); break;
+	                        case "/unregister": unregisterServerCommand(parts); break;
+	                        case "/dekessler": dekesslerServerCommand(parts); break;
+	                        case "/countships": countShipsServerCommand(); break;
+	                        case "/listships": listShipsServerCommand(); break;
+							case "/say": sayServerCommand(rawParts); break;
+							case "/motd": motdServerCommand(rawParts); break;
+							case "/rules": rulesServerCommand(rawParts); break;
+							case "/setinfo": serverInfoServerCommand(rawParts);break;
+	                        default: Log.Info("Unknown Command: "+cleanInput); break;
+                    	}
+					}
+					catch (FormatException e)
+					{
+						Log.Error("Error handling server command. Maybe a typo? {0} {1}", e.Message,e.StackTrace);
+					}
                 }
             }
             catch (ThreadAbortException)
