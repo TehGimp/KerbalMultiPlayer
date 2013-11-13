@@ -576,7 +576,7 @@ namespace KMPServer
                 {
                     DbCommand cmd = universeDB.CreateCommand();
                     string sql = "UPDATE kmpPlayer SET Guid = @newGuid WHERE Guid = @guid;";
-                    cmd.Parameters.AddWithValue("newGuid", Guid.NewGuid().ToString());
+                    cmd.Parameters.AddWithValue("newGuid", Guid.NewGuid());
                     cmd.Parameters.AddWithValue("guid", guid);
                     cmd.CommandText = sql;
                     cmd.ExecuteNonQuery();
@@ -681,8 +681,7 @@ namespace KMPServer
             {
                 try
                 {
-                    Guid parser = new Guid(args[1]);
-                    String guid = parser.ToString();
+                    Guid guid = new Guid(args[1]);
                     String username_lower = args[0].ToLower();
 
                     DbCommand cmd = universeDB.CreateCommand();
@@ -2715,7 +2714,7 @@ namespace KMPServer
                 " WHERE vu.Subspace = @curSubspace AND v.Guid = @vessel;";
             cmd.CommandText = sql;
             cmd.Parameters.AddWithValue("curSubspace", cl.currentSubspaceID.ToString("D"));
-            cmd.Parameters.AddWithValue("vessel", vessel.ToString());
+            cmd.Parameters.AddWithValue("vessel", vessel);
             DbDataReader reader = cmd.ExecuteReader();
             try
             {
