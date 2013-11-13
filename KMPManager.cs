@@ -277,7 +277,7 @@ namespace KMP
 				{
 					foreach (Vessel vessel in FlightGlobals.Vessels.FindAll(v => v.vesselName.Contains("> Debris")))
 					{
-						try { if (!part.vessel.isEVA) vessel.Die();} catch {}
+						try { if (!vessel.isEVA) vessel.Die();} catch {}
 					}
 				}
 				
@@ -1281,18 +1281,6 @@ namespace KMP
 			yield return new WaitForEndOfFrame();
 			KMPClientMain.DebugLog("sending subspace sync request to subspace " + subspace);
 			if (!docking) writePluginUpdate();
-			Vessel[] clearVessels = new Vessel[FlightGlobals.Vessels.Count];
-			FlightGlobals.Vessels.CopyTo(clearVessels);
-			try {
-				foreach (Vessel vessel in clearVessels)
-				{
-					if (!vessel.isEVA && (FlightGlobals.ActiveVessel == null || vessel != FlightGlobals.ActiveVessel))
-					{
-						KMPClientMain.DebugLog("clearing vessel");
-						try {vessel.Die();} catch {}
-					}
-				}
-			} catch {}
 			byte[] update_bytes = KMPCommon.intToBytes(subspace);
 			enqueuePluginInteropMessage(KMPCommon.PluginInteropMessageID.SSYNC, update_bytes);
 			showServerSync = false;
