@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Globalization;
 
 using System.Net;
 using System.Net.Sockets;
@@ -706,6 +707,7 @@ namespace KMP
 
 		static void handleChatInput(String line)
 		{
+			StringBuilder sb = new StringBuilder();
 			if (line.Length > 0)
 			{
 				if (quitHelperMessageShow && (line == "q" || line == "Q"))
@@ -739,6 +741,30 @@ namespace KMP
 						handled = true;
 						debugging = !debugging;
 						enqueuePluginChatMessage("debug " + debugging);
+					}
+					else if (line_lower == "!bubble")
+					{
+						if(gameManager.horizontalDistanceToSafetyBubbleEdge() < 1 || gameManager.verticalDistanceToSafetyBubbleEdge() < 1)
+						{
+							sb.Append("The bubble radius is: "); 
+							sb.Append(gameManager.safetyBubbleRadius.ToString("N1", CultureInfo.CreateSpecificCulture("en-US")));
+							sb.Append("m\n");
+							sb.Append("You are outside of the bubble!");
+						}
+						else
+						{
+							sb.Append("The bubble radius is: "); 
+							sb.Append(gameManager.safetyBubbleRadius.ToString("N1", CultureInfo.CreateSpecificCulture("en-US")));
+							sb.Append("m\n");
+							sb.Append("You are ");
+							sb.Append(gameManager.verticalDistanceToSafetyBubbleEdge().ToString("N1", CultureInfo.CreateSpecificCulture("en-US")));
+							sb.Append("m away from the bubble top.\n");
+							sb.Append("You are ");
+							sb.Append(gameManager.horizontalDistanceToSafetyBubbleEdge().ToString("N1", CultureInfo.CreateSpecificCulture("en-US")));
+							sb.Append("m away from the nearest bubble side.");
+						}
+							enqueuePluginChatMessage(sb.ToString());
+							handled = true;
 					}
 					else if (line_lower.Length > (KMPCommon.SHARE_CRAFT_COMMAND.Length + 1)
 						&& line_lower.Substring(0, KMPCommon.SHARE_CRAFT_COMMAND.Length) == KMPCommon.SHARE_CRAFT_COMMAND)
