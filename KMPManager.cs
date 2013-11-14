@@ -24,7 +24,8 @@ namespace KMP
 		public KMPManager()
 		{
 			//Initialize client
-			KMPClientMain.InitMPClient(this);	
+			KMPClientMain.InitMPClient(this);
+			Debug.Log("Client Initialized.");
 		}
 		
 		public struct VesselEntry
@@ -2550,6 +2551,10 @@ namespace KMP
 				success = false;
 			}
 			catch (System.IO.IOException)
+			{
+				success = false;
+			}
+			catch (System.IO.IsolatedStorage.IsolatedStorageException e)
 			{
 				success = false;
 			}
