@@ -18,7 +18,7 @@ public class KMPCommon
     }
 
 	public const Int32 FILE_FORMAT_VERSION = 10000;
-	public const Int32 NET_PROTOCOL_VERSION = 10004;
+	public const Int32 NET_PROTOCOL_VERSION = 10005;
 	public const int MSG_HEADER_LENGTH = 8;
     public const int MAX_MESSAGE_SIZE = 1024 * 1024; //Enough room for a max-size craft file
 	public const int MESSAGE_COMPRESSION_THRESHOLD = 4096;
@@ -28,7 +28,7 @@ public class KMPCommon
 
 	public const int MAX_CRAFT_FILE_BYTES = 1024 * 1024;
 
-	public const String SHARE_CRAFT_COMMAND = "/sharecraft";//"/" chat commands handled by client
+	public const String SHARE_CRAFT_COMMAND = "!sharecraft";//"/" chat commands handled by client
 	public const String GET_CRAFT_COMMAND = "!getcraft";	//"!" chat commands handled by server
 
 	public const byte CRAFT_TYPE_VAB = 0;

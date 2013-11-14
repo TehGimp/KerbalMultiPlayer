@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Globalization;
 
 using System.Net;
 using System.Net.Sockets;
@@ -706,40 +707,69 @@ namespace KMP
 
 		static void handleChatInput(String line)
 		{
+			StringBuilder sb = new StringBuilder();
 			if (line.Length > 0)
 			{
 				if (quitHelperMessageShow && (line == "q" || line == "Q"))
 				{
-					enqueuePluginChatMessage("If you are trying to quit, use the /quit command.", true);
+					enqueuePluginChatMessage("If you are trying to quit, use the !quit command.", true);
 					quitHelperMessageShow = false;
 				}
-
-				if (line.ElementAt(0) == '/')
+				bool handled = false;
+				if (line.ElementAt(0) == '!')
 				{
 					String line_lower = line.ToLower();
 
-					if (line_lower == "/quit")
+					if (line_lower == "!quit")
 					{
+						handled = true;
 						intentionalConnectionEnd = true;
 						endSession = true;
 						sendConnectionEndMessage("Quit");
 					}
-					else if (line_lower == "/ping")
+					else if (line_lower == "!ping")
 					{
+						handled = true;
 						if (!pingStopwatch.IsRunning)
 						{
 							sendMessageTCP(KMPCommon.ClientMessageID.PING, null);
 							pingStopwatch.Start();
 						}
 					}
-					else if (line_lower == "/debug")
+					else if (line_lower == "!debug")
 					{
+						handled = true;
 						debugging = !debugging;
 						enqueuePluginChatMessage("debug " + debugging);
+					}
+					else if (line_lower == "!bubble")
+					{
+						if(gameManager.horizontalDistanceToSafetyBubbleEdge() < 1 || gameManager.verticalDistanceToSafetyBubbleEdge() < 1)
+						{
+							sb.Append("The bubble radius is: "); 
+							sb.Append(gameManager.safetyBubbleRadius.ToString("N1", CultureInfo.CreateSpecificCulture("en-US")));
+							sb.Append("m\n");
+							sb.Append("You are outside of the bubble!");
+						}
+						else
+						{
+							sb.Append("The bubble radius is: "); 
+							sb.Append(gameManager.safetyBubbleRadius.ToString("N1", CultureInfo.CreateSpecificCulture("en-US")));
+							sb.Append("m\n");
+							sb.Append("You are ");
+							sb.Append(gameManager.verticalDistanceToSafetyBubbleEdge().ToString("N1", CultureInfo.CreateSpecificCulture("en-US")));
+							sb.Append("m away from the bubble top.\n");
+							sb.Append("You are ");
+							sb.Append(gameManager.horizontalDistanceToSafetyBubbleEdge().ToString("N1", CultureInfo.CreateSpecificCulture("en-US")));
+							sb.Append("m away from the nearest bubble side.");
+						}
+							enqueuePluginChatMessage(sb.ToString());
+							handled = true;
 					}
 					else if (line_lower.Length > (KMPCommon.SHARE_CRAFT_COMMAND.Length + 1)
 						&& line_lower.Substring(0, KMPCommon.SHARE_CRAFT_COMMAND.Length) == KMPCommon.SHARE_CRAFT_COMMAND)
 					{
+						handled = true;
 						//Share a craft file
 						String craft_name = line.Substring(KMPCommon.SHARE_CRAFT_COMMAND.Length + 1);
 						byte craft_type = 0;
@@ -763,7 +793,7 @@ namespace KMP
 					}
 
 				}
-				else
+				if (!handled)
 				{
 					sendTextMessage(line);
 				}
@@ -920,8 +950,13 @@ namespace KMP
 						}
 
 						//Send a probe message to try to establish a udp connection
-						if ((stopwatch.ElapsedMilliseconds - last_udp_send) > UDP_PROBE_DELAY)
-							sendUDPProbeMessage();
+						if ((stopwatch.ElapsedMilliseconds - last_udp_send) > UDP_TIMEOUT_DELAY)
+						{
+							sendUDPProbeMessage(true);
+							KMPClientMain.DebugLog("PROBE");
+						}
+						else if ((stopwatch.ElapsedMilliseconds - last_udp_send) > UDP_PROBE_DELAY)
+							sendUDPProbeMessage(false);
 
 					}
 
@@ -1401,22 +1436,34 @@ namespace KMP
 		{
 			try
 			{
-				
 				XmlDocument xmlDoc = new XmlDocument();
-				String sPath = KSP.IO.IOUtils.GetFilePathFor(typeof(KMPClientMain), CLIENT_CONFIG_FILENAME);  // Get the Client config file path
-
-				if (!System.IO.File.Exists(sPath))  // Build a default style
+				String sPath = "";
+				try
 				{
-					xmlDoc.LoadXml(String.Format("<?xml version=\"1.0\"?><settings><global {0}=\"\" {1}=\"\" {2}=\"\"/><favourites></favourites></settings>", USERNAME_LABEL, IP_LABEL, AUTO_RECONNECT_LABEL));
-					xmlDoc.Save(sPath);
+					sPath = KSP.IO.IOUtils.GetFilePathFor(typeof(KMPClientMain), CLIENT_CONFIG_FILENAME);  // Get the Client config file path
+		
+					if (!System.IO.File.Exists(sPath))  // Build a default style
+					{
+						xmlDoc.LoadXml(String.Format("<?xml version=\"1.0\"?><settings><global {0}=\"\" {1}=\"\" {2}=\"\"/><favourites></favourites></settings>", USERNAME_LABEL, IP_LABEL, AUTO_RECONNECT_LABEL));
+						xmlDoc.Save(sPath);
+					}
+					
+					xmlDoc.Load(sPath);
 				}
-				
-				xmlDoc.Load(sPath);
-
+				catch
+				{
+					try
+					{
+						xmlDoc.LoadXml(String.Format("<?xml version=\"1.0\"?><settings><global {0}=\"\" {1}=\"\" {2}=\"\"/><favourites></favourites></settings>", USERNAME_LABEL, IP_LABEL, AUTO_RECONNECT_LABEL));
+						xmlDoc.Save(sPath);
+						xmlDoc.Load(sPath);
+					} catch { }
+					
+				}
 				username = xmlDoc.SelectSingleNode("/settings/global/@"+USERNAME_LABEL).Value;
 				hostname = xmlDoc.SelectSingleNode("/settings/global/@" + IP_LABEL).Value;
 				bool.TryParse(xmlDoc.SelectSingleNode("/settings/global/@" + AUTO_RECONNECT_LABEL).Value, out autoReconnect);
-
+	
 				XmlNodeList elemList = xmlDoc.GetElementsByTagName("favourite");
 				foreach(XmlNode xmlNode in elemList)
 				{
@@ -1427,12 +1474,13 @@ namespace KMP
 						favorites[nPos] = xmlNode.Attributes[IP_LABEL].Value;
 					}
 				}
+			} catch {
+				username = "";
+				hostname = "";
+				autoReconnect = true;
+			}
 				
-			}
-			catch
-			{
-
-			}
+			
 			
 			try
 			{
@@ -1862,11 +1910,12 @@ namespace KMP
 //		    }
 //		}
 
-		private static void sendUDPProbeMessage()
+		private static void sendUDPProbeMessage(bool forceUDP)
 		{
 			byte[] time = null;
 			if (gameManager.lastTick > 0d) time = BitConverter.GetBytes(gameManager.lastTick);
-			if (udpConnected) sendMessageUDP(KMPCommon.ClientMessageID.UDP_PROBE, time);
+			if (udpConnected || forceUDP)//Always try UDP periodically
+				sendMessageUDP(KMPCommon.ClientMessageID.UDP_PROBE, time);
 			else sendMessageTCP(KMPCommon.ClientMessageID.UDP_PROBE, time);
 		}
 
@@ -1945,6 +1994,34 @@ namespace KMP
 //				debugLog.WriteLine(logEntry);
 //				debugLog.Close();
 //			}
+		}
+
+		internal static void verifyShipsDirectory()
+		{
+			char cSep = '/';
+			String sPath = String.Format(System.IO.Directory.GetCurrentDirectory()+"{0}saves{1}KMP", cSep, cSep);
+			if (!System.IO.Directory.Exists(sPath))
+				System.IO.Directory.CreateDirectory(sPath);
+			sPath += cSep+"Ships";
+			DebugLog(sPath);
+			if(!System.IO.Directory.Exists(sPath))
+				System.IO.Directory.CreateDirectory(sPath);
+
+			if(!System.IO.Directory.Exists(sPath + cSep + "VAB"))
+				System.IO.Directory.CreateDirectory(sPath + cSep + "VAB");
+
+			if(!System.IO.Directory.Exists(sPath + cSep + "SPH"))
+				System.IO.Directory.CreateDirectory(sPath + cSep + "SPH");
+		}
+
+		internal static bool startSaveExists()
+		{
+			char cSep = '/';
+			String sPath = String.Format(System.IO.Directory.GetCurrentDirectory()+"{0}saves{1}KMP{2}", cSep, cSep, cSep);
+			if (!System.IO.File.Exists(sPath + "start.sfs"))
+				return false;
+			else
+				return true;
 		}
 	}
 	

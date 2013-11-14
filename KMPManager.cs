@@ -24,7 +24,8 @@ namespace KMP
 		public KMPManager()
 		{
 			//Initialize client
-			KMPClientMain.InitMPClient(this);	
+			KMPClientMain.InitMPClient(this);
+			Debug.Log("Client Initialized.");
 		}
 		
 		public struct VesselEntry
@@ -69,6 +70,8 @@ namespace KMP
 		public const float INTEROP_WRITE_TIMEOUT = 6.0f;
 		
 		public const float FULL_PROTOVESSEL_UPDATE_TIMEOUT = 45f;
+
+		public const double PRIVATE_VESSEL_MIN_TARGET_DISTANCE = 500d;
 
 		public UnicodeEncoding encoder = new UnicodeEncoding();
 
@@ -158,6 +161,7 @@ namespace KMP
 		private bool configRead = false;
 
 		public double safetyBubbleRadius = 20000d;
+		private bool isVerified = false;
 		
 		public bool globalUIToggle
 		{
@@ -276,7 +280,7 @@ namespace KMP
 				{
 					foreach (Vessel vessel in FlightGlobals.Vessels.FindAll(v => v.vesselName.Contains("> Debris")))
 					{
-						try {vessel.Die();} catch {}
+						try { if (!vessel.isEVA) vessel.Die();} catch {}
 					}
 				}
 				
@@ -301,16 +305,30 @@ namespace KMP
 						return;
 					}
 				}
-				if (isInFlight && !docking)
+				if (isInFlight && !docking && FlightGlobals.fetch.VesselTarget != null)
 				{
-					if (FlightGlobals.fetch.VesselTarget != null && FlightGlobals.fetch.VesselTarget is ModuleDockingNode)
+					//Get targeted vessel
+					Vessel vesselTarget = null;
+					if (FlightGlobals.fetch.VesselTarget is ModuleDockingNode)
 					{
-						ModuleDockingNode vesselTarget = (ModuleDockingNode) FlightGlobals.fetch.VesselTarget;
-						if (vesselTarget.part.vessel != null && serverVessels_IsPrivate.ContainsKey(vesselTarget.part.vessel.id) && serverVessels_IsMine.ContainsKey(vesselTarget.part.vessel.id))
+						ModuleDockingNode moduleTarget = (ModuleDockingNode) FlightGlobals.fetch.VesselTarget;
+						if (moduleTarget.part.vessel != null) vesselTarget = moduleTarget.part.vessel;
+					}
+					if (FlightGlobals.fetch.VesselTarget is Vessel)
+					{
+						vesselTarget = (Vessel) FlightGlobals.fetch.VesselTarget;
+					}
+
+					if (vesselTarget != null) {
+
+						double distanceToTarget = Vector3d.Distance(vesselTarget.GetWorldPos3D(), FlightGlobals.ship_position);
+
+						//Check if target is private and too close
+						if (distanceToTarget < PRIVATE_VESSEL_MIN_TARGET_DISTANCE && serverVessels_IsPrivate.ContainsKey(vesselTarget.id) && serverVessels_IsMine.ContainsKey(vesselTarget.id))
 						{
-							if (!serverVessels_IsMine[vesselTarget.part.vessel.id] && serverVessels_IsPrivate[vesselTarget.part.vessel.id])
+							if (!serverVessels_IsMine[vesselTarget.id] && serverVessels_IsPrivate[vesselTarget.id])
 							{
-								KMPClientMain.DebugLog("Tried to dock with private vessel");
+								KMPClientMain.DebugLog("Tried to target private vessel");
 								ScreenMessages.PostScreenMessage("Can't dock - Target vessel is Private", 4f, ScreenMessageStyle.UPPER_CENTER);
 								FlightGlobals.fetch.SetVesselTarget(null);
 							}
@@ -358,8 +376,8 @@ namespace KMP
 							    && !(FlightGlobals.ActiveVessel.orbit.referenceBody.atmosphere && FlightGlobals.ActiveVessel.orbit.altitude < FlightGlobals.ActiveVessel.orbit.referenceBody.maxAtmosphereAltitude)) //and not in atmo
 							{
 								KMPClientMain.DebugLog("Krakensbane shift");
-								Vector3d diffPos = FlightGlobals.ActiveVessel.orbit.getPositionAtUT(targetTick) - FlightGlobals.ActiveVessel.GetWorldPos3D();
-								foreach (Vessel otherVessel in FlightGlobals.Vessels.Where(v => v.packed == false && (v.id != FlightGlobals.ActiveVessel.id || (v.loaded && Vector3d.Distance(FlightGlobals.ActiveVessel.GetWorldPos3D(),v.GetWorldPos3D()) < INACTIVE_VESSEL_RANGE))))
+								Vector3d diffPos = FlightGlobals.ActiveVessel.orbit.getPositionAtUT(targetTick) - FlightGlobals.ship_position;
+								foreach (Vessel otherVessel in FlightGlobals.Vessels.Where(v => v.packed == false && (v.id != FlightGlobals.ActiveVessel.id || (v.loaded && Vector3d.Distance(FlightGlobals.ship_position,v.GetWorldPos3D()) < INACTIVE_VESSEL_RANGE))))
 		                			otherVessel.GoOnRails();
 								getKrakensbane().setOffset(diffPos);
 								//Update velocity
@@ -437,13 +455,13 @@ namespace KMP
 				
 				
 				//Prevent cases of remaining unfixed NREs from remote vessel updates from creating an inconsistent game state
-				if (HighLogic.fetch.log.Count > 1000 && isInFlight && !syncing)
+				if (HighLogic.fetch.log.Count > 500 && isInFlight && !syncing)
 				{
 					bool forceResync = false; int nreCount = 0;
-					foreach (HighLogic.LogEntry logEntry in HighLogic.fetch.log.GetRange(HighLogic.fetch.log.Count-50,50))
+					foreach (HighLogic.LogEntry logEntry in HighLogic.fetch.log.GetRange(HighLogic.fetch.log.Count-100,100))
 			        {
 						if (logEntry.condition.Contains("NullReferenceException")) nreCount++;
-						if (nreCount >= 30)
+						if (nreCount >= 60)
 						{
 							forceResync = true;
 							break;
@@ -532,7 +550,7 @@ namespace KMP
 						serverVessels_PartCounts[vessel.id] = 0;
 						foreach (Part part in serverVessels_Parts[vessel.id])
 						{
-							try { part.vessel.Die(); } catch {}
+							try { if (!part.vessel.isEVA) part.vessel.Die(); } catch {}
 						}
 						ProtoVessel protovessel = new ProtoVessel(serverVessels_ProtoVessels[vessel.id], HighLogic.CurrentGame);
 						addRemoteVessel(protovessel,vessel.id);
@@ -572,7 +590,7 @@ namespace KMP
 			writePrimaryUpdate();
 			
 			//nearby vessels
-            if (isInFlight && !syncing && !warping && !isInSafetyBubble(FlightGlobals.ActiveVessel.GetWorldPos3D(),FlightGlobals.ActiveVessel.mainBody,FlightGlobals.ActiveVessel.altitude))
+            if (isInFlight && !syncing && !warping && !isInSafetyBubble(FlightGlobals.ship_position,FlightGlobals.ActiveVessel.mainBody,FlightGlobals.ActiveVessel.altitude))
 			{
 				writeSecondaryUpdates();
 			}
@@ -581,7 +599,7 @@ namespace KMP
 		private void writePrimaryUpdate()
 		{
 			if (!syncing && isInFlight && !warping
-                && !isInSafetyBubble(FlightGlobals.ActiveVessel.GetWorldPos3D(),FlightGlobals.ActiveVessel.mainBody,FlightGlobals.ActiveVessel.altitude))
+                && !isInSafetyBubble(FlightGlobals.ship_position,FlightGlobals.ActiveVessel.mainBody,FlightGlobals.ActiveVessel.altitude))
 			{
 				lastTick = Planetarium.GetUniversalTime();
 				//Write vessel status
@@ -703,7 +721,7 @@ namespace KMP
 				{
 					if (vessel != FlightGlobals.ActiveVessel && vessel.loaded && !vessel.name.Contains(" [Past]") && !vessel.name.Contains(" [Future]"))
 					{
-						float distance = (float)Vector3d.Distance(vessel.GetWorldPos3D(), FlightGlobals.ActiveVessel.GetWorldPos3D());
+						float distance = (float)Vector3d.Distance(vessel.GetWorldPos3D(), FlightGlobals.ship_position);
 						if (distance < INACTIVE_VESSEL_RANGE)
 						{
 							try
@@ -760,7 +778,7 @@ namespace KMP
 									w_pos = enumerator.Current.Value.findWorldCenterOfMass() - FlightGlobals.ActiveVessel.findWorldCenterOfMass();
 								} catch {
 									KMPClientMain.DebugLog("couldn't get CoM!");
-									w_pos = enumerator.Current.Value.GetWorldPos3D() - FlightGlobals.ActiveVessel.GetWorldPos3D();
+									w_pos = enumerator.Current.Value.GetWorldPos3D() - FlightGlobals.ship_position;
 								}
 								Vector3d o_vel = enumerator.Current.Value.GetObtVelocity() - FlightGlobals.ActiveVessel.GetObtVelocity();
 								update.clearProtoVessel();
@@ -1272,18 +1290,6 @@ namespace KMP
 			yield return new WaitForEndOfFrame();
 			KMPClientMain.DebugLog("sending subspace sync request to subspace " + subspace);
 			if (!docking) writePluginUpdate();
-			Vessel[] clearVessels = new Vessel[FlightGlobals.Vessels.Count];
-			FlightGlobals.Vessels.CopyTo(clearVessels);
-			try {
-				foreach (Vessel vessel in clearVessels)
-				{
-					if (FlightGlobals.ActiveVessel == null || vessel != FlightGlobals.ActiveVessel)
-					{
-						KMPClientMain.DebugLog("clearing vessel");
-						try {vessel.Die();} catch {}
-					}
-				}
-			} catch {}
 			byte[] update_bytes = KMPCommon.intToBytes(subspace);
 			enqueuePluginInteropMessage(KMPCommon.PluginInteropMessageID.SSYNC, update_bytes);
 			showServerSync = false;
@@ -1497,11 +1503,12 @@ namespace KMP
 					serverVessels_InUse[vessel_update.id] = vessel_update.state == State.ACTIVE;
 					serverVessels_IsPrivate[vessel_update.id] = vessel_update.isPrivate;
 					serverVessels_IsMine[vessel_update.id] = vessel_update.isMine;
+					KMPClientMain.DebugLog("status flags updated: " + (vessel_update.state == State.ACTIVE) + " " + vessel_update.isPrivate + " " + vessel_update.isMine);
 					if (vessel_update.situation == Situation.DESTROYED)
 					{
 						KMPClientMain.DebugLog("killing vessel");
 						Vessel extant_vessel = FlightGlobals.Vessels.Find(v => v.id == vessel_update.id);
-						if (extant_vessel != null) try { extant_vessel.Die(); } catch {}
+						if (extant_vessel != null && !extant_vessel.isEVA) try { extant_vessel.Die(); } catch {}
 						return;
 					}
 				}
@@ -1536,7 +1543,7 @@ namespace KMP
 						{
 							float incomingDistance = 2500f;
 							if (!syncing && vessel.worldPosition != Vector3.zero && vessel_update.relTime == RelativeTime.PRESENT)
-								incomingDistance = Vector3.Distance(vessel.worldPosition,FlightGlobals.ActiveVessel.GetWorldPos3D());
+								incomingDistance = Vector3.Distance(vessel.worldPosition,FlightGlobals.ship_position);
 							if (vessel_update.relTime != RelativeTime.PRESENT) incomingDistance = 3000f; //Never treat vessels from another time as close by
 						 	if (vessel_update.state == State.ACTIVE
 							    	|| vessel_update.isDockUpdate
@@ -1554,10 +1561,10 @@ namespace KMP
 										if (!extant_vessel.loaded)
 										{
 											if (KMPVessel.situationIsOrbital(vessel_update.situation))
-												ourDistance = Vector3.Distance(extant_vessel.orbit.getPositionAtUT(Planetarium.GetUniversalTime()), FlightGlobals.ActiveVessel.GetWorldPos3D());
-											else ourDistance = Vector3.Distance(oldPosition, FlightGlobals.ActiveVessel.GetWorldPos3D());
+												ourDistance = Vector3.Distance(extant_vessel.orbit.getPositionAtUT(Planetarium.GetUniversalTime()), FlightGlobals.ship_position);
+											else ourDistance = Vector3.Distance(oldPosition, FlightGlobals.ship_position);
 										}
-										else ourDistance = Vector3.Distance(extant_vessel.GetWorldPos3D(), FlightGlobals.ActiveVessel.GetWorldPos3D());
+										else ourDistance = Vector3.Distance(extant_vessel.GetWorldPos3D(), FlightGlobals.ship_position);
 										bool countMismatch = false;
 										ProtoVessel protovessel = null;
 										if (serverVessels_ProtoVessels.ContainsKey(vessel_update.id))
@@ -2092,7 +2099,7 @@ namespace KMP
 					KMPClientMain.DebugLog("killing known precursor vessels");
 					foreach (Part part in serverVessels_Parts[vessel_id])
 					{
-						try { part.vessel.Die(); } catch {}
+						try { if (!part.vessel.isEVA) part.vessel.Die(); } catch {}
 					}
 				}
 			} catch {}
@@ -2508,46 +2515,64 @@ namespace KMP
 
 		private void loadGlobalSettings()
 		{
+			bool success = false;
 			try
 			{
-				if (KSP.IO.File.Exists<KMPManager>(GLOBAL_SETTINGS_FILENAME))
+				//Deserialize global settings from file
+				//byte[] bytes = KSP.IO.File.ReadAllBytes<KMPManager>(GLOBAL_SETTINGS_FILENAME); //Apparently KSP.IO.File.ReadAllBytes is broken
+				byte[] bytes = System.IO.File.ReadAllBytes("GameData/KMP/Plugins/PluginData/KerbalMultiPlayer/" + GLOBAL_SETTINGS_FILENAME);
+				object deserialized = KSP.IO.IOUtils.DeserializeFromBinary(bytes);
+
+				if (deserialized is KMPGlobalSettings)
 				{
-					//Deserialize global settings from file
-					byte[] bytes = KSP.IO.File.ReadAllBytes<KMPManager>(GLOBAL_SETTINGS_FILENAME);
-					object deserialized = KSP.IO.IOUtils.DeserializeFromBinary(bytes);
-					if (deserialized is KMPGlobalSettings)
-					{
-						KMPGlobalSettings.instance = (KMPGlobalSettings)deserialized;
+					KMPGlobalSettings.instance = (KMPGlobalSettings)deserialized;
 
-						//Apply deserialized global settings
-						KMPInfoDisplay.infoWindowPos.x = KMPGlobalSettings.instance.infoDisplayWindowX;
-						KMPInfoDisplay.infoWindowPos.y = KMPGlobalSettings.instance.infoDisplayWindowY;
+					//Apply deserialized global settings
+					KMPInfoDisplay.infoWindowPos.x = KMPGlobalSettings.instance.infoDisplayWindowX;
+					KMPInfoDisplay.infoWindowPos.y = KMPGlobalSettings.instance.infoDisplayWindowY;
 
-						if (KMPGlobalSettings.instance.guiToggleKey == KeyCode.None)
-							KMPGlobalSettings.instance.guiToggleKey = KeyCode.F7;
+					if (KMPGlobalSettings.instance.guiToggleKey == KeyCode.None)
+						KMPGlobalSettings.instance.guiToggleKey = KeyCode.F7;
 
-						if (KMPGlobalSettings.instance.screenshotKey != KeyCode.None)
-							KMPGlobalSettings.instance.screenshotKey = KeyCode.F8;
+					if (KMPGlobalSettings.instance.screenshotKey != KeyCode.None)
+						KMPGlobalSettings.instance.screenshotKey = KeyCode.F8;
 
-                        if (KMPGlobalSettings.instance.chatTalkKey == KeyCode.None)
-                            KMPGlobalSettings.instance.chatTalkKey = KeyCode.BackQuote;
+                    if (KMPGlobalSettings.instance.chatTalkKey == KeyCode.None)
+                        KMPGlobalSettings.instance.chatTalkKey = KeyCode.BackQuote;
 
-                        if (KMPGlobalSettings.instance.chatHideKey == KeyCode.None)
-                            KMPGlobalSettings.instance.chatHideKey = KeyCode.F9;
+                    if (KMPGlobalSettings.instance.chatHideKey == KeyCode.None)
+                        KMPGlobalSettings.instance.chatHideKey = KeyCode.F9;
 
-						KMPScreenshotDisplay.windowPos.x = KMPGlobalSettings.instance.screenshotDisplayWindowX;
-						KMPScreenshotDisplay.windowPos.y = KMPGlobalSettings.instance.screenshotDisplayWindowY;
+					KMPScreenshotDisplay.windowPos.x = KMPGlobalSettings.instance.screenshotDisplayWindowX;
+					KMPScreenshotDisplay.windowPos.y = KMPGlobalSettings.instance.screenshotDisplayWindowY;
 
-						KMPChatDisplay.windowPos.x = KMPGlobalSettings.instance.chatDisplayWindowX;
-						KMPChatDisplay.windowPos.y = KMPGlobalSettings.instance.chatDisplayWindowY;
+					KMPChatDisplay.windowPos.x = KMPGlobalSettings.instance.chatDisplayWindowX;
+					KMPChatDisplay.windowPos.y = KMPGlobalSettings.instance.chatDisplayWindowY;
 
-                        KMPChatDX.windowPos.x = KMPGlobalSettings.instance.chatDXDisplayWindowX;
-                        KMPChatDisplay.windowPos.y = KMPGlobalSettings.instance.chatDXDisplayWindowY;
-					}
+                    KMPChatDX.windowPos.x = KMPGlobalSettings.instance.chatDXDisplayWindowX;
+                    KMPChatDisplay.windowPos.y = KMPGlobalSettings.instance.chatDXDisplayWindowY;
+					success = true;
 				}
 			}
 			catch (KSP.IO.IOException)
 			{
+				success = false;
+			}
+			catch (System.IO.IOException)
+			{
+				success = false;
+			}
+			catch (System.IO.IsolatedStorage.IsolatedStorageException e)
+			{
+				success = false;
+			}
+			if (!success)
+			{
+				try
+				{
+					KSP.IO.File.Delete<KMPManager>(GLOBAL_SETTINGS_FILENAME);
+				} catch {}
+				KMPGlobalSettings.instance = new KMPGlobalSettings();
 			}
 		}
 
@@ -2555,7 +2580,6 @@ namespace KMP
 
 		public void Awake()
 		{
-			Debug.Log("KMP loaded");
 			DontDestroyOnLoad(this);
 			CancelInvoke();
 			InvokeRepeating("updateStep", 1/30.0f, 1/30.0f);
@@ -2569,6 +2593,7 @@ namespace KMP
             {
                 platform = PlatformID.Unix;
             }
+			Debug.Log("KMP loaded");
 		}
 		
 		private void Start()
@@ -2642,7 +2667,7 @@ namespace KMP
 		private void OnVesselLoaded(Vessel data)
 		{
 			KMPClientMain.DebugLog("Vessel loaded: " + data.id);
-			//data.distancePackThreshold = Vector3.Distance(data.orbit.getPositionAtUT(Planetarium.GetUniversalTime()), FlightGlobals.ActiveVessel.GetWorldPos3D()) + 100f;
+			//data.distancePackThreshold = Vector3.Distance(data.orbit.getPositionAtUT(Planetarium.GetUniversalTime()), FlightGlobals.ship_position) + 100f;
 		}
 		
 		private void OnVesselTerminated(ProtoVessel data)
@@ -2702,15 +2727,14 @@ namespace KMP
 		{
 			if (syncing)
 			{
+				//Enable debug log for sync
+				KMPClientMain.debugging = true;
+				KMPClientMain.DebugLog("Requesting initial sync");
 				GameEvents.onFlightReady.Remove(this.OnFirstFlightReady);
 				GameEvents.onFlightReady.Add(this.OnFlightReady);
 				MapView.EnterMapView();
 				ScreenMessages.PostScreenMessage("Synchronizing universe, please wait...",30f,ScreenMessageStyle.UPPER_CENTER);
-				if (docking) 
-				{
-					KMPClientMain.DebugLog("Requesting docking re-sync");
-					StartCoroutine(sendSubspaceSyncRequest(-1,true));
-				}
+				StartCoroutine(sendSubspaceSyncRequest(-1,true));
 				Invoke("handleSyncTimeout",55f);
 				docking = false;
 			}
@@ -2749,8 +2773,8 @@ namespace KMP
 			{
 				ScreenMessages.PostScreenMessage("Universe synchronized",1f,ScreenMessageStyle.UPPER_RIGHT);
 				StartCoroutine(returnToSpaceCenter());
-				//Don't disable debug log automatically in first release
-				//KMPClientMain.debugging = false;
+				//Disable debug logging once synced unless explicitly enabled
+				KMPClientMain.debugging = false;
 			}
 		}
 
@@ -3175,7 +3199,7 @@ namespace KMP
 					StartCoroutine(shareScreenshot());
 				
 				GUIStyle syncButtonStyle = new GUIStyle(GUI.skin.button);
-				if (showServerSync && isInFlight)
+				if (showServerSync && isInFlight && FlightGlobals.ActiveVessel.ctrlState.mainThrottle == 0f)
 				{
 					syncButtonStyle.normal.textColor = new Color(0.28f, 0.86f, 0.94f);
 					syncButtonStyle.hover.textColor = new Color(0.48f, 0.96f, 0.96f);
@@ -3281,6 +3305,11 @@ namespace KMP
 			{
 				KMPClientMain.readConfigFile();
 				configRead = true;
+			}
+			if (!isVerified)
+			{
+				KMPClientMain.verifyShipsDirectory();
+				isVerified = true;
 			}
 			if (KMPClientMain.handshakeCompleted && KMPClientMain.tcpSocket != null)
 			{
@@ -3463,9 +3492,14 @@ namespace KMP
 					GUILayoutOption[] status_options = new GUILayoutOption[1];
 					status_options[0] = GUILayout.MaxWidth(310);
 
-					if (String.IsNullOrEmpty(KMPClientMain.GetUsername())) GUILayout.Label("Please specify a username",status_options);
-					else if (String.IsNullOrEmpty(KMPConnectionDisplay.activeHostname)) GUILayout.Label("Please add or select a server",status_options);
-					else GUILayout.Label(KMPClientMain.message,status_options);
+					if (String.IsNullOrEmpty(KMPClientMain.GetUsername()))
+						GUILayout.Label("Please specify a username", status_options);
+					else if (String.IsNullOrEmpty(KMPConnectionDisplay.activeHostname))
+						GUILayout.Label("Please add or select a server", status_options);
+					else if (!KMPClientMain.startSaveExists())
+						GUILayout.Label("ERROR!  Start save missing!  Verify client installation!", status_options);
+					else
+						GUILayout.Label(KMPClientMain.message, status_options);
 			
 				GUILayout.EndVertical();
 			GUILayout.EndHorizontal();
@@ -3777,7 +3811,7 @@ namespace KMP
 			}
 			bool syncRequest = false;
 			if (!isInFlight) GUI.enabled = false;
-			if (showSync) syncRequest |= GUILayout.Button("Sync",syncButtonStyle);
+			if (showSync && FlightGlobals.ActiveVessel.ctrlState.mainThrottle == 0f) syncRequest |= GUILayout.Button("Sync",syncButtonStyle);
 			GUI.enabled = true;
 			
 			if (big)
@@ -4003,6 +4037,41 @@ namespace KMP
 			Vector3d projectedPos = pos + (Vector3d.Normalize(kscNormal)*projectionDistance);
 			
 			return Vector3d.Distance(kscPosition, projectedPos) < safetyBubbleRadius;
+		}
+		
+		public double horizontalDistanceToSafetyBubbleEdge()
+		{
+			CelestialBody body = FlightGlobals.ActiveVessel.mainBody;
+			Vector3d pos = FlightGlobals.ship_position;
+			double altitude = FlightGlobals.ActiveVessel.altitude;
+			//Assume Kerbin if body isn't supplied for some reason
+			if (body == null) body = FlightGlobals.Bodies.Find(b => b.name == "Kerbin");
+			
+			//If KSC out of range, syncing, not at Kerbin, or past ceiling we're definitely clear
+			if (kscPosition == Vector3d.zero || syncing || body.name != "Kerbin" || altitude > SAFETY_BUBBLE_CEILING)
+				return -1d;
+			
+			//Cylindrical safety bubble -- project vessel position to a plane positioned at KSC with normal pointed away from surface
+			Vector3d kscNormal = body.GetSurfaceNVector(-0.102668048654,-74.5753856554);
+			double projectionDistance = Vector3d.Dot(kscNormal, (pos - kscPosition)) * -1;
+			Vector3d projectedPos = pos + (Vector3d.Normalize(kscNormal)*projectionDistance);
+			
+			return safetyBubbleRadius - Vector3d.Distance(kscPosition, projectedPos);
+		}
+		
+		public double verticalDistanceToSafetyBubbleEdge()
+		{
+			CelestialBody body = FlightGlobals.ActiveVessel.mainBody;
+			double altitude = FlightGlobals.ActiveVessel.altitude;
+			//Assume Kerbin if body isn't supplied for some reason
+			if (body == null) body = FlightGlobals.Bodies.Find(b => b.name == "Kerbin");
+			
+			//If KSC out of range, syncing, not at Kerbin, or past ceiling we're definitely clear
+			if (kscPosition == Vector3d.zero || syncing || body.name != "Kerbin" || altitude > SAFETY_BUBBLE_CEILING)
+				return -1d;
+			
+			
+			return SAFETY_BUBBLE_CEILING - altitude;
 		}
 		
 		//This code adapted from Kerbal Engineer Redux source

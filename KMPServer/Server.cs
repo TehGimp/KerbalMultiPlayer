@@ -69,6 +69,8 @@ namespace KMPServer
         public Thread outgoingMessageThread;
         public Thread ghostCheckThread;
 
+        public Timer autoDekesslerTimer;
+
         public TcpListener tcpListener;
         public UdpClient udpClient;
 
@@ -320,6 +322,8 @@ namespace KMPServer
             outgoingMessageThread.Start();
             ghostCheckThread.Start();
 
+            if (settings.autoDekessler) { autoDekesslerTimer = new Timer(_ => dekesslerServerCommand(new string[0]), null, settings.autoDekesslerTime * 60000, settings.autoDekesslerTime * 60000); Log.Debug("Starting AutoDekessler: Timer Set to " + settings.autoDekesslerTime + " Minutes"); }
+            
             //Begin listening for HTTP requests
 
             httpListener = new HttpListener(); //Might need a replacement as HttpListener needs admin rights
@@ -380,32 +384,41 @@ namespace KMPServer
                 Boolean bRunning = true;
                 while (bRunning)
                 {
-                    String input = Console.ReadLine().ToLower();
-                    var parts = input.Split(new char[] { ' ' }, 2);
-                    //if (!parts[0].StartsWith("/")) { return; } //Allow server to send chat messages
-                    switch (parts[0])
-                    {
-                        case "/ban": banServerCommand(parts); break;
-                        case "/clearclients": clearClientsServerCommand(); break;
-                        case "/countclients": countServerCommand(); break;
-                        case "/help": displayCommands(); break;
-                        case "/kick": kickServerCommand(parts); break;
-                        case "/listclients": listServerCommand(); break;
-                        case "/quit":
-                        case "/stop": quitServerCommand(parts); bRunning = false; break;
-                        case "/save": saveServerCommand(); break;
-                        case "/register": registerServerCommand(parts); break;
-                        case "/update": updateServerCommand(input); break;
-                        case "/unregister": unregisterServerCommand(parts); break;
-                        case "/dekessler": dekesslerServerCommand(parts); break;
-                        case "/countships": countShipsServerCommand(); break;
-                        case "/listships": listShipsServerCommand(); break;
-						case "/say": sayServerCommand(parts); break;
-						case "/motd": motdServerCommand(parts); break;
-						case "/rules": rulesServerCommand(parts); break;
-						case "/setinfo": serverInfoServerCommand(parts);break;
-                        default: Log.Info("Unknown Command: "+input); break;
-                    }
+					try
+					{
+	                    String rawInput = Console.ReadLine();
+						String cleanInput = rawInput.ToLower().Trim();
+	                    var rawParts = rawInput.Split(new char[] { ' ' }, 2);
+						var parts = cleanInput.Split(new char[] { ' ' }, 2);
+	                    //if (!parts[0].StartsWith("/")) { return; } //Allow server to send chat messages
+	                    switch (parts[0])
+	                    {
+	                        case "/ban": banServerCommand(parts); break;
+	                        case "/clearclients": clearClientsServerCommand(); break;
+	                        case "/countclients": countServerCommand(); break;
+	                        case "/help": displayCommands(); break;
+	                        case "/kick": kickServerCommand(parts); break;
+	                        case "/listclients": listServerCommand(); break;
+	                        case "/quit":
+	                        case "/stop": quitServerCommand(parts); bRunning = false; break;
+	                        case "/save": saveServerCommand(); break;
+	                        case "/register": registerServerCommand(parts); break;
+	                        case "/update": updateServerCommand(cleanInput); break;
+	                        case "/unregister": unregisterServerCommand(parts); break;
+	                        case "/dekessler": dekesslerServerCommand(parts); break;
+	                        case "/countships": countShipsServerCommand(); break;
+	                        case "/listships": listShipsServerCommand(); break;
+							case "/say": sayServerCommand(rawParts); break;
+							case "/motd": motdServerCommand(rawParts); break;
+							case "/rules": rulesServerCommand(rawParts); break;
+							case "/setinfo": serverInfoServerCommand(rawParts);break;
+	                        default: Log.Info("Unknown Command: "+cleanInput); break;
+                    	}
+					}
+					catch (FormatException e)
+					{
+						Log.Error("Error handling server command. Maybe a typo? {0} {1}", e.Message,e.StackTrace);
+					}
                 }
             }
             catch (ThreadAbortException)
@@ -567,7 +580,7 @@ namespace KMPServer
                 {
                     DbCommand cmd = universeDB.CreateCommand();
                     string sql = "UPDATE kmpPlayer SET Guid = @newGuid WHERE Guid = @guid;";
-                    cmd.Parameters.AddWithValue("newGuid", Guid.NewGuid().ToString());
+                    cmd.Parameters.AddWithValue("newGuid", Guid.NewGuid());
                     cmd.Parameters.AddWithValue("guid", guid);
                     cmd.CommandText = sql;
                     cmd.ExecuteNonQuery();
@@ -662,6 +675,7 @@ namespace KMPServer
                 disconnectClient(c, "Server is shutting down");
             }
             //No need to clean them all up, we're shutting down anyway
+            autoDekesslerTimer.Dispose();
         }
 
         //Registers the specified username to the server
@@ -672,8 +686,7 @@ namespace KMPServer
             {
                 try
                 {
-                    Guid parser = new Guid(args[1]);
-                    String guid = parser.ToString();
+                    Guid guid = new Guid(args[1]);
                     String username_lower = args[0].ToLower();
 
                     DbCommand cmd = universeDB.CreateCommand();
@@ -719,8 +732,7 @@ namespace KMPServer
                 {
                     try
                     {
-                        Guid parser = new Guid(args[1]);
-                        String guid = parser.ToString();
+                        Guid guid = new Guid(args[1]);
                         String username_lower = args[0].ToLower();
                         DbCommand cmd = universeDB.CreateCommand();
                         string sql = "UPDATE kmpPlayer SET Name=@username, Guid=@guid WHERE Name LIKE @username OR Guid = @guid;";
@@ -811,7 +823,7 @@ namespace KMPServer
                                     DbCommand cmd2 = universeDB.CreateCommand();
                                     string sql2 = "UPDATE kmpVessel SET Destroyed = 1 WHERE Guid = @guid";
                                     cmd2.CommandText = sql2;
-                                    cmd2.Parameters.AddWithValue("guid", reader.GetGuid(2).ToString());
+                                    cmd2.Parameters.AddWithValue("guid", reader.GetGuid(2));
                                     cmd2.ExecuteNonQuery();
                                     clearedCount++;
                                 }
@@ -992,7 +1004,6 @@ namespace KMPServer
                                 {
                                     client.activityLevel = Client.ActivityLevel.IN_GAME;
                                     changed = true;
-                                    client.universeSent = false;
                                 }
 
                                 if (client.activityLevel == Client.ActivityLevel.IN_GAME
@@ -1000,7 +1011,6 @@ namespace KMPServer
                                 {
                                     client.activityLevel = Client.ActivityLevel.INACTIVE;
                                     changed = true;
-                                    client.universeSent = false;
                                 }
                             }
 
@@ -1146,7 +1156,6 @@ namespace KMPServer
             }
 
             cl.receivedHandshake = false;
-            cl.universeSent = false;
 
             if (cl.activityLevel != Client.ActivityLevel.INACTIVE)
                 clientActivityLevelChanged(cl);
@@ -1200,7 +1209,6 @@ namespace KMPServer
                 IPEndPoint endpoint = new IPEndPoint(IPAddress.Parse(settings.ipBinding), settings.port);
                 if (udpClient == null) { return; }
                 byte[] received = udpClient.EndReceive(result, ref endpoint);
-
                 if (received.Length >= KMPCommon.MSG_HEADER_LENGTH + 4)
                 {
                     int index = 0;
@@ -1236,9 +1244,16 @@ namespace KMPServer
                         }
 
                         //Handle the message
-                        byte[] messageData = KMPCommon.Decompress(data);
-                        if (messageData != null) handleMessage(client, id, messageData);
-                        //Consider adding re-request here
+						if (data == null)
+						{
+							handleMessage(client, id, data);
+						}
+						else
+						{
+                    		byte[] messageData = KMPCommon.Decompress(data);
+                    		if (messageData != null) handleMessage(client, id, messageData);
+							//Consider adding re-request here
+						}
                     }
 
                 }
@@ -1387,7 +1402,7 @@ namespace KMPServer
                         break;
                     case KMPCommon.ClientMessageID.PRIMARY_PLUGIN_UPDATE:
                     case KMPCommon.ClientMessageID.SECONDARY_PLUGIN_UPDATE:
-                        HandePluginUpdate(cl, id, data);
+                        HandlePluginUpdate(cl, id, data);
                         break;
                     case KMPCommon.ClientMessageID.TEXT_MESSAGE:
                         handleClientTextMessage(cl, encoder.GetString(data, 0, data.Length));
@@ -1586,18 +1601,12 @@ namespace KMPServer
                 }
                 catch { }
                 sendVesselStatusUpdateToAll(cl, cl.currentVessel);
-                cl.universeSent = false;
             }
             cl.updateActivityLevel(Client.ActivityLevel.IN_GAME);
         }
 
         private void HandleActivityUpdateInFlight(Client cl)
         {
-            if (cl.activityLevel == Client.ActivityLevel.IN_GAME && cl.isReady && !cl.universeSent)
-            {
-                cl.universeSent = true;
-                sendSubspace(cl);
-            }
             cl.updateActivityLevel(Client.ActivityLevel.IN_FLIGHT);
         }
 
@@ -1721,7 +1730,7 @@ namespace KMPServer
             }
         }
 
-        private void HandePluginUpdate(Client cl, KMPCommon.ClientMessageID id, byte[] data)
+        private void HandlePluginUpdate(Client cl, KMPCommon.ClientMessageID id, byte[] data)
         {
             if (cl.isReady)
             {
@@ -1803,13 +1812,15 @@ namespace KMPServer
                 //return;
             }
             cmd = universeDB.CreateCommand();
-            sql = "SELECT COUNT(*) FROM kmpPlayer WHERE Guid = @guid";
+            sql = "SELECT COUNT(*) FROM kmpPlayer WHERE Guid = @guid AND Name LIKE @username";
             cmd.CommandText = sql;
+			cmd.Parameters.AddWithValue("username", username_lower);
             cmd.Parameters.AddWithValue("guid", guid);
             Int32 player_exists = Convert.ToInt32(cmd.ExecuteScalar());
             cmd.Dispose();
             if (player_exists == 0) //New user
             {
+				Log.Info("New user");
                 cmd = universeDB.CreateCommand();
                 sql = "INSERT INTO kmpPlayer (Name, Guid) VALUES (@username,@guid);";
                 cmd.CommandText = sql;
@@ -1863,7 +1874,7 @@ namespace KMPServer
 			sb.Append(settings.serverMotd);
 			sendMotdMessage(cl, sb.ToString());
 
-            Log.Info("{0} has joined the server using client version {1}", username, version);
+            Log.Info("{0} (#{2}) has joined the server using client version {1}", username, version, playerID);
 
             //Build join message
             //sb.Clear();
@@ -2042,20 +2053,17 @@ namespace KMPServer
                         sendTextMessage(cl, sb.ToString());
                         return;
                     }
-                    else if (message_lower == "!quit")
-                    {
-                        markClientForDisconnect(cl, "Requested quit");
-                        return;
-                    }
                     else if (message_lower == "!help")
                     {
-                        sb.Append("Available Server Commands:\n");
+                        sb.Append("Available Chat Commands:\n");
                         sb.Append("!help - Displays this message\n");
                         sb.Append("!list - View all connected players\n");
                         sb.Append("!quit - Leaves the server\n");
-                        sb.Append("!getcraft <playername> - Gets the most recent craft shared by the specified player\n");
+                        sb.Append(KMPCommon.SHARE_CRAFT_COMMAND + " <craftname> - Shares the craft of name <craftname> with all other players\n");
+                        sb.Append(KMPCommon.GET_CRAFT_COMMAND + " <playername> - Gets the most recent craft shared by the specified player\n");
                         sb.Append("!motd - Displays Server MOTD\n");
                         sb.Append("!rules - Displays Server Rules\n");
+						sb.Append("!bubble - Displays server bubble size, and how far you are from its borders\n");
                         sb.Append(Environment.NewLine);
 
                         sendTextMessage(cl, sb.ToString());
@@ -2235,7 +2243,7 @@ namespace KMPServer
             version_bytes.CopyTo(data_bytes, 8);
 
             //Write client ID
-            KMPCommon.intToBytes(cl.playerID).CopyTo(data_bytes, 8 + version_bytes.Length);
+            KMPCommon.intToBytes(cl.clientIndex).CopyTo(data_bytes, 8 + version_bytes.Length);
 
             cl.queueOutgoingMessage(KMPCommon.ServerMessageID.HANDSHAKE, data_bytes);
         }
@@ -2702,7 +2710,7 @@ namespace KMPServer
                 " WHERE vu.Subspace = @curSubspace AND v.Guid = @vessel;";
             cmd.CommandText = sql;
             cmd.Parameters.AddWithValue("curSubspace", cl.currentSubspaceID.ToString("D"));
-            cmd.Parameters.AddWithValue("vessel", vessel.ToString());
+            cmd.Parameters.AddWithValue("vessel", vessel);
             DbDataReader reader = cmd.ExecuteReader();
             try
             {

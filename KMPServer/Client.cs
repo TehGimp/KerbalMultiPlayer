@@ -40,7 +40,6 @@ namespace KMPServer
 		public double lastTick = 0d;
 		public double syncOffset = 0.01d;
 		public int lagWarning = 0;
-		public bool universeSent = false;
 		public bool warping = false;
 		
 		public bool receivedHandshake;
