@@ -70,6 +70,8 @@ namespace KMP
 		
 		public const float FULL_PROTOVESSEL_UPDATE_TIMEOUT = 45f;
 
+		public const double PRIVATE_VESSEL_MIN_TARGET_DISTANCE = 500d;
+
 		public UnicodeEncoding encoder = new UnicodeEncoding();
 
 		public String playerName = String.Empty;
@@ -315,14 +317,20 @@ namespace KMP
 					{
 						vesselTarget = (Vessel) FlightGlobals.fetch.VesselTarget;
 					}
-					//Check if target is private
-					if (vesselTarget != null && serverVessels_IsPrivate.ContainsKey(vesselTarget.id) && serverVessels_IsMine.ContainsKey(vesselTarget.id))
-					{
-						if (!serverVessels_IsMine[vesselTarget.id] && serverVessels_IsPrivate[vesselTarget.id])
+
+					if (vesselTarget != null) {
+
+						double distanceToTarget = Vector3d.Distance(vesselTarget.GetWorldPos3D(), FlightGlobals.ship_position);
+
+						//Check if target is private and too close
+						if (distanceToTarget < PRIVATE_VESSEL_MIN_TARGET_DISTANCE && serverVessels_IsPrivate.ContainsKey(vesselTarget.id) && serverVessels_IsMine.ContainsKey(vesselTarget.id))
 						{
-							KMPClientMain.DebugLog("Tried to target private vessel");
-							ScreenMessages.PostScreenMessage("Can't dock - Target vessel is Private", 4f, ScreenMessageStyle.UPPER_CENTER);
-							FlightGlobals.fetch.SetVesselTarget(null);
+							if (!serverVessels_IsMine[vesselTarget.id] && serverVessels_IsPrivate[vesselTarget.id])
+							{
+								KMPClientMain.DebugLog("Tried to target private vessel");
+								ScreenMessages.PostScreenMessage("Can't dock - Target vessel is Private", 4f, ScreenMessageStyle.UPPER_CENTER);
+								FlightGlobals.fetch.SetVesselTarget(null);
+							}
 						}
 					}
 				}
