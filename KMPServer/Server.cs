@@ -341,7 +341,7 @@ namespace KMPServer
 
             long last_backup_time = 0;
 
-            while (!quit)
+            while (!stop)
             {
                 //Check for exceptions that occur in threads
                 lock (threadExceptionLock)
@@ -373,6 +373,7 @@ namespace KMPServer
             stopwatch.Stop();
 
             Log.Info("Server session ended.");
+            if (quit) { Log.Info("Quitting"); Thread.Sleep(1000); Environment.Exit(0); }
 
         }
 
@@ -399,7 +400,7 @@ namespace KMPServer
 	                        case "/help": displayCommands(); break;
 	                        case "/kick": kickServerCommand(parts); break;
 	                        case "/listclients": listServerCommand(); break;
-	                        case "/quit":
+                            case "/quit": quitServerCommand(parts); bRunning = false; break;
 	                        case "/stop": quitServerCommand(parts); bRunning = false; break;
 	                        case "/save": saveServerCommand(); break;
 	                        case "/register": registerServerCommand(parts); break;
@@ -665,10 +666,9 @@ namespace KMPServer
         //Quits or Stops the server, based on input
         private void quitServerCommand(String[] parts)
         {
-            quit = true;
-            if (parts[0] == "/stop")
-                stop = true;
-
+            stop = true;
+            if (parts[0] == "/quit")
+                quit = true;
             //Disconnect all clients
             foreach (var c in clients.ToList())
             {
