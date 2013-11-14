@@ -3643,6 +3643,25 @@ namespace KMP
                 if (line.name == "")
                 {
                     GUILayout.Label(line.message, KMPChatDX.chatStyle);
+
+                    var position = GUILayoutUtility.GetLastRect();
+
+                    var style = KMPChatDX.chatStyle;
+                    style.normal.textColor = new Color(0, 0, 0);
+
+                    position.x--;
+                    GUI.Label(position, line.message, style);
+                    position.x += 2;
+                    GUI.Label(position, line.message, style);
+                    position.x--;
+                    position.y--;
+                    GUI.Label(position, line.message, style);
+                    position.y += 2;
+                    GUI.Label(position, line.message, style);
+
+                    KMPChatDX.chatStyle.normal.textColor = line.color;
+                    position.y--;
+                    GUI.Label(position, line.message, style);
                 }
                 else
                 {
