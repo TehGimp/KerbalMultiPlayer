@@ -2506,6 +2506,7 @@ namespace KMP
 
 		private void loadGlobalSettings()
 		{
+			bool success = false;
 			try
 			{
 				//Deserialize global settings from file
@@ -2541,13 +2542,24 @@ namespace KMP
 
                     KMPChatDX.windowPos.x = KMPGlobalSettings.instance.chatDXDisplayWindowX;
                     KMPChatDisplay.windowPos.y = KMPGlobalSettings.instance.chatDXDisplayWindowY;
+					success = true;
 				}
 			}
 			catch (KSP.IO.IOException)
 			{
+				success = false;
 			}
 			catch (System.IO.IOException)
 			{
+				success = false;
+			}
+			if (!success)
+			{
+				try
+				{
+					KSP.IO.File.Delete<KMPManager>(GLOBAL_SETTINGS_FILENAME);
+				} catch {}
+				KMPGlobalSettings.instance = new KMPGlobalSettings();
 			}
 		}
 

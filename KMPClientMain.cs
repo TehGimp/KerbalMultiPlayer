@@ -921,7 +921,10 @@ namespace KMP
 
 						//Send a probe message to try to establish a udp connection
 						if ((stopwatch.ElapsedMilliseconds - last_udp_send) > UDP_TIMEOUT_DELAY)
+						{
 							sendUDPProbeMessage(true);
+							KMPClientMain.DebugLog("PROBE");
+						}
 						else if ((stopwatch.ElapsedMilliseconds - last_udp_send) > UDP_PROBE_DELAY)
 							sendUDPProbeMessage(false);
 
@@ -1403,22 +1406,34 @@ namespace KMP
 		{
 			try
 			{
-				
 				XmlDocument xmlDoc = new XmlDocument();
-				String sPath = KSP.IO.IOUtils.GetFilePathFor(typeof(KMPClientMain), CLIENT_CONFIG_FILENAME);  // Get the Client config file path
-
-				if (!System.IO.File.Exists(sPath))  // Build a default style
+				String sPath = "";
+				try
 				{
-					xmlDoc.LoadXml(String.Format("<?xml version=\"1.0\"?><settings><global {0}=\"\" {1}=\"\" {2}=\"\"/><favourites></favourites></settings>", USERNAME_LABEL, IP_LABEL, AUTO_RECONNECT_LABEL));
-					xmlDoc.Save(sPath);
+					sPath = KSP.IO.IOUtils.GetFilePathFor(typeof(KMPClientMain), CLIENT_CONFIG_FILENAME);  // Get the Client config file path
+		
+					if (!System.IO.File.Exists(sPath))  // Build a default style
+					{
+						xmlDoc.LoadXml(String.Format("<?xml version=\"1.0\"?><settings><global {0}=\"\" {1}=\"\" {2}=\"\"/><favourites></favourites></settings>", USERNAME_LABEL, IP_LABEL, AUTO_RECONNECT_LABEL));
+						xmlDoc.Save(sPath);
+					}
+					
+					xmlDoc.Load(sPath);
 				}
-				
-				xmlDoc.Load(sPath);
-
+				catch
+				{
+					try
+					{
+						xmlDoc.LoadXml(String.Format("<?xml version=\"1.0\"?><settings><global {0}=\"\" {1}=\"\" {2}=\"\"/><favourites></favourites></settings>", USERNAME_LABEL, IP_LABEL, AUTO_RECONNECT_LABEL));
+						xmlDoc.Save(sPath);
+						xmlDoc.Load(sPath);
+					} catch { }
+					
+				}
 				username = xmlDoc.SelectSingleNode("/settings/global/@"+USERNAME_LABEL).Value;
 				hostname = xmlDoc.SelectSingleNode("/settings/global/@" + IP_LABEL).Value;
 				bool.TryParse(xmlDoc.SelectSingleNode("/settings/global/@" + AUTO_RECONNECT_LABEL).Value, out autoReconnect);
-
+	
 				XmlNodeList elemList = xmlDoc.GetElementsByTagName("favourite");
 				foreach(XmlNode xmlNode in elemList)
 				{
@@ -1429,12 +1444,13 @@ namespace KMP
 						favorites[nPos] = xmlNode.Attributes[IP_LABEL].Value;
 					}
 				}
+			} catch {
+				username = "";
+				hostname = "";
+				autoReconnect = true;
+			}
 				
-			}
-			catch
-			{
-
-			}
+			
 			
 			try
 			{

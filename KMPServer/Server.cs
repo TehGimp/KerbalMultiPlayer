@@ -1207,7 +1207,6 @@ namespace KMPServer
                 IPEndPoint endpoint = new IPEndPoint(IPAddress.Parse(settings.ipBinding), settings.port);
                 if (udpClient == null) { return; }
                 byte[] received = udpClient.EndReceive(result, ref endpoint);
-
                 if (received.Length >= KMPCommon.MSG_HEADER_LENGTH + 4)
                 {
                     int index = 0;
@@ -1401,7 +1400,7 @@ namespace KMPServer
                         break;
                     case KMPCommon.ClientMessageID.PRIMARY_PLUGIN_UPDATE:
                     case KMPCommon.ClientMessageID.SECONDARY_PLUGIN_UPDATE:
-                        HandePluginUpdate(cl, id, data);
+                        HandlePluginUpdate(cl, id, data);
                         break;
                     case KMPCommon.ClientMessageID.TEXT_MESSAGE:
                         handleClientTextMessage(cl, encoder.GetString(data, 0, data.Length));
@@ -1735,7 +1734,7 @@ namespace KMPServer
             }
         }
 
-        private void HandePluginUpdate(Client cl, KMPCommon.ClientMessageID id, byte[] data)
+        private void HandlePluginUpdate(Client cl, KMPCommon.ClientMessageID id, byte[] data)
         {
             if (cl.isReady)
             {
@@ -2247,7 +2246,7 @@ namespace KMPServer
             version_bytes.CopyTo(data_bytes, 8);
 
             //Write client ID
-            KMPCommon.intToBytes(cl.playerID).CopyTo(data_bytes, 8 + version_bytes.Length);
+            KMPCommon.intToBytes(cl.clientIndex).CopyTo(data_bytes, 8 + version_bytes.Length);
 
             cl.queueOutgoingMessage(KMPCommon.ServerMessageID.HANDSHAKE, data_bytes);
         }
