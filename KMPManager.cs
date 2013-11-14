@@ -2767,78 +2767,81 @@ namespace KMP
 		{
 			try
 			{
-				if (gameRunning && FlightDriver.Pause) FlightDriver.SetPause(false);
-	
-				//Find an instance of the game's RenderingManager
-				if (renderManager == null)
-					renderManager = (RenderingManager) FindObjectOfType(typeof(RenderingManager));
-	
-				//Find an instance of the game's PlanetariumCamera
-				if (planetariumCam == null)
-					planetariumCam = (PlanetariumCamera)FindObjectOfType(typeof(PlanetariumCamera));
-	
-				if (Input.GetKeyDown(KMPGlobalSettings.instance.guiToggleKey))
-					KMPInfoDisplay.infoDisplayActive = !KMPInfoDisplay.infoDisplayActive;
-	
-				if (Input.GetKeyDown(KMPGlobalSettings.instance.screenshotKey))
-					StartCoroutine(shareScreenshot());
-
-                if (Input.GetKeyDown(KMPGlobalSettings.instance.chatTalkKey))
-                    KMPChatDX.showInput = true;
-
-                if (Input.GetKeyDown(KMPGlobalSettings.instance.chatHideKey))
-				{
-                    KMPGlobalSettings.instance.chatDXWindowEnabled = !KMPGlobalSettings.instance.chatDXWindowEnabled;
-					if (KMPGlobalSettings.instance.chatDXWindowEnabled) KMPChatDX.enqueueChatLine("Press Chat key (" + (KMPGlobalSettings.instance.chatTalkKey == KeyCode.BackQuote ? "~" : KMPGlobalSettings.instance.chatTalkKey.ToString()) + ") to send a message");
-				}
-
-				if (Input.anyKeyDown)
-					lastKeyPressTime = UnityEngine.Time.realtimeSinceStartup;
-	
-				//Handle key-binding
-				if (mappingGUIToggleKey)
-				{
-					KeyCode key = KeyCode.F7;
-					if (getAnyKeyDown(ref key))
-					{
-						if (key != KeyCode.Mouse0)
- 			            {
-							KMPGlobalSettings.instance.guiToggleKey = key;
-							mappingGUIToggleKey = false;
-						}
-					}
-				}
-	
-				if (mappingScreenshotKey)
-				{
-					KeyCode key = KeyCode.F8;
-					if (getAnyKeyDown(ref key))
-					{
-						if (key != KeyCode.Mouse0)
- 			            {
-							KMPGlobalSettings.instance.screenshotKey = key;
-							mappingScreenshotKey = false;
-						}
-					}
-				}
-
-                if(mappingChatKey)
+                if (gameRunning)
                 {
-                    KeyCode key = KeyCode.Y;
-                    if(getAnyKeyDown(ref key))
+                    if (gameRunning && FlightDriver.Pause) FlightDriver.SetPause(false);
+
+                    //Find an instance of the game's RenderingManager
+                    if (renderManager == null)
+                        renderManager = (RenderingManager)FindObjectOfType(typeof(RenderingManager));
+
+                    //Find an instance of the game's PlanetariumCamera
+                    if (planetariumCam == null)
+                        planetariumCam = (PlanetariumCamera)FindObjectOfType(typeof(PlanetariumCamera));
+
+                    if (Input.GetKeyDown(KMPGlobalSettings.instance.guiToggleKey))
+                        KMPInfoDisplay.infoDisplayActive = !KMPInfoDisplay.infoDisplayActive;
+
+                    if (Input.GetKeyDown(KMPGlobalSettings.instance.screenshotKey))
+                        StartCoroutine(shareScreenshot());
+
+                    if (Input.GetKeyDown(KMPGlobalSettings.instance.chatTalkKey))
+                        KMPChatDX.showInput = true;
+
+                    if (Input.GetKeyDown(KMPGlobalSettings.instance.chatHideKey))
                     {
-                        KMPGlobalSettings.instance.chatTalkKey = key;
-                        mappingChatKey = false;
+                        KMPGlobalSettings.instance.chatDXWindowEnabled = !KMPGlobalSettings.instance.chatDXWindowEnabled;
+                        if (KMPGlobalSettings.instance.chatDXWindowEnabled) KMPChatDX.enqueueChatLine("Press Chat key (" + (KMPGlobalSettings.instance.chatTalkKey == KeyCode.BackQuote ? "~" : KMPGlobalSettings.instance.chatTalkKey.ToString()) + ") to send a message");
                     }
-                }
 
-                if (mappingChatDXToggleKey)
-                {
-                    KeyCode key = KeyCode.F9;
-                    if (getAnyKeyDown(ref key))
+                    if (Input.anyKeyDown)
+                        lastKeyPressTime = UnityEngine.Time.realtimeSinceStartup;
+
+                    //Handle key-binding
+                    if (mappingGUIToggleKey)
                     {
-                        KMPGlobalSettings.instance.chatHideKey = key;
-                        mappingChatDXToggleKey = false;
+                        KeyCode key = KeyCode.F7;
+                        if (getAnyKeyDown(ref key))
+                        {
+                            if (key != KeyCode.Mouse0)
+                            {
+                                KMPGlobalSettings.instance.guiToggleKey = key;
+                                mappingGUIToggleKey = false;
+                            }
+                        }
+                    }
+
+                    if (mappingScreenshotKey)
+                    {
+                        KeyCode key = KeyCode.F8;
+                        if (getAnyKeyDown(ref key))
+                        {
+                            if (key != KeyCode.Mouse0)
+                            {
+                                KMPGlobalSettings.instance.screenshotKey = key;
+                                mappingScreenshotKey = false;
+                            }
+                        }
+                    }
+
+                    if (mappingChatKey)
+                    {
+                        KeyCode key = KeyCode.Y;
+                        if (getAnyKeyDown(ref key))
+                        {
+                            KMPGlobalSettings.instance.chatTalkKey = key;
+                            mappingChatKey = false;
+                        }
+                    }
+
+                    if (mappingChatDXToggleKey)
+                    {
+                        KeyCode key = KeyCode.F9;
+                        if (getAnyKeyDown(ref key))
+                        {
+                            KMPGlobalSettings.instance.chatHideKey = key;
+                            mappingChatDXToggleKey = false;
+                        }
                     }
                 }
 			} catch (Exception ex) { KMPClientMain.DebugLog ("u err: " + ex.Message + " " + ex.StackTrace); }
