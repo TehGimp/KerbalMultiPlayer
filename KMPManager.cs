@@ -2733,6 +2733,7 @@ namespace KMP
 				GameEvents.onFlightReady.Remove(this.OnFirstFlightReady);
 				GameEvents.onFlightReady.Add(this.OnFlightReady);
 				MapView.EnterMapView();
+				MapView.MapCamera.SetTarget("Kerbin");
 				ScreenMessages.PostScreenMessage("Synchronizing universe, please wait...",30f,ScreenMessageStyle.UPPER_CENTER);
 				StartCoroutine(sendSubspaceSyncRequest(-1,true));
 				Invoke("handleSyncTimeout",55f);
