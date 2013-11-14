@@ -713,19 +713,21 @@ namespace KMP
 					enqueuePluginChatMessage("If you are trying to quit, use the !quit command.", true);
 					quitHelperMessageShow = false;
 				}
-
+				bool handled = false;
 				if (line.ElementAt(0) == '!')
 				{
 					String line_lower = line.ToLower();
 
 					if (line_lower == "!quit")
 					{
+						handled = true;
 						intentionalConnectionEnd = true;
 						endSession = true;
 						sendConnectionEndMessage("Quit");
 					}
 					else if (line_lower == "!ping")
 					{
+						handled = true;
 						if (!pingStopwatch.IsRunning)
 						{
 							sendMessageTCP(KMPCommon.ClientMessageID.PING, null);
@@ -734,12 +736,14 @@ namespace KMP
 					}
 					else if (line_lower == "!debug")
 					{
+						handled = true;
 						debugging = !debugging;
 						enqueuePluginChatMessage("debug " + debugging);
 					}
 					else if (line_lower.Length > (KMPCommon.SHARE_CRAFT_COMMAND.Length + 1)
 						&& line_lower.Substring(0, KMPCommon.SHARE_CRAFT_COMMAND.Length) == KMPCommon.SHARE_CRAFT_COMMAND)
 					{
+						handled = true;
 						//Share a craft file
 						String craft_name = line.Substring(KMPCommon.SHARE_CRAFT_COMMAND.Length + 1);
 						byte craft_type = 0;
@@ -763,7 +767,7 @@ namespace KMP
 					}
 
 				}
-				else
+				if (!handled)
 				{
 					sendTextMessage(line);
 				}
