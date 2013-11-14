@@ -69,6 +69,8 @@ namespace KMPServer
         public Thread outgoingMessageThread;
         public Thread ghostCheckThread;
 
+        public Timer autoDekesslerTimer;
+
         public TcpListener tcpListener;
         public UdpClient udpClient;
 
@@ -320,6 +322,8 @@ namespace KMPServer
             outgoingMessageThread.Start();
             ghostCheckThread.Start();
 
+            if (settings.autoDekessler) { autoDekesslerTimer = new Timer(_ => dekesslerServerCommand(new string[0]), null, settings.autoDekesslerTime * 60000, settings.autoDekesslerTime * 60000); Log.Debug("Starting AutoDekessler: Timer Set to " + settings.autoDekesslerTime + " Minutes"); }
+            
             //Begin listening for HTTP requests
 
             httpListener = new HttpListener(); //Might need a replacement as HttpListener needs admin rights
@@ -671,6 +675,7 @@ namespace KMPServer
                 disconnectClient(c, "Server is shutting down");
             }
             //No need to clean them all up, we're shutting down anyway
+            autoDekesslerTimer.Dispose();
         }
 
         //Registers the specified username to the server

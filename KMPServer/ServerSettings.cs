@@ -47,6 +47,8 @@ namespace KMPServer
 			public int screenshotHeight = 600;
 			public bool profanityFilter = true;
 			public double safetyBubbleRadius = 20000d;
+            public bool autoDekessler = false;
+            public int autoDekesslerTime = 30;
 
 			private List<BanRecord> _bans = new List<BanRecord>();
 			internal List<BanRecord> bans
