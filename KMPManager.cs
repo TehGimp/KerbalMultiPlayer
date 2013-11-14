@@ -376,8 +376,8 @@ namespace KMP
 							    && !(FlightGlobals.ActiveVessel.orbit.referenceBody.atmosphere && FlightGlobals.ActiveVessel.orbit.altitude < FlightGlobals.ActiveVessel.orbit.referenceBody.maxAtmosphereAltitude)) //and not in atmo
 							{
 								KMPClientMain.DebugLog("Krakensbane shift");
-								Vector3d diffPos = FlightGlobals.ActiveVessel.orbit.getPositionAtUT(targetTick) - FlightGlobals.ActiveVessel.GetWorldPos3D();
-								foreach (Vessel otherVessel in FlightGlobals.Vessels.Where(v => v.packed == false && (v.id != FlightGlobals.ActiveVessel.id || (v.loaded && Vector3d.Distance(FlightGlobals.ActiveVessel.GetWorldPos3D(),v.GetWorldPos3D()) < INACTIVE_VESSEL_RANGE))))
+								Vector3d diffPos = FlightGlobals.ActiveVessel.orbit.getPositionAtUT(targetTick) - FlightGlobals.ship_position;
+								foreach (Vessel otherVessel in FlightGlobals.Vessels.Where(v => v.packed == false && (v.id != FlightGlobals.ActiveVessel.id || (v.loaded && Vector3d.Distance(FlightGlobals.ship_position,v.GetWorldPos3D()) < INACTIVE_VESSEL_RANGE))))
 		                			otherVessel.GoOnRails();
 								getKrakensbane().setOffset(diffPos);
 								//Update velocity
@@ -590,7 +590,7 @@ namespace KMP
 			writePrimaryUpdate();
 			
 			//nearby vessels
-            if (isInFlight && !syncing && !warping && !isInSafetyBubble(FlightGlobals.ActiveVessel.GetWorldPos3D(),FlightGlobals.ActiveVessel.mainBody,FlightGlobals.ActiveVessel.altitude))
+            if (isInFlight && !syncing && !warping && !isInSafetyBubble(FlightGlobals.ship_position,FlightGlobals.ActiveVessel.mainBody,FlightGlobals.ActiveVessel.altitude))
 			{
 				writeSecondaryUpdates();
 			}
@@ -599,7 +599,7 @@ namespace KMP
 		private void writePrimaryUpdate()
 		{
 			if (!syncing && isInFlight && !warping
-                && !isInSafetyBubble(FlightGlobals.ActiveVessel.GetWorldPos3D(),FlightGlobals.ActiveVessel.mainBody,FlightGlobals.ActiveVessel.altitude))
+                && !isInSafetyBubble(FlightGlobals.ship_position,FlightGlobals.ActiveVessel.mainBody,FlightGlobals.ActiveVessel.altitude))
 			{
 				lastTick = Planetarium.GetUniversalTime();
 				//Write vessel status
@@ -721,7 +721,7 @@ namespace KMP
 				{
 					if (vessel != FlightGlobals.ActiveVessel && vessel.loaded && !vessel.name.Contains(" [Past]") && !vessel.name.Contains(" [Future]"))
 					{
-						float distance = (float)Vector3d.Distance(vessel.GetWorldPos3D(), FlightGlobals.ActiveVessel.GetWorldPos3D());
+						float distance = (float)Vector3d.Distance(vessel.GetWorldPos3D(), FlightGlobals.ship_position);
 						if (distance < INACTIVE_VESSEL_RANGE)
 						{
 							try
@@ -778,7 +778,7 @@ namespace KMP
 									w_pos = enumerator.Current.Value.findWorldCenterOfMass() - FlightGlobals.ActiveVessel.findWorldCenterOfMass();
 								} catch {
 									KMPClientMain.DebugLog("couldn't get CoM!");
-									w_pos = enumerator.Current.Value.GetWorldPos3D() - FlightGlobals.ActiveVessel.GetWorldPos3D();
+									w_pos = enumerator.Current.Value.GetWorldPos3D() - FlightGlobals.ship_position;
 								}
 								Vector3d o_vel = enumerator.Current.Value.GetObtVelocity() - FlightGlobals.ActiveVessel.GetObtVelocity();
 								update.clearProtoVessel();
@@ -1543,7 +1543,7 @@ namespace KMP
 						{
 							float incomingDistance = 2500f;
 							if (!syncing && vessel.worldPosition != Vector3.zero && vessel_update.relTime == RelativeTime.PRESENT)
-								incomingDistance = Vector3.Distance(vessel.worldPosition,FlightGlobals.ActiveVessel.GetWorldPos3D());
+								incomingDistance = Vector3.Distance(vessel.worldPosition,FlightGlobals.ship_position);
 							if (vessel_update.relTime != RelativeTime.PRESENT) incomingDistance = 3000f; //Never treat vessels from another time as close by
 						 	if (vessel_update.state == State.ACTIVE
 							    	|| vessel_update.isDockUpdate
@@ -1561,10 +1561,10 @@ namespace KMP
 										if (!extant_vessel.loaded)
 										{
 											if (KMPVessel.situationIsOrbital(vessel_update.situation))
-												ourDistance = Vector3.Distance(extant_vessel.orbit.getPositionAtUT(Planetarium.GetUniversalTime()), FlightGlobals.ActiveVessel.GetWorldPos3D());
-											else ourDistance = Vector3.Distance(oldPosition, FlightGlobals.ActiveVessel.GetWorldPos3D());
+												ourDistance = Vector3.Distance(extant_vessel.orbit.getPositionAtUT(Planetarium.GetUniversalTime()), FlightGlobals.ship_position);
+											else ourDistance = Vector3.Distance(oldPosition, FlightGlobals.ship_position);
 										}
-										else ourDistance = Vector3.Distance(extant_vessel.GetWorldPos3D(), FlightGlobals.ActiveVessel.GetWorldPos3D());
+										else ourDistance = Vector3.Distance(extant_vessel.GetWorldPos3D(), FlightGlobals.ship_position);
 										bool countMismatch = false;
 										ProtoVessel protovessel = null;
 										if (serverVessels_ProtoVessels.ContainsKey(vessel_update.id))
@@ -2667,7 +2667,7 @@ namespace KMP
 		private void OnVesselLoaded(Vessel data)
 		{
 			KMPClientMain.DebugLog("Vessel loaded: " + data.id);
-			//data.distancePackThreshold = Vector3.Distance(data.orbit.getPositionAtUT(Planetarium.GetUniversalTime()), FlightGlobals.ActiveVessel.GetWorldPos3D()) + 100f;
+			//data.distancePackThreshold = Vector3.Distance(data.orbit.getPositionAtUT(Planetarium.GetUniversalTime()), FlightGlobals.ship_position) + 100f;
 		}
 		
 		private void OnVesselTerminated(ProtoVessel data)
@@ -4020,7 +4020,7 @@ namespace KMP
 		public double horizontalDistanceToSafetyBubbleEdge()
 		{
 			CelestialBody body = FlightGlobals.ActiveVessel.mainBody;
-			Vector3d pos = FlightGlobals.ActiveVessel.GetWorldPos3D();
+			Vector3d pos = FlightGlobals.ship_position;
 			double altitude = FlightGlobals.ActiveVessel.altitude;
 			//Assume Kerbin if body isn't supplied for some reason
 			if (body == null) body = FlightGlobals.Bodies.Find(b => b.name == "Kerbin");
