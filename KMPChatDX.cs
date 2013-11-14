@@ -72,19 +72,28 @@ namespace KMP
 
         public static Rect getWindowPos()
         {
-            if (HighLogic.LoadedScene == GameScenes.TRACKSTATION)
+            switch (HighLogic.LoadedScene)
             {
-                windowPos.x = chatboxX + 200;
-                windowPos.y = chatboxY + 20;
+                case GameScenes.TRACKSTATION:
+                    windowPos.x = chatboxX + 200;
+                    windowPos.y = chatboxY + 20;
 
-                return windowPos;
-            }
-            else
-            {
-                windowPos.x = chatboxX;
-                windowPos.y = chatboxY;
+                    return windowPos;
+                case GameScenes.SPH:
+                    windowPos.x = chatboxX + 255;
+                    windowPos.y = chatboxY + 20;
 
-                return windowPos;
+                    return windowPos;
+                case GameScenes.EDITOR:
+                    windowPos.x = chatboxX + 255;
+                    windowPos.y = chatboxY + 20;
+
+                    return windowPos;
+                default:
+                    windowPos.x = chatboxX;
+                    windowPos.y = chatboxY;
+
+                    return windowPos;
             }
         }
 
