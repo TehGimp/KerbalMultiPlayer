@@ -579,6 +579,7 @@ namespace KMP
 			}
 			if (String.IsNullOrEmpty(message)) KMPClientMain.SetMessage("Disconnected");
 			else KMPClientMain.SetMessage("Disconnected: " + message);
+            saveGlobalSettings();
 			gameRunning = false;
 		}
 		
@@ -3224,6 +3225,7 @@ namespace KMP
 					
 					if (GUILayout.Button("Disconnect & Exit"))
 					{
+                        disconnect("Quit");
 						KMPClientMain.clearConnectionState();
 						gameRunning = false;
 						forceQuit = true;
