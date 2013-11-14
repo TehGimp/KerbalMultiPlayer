@@ -2058,7 +2058,7 @@ namespace KMPServer
                         sb.Append(KMPCommon.GET_CRAFT_COMMAND + " <playername> - Gets the most recent craft shared by the specified player\n");
                         sb.Append("!motd - Displays Server MOTD\n");
                         sb.Append("!rules - Displays Server Rules\n");
-						sb.Append("!bubble - Displays server bubble size, and how far from it's borders your vessel is\n");
+						sb.Append("!bubble - Displays server bubble size, and how far you are from its borders\n");
                         sb.Append(Environment.NewLine);
 
                         sendTextMessage(cl, sb.ToString());
