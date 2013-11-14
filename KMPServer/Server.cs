@@ -999,7 +999,6 @@ namespace KMPServer
                                 {
                                     client.activityLevel = Client.ActivityLevel.IN_GAME;
                                     changed = true;
-                                    client.universeSent = false;
                                 }
 
                                 if (client.activityLevel == Client.ActivityLevel.IN_GAME
@@ -1007,7 +1006,6 @@ namespace KMPServer
                                 {
                                     client.activityLevel = Client.ActivityLevel.INACTIVE;
                                     changed = true;
-                                    client.universeSent = false;
                                 }
                             }
 
@@ -1153,7 +1151,6 @@ namespace KMPServer
             }
 
             cl.receivedHandshake = false;
-            cl.universeSent = false;
 
             if (cl.activityLevel != Client.ActivityLevel.INACTIVE)
                 clientActivityLevelChanged(cl);
@@ -1599,18 +1596,12 @@ namespace KMPServer
                 }
                 catch { }
                 sendVesselStatusUpdateToAll(cl, cl.currentVessel);
-                cl.universeSent = false;
             }
             cl.updateActivityLevel(Client.ActivityLevel.IN_GAME);
         }
 
         private void HandleActivityUpdateInFlight(Client cl)
         {
-            if (cl.activityLevel == Client.ActivityLevel.IN_GAME && cl.isReady && !cl.universeSent)
-            {
-                cl.universeSent = true;
-                sendSubspace(cl);
-            }
             cl.updateActivityLevel(Client.ActivityLevel.IN_FLIGHT);
         }
 

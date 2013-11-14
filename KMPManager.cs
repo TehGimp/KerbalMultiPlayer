@@ -2729,15 +2729,12 @@ namespace KMP
 			{
 				//Enable debug log for sync
 				KMPClientMain.debugging = true;
+				KMPClientMain.DebugLog("Requesting initial sync");
 				GameEvents.onFlightReady.Remove(this.OnFirstFlightReady);
 				GameEvents.onFlightReady.Add(this.OnFlightReady);
 				MapView.EnterMapView();
 				ScreenMessages.PostScreenMessage("Synchronizing universe, please wait...",30f,ScreenMessageStyle.UPPER_CENTER);
-				if (docking) 
-				{
-					KMPClientMain.DebugLog("Requesting docking re-sync");
-					StartCoroutine(sendSubspaceSyncRequest(-1,true));
-				}
+				StartCoroutine(sendSubspaceSyncRequest(-1,true));
 				Invoke("handleSyncTimeout",55f);
 				docking = false;
 			}
