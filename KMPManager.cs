@@ -2827,7 +2827,8 @@ namespace KMP
 		{
 			try
 			{
-				if (gameRunning && FlightDriver.Pause) FlightDriver.SetPause(false);
+				if (!gameRunning) return;
+				if (FlightDriver.Pause) FlightDriver.SetPause(false);
 	
 				//Find an instance of the game's RenderingManager
 				if (renderManager == null)
