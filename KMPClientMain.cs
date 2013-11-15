@@ -197,23 +197,31 @@ namespace KMP
 		
 		public static void SetUsername(String newUsername)
 		{
-			username = newUsername;
-			if (username.Length > MAX_USERNAME_LENGTH)
-				username = username.Substring(0, MAX_USERNAME_LENGTH); //Trim username
-
-			writeConfigFile();
+			if (username != newUsername)
+			{
+				username = newUsername;
+				if (username.Length > MAX_USERNAME_LENGTH)
+					username = username.Substring(0, MAX_USERNAME_LENGTH); //Trim username
+				writeConfigFile();
+			}
 		}
 		
 		public static void SetServer(String newHostname)
 		{
-			hostname = newHostname;
-			writeConfigFile();
+			if (hostname != newHostname)
+			{
+				hostname = newHostname;
+				writeConfigFile();
+			}
 		}
 
 		public static void SetAutoReconnect(bool newAutoReconnect)
 		{
-			autoReconnect = newAutoReconnect;
-			writeConfigFile();
+			if (autoReconnect != newAutoReconnect)
+			{
+				autoReconnect = newAutoReconnect;
+				writeConfigFile();
+			}
 		}
 		
 		public static ArrayList GetFavorites()
@@ -223,6 +231,7 @@ namespace KMP
 		
 		public static void SetFavorites(ArrayList newFavorites)
 		{
+			// Verification of change is handled in KMPManager
 			favorites = newFavorites;
 			writeConfigFile();
 		}

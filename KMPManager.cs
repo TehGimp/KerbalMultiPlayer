@@ -3409,7 +3409,6 @@ namespace KMP
 						}
 						else
 						{
-
 							String sHostname = newHost.Trim() + ":" + newPort.Trim();
 							favorites.Add(sHostname);
 
@@ -3482,8 +3481,8 @@ namespace KMP
 						{
 							favorites.Remove(KMPConnectionDisplay.activeHostname);
 							KMPConnectionDisplay.activeHostname = "";
+							KMPClientMain.SetFavorites(favorites);
 						}
-						KMPClientMain.SetFavorites(favorites);
 					}
 					GUI.enabled = true;
 			
