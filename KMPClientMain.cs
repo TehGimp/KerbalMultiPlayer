@@ -2024,7 +2024,7 @@ namespace KMP
 			System.IO.DirectoryInfo dir = System.IO.Directory.GetParent(sPath);
 			dir = dir.Parent.Parent;
 			sPath = dir.FullName;
-			sPath += "/saves/kmp/";
+			sPath += "/saves/KMP/";
 			if (!System.IO.File.Exists(sPath + "start.sfs"))
 				return false;
 			else
