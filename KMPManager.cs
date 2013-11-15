@@ -288,12 +288,14 @@ namespace KMP
 				}
 				
 				//Ensure player never touches something under another player's control
+				bool controlsLocked = false;
 				if (isInFlight && !docking && serverVessels_InUse.ContainsKey(FlightGlobals.ActiveVessel.id))
 				{
 					if (serverVessels_InUse[FlightGlobals.ActiveVessel.id])
 					{
 						ScreenMessages.PostScreenMessage("This vessel is currently controlled by another player...", 2.5f,ScreenMessageStyle.UPPER_CENTER);
 						InputLockManager.SetControlLock(BLOCK_ALL_CONTROLS,"KMP_Occupied");
+						controlsLocked = true;
 					}
 					else
 					{
@@ -308,6 +310,7 @@ namespace KMP
 					{
 						ScreenMessages.PostScreenMessage("This vessel is private...", 2.5f,ScreenMessageStyle.UPPER_CENTER);
 						InputLockManager.SetControlLock(BLOCK_ALL_CONTROLS,"KMP_Private");
+						controlsLocked = true;
 					}
 					else
 					{
@@ -407,7 +410,7 @@ namespace KMP
 				//If in flight, check remote vessels, set position variable for docking-mode position updates
 				if (isInFlight)
 				{
-					InputLockManager.ClearControlLocks();
+					if (!controlsLocked) InputLockManager.ClearControlLocks();
 					checkRemoteVesselIntegrity();
 					activeVesselPosition = FlightGlobals.ActiveVessel.findWorldCenterOfMass();
 					dockingRelVel.Clear();
@@ -1606,7 +1609,7 @@ namespace KMP
 										else
 										{
 											KMPClientMain.DebugLog("no protovessel");
-											if (vessel.orbitValid && !extant_vessel.isActiveVessel)
+											if (vessel.orbitValid)
 											{
 												KMPClientMain.DebugLog("updating from flight data, distance: " + ourDistance);
 												//Update orbit to our game's time if necessary
@@ -2075,11 +2078,6 @@ namespace KMP
 		
 		private void addRemoteVessel(ProtoVessel protovessel, Guid vessel_id, KMPVesselUpdate update = null, double distance = 501d)
 		{
-			if (isInFlight && vessel_id == FlightGlobals.ActiveVessel.id)
-			{
-				KMPClientMain.DebugLog("Attempted to update controlled vessel!");
-				return;
-			}
 			KMPClientMain.DebugLog("addRemoteVessel");
 			Vector3 newWorldPos = Vector3.zero, newOrbitVel = Vector3.zero;
 			bool setTarget = false, wasLoaded = false;
