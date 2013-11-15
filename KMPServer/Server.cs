@@ -2069,6 +2069,11 @@ namespace KMPServer
                         sb.Append("!motd - Displays Server MOTD\n");
                         sb.Append("!rules - Displays Server Rules\n");
 						sb.Append("!bubble - Displays server bubble size, and how far you are from its borders\n");
+                        sb.Append("!chat - Various commands to manipulate the chat window\n");
+                        sb.Append("!chat dragwindow <true|false> - Makes the chat draggable\n");
+                        sb.Append("!chat offsetting <true|false> - Turn on/off the tracking center and editor offsets\n");
+                        sb.Append("!chat offset [tracking|editor] [offsetX] [offsetY] - Set the offset values (pixels)\n");
+                        sb.Append("!chat [width|height|top|left] [value] <percent|pixels>");
                         sb.Append(Environment.NewLine);
 
                         sendTextMessage(cl, sb.ToString());
