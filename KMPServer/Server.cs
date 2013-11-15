@@ -2087,10 +2087,6 @@ namespace KMPServer
                         sendTextMessage(cl, sb.ToString());
                         return;
                     }
-					else if(message_lower == "Leaving")
-					{
-						
-					}
                     else if (message_lower.Length > (KMPCommon.GET_CRAFT_COMMAND.Length + 1)
                         && message_lower.Substring(0, KMPCommon.GET_CRAFT_COMMAND.Length) == KMPCommon.GET_CRAFT_COMMAND)
                     {
