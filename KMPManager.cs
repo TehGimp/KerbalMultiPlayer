@@ -2520,7 +2520,9 @@ namespace KMP
 			{
 				//Deserialize global settings from file
 				//byte[] bytes = KSP.IO.File.ReadAllBytes<KMPManager>(GLOBAL_SETTINGS_FILENAME); //Apparently KSP.IO.File.ReadAllBytes is broken
-				byte[] bytes = System.IO.File.ReadAllBytes("GameData/KMP/Plugins/PluginData/KerbalMultiPlayer/" + GLOBAL_SETTINGS_FILENAME);
+				String sPath = System.IO.Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location);
+				sPath += "PluginData/";
+				byte[] bytes = System.IO.File.ReadAllBytes(sPath + GLOBAL_SETTINGS_FILENAME);
 				object deserialized = KSP.IO.IOUtils.DeserializeFromBinary(bytes);
 
 				if (deserialized is KMPGlobalSettings)
