@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text;
 using UnityEngine;
 using System.Xml.Serialization;
+using System.Collections;
 
 namespace KMP
 {
@@ -2529,7 +2530,9 @@ namespace KMP
 			{
 				//Deserialize global settings from file
 				//byte[] bytes = KSP.IO.File.ReadAllBytes<KMPManager>(GLOBAL_SETTINGS_FILENAME); //Apparently KSP.IO.File.ReadAllBytes is broken
-				byte[] bytes = System.IO.File.ReadAllBytes("GameData/KMP/Plugins/PluginData/KerbalMultiPlayer/" + GLOBAL_SETTINGS_FILENAME);
+				String sPath = System.IO.Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location);
+				sPath += "PluginData/";
+				byte[] bytes = System.IO.File.ReadAllBytes(sPath + GLOBAL_SETTINGS_FILENAME);
 				object deserialized = KSP.IO.IOUtils.DeserializeFromBinary(bytes);
 
 				if (deserialized is KMPGlobalSettings)
@@ -2753,6 +2756,7 @@ namespace KMP
 				GameEvents.onFlightReady.Remove(this.OnFirstFlightReady);
 				GameEvents.onFlightReady.Add(this.OnFlightReady);
 				MapView.EnterMapView();
+				MapView.MapCamera.SetTarget("Kerbin");
 				ScreenMessages.PostScreenMessage("Synchronizing universe, please wait...",30f,ScreenMessageStyle.UPPER_CENTER);
 				StartCoroutine(sendSubspaceSyncRequest(-1,true));
 				Invoke("handleSyncTimeout",55f);
@@ -2811,81 +2815,79 @@ namespace KMP
 		{
 			try
 			{
-                if (gameRunning)
+				if (!gameRunning) return;
+				if (FlightDriver.Pause) FlightDriver.SetPause(false);
+
+                //Find an instance of the game's RenderingManager
+                if (renderManager == null)
+                    renderManager = (RenderingManager)FindObjectOfType(typeof(RenderingManager));
+
+                //Find an instance of the game's PlanetariumCamera
+                if (planetariumCam == null)
+                    planetariumCam = (PlanetariumCamera)FindObjectOfType(typeof(PlanetariumCamera));
+
+                if (Input.GetKeyDown(KMPGlobalSettings.instance.guiToggleKey))
+                    KMPInfoDisplay.infoDisplayActive = !KMPInfoDisplay.infoDisplayActive;
+
+                if (Input.GetKeyDown(KMPGlobalSettings.instance.screenshotKey))
+                    StartCoroutine(shareScreenshot());
+
+                if (Input.GetKeyDown(KMPGlobalSettings.instance.chatTalkKey))
+                    KMPChatDX.showInput = true;
+
+                if (Input.GetKeyDown(KMPGlobalSettings.instance.chatHideKey))
                 {
-                    if (gameRunning && FlightDriver.Pause) FlightDriver.SetPause(false);
+                    KMPGlobalSettings.instance.chatDXWindowEnabled = !KMPGlobalSettings.instance.chatDXWindowEnabled;
+                    if (KMPGlobalSettings.instance.chatDXWindowEnabled) KMPChatDX.enqueueChatLine("Press Chat key (" + (KMPGlobalSettings.instance.chatTalkKey == KeyCode.BackQuote ? "~" : KMPGlobalSettings.instance.chatTalkKey.ToString()) + ") to send a message");
+                }
 
-                    //Find an instance of the game's RenderingManager
-                    if (renderManager == null)
-                        renderManager = (RenderingManager)FindObjectOfType(typeof(RenderingManager));
+                if (Input.anyKeyDown)
+                    lastKeyPressTime = UnityEngine.Time.realtimeSinceStartup;
 
-                    //Find an instance of the game's PlanetariumCamera
-                    if (planetariumCam == null)
-                        planetariumCam = (PlanetariumCamera)FindObjectOfType(typeof(PlanetariumCamera));
-
-                    if (Input.GetKeyDown(KMPGlobalSettings.instance.guiToggleKey))
-                        KMPInfoDisplay.infoDisplayActive = !KMPInfoDisplay.infoDisplayActive;
-
-                    if (Input.GetKeyDown(KMPGlobalSettings.instance.screenshotKey))
-                        StartCoroutine(shareScreenshot());
-
-                    if (Input.GetKeyDown(KMPGlobalSettings.instance.chatTalkKey))
-                        KMPChatDX.showInput = true;
-
-                    if (Input.GetKeyDown(KMPGlobalSettings.instance.chatHideKey))
+                //Handle key-binding
+                if (mappingGUIToggleKey)
+                {
+                    KeyCode key = KeyCode.F7;
+                    if (getAnyKeyDown(ref key))
                     {
-                        KMPGlobalSettings.instance.chatDXWindowEnabled = !KMPGlobalSettings.instance.chatDXWindowEnabled;
-                        if (KMPGlobalSettings.instance.chatDXWindowEnabled) KMPChatDX.enqueueChatLine("Press Chat key (" + (KMPGlobalSettings.instance.chatTalkKey == KeyCode.BackQuote ? "~" : KMPGlobalSettings.instance.chatTalkKey.ToString()) + ") to send a message");
-                    }
-
-                    if (Input.anyKeyDown)
-                        lastKeyPressTime = UnityEngine.Time.realtimeSinceStartup;
-
-                    //Handle key-binding
-                    if (mappingGUIToggleKey)
-                    {
-                        KeyCode key = KeyCode.F7;
-                        if (getAnyKeyDown(ref key))
+                        if (key != KeyCode.Mouse0)
                         {
-                            if (key != KeyCode.Mouse0)
-                            {
-                                KMPGlobalSettings.instance.guiToggleKey = key;
-                                mappingGUIToggleKey = false;
-                            }
+                            KMPGlobalSettings.instance.guiToggleKey = key;
+                            mappingGUIToggleKey = false;
                         }
                     }
+                }
 
-                    if (mappingScreenshotKey)
+                if (mappingScreenshotKey)
+                {
+                    KeyCode key = KeyCode.F8;
+                    if (getAnyKeyDown(ref key))
                     {
-                        KeyCode key = KeyCode.F8;
-                        if (getAnyKeyDown(ref key))
+                        if (key != KeyCode.Mouse0)
                         {
-                            if (key != KeyCode.Mouse0)
-                            {
-                                KMPGlobalSettings.instance.screenshotKey = key;
-                                mappingScreenshotKey = false;
-                            }
+                            KMPGlobalSettings.instance.screenshotKey = key;
+                            mappingScreenshotKey = false;
                         }
                     }
+                }
 
-                    if (mappingChatKey)
+                if (mappingChatKey)
+                {
+                    KeyCode key = KeyCode.Y;
+                    if (getAnyKeyDown(ref key))
                     {
-                        KeyCode key = KeyCode.Y;
-                        if (getAnyKeyDown(ref key))
-                        {
-                            KMPGlobalSettings.instance.chatTalkKey = key;
-                            mappingChatKey = false;
-                        }
+                        KMPGlobalSettings.instance.chatTalkKey = key;
+                        mappingChatKey = false;
                     }
+                }
 
-                    if (mappingChatDXToggleKey)
+                if (mappingChatDXToggleKey)
+                {
+                    KeyCode key = KeyCode.F9;
+                    if (getAnyKeyDown(ref key))
                     {
-                        KeyCode key = KeyCode.F9;
-                        if (getAnyKeyDown(ref key))
-                        {
-                            KMPGlobalSettings.instance.chatHideKey = key;
-                            mappingChatDXToggleKey = false;
-                        }
+                        KMPGlobalSettings.instance.chatHideKey = key;
+                        mappingChatDXToggleKey = false;
                     }
                 }
 			} catch (Exception ex) { KMPClientMain.DebugLog ("u err: " + ex.Message + " " + ex.StackTrace); }
@@ -3243,9 +3245,11 @@ namespace KMP
 					GUILayout.BeginHorizontal();
 					
 					if (GUILayout.Button("Disconnect & Exit"))
-					{
-                        disconnect("Quit");
+					{	
+						KMPClientMain.sendConnectionEndMessage("Quit");
 						KMPClientMain.clearConnectionState();
+						KMPClientMain.intentionalConnectionEnd = true;
+						KMPClientMain.endSession = true;
 						gameRunning = false;
 						forceQuit = true;
 					}
@@ -3417,21 +3421,22 @@ namespace KMP
 					if (addHostPressed)
 					{
 						KMPClientMain.SetServer(newHost.Trim());
-						String[] favorites = KMPClientMain.GetFavorites();
-						for (int i=0; i<8; ++i)
+						ArrayList favorites = KMPClientMain.GetFavorites();
+
+						if (favorites.Contains(newHost.Trim() + ":" + newPort.Trim()))
 						{
-							if ((newHost.Trim() + ":" + newPort.Trim()) == favorites[i])
-						    {
-								ScreenMessages.PostScreenMessage("This server is already on the list",300f,ScreenMessageStyle.UPPER_CENTER);
-								break;
-							}
-							
-							if (String.IsNullOrEmpty(favorites[i]) || i == 7) {
-								favorites[i] = newHost.Trim() + ":" + newPort.Trim();
-								break;
-							}
+							ScreenMessages.PostScreenMessage("This server is already on the list", 300f, ScreenMessageStyle.UPPER_CENTER);
 						}
-						KMPClientMain.SetFavorites(favorites);
+						else
+						{
+							String sHostname = newHost.Trim() + ":" + newPort.Trim();
+							favorites.Add(sHostname);
+
+							//Close the add server bar after a server has been added and select the new server
+							addPressed = false;
+							KMPConnectionDisplay.activeHostname = sHostname;
+							KMPClientMain.SetFavorites(favorites);
+						}
 					}
 				}
 			GUILayout.EndHorizontal();
@@ -3480,7 +3485,7 @@ namespace KMP
 						KMPClientMain.Connect();
 					}
 					
-					if (KMPClientMain.GetFavorites().Length < 1) addPressed = true;
+					if (KMPClientMain.GetFavorites().Count < 1) addPressed = true;
 					
 					addPressed = GUILayout.Toggle(
 						addPressed,
@@ -3491,16 +3496,13 @@ namespace KMP
 					bool deletePressed = GUILayout.Button("Remove");
 					if (deletePressed)
 					{
-						String[] favorites = KMPClientMain.GetFavorites();
-						for (int i=0; i<favorites.Length; ++i)
+						ArrayList favorites = KMPClientMain.GetFavorites();
+						if (favorites.Contains(KMPConnectionDisplay.activeHostname))
 						{
-							if (favorites[i] == KMPConnectionDisplay.activeHostname) {
-								favorites[i] = "";
-								KMPConnectionDisplay.activeHostname = "";
-								break;
-							}
+							favorites.Remove(KMPConnectionDisplay.activeHostname);
+							KMPConnectionDisplay.activeHostname = "";
+							KMPClientMain.SetFavorites(favorites);
 						}
-						KMPClientMain.SetFavorites(favorites);
 					}
 					GUI.enabled = true;
 			
