@@ -729,7 +729,6 @@ namespace KMP
 					}
                     else if(line_lower == "!whereami")
                     {
-                        DebugLog("Sending whereami request");
                         handled = true;
                         sendMessageTCP(KMPCommon.ClientMessageID.WHEREAMI, null);
                     }
