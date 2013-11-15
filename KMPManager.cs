@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text;
 using UnityEngine;
 using System.Xml.Serialization;
+using System.Collections;
 
 namespace KMP
 {
@@ -3238,8 +3239,11 @@ namespace KMP
 					GUILayout.BeginHorizontal();
 					
 					if (GUILayout.Button("Disconnect & Exit"))
-					{
+					{	
+						KMPClientMain.sendConnectionEndMessage("Quit");
 						KMPClientMain.clearConnectionState();
+						KMPClientMain.intentionalConnectionEnd = true;
+						KMPClientMain.endSession = true;
 						gameRunning = false;
 						forceQuit = true;
 					}
@@ -3411,25 +3415,23 @@ namespace KMP
 					if (addHostPressed)
 					{
 						KMPClientMain.SetServer(newHost.Trim());
-						String[] favorites = KMPClientMain.GetFavorites();
-						for (int i=0; i<8; ++i)
-						{
-							if ((newHost.Trim() + ":" + newPort.Trim()) == favorites[i])
-						    {
-								ScreenMessages.PostScreenMessage("This server is already on the list",300f,ScreenMessageStyle.UPPER_CENTER);
-								break;
-							}
-							
-							if (String.IsNullOrEmpty(favorites[i]) || i == 7) {
-								favorites[i] = newHost.Trim() + ":" + newPort.Trim();
+						ArrayList favorites = KMPClientMain.GetFavorites();
 
-                                //Close the add server bar after a server has been added and select the new server
-							    addPressed = false;
-                                KMPConnectionDisplay.activeHostname = favorites[i];
-								break;
-							}
+						if (favorites.Contains(newHost.Trim() + ":" + newPort.Trim()))
+						{
+							ScreenMessages.PostScreenMessage("This server is already on the list", 300f, ScreenMessageStyle.UPPER_CENTER);
 						}
-						KMPClientMain.SetFavorites(favorites);
+						else
+						{
+
+							String sHostname = newHost.Trim() + ":" + newPort.Trim();
+							favorites.Add(sHostname);
+
+							//Close the add server bar after a server has been added and select the new server
+							addPressed = false;
+							KMPConnectionDisplay.activeHostname = sHostname;
+							KMPClientMain.SetFavorites(favorites);
+						}
 					}
 				}
 			GUILayout.EndHorizontal();
@@ -3478,7 +3480,7 @@ namespace KMP
 						KMPClientMain.Connect();
 					}
 					
-					if (KMPClientMain.GetFavorites().Length < 1) addPressed = true;
+					if (KMPClientMain.GetFavorites().Count < 1) addPressed = true;
 					
 					addPressed = GUILayout.Toggle(
 						addPressed,
@@ -3489,14 +3491,11 @@ namespace KMP
 					bool deletePressed = GUILayout.Button("Remove");
 					if (deletePressed)
 					{
-						String[] favorites = KMPClientMain.GetFavorites();
-						for (int i=0; i<favorites.Length; ++i)
+						ArrayList favorites = KMPClientMain.GetFavorites();
+						if (favorites.Contains(KMPConnectionDisplay.activeHostname))
 						{
-							if (favorites[i] == KMPConnectionDisplay.activeHostname) {
-								favorites[i] = "";
-								KMPConnectionDisplay.activeHostname = "";
-								break;
-							}
+							favorites.Remove(KMPConnectionDisplay.activeHostname);
+							KMPConnectionDisplay.activeHostname = "";
 						}
 						KMPClientMain.SetFavorites(favorites);
 					}
