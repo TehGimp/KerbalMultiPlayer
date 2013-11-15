@@ -20,8 +20,18 @@ namespace KMP
 		public float chatDisplayWindowX;
 		public float chatDisplayWindowY;
 
+        public float chatDXDisplayWindowWidth;
+        public float chatDXDisplayWindowHeight;
         public float chatDXDisplayWindowX;
         public float chatDXDisplayWindowY;
+
+        public bool chatDXOffsetEnabled;
+
+        public float chatDXTrackingOffsetX;
+        public float chatDXTrackingOffsetY;
+        public float chatDXEditorOffsetX;
+        public float chatDXEditorOffsetY;
+
 
 		public bool infoDisplayBig = false;
 
