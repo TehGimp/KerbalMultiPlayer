@@ -3401,19 +3401,22 @@ namespace KMP
 					{
 						KMPClientMain.SetServer(newHost.Trim());
 						ArrayList favorites = KMPClientMain.GetFavorites();
-						
+
 						if (favorites.Contains(newHost.Trim() + ":" + newPort.Trim()))
 						{
-							ScreenMessages.PostScreenMessage("This server is already on the list",300f,ScreenMessageStyle.UPPER_CENTER);
+							ScreenMessages.PostScreenMessage("This server is already on the list", 300f, ScreenMessageStyle.UPPER_CENTER);
 						}
+						else
+						{
 
-						String sHostname = newHost.Trim() + ":" + newPort.Trim();
-						favorites.Add(sHostname);
+							String sHostname = newHost.Trim() + ":" + newPort.Trim();
+							favorites.Add(sHostname);
 
-                        //Close the add server bar after a server has been added and select the new server
-						addPressed = false;
-                        KMPConnectionDisplay.activeHostname = sHostname;
-						KMPClientMain.SetFavorites(favorites);
+							//Close the add server bar after a server has been added and select the new server
+							addPressed = false;
+							KMPConnectionDisplay.activeHostname = sHostname;
+							KMPClientMain.SetFavorites(favorites);
+						}
 					}
 				}
 			GUILayout.EndHorizontal();
