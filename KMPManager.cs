@@ -3401,34 +3401,18 @@ namespace KMP
 					{
 						KMPClientMain.SetServer(newHost.Trim());
 						ArrayList favorites = KMPClientMain.GetFavorites();
-						for (int i=0; i<8; ++i)
+						
+						if (favorites.Contains(newHost.Trim() + ":" + newPort.Trim()))
 						{
-							if (favorites.Contains(newHost.Trim() + ":" + newPort.Trim()))
-						    {
-								ScreenMessages.PostScreenMessage("This server is already on the list",300f,ScreenMessageStyle.UPPER_CENTER);
-								break;
-							}
-
-							String sHostname = newHost.Trim() + ":" + newPort.Trim();
-							favorites.Add(sHostname);
-
-                            //Close the add server bar after a server has been added and select the new server
-							addPressed = false;
-                            KMPConnectionDisplay.activeHostname = sHostname;
-							break;
-							
-<<<<<<< HEAD
-							if (String.IsNullOrEmpty(favorites[i]) || i == 7) {
-								favorites[i] = newHost.Trim() + ":" + newPort.Trim();
-
-                                //Close the add server bar after a server has been added and select the new server
-							    addPressed = false;
-                                KMPConnectionDisplay.activeHostname = favorites[i];
-								break;
-							}
-=======
->>>>>>> origin/MelonMain
+							ScreenMessages.PostScreenMessage("This server is already on the list",300f,ScreenMessageStyle.UPPER_CENTER);
 						}
+
+						String sHostname = newHost.Trim() + ":" + newPort.Trim();
+						favorites.Add(sHostname);
+
+                        //Close the add server bar after a server has been added and select the new server
+						addPressed = false;
+                        KMPConnectionDisplay.activeHostname = sHostname;
 						KMPClientMain.SetFavorites(favorites);
 					}
 				}

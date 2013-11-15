@@ -322,15 +322,12 @@ namespace KMPServer
             outgoingMessageThread.Start();
             ghostCheckThread.Start();
 
-<<<<<<< HEAD
-            if (settings.autoDekessler) { autoDekesslerTimer = new Timer(_ => dekesslerServerCommand(new string[0]), null, settings.autoDekesslerTime * 60000, settings.autoDekesslerTime * 60000); Log.Debug("Starting AutoDekessler: Timer Set to " + settings.autoDekesslerTime + " Minutes"); }
-=======
+
             if (settings.autoDekessler) 
 			{
 				autoDekesslerTimer = new Timer(_ => dekesslerServerCommand(new string[0]), null, settings.autoDekesslerTime * 60000, settings.autoDekesslerTime * 60000);
 				Log.Debug("Starting AutoDekessler: Timer Set to " + settings.autoDekesslerTime + " Minutes");
 			}
->>>>>>> origin/MelonMain
             
             //Begin listening for HTTP requests
 
