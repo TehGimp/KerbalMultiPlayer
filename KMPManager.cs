@@ -3405,6 +3405,10 @@ namespace KMP
 							
 							if (String.IsNullOrEmpty(favorites[i]) || i == 7) {
 								favorites[i] = newHost.Trim() + ":" + newPort.Trim();
+
+                                //Close the add server bar after a server has been added and select the new server
+							    addPressed = false;
+                                KMPConnectionDisplay.activeHostname = favorites[i];
 								break;
 							}
 						}
