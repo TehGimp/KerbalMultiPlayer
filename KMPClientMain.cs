@@ -888,6 +888,12 @@ namespace KMP
                                                     break;
                                             }
 
+                                            KMPChatDX.windowPos.x = KMPChatDX.chatboxX;
+                                            KMPChatDX.windowPos.y = KMPChatDX.chatboxY;
+
+                                            KMPChatDX.windowPos.height = KMPChatDX.chatboxHeight;
+                                            KMPChatDX.windowPos.width = KMPChatDX.chatboxWidth;
+
                                             enqueueTextMessage(sb.ToString());
                                         }
                                         catch (Exception)
