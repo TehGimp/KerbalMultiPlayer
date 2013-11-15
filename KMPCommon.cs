@@ -76,8 +76,7 @@ public class KMPCommon
 		ACTIVITY_UPDATE_IN_FLIGHT,
 		PING,
 		WARPING,
-		SSYNC,
-        WHEREAMI
+		SSYNC
 	}
 
 	public enum ServerMessageID
