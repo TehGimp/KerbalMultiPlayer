@@ -72,7 +72,9 @@ namespace KMP
 		public const float FULL_PROTOVESSEL_UPDATE_TIMEOUT = 45f;
 
 		public const double PRIVATE_VESSEL_MIN_TARGET_DISTANCE = 500d;
-
+		
+		public const ControlTypes BLOCK_ALL_CONTROLS = ControlTypes.ALL_SHIP_CONTROLS | ControlTypes.ACTIONS_ALL | ControlTypes.EVA_INPUT | ControlTypes.TIMEWARP | ControlTypes.MISC | ControlTypes.GROUPS_ALL | ControlTypes.CUSTOM_ACTION_GROUPS | ControlTypes.ACTIONS_EXTERNAL;
+		
 		public UnicodeEncoding encoder = new UnicodeEncoding();
 
 		public String playerName = String.Empty;
@@ -289,9 +291,12 @@ namespace KMP
 				{
 					if (serverVessels_InUse[FlightGlobals.ActiveVessel.id])
 					{
-						KMPClientMain.DebugLog("Selected occupied vessel");
-						kickToTrackingStation();
-						return;
+						ScreenMessages.PostScreenMessage("This vessel is currently controlled by another player...", 2.5f,ScreenMessageStyle.UPPER_CENTER);
+						InputLockManager.SetControlLock(BLOCK_ALL_CONTROLS,"KMP_Occupied");
+					}
+					else
+					{
+						if (InputLockManager.GetControlLock("KMP_Occupied") == (BLOCK_ALL_CONTROLS)) InputLockManager.RemoveControlLock("KMP_Occupied");
 					}
 				}
 				
@@ -300,9 +305,12 @@ namespace KMP
 				{
 					if (!serverVessels_IsMine[FlightGlobals.ActiveVessel.id] && serverVessels_IsPrivate[FlightGlobals.ActiveVessel.id])
 					{
-						KMPClientMain.DebugLog("Selected private vessel");
-						kickToTrackingStation();
-						return;
+						ScreenMessages.PostScreenMessage("This vessel is private...", 2.5f,ScreenMessageStyle.UPPER_CENTER);
+						InputLockManager.SetControlLock(BLOCK_ALL_CONTROLS,"KMP_Private");
+					}
+					else
+					{
+						if (InputLockManager.GetControlLock("KMP_Private") == (BLOCK_ALL_CONTROLS)) InputLockManager.RemoveControlLock("KMP_Private");
 					}
 				}
 				if (isInFlight && !docking && FlightGlobals.fetch.VesselTarget != null)
@@ -599,7 +607,8 @@ namespace KMP
 		private void writePrimaryUpdate()
 		{
 			if (!syncing && isInFlight && !warping
-                && !isInSafetyBubble(FlightGlobals.ship_position,FlightGlobals.ActiveVessel.mainBody,FlightGlobals.ActiveVessel.altitude))
+                && !isInSafetyBubble(FlightGlobals.ship_position,FlightGlobals.ActiveVessel.mainBody,FlightGlobals.ActiveVessel.altitude)
+			    && (serverVessels_IsMine.ContainsKey(FlightGlobals.ActiveVessel.id) ? serverVessels_IsMine[FlightGlobals.ActiveVessel.id] : true))
 			{
 				lastTick = Planetarium.GetUniversalTime();
 				//Write vessel status
@@ -671,7 +680,10 @@ namespace KMP
 					switch (HighLogic.LoadedScene)
 					{
 						case GameScenes.FLIGHT:
-							status_array[1] = "Preparing/launching from KSC";
+							if (serverVessels_IsMine.ContainsKey(FlightGlobals.ActiveVessel.id) ? serverVessels_IsMine[FlightGlobals.ActiveVessel.id] : true)
+								status_array[1] = "Preparing/launching from KSC";
+							else
+								status_array[1] = "Spectating " + FlightGlobals.ActiveVessel.vesselName;
 							break;
 						case GameScenes.SPACECENTER:
 							status_array[1] = "At Space Center";
@@ -1498,27 +1510,24 @@ namespace KMP
 			if (!vessel_update.id.Equals(Guid.Empty) && !docking)
 			{
 				//Update vessel privacy locks
-				if (!isInFlight || vessel_update.id != FlightGlobals.ActiveVessel.id)
+				serverVessels_InUse[vessel_update.id] = vessel_update.state == State.ACTIVE;
+				serverVessels_IsPrivate[vessel_update.id] = vessel_update.isPrivate;
+				serverVessels_IsMine[vessel_update.id] = vessel_update.isMine;
+				KMPClientMain.DebugLog("status flags updated: " + (vessel_update.state == State.ACTIVE) + " " + vessel_update.isPrivate + " " + vessel_update.isMine);
+				if (vessel_update.situation == Situation.DESTROYED)
 				{
-					serverVessels_InUse[vessel_update.id] = vessel_update.state == State.ACTIVE;
-					serverVessels_IsPrivate[vessel_update.id] = vessel_update.isPrivate;
-					serverVessels_IsMine[vessel_update.id] = vessel_update.isMine;
-					KMPClientMain.DebugLog("status flags updated: " + (vessel_update.state == State.ACTIVE) + " " + vessel_update.isPrivate + " " + vessel_update.isMine);
-					if (vessel_update.situation == Situation.DESTROYED)
-					{
-						KMPClientMain.DebugLog("killing vessel");
-						Vessel extant_vessel = FlightGlobals.Vessels.Find(v => v.id == vessel_update.id);
-						if (extant_vessel != null && !extant_vessel.isEVA) try { extant_vessel.Die(); } catch {}
-						return;
-					}
+					KMPClientMain.DebugLog("killing vessel");
+					Vessel extant_vessel = FlightGlobals.Vessels.Find(v => v.id == vessel_update.id);
+					if (extant_vessel != null && !extant_vessel.isEVA) try { extant_vessel.Die(); } catch {}
+					return;
 				}
 				
 				//Store protovessel if included
-				if (vessel_update.getProtoVesselNode() != null && (!isInFlight || vessel_update.id != FlightGlobals.ActiveVessel.id)) serverVessels_ProtoVessels[vessel_update.id] = vessel_update.getProtoVesselNode();
+				if (vessel_update.getProtoVesselNode() != null) serverVessels_ProtoVessels[vessel_update.id] = vessel_update.getProtoVesselNode();
 			}
 			if (isInFlightOrTracking)
 			{
-				if (vessel_update.id != FlightGlobals.ActiveVessel.id)
+				if (vessel_update.id != FlightGlobals.ActiveVessel.id || (serverVessels_InUse[vessel_update.id] || (serverVessels_IsPrivate[vessel_update.id] && !serverVessels_IsMine[vessel_update.id])))
 				{
 					KMPClientMain.DebugLog("retrieving vessel: " + vessel_update.id.ToString());
 					if (!vessel_update.id.Equals(Guid.Empty))
@@ -2616,11 +2625,7 @@ namespace KMP
 			removeDockedVessel(data.to.vessel);
 			removeDockedVessel(data.from.vessel);
 			//Fix displayed crew
-			while (KerbalGUIManager.ActiveCrew.Count > 0)
-			{
-				KMPClientMain.DebugLog("Removed extra displayed crew member");
-				KerbalGUIManager.RemoveActiveCrew(KerbalGUIManager.ActiveCrew.Find(k => true));
-			}
+			clearGUICrew();
 			Invoke("setDoneDocking",3f);
 		}
 		
@@ -2786,6 +2791,14 @@ namespace KMP
 			{
 				writePluginUpdate();
 			}
+		}
+		
+		private void clearGUICrew()
+		{
+			while (KerbalGUIManager.ActiveCrew.Count > 0)
+			{
+				KerbalGUIManager.RemoveActiveCrew(KerbalGUIManager.ActiveCrew.Find(k => true));
+			}	
 		}
 		
 		public void Update()
@@ -3074,7 +3087,7 @@ namespace KMP
 			try
 			{
 				bool wasLocked;
-				if (!serverVessels_IsPrivate.ContainsKey(FlightGlobals.ActiveVessel.id))
+				if (!serverVessels_IsPrivate.ContainsKey(FlightGlobals.ActiveVessel.id) || !serverVessels_IsMine.ContainsKey(FlightGlobals.ActiveVessel.id))
 				{
 					//Must be ours
 					serverVessels_IsPrivate[FlightGlobals.ActiveVessel.id] = false;
@@ -3085,18 +3098,22 @@ namespace KMP
 				else
 				{
 					wasLocked = serverVessels_IsPrivate[FlightGlobals.ActiveVessel.id];
+					if (!wasLocked && (serverVessels_InUse.ContainsKey(FlightGlobals.ActiveVessel.id) ? serverVessels_InUse[FlightGlobals.ActiveVessel.id] : true))
+						//Unlocked unoccupied vessel is now ours
+						serverVessels_IsMine[FlightGlobals.ActiveVessel.id] = true;
 				}
 				GUILayout.BeginVertical();
 				GUIStyle lockButtonStyle = new GUIStyle(GUI.skin.button);
 				lockButtonStyle.fontSize = 10;
+				if (!serverVessels_IsMine[FlightGlobals.ActiveVessel.id]) GUI.enabled = false;
 				bool locked =
 					GUILayout.Toggle(wasLocked,
 					wasLocked ? "Private" : "Public",
 					lockButtonStyle);
-				if (wasLocked != locked)
+				if (!serverVessels_IsMine[FlightGlobals.ActiveVessel.id]) GUI.enabled = true;
+				if (serverVessels_IsMine[FlightGlobals.ActiveVessel.id] && wasLocked != locked)
 				{
 					serverVessels_IsPrivate[FlightGlobals.ActiveVessel.id] = locked;
-					serverVessels_IsMine[FlightGlobals.ActiveVessel.id] = true;
 					if (locked) ScreenMessages.PostScreenMessage("Your vessel is now marked Private",5,ScreenMessageStyle.UPPER_CENTER);
 					else ScreenMessages.PostScreenMessage("Your vessel is now marked Public",5,ScreenMessageStyle.UPPER_CENTER);
 					sendVesselMessage(FlightGlobals.ActiveVessel);
