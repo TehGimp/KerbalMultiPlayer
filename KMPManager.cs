@@ -607,7 +607,10 @@ namespace KMP
 			writePrimaryUpdate();
 			
 			//nearby vessels
-            if (isInFlight && !syncing && !warping && !isInSafetyBubble(FlightGlobals.ship_position,FlightGlobals.ActiveVessel.mainBody,FlightGlobals.ActiveVessel.altitude))
+            if (isInFlight
+			    && !syncing && !warping
+			    && !isInSafetyBubble(FlightGlobals.ship_position,FlightGlobals.ActiveVessel.mainBody,FlightGlobals.ActiveVessel.altitude)
+			    && (serverVessels_IsMine.ContainsKey(FlightGlobals.ActiveVessel.id) ? serverVessels_IsMine[FlightGlobals.ActiveVessel.id] : true))
 			{
 				writeSecondaryUpdates();
 			}
@@ -2104,7 +2107,8 @@ namespace KMP
 							if (oldVessel.altitude > 10000d)
 								newOrbitVel = oldVessel.GetObtVelocity();
 						}
-						oldVessel.Die();
+						if (!oldVessel.isActiveVessel) oldVessel.Die();
+						else oldVessel.Unload();
 					}
 				}
 				
