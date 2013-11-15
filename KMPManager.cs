@@ -2502,6 +2502,14 @@ namespace KMP
 
             KMPGlobalSettings.instance.chatDXDisplayWindowX = KMPChatDX.windowPos.x;
             KMPGlobalSettings.instance.chatDXDisplayWindowY = KMPChatDX.windowPos.y;
+            KMPGlobalSettings.instance.chatDXDisplayWindowWidth = KMPChatDX.chatboxWidth;
+            KMPGlobalSettings.instance.chatDXDisplayWindowHeight = KMPChatDX.chatboxHeight;
+
+            KMPGlobalSettings.instance.chatDXOffsetEnabled = KMPChatDX.offsetingEnabled;
+            KMPGlobalSettings.instance.chatDXEditorOffsetX = KMPChatDX.editorOffsetX;
+            KMPGlobalSettings.instance.chatDXEditorOffsetY = KMPChatDX.editorOffsetY;
+            KMPGlobalSettings.instance.chatDXTrackingOffsetX = KMPChatDX.trackerOffsetX;
+            KMPGlobalSettings.instance.chatDXTrackingOffsetY = KMPChatDX.trackerOffsetY;
 
 			//Serialize global settings to file
 			try
@@ -2550,8 +2558,19 @@ namespace KMP
 					KMPChatDisplay.windowPos.x = KMPGlobalSettings.instance.chatDisplayWindowX;
 					KMPChatDisplay.windowPos.y = KMPGlobalSettings.instance.chatDisplayWindowY;
 
-                    KMPChatDX.windowPos.x = KMPGlobalSettings.instance.chatDXDisplayWindowX;
-                    KMPChatDisplay.windowPos.y = KMPGlobalSettings.instance.chatDXDisplayWindowY;
+                    KMPChatDX.chatboxX = KMPGlobalSettings.instance.chatDXDisplayWindowX;
+                    KMPChatDX.chatboxY = KMPGlobalSettings.instance.chatDXDisplayWindowY;
+
+                    KMPChatDX.chatboxWidth = KMPGlobalSettings.instance.chatDXDisplayWindowWidth;
+                    KMPChatDX.chatboxHeight = KMPGlobalSettings.instance.chatDXDisplayWindowHeight;
+
+                    KMPChatDX.offsetingEnabled = KMPGlobalSettings.instance.chatDXOffsetEnabled;
+                    KMPChatDX.editorOffsetX = KMPGlobalSettings.instance.chatDXEditorOffsetX;
+                    KMPChatDX.editorOffsetY = KMPGlobalSettings.instance.chatDXEditorOffsetY;
+                    KMPChatDX.trackerOffsetX = KMPGlobalSettings.instance.chatDXTrackingOffsetX;
+                    KMPChatDX.trackerOffsetY = KMPGlobalSettings.instance.chatDXTrackingOffsetY;
+
+
 					success = true;
 				}
 			}
@@ -3663,7 +3682,7 @@ namespace KMP
 
             /* Display Chat */
 
-            GUI.depth = 2;
+
         
 
             GUILayout.BeginVertical();
@@ -3761,13 +3780,19 @@ namespace KMP
                 GUILayout.EndHorizontal();
             }
 
-  
-
-          
-
             GUILayout.EndVertical();
-            GUI.depth = 2;
-            GUI.BringWindowToBack(windowID);
+
+            if (KMPChatDX.draggable)
+            {
+                GUI.depth = 0;
+                GUI.BringWindowToFront(windowID);
+                GUI.DragWindow();
+            }
+            else
+            {
+                GUI.depth = 2;
+                GUI.BringWindowToBack(windowID);
+            }
         }
 
 

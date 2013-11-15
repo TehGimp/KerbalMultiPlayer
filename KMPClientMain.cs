@@ -720,6 +720,9 @@ namespace KMP
 				{
 					String line_lower = line.ToLower();
 
+                    // There's atleast one character (!), so we can be sure that line_part will have length 1 at minimum.
+                    String[] line_part = line_lower.Split(' ');
+
 					if (line_lower == "!quit")
 					{
 						handled = true;
@@ -766,6 +769,131 @@ namespace KMP
 							enqueuePluginChatMessage(sb.ToString());
 							handled = true;
 					}
+                    else if(line_part[0] == "!chat")
+                    {
+                        handled = true;
+                        int length = line_part.Length;
+                        if(length > 1) {
+                                string command = line_part[1];
+                                if (command == "dragwindow")
+                                {
+                                    bool state = false;
+                                    if (length >= 3)
+                                    {
+                                        // Set they requested value
+                                        state = line_part[2] == "true";
+                                    } 
+                                    else
+                                    {
+                                        // Or toggle.
+                                        state = !KMPChatDX.draggable;
+                                    }
+                              
+
+                                    if (!state)
+                                    {
+                                        KMPChatDX.chatboxX = KMPChatDX.windowPos.x;
+                                        KMPChatDX.chatboxY = KMPChatDX.windowPos.y;
+                                    }
+
+                                    KMPChatDX.draggable = state;
+                                    enqueueTextMessage(String.Format("The chat window is now {0}", (KMPChatDX.draggable) ? "draggable" : "not draggable"));
+                                }
+                                else if (command == "offsetting")
+                                {
+                                    bool state = true;
+
+                                    if(length >= 3)
+                                    {
+                                        state = line_part[2] == "true";
+                                    } 
+                                    else
+                                    {
+                                        state = !KMPChatDX.offsetingEnabled;
+                                    }
+
+                                    KMPChatDX.offsetingEnabled = state;
+                                    enqueueTextMessage(String.Format("Chat window offsetting has been {0}", (KMPChatDX.offsetingEnabled) ? "enabled" : "disabled"));
+                                }
+                                else if (command == "offset")
+                                {
+                                    if (length >= 5)
+                                    {
+                                        try
+                                        {
+                                            // 0 = tracking station, 1 = editor/sph
+                                            int target = (line_part[2] == "tracking") ? 0 : 1;
+                                            float offsetX = Convert.ToSingle(line_part[3]);
+                                            float offsetY = Convert.ToSingle(line_part[4]);
+
+                                            if (target == 0)
+                                            {
+                                                KMPChatDX.trackerOffsetX = offsetX;
+                                                KMPChatDX.trackerOffsetY = offsetY;
+                                            }
+                                            else if (target == 1)
+                                            {
+                                                KMPChatDX.editorOffsetX = offsetX;
+                                                KMPChatDX.editorOffsetY = offsetY;
+                                            }
+
+                                            enqueueTextMessage(String.Format("The {0} offsets has been set to X: {1} Y: {2}", (target == 0) ? "tracking station" : "rocket/spaceplane editor", offsetX, offsetY));
+                                        }
+                                        catch (Exception)
+                                        {
+                                            enqueueTextMessage("Syntax error. Usage: !chat offset [tracking|editor] [offsetX] [offsetY]");
+                                        }
+                                    }
+
+                                }
+                                else if (command == "width" || command == "height" || command == "top" || command == "left")
+                                {
+                                    if (length >= 3)
+                                    {
+                                        try
+                                        {
+                                            float size = Convert.ToSingle(line_part[2]);
+                                            bool percent = true;
+
+                                            if (length >= 4)
+                                            {
+                                                percent = line_part[3] == "percent";
+                                            }
+
+                                            switch (command)
+                                            {
+                                                case "width":
+                                                    KMPChatDX.chatboxWidth = (percent) ? Screen.width * (size / 100) : size;
+                                                    sb.Append(String.Format("Chatbox width has been set to {0} {1}", size, (percent) ? "percent" : "pixels"));
+                                                    break;
+                                                case "height":
+                                                    KMPChatDX.chatboxHeight = (percent) ? Screen.height * (size / 100) : size;
+                                                    sb.Append(String.Format("Chatbox height has been set to {0} {1}", size, (percent) ? "percent" : "pixels"));
+                                                    break;
+                                                case "top":
+                                                    KMPChatDX.chatboxY = (percent) ? Screen.height * (size / 100) : size;
+                                                    sb.Append(String.Format("Chatbox top offset has been set to {0} {1}", size, (percent) ? "percent" : "pixels"));
+                                                    break;
+                                                case "left":
+                                                    KMPChatDX.chatboxX = (percent) ? Screen.width * (size / 100) : size;
+                                                    sb.Append(String.Format("Chatbox left offset has been set to {0} {1}", size, (percent) ? "percent" : "pixels"));
+                                                    break;
+                                            }
+
+                                            enqueueTextMessage(sb.ToString());
+                                        }
+                                        catch (Exception)
+                                        {
+                                            enqueueTextMessage("Syntax error. Usage: !chat [width|height|top|left] [value] <percent|pixels>\nWhere value is a number.");
+                                        }
+                                    }
+                                    else
+                                    {
+                                        enqueueTextMessage("Syntax error. Usage: !chat [width|height|top|left] [value] <percent|pixels>");
+                                    }
+                                }
+                        }
+                    }
 					else if (line_lower.Length > (KMPCommon.SHARE_CRAFT_COMMAND.Length + 1)
 						&& line_lower.Substring(0, KMPCommon.SHARE_CRAFT_COMMAND.Length) == KMPCommon.SHARE_CRAFT_COMMAND)
 					{
@@ -1308,32 +1436,32 @@ namespace KMP
 			}
 		}
 
-		static void writeClientData()
-		{
+        static void writeClientData()
+        {
 
-			lock (clientDataLock)
-			{
+            lock (clientDataLock)
+            {
 
-				if (lastClientDataChangeTime > lastClientDataWriteTime
-					|| (stopwatch.ElapsedMilliseconds - lastClientDataWriteTime) > CLIENT_DATA_FORCE_WRITE_INTERVAL)
-				{
-					byte[] username_bytes = encoder.GetBytes(username);
-						
-					//Build client data array
-					byte[] bytes = new byte[9 + username_bytes.Length];
+                if (lastClientDataChangeTime > lastClientDataWriteTime
+                    || (stopwatch.ElapsedMilliseconds - lastClientDataWriteTime) > CLIENT_DATA_FORCE_WRITE_INTERVAL)
+                {
+                    byte[] username_bytes = encoder.GetBytes(username);
 
-					bytes[0] = inactiveShipsPerUpdate;
-					KMPCommon.intToBytes(screenshotSettings.maxHeight).CopyTo(bytes, 1);
-					KMPCommon.intToBytes(updateInterval).CopyTo(bytes, 5);
-					username_bytes.CopyTo(bytes, 9);
+                    //Build client data array
+                    byte[] bytes = new byte[9 + username_bytes.Length];
 
-					enqueueClientInteropMessage(KMPCommon.ClientInteropMessageID.CLIENT_DATA, bytes);
+                    bytes[0] = inactiveShipsPerUpdate;
+                    KMPCommon.intToBytes(screenshotSettings.maxHeight).CopyTo(bytes, 1);
+                    KMPCommon.intToBytes(updateInterval).CopyTo(bytes, 5);
+                    username_bytes.CopyTo(bytes, 9);
 
-					lastClientDataWriteTime = stopwatch.ElapsedMilliseconds;
-				}
-			}
+                    enqueueClientInteropMessage(KMPCommon.ClientInteropMessageID.CLIENT_DATA, bytes);
 
-		}
+                    lastClientDataWriteTime = stopwatch.ElapsedMilliseconds;
+                }
+            }
+
+        }
 
 		static void enqueueTextMessage(String message, bool from_server = false, bool to_plugin = true, bool isMOTD = false)
 		{
