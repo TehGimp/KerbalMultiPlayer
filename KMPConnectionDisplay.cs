@@ -9,7 +9,7 @@ namespace KMP
 {
 	class KMPConnectionDisplay
 	{
-		public const float MIN_WINDOW_WIDTH = 400;
+		public const float MIN_WINDOW_WIDTH = 396;
 		public const float MIN_WINDOW_HEIGHT = 260;
 
 		public static bool windowEnabled = true;
