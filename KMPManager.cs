@@ -410,7 +410,12 @@ namespace KMP
 				//If in flight, check remote vessels, set position variable for docking-mode position updates
 				if (isInFlight)
 				{
-					if (!controlsLocked) InputLockManager.ClearControlLocks();
+					if (controlsLocked) lockCrewGUI(); //Prevent EVA'ing crew
+					else 
+					{
+						InputLockManager.ClearControlLocks(); //Clear locks
+						unlockCrewGUI();
+					}
 					checkRemoteVesselIntegrity();
 					activeVesselPosition = FlightGlobals.ActiveVessel.findWorldCenterOfMass();
 					dockingRelVel.Clear();
@@ -613,7 +618,8 @@ namespace KMP
 		{
 			if (!syncing && isInFlight && !warping
                 && !isInSafetyBubble(FlightGlobals.ship_position,FlightGlobals.ActiveVessel.mainBody,FlightGlobals.ActiveVessel.altitude)
-			    && (serverVessels_IsMine.ContainsKey(FlightGlobals.ActiveVessel.id) ? serverVessels_IsMine[FlightGlobals.ActiveVessel.id] : true))
+			    && (serverVessels_IsMine.ContainsKey(FlightGlobals.ActiveVessel.id) ? serverVessels_IsMine[FlightGlobals.ActiveVessel.id] : true)
+			    && (serverVessels_InUse.ContainsKey(FlightGlobals.ActiveVessel.id) ? !serverVessels_InUse[FlightGlobals.ActiveVessel.id] : true))
 			{
 				lastTick = Planetarium.GetUniversalTime();
 				//Write vessel status
@@ -2648,7 +2654,7 @@ namespace KMP
 			removeDockedVessel(data.to.vessel);
 			removeDockedVessel(data.from.vessel);
 			//Fix displayed crew
-			clearGUICrew();
+			clearCrewGUI();
 			Invoke("setDoneDocking",3f);
 		}
 		
@@ -2816,12 +2822,27 @@ namespace KMP
 			}
 		}
 		
-		private void clearGUICrew()
+		private void clearCrewGUI()
 		{
 			while (KerbalGUIManager.ActiveCrew.Count > 0)
 			{
 				KerbalGUIManager.RemoveActiveCrew(KerbalGUIManager.ActiveCrew.Find(k => true));
 			}	
+		}
+		
+		private void lockCrewGUI()
+		{
+//			foreach (Kerbal kerbal in KerbalGUIManager.ActiveCrew)
+//			{
+//				kerbal.state = Kerbal.States.NO_SIGNAL;
+//			}
+			FlightGlobals.ActiveVessel.DespawnCrew();
+		}
+		
+		private void unlockCrewGUI()
+		{
+			if (FlightGlobals.ActiveVessel.GetVesselCrew().Count > 0 && KerbalGUIManager.ActiveCrew.Count < 1)
+			    FlightGlobals.ActiveVessel.SpawnCrew();
 		}
 		
 		public void Update()
@@ -3121,10 +3142,13 @@ namespace KMP
 				}
 				else
 				{
+					//Get locked status
 					wasLocked = serverVessels_IsPrivate[FlightGlobals.ActiveVessel.id];
-					if (!wasLocked && (serverVessels_InUse.ContainsKey(FlightGlobals.ActiveVessel.id) ? serverVessels_InUse[FlightGlobals.ActiveVessel.id] : true))
-						//Unlocked unoccupied vessel is now ours
-						serverVessels_IsMine[FlightGlobals.ActiveVessel.id] = true;
+				}
+				if (!wasLocked && (serverVessels_InUse.ContainsKey(FlightGlobals.ActiveVessel.id) ? !serverVessels_InUse[FlightGlobals.ActiveVessel.id] : true))
+				{
+					//Unlocked unoccupied vessel is now ours
+					serverVessels_IsMine[FlightGlobals.ActiveVessel.id] = true;
 				}
 				GUILayout.BeginVertical();
 				GUIStyle lockButtonStyle = new GUIStyle(GUI.skin.button);
