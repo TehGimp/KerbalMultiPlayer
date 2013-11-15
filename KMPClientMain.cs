@@ -1999,11 +1999,15 @@ namespace KMP
 		internal static void verifyShipsDirectory()
 		{
 			char cSep = '/';
-			String sPath = String.Format(System.IO.Directory.GetCurrentDirectory()+"{0}saves{1}KMP", cSep, cSep);
+			String sPath = System.IO.Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location);
+			System.IO.DirectoryInfo dir = System.IO.Directory.GetParent(sPath);
+			dir = dir.Parent.Parent;
+			sPath = dir.FullName;
+			sPath += "/saves/KMP/";
 			if (!System.IO.Directory.Exists(sPath))
 				System.IO.Directory.CreateDirectory(sPath);
 			sPath += cSep+"Ships";
-			DebugLog(sPath);
+			//DebugLog(sPath);
 			if(!System.IO.Directory.Exists(sPath))
 				System.IO.Directory.CreateDirectory(sPath);
 
@@ -2016,8 +2020,11 @@ namespace KMP
 
 		internal static bool startSaveExists()
 		{
-			char cSep = '/';
-			String sPath = String.Format(System.IO.Directory.GetCurrentDirectory()+"{0}saves{1}KMP{2}", cSep, cSep, cSep);
+			String sPath = System.IO.Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location);
+			System.IO.DirectoryInfo dir = System.IO.Directory.GetParent(sPath);
+			dir = dir.Parent.Parent;
+			sPath = dir.FullName;
+			sPath += "/saves/kmp/";
 			if (!System.IO.File.Exists(sPath + "start.sfs"))
 				return false;
 			else

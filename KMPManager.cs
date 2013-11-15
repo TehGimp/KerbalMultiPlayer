@@ -2527,7 +2527,9 @@ namespace KMP
 			{
 				//Deserialize global settings from file
 				//byte[] bytes = KSP.IO.File.ReadAllBytes<KMPManager>(GLOBAL_SETTINGS_FILENAME); //Apparently KSP.IO.File.ReadAllBytes is broken
-				byte[] bytes = System.IO.File.ReadAllBytes("GameData/KMP/Plugins/PluginData/KerbalMultiPlayer/" + GLOBAL_SETTINGS_FILENAME);
+				String sPath = System.IO.Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location);
+				sPath += "PluginData/";
+				byte[] bytes = System.IO.File.ReadAllBytes(sPath + GLOBAL_SETTINGS_FILENAME);
 				object deserialized = KSP.IO.IOUtils.DeserializeFromBinary(bytes);
 
 				if (deserialized is KMPGlobalSettings)
@@ -3420,6 +3422,10 @@ namespace KMP
 							
 							if (String.IsNullOrEmpty(favorites[i]) || i == 7) {
 								favorites[i] = newHost.Trim() + ":" + newPort.Trim();
+
+                                //Close the add server bar after a server has been added and select the new server
+							    addPressed = false;
+                                KMPConnectionDisplay.activeHostname = favorites[i];
 								break;
 							}
 						}
