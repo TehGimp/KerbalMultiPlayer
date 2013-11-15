@@ -1625,7 +1625,7 @@ namespace KMP
 												{
 													double tick = Planetarium.GetUniversalTime();
 													//Update orbit whenever out of sync or other vessel in past/future, or not in docking range
-													if (!throttled && (vessel_update.relTime == RelativeTime.PRESENT && ourDistance > (INACTIVE_VESSEL_RANGE+500f)) || (vessel_update.relTime != RelativeTime.PRESENT && Math.Abs(tick-vessel_update.tick) > 1.5d))
+													if (!throttled && (vessel_update.relTime == RelativeTime.PRESENT && ourDistance > (INACTIVE_VESSEL_RANGE+500f)) || (vessel_update.relTime != RelativeTime.PRESENT && Math.Abs(tick-vessel_update.tick) > 1.5d) || vessel_update.id == FlightGlobals.ActiveVessel.id)
 													{
 														syncExtantVesselOrbit(vessel,vessel_update.tick,extant_vessel,vessel_update.w_pos[0]);
 														serverVessels_ObtSyncDelay[vessel_update.id] = UnityEngine.Time.realtimeSinceStartup + 1f;
@@ -1656,7 +1656,7 @@ namespace KMP
 														extant_vessel.VesselSAS.SetDampingMode(false);
 													}
 													
-													if (!KMPVessel.situationIsOrbital(vessel_update.situation) || extant_vessel.altitude < 10000f || ourDistance > 2500f)
+													if (!KMPVessel.situationIsOrbital(vessel_update.situation) || extant_vessel.altitude < 10000f || ourDistance > 2500f || vessel_update.id == FlightGlobals.ActiveVessel.id)
 													{
 														KMPClientMain.DebugLog ("velocity update");
 														//Update velocity
@@ -1679,7 +1679,7 @@ namespace KMP
 														}
 														
 														//Update position
-														if (extant_vessel.altitude < 10000f || !extant_vessel.loaded)
+														if (extant_vessel.altitude < 10000f || !extant_vessel.loaded || vessel_update.id == FlightGlobals.ActiveVessel.id)
 														{
 															if (extant_vessel.loaded && (vessel_update.situation == Situation.LANDED || vessel_update.situation == Situation.SPLASHED))
 															{
@@ -1694,9 +1694,9 @@ namespace KMP
 																	addRemoteVessel(protovessel,vessel_update.id,vessel_update);
 																}
 															}
-															else if (!throttled && Vector3.Distance(vessel.worldPosition, extant_vessel.GetWorldPos3D()) > 1d
+															else if ((!throttled && Vector3.Distance(vessel.worldPosition, extant_vessel.GetWorldPos3D()) > 1d
 															         && (extant_vessel.altitude < 10000f || ourDistance > 3000f)
-															         && update_body.GetAltitude(vessel.worldPosition) > 1d)
+																&& update_body.GetAltitude(vessel.worldPosition) > 1d) || vessel_update.id == FlightGlobals.ActiveVessel.id)
 															{
 																//Update 3D position
 																KMPClientMain.DebugLog("position update");
