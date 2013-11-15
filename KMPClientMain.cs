@@ -93,7 +93,7 @@ namespace KMP
 		public static bool autoReconnect = true;
 		public static byte inactiveShipsPerUpdate = 0;
 		public static ScreenshotSettings screenshotSettings = new ScreenshotSettings();
-		public static String[] favorites = new String[8];
+		public static ArrayList favorites = new ArrayList();
 
 		//Connection
 		public static int clientID;
@@ -185,9 +185,8 @@ namespace KMP
 
 			stopwatch = new Stopwatch();
 			stopwatch.Start();
-			
-			for (int i = 0; i < favorites.Length; i++)
-				favorites[i] = String.Empty;
+
+			favorites.Clear();
 		}
 		
 		
@@ -217,12 +216,12 @@ namespace KMP
 			writeConfigFile();
 		}
 		
-		public static String[] GetFavorites()
+		public static ArrayList GetFavorites()
 		{
 			return favorites;
 		}
 		
-		public static void SetFavorites(String[] newFavorites)
+		public static void SetFavorites(ArrayList newFavorites)
 		{
 			favorites = newFavorites;
 			writeConfigFile();
@@ -1469,9 +1468,9 @@ namespace KMP
 				{
 					int nPos = -1;
 					int.TryParse(xmlNode.Attributes[FAVORITE_LABEL].Value, out nPos);
-					if(nPos >= 0 && nPos < favorites.Length)
+					if(nPos >= 0)
 					{
-						favorites[nPos] = xmlNode.Attributes[IP_LABEL].Value;
+						favorites.Add(xmlNode.Attributes[IP_LABEL].Value);
 					}
 				}
 			} catch {
@@ -1609,16 +1608,14 @@ namespace KMP
 			XmlNode xFav = xmlDoc.SelectSingleNode("/settings/favourites");
 			xFav.RemoveAll(); // Delete all the favourites
 			
-			for (int i = 0; i < favorites.Length; i++) // Rebuild the favourites from memory
+			int count = 0;
+			foreach (String sIP in favorites) // Rebuild the favourites from memory
 			{
-				if (!(favorites[i] == ""))
-				{
-					XmlElement xEl = xmlDoc.CreateElement("favourite");
-
-					xEl.SetAttribute(FAVORITE_LABEL, "" + i);
-					xEl.SetAttribute(IP_LABEL, favorites[i]);
-					xFav.AppendChild(xEl);
-				}
+				XmlElement xEl = xmlDoc.CreateElement("favourite");
+				xEl.SetAttribute(FAVORITE_LABEL, "" + count);
+				xEl.SetAttribute(IP_LABEL, sIP);
+				xFav.AppendChild(xEl);
+				count++;
 			}
 			
 			xmlDoc.Save(sPath); // Save :)
@@ -1807,11 +1804,10 @@ namespace KMP
 			sendMessageTCP(KMPCommon.ClientMessageID.HANDSHAKE, message_data);
 		}
 
-		private static void sendTextMessage(String message)
+		internal static void sendTextMessage(String message)
 		{
 			//Encode message
 			byte[] message_bytes = encoder.GetBytes(message);
-
 			sendMessageTCP(KMPCommon.ClientMessageID.TEXT_MESSAGE, message_bytes);
 		}
 
@@ -1843,7 +1839,7 @@ namespace KMP
 			sendMessageTCP(KMPCommon.ClientMessageID.SCREEN_WATCH_PLAYER, bytes);
 		}
 
-		private static void sendConnectionEndMessage(String message)
+		internal static void sendConnectionEndMessage(String message)
 		{
 			//Encode message
 			byte[] message_bytes = encoder.GetBytes(message);
