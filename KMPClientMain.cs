@@ -727,6 +727,12 @@ namespace KMP
 						endSession = true;
 						sendConnectionEndMessage("Quit");
 					}
+                    else if(line_lower == "!whereami")
+                    {
+                        DebugLog("Sending whereami request");
+                        handled = true;
+                        sendMessageTCP(KMPCommon.ClientMessageID.WHEREAMI, null);
+                    }
 					else if (line_lower == "!ping")
 					{
 						handled = true;

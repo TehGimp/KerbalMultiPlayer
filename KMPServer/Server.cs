@@ -1378,7 +1378,7 @@ namespace KMPServer
             clientMessageQueue.Enqueue(message);
         }
 
-        private KMPCommon.ClientMessageID[] AllowNullDataMessages = { KMPCommon.ClientMessageID.SCREEN_WATCH_PLAYER, KMPCommon.ClientMessageID.CONNECTION_END, KMPCommon.ClientMessageID.ACTIVITY_UPDATE_IN_FLIGHT, KMPCommon.ClientMessageID.ACTIVITY_UPDATE_IN_GAME, KMPCommon.ClientMessageID.PING };
+        private KMPCommon.ClientMessageID[] AllowNullDataMessages = { KMPCommon.ClientMessageID.SCREEN_WATCH_PLAYER, KMPCommon.ClientMessageID.CONNECTION_END, KMPCommon.ClientMessageID.ACTIVITY_UPDATE_IN_FLIGHT, KMPCommon.ClientMessageID.ACTIVITY_UPDATE_IN_GAME, KMPCommon.ClientMessageID.PING, KMPCommon.ClientMessageID.WHEREAMI };
         private KMPCommon.ClientMessageID[] AllowClientNotReadyMessages = { KMPCommon.ClientMessageID.HANDSHAKE, KMPCommon.ClientMessageID.TEXT_MESSAGE, KMPCommon.ClientMessageID.SCREENSHOT_SHARE, KMPCommon.ClientMessageID.CONNECTION_END, KMPCommon.ClientMessageID.ACTIVITY_UPDATE_IN_FLIGHT, KMPCommon.ClientMessageID.ACTIVITY_UPDATE_IN_GAME, KMPCommon.ClientMessageID.PING, KMPCommon.ClientMessageID.UDP_PROBE, KMPCommon.ClientMessageID.WARPING, KMPCommon.ClientMessageID.SSYNC };
 
         public void handleMessage(Client cl, KMPCommon.ClientMessageID id, byte[] data)
@@ -1437,6 +1437,9 @@ namespace KMPServer
                     case KMPCommon.ClientMessageID.SSYNC:
                         HandleSSync(cl, data);
                         break;
+                    case KMPCommon.ClientMessageID.WHEREAMI:
+                        HandleWhereAmI(cl);
+                        break;
                 }
             }
             catch (NullReferenceException)
@@ -1470,6 +1473,17 @@ namespace KMPServer
             cl.currentSubspaceID = subspaceID;
             Log.Info("{0} sync request to subspace {1}", cl.username, subspaceID);
             sendSubspace(cl, true);
+        }
+
+        private void HandleWhereAmI(Client cl)
+        {
+            try
+            {
+                UnicodeEncoding encoder = new UnicodeEncoding();
+                String res = "Connected to: " + settings.serverInfo + " - ( " + settings.ipBinding + ":" + settings.port + " )";
+                cl.queueOutgoingMessage(KMPCommon.ServerMessageID.SERVER_MESSAGE, encoder.GetBytes(res));
+            }
+            catch (NullReferenceException) { }
         }
 
         private void HandleWarping(Client cl, byte[] data)
