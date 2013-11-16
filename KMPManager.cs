@@ -1530,7 +1530,7 @@ namespace KMP
 				serverVessels_IsPrivate[vessel_update.id] = vessel_update.isPrivate;
 				serverVessels_IsMine[vessel_update.id] = vessel_update.isMine;
 				KMPClientMain.DebugLog("status flags updated: " + (vessel_update.state == State.ACTIVE) + " " + vessel_update.isPrivate + " " + vessel_update.isMine);
-				if (vessel_update.situation == Situation.DESTROYED)
+				if (vessel_update.situation == Situation.DESTROYED && vessel_update.id != FlightGlobals.ActiveVessel.id)
 				{
 					KMPClientMain.DebugLog("killing vessel");
 					Vessel extant_vessel = FlightGlobals.Vessels.Find(v => v.id == vessel_update.id);
@@ -1611,7 +1611,7 @@ namespace KMP
 												{
 													protovessel = syncOrbit(vessel, vessel_update.tick, protovessel, vessel_update.w_pos[0]);
 					                            }
-												addRemoteVessel(protovessel, vessel_update.id, vessel_update, incomingDistance);
+												addRemoteVessel(protovessel, vessel_update.id, vessel, vessel_update, incomingDistance);
 												if (vessel_update.situation == Situation.FLYING) serverVessels_LoadDelay[vessel.id] = UnityEngine.Time.realtimeSinceStartup + 5f;
 											} else { KMPClientMain.DebugLog("Protovessel missing!"); }
 										}
@@ -1650,6 +1650,7 @@ namespace KMP
 													//Update rotation
 													if (extant_vessel.loaded)
 													{
+														KMPClientMain.DebugLog("rotation set");
 														extant_vessel.transform.up = vessel.worldDirection;
 														Quaternion rot = new Quaternion(vessel_update.rot[0],vessel_update.rot[1],vessel_update.rot[2],vessel_update.rot[3]);
 														extant_vessel.SetRotation(rot);
@@ -1694,7 +1695,7 @@ namespace KMP
 																else if (Vector3.Distance(vessel.worldPosition, extant_vessel.GetWorldPos3D()) > 25f)
 																{
 																	serverVessels_PartCounts[vessel_update.id] = 0;
-																	addRemoteVessel(protovessel,vessel_update.id,vessel_update);
+																	addRemoteVessel(protovessel,vessel_update.id,vessel,vessel_update);
 																}
 															}
 															else if ((!throttled && Vector3.Distance(vessel.worldPosition, extant_vessel.GetWorldPos3D()) > 1d
@@ -1762,7 +1763,7 @@ namespace KMP
 										if (vessel_update.getProtoVesselNode() != null)
 										{
 											ProtoVessel protovessel = new ProtoVessel(serverVessels_ProtoVessels[vessel_update.id], HighLogic.CurrentGame);
-											addRemoteVessel(protovessel,vessel_update.id,vessel_update);
+											addRemoteVessel(protovessel,vessel_update.id,vessel,vessel_update);
 										}
 									}
 								}
@@ -1779,7 +1780,7 @@ namespace KMP
 												protovessel = syncOrbit(vessel, vessel_update.tick, protovessel, vessel_update.w_pos[0]);
 				                            }
 											serverVessels_PartCounts[vessel_update.id] = 0;
-											addRemoteVessel(protovessel, vessel_update.id, vessel_update, incomingDistance);
+											addRemoteVessel(protovessel, vessel_update.id, vessel, vessel_update, incomingDistance);
 											HighLogic.CurrentGame.CrewRoster.ValidateAssignments(HighLogic.CurrentGame);
 										}
 										else 
@@ -2090,17 +2091,18 @@ namespace KMP
 			} else { KMPClientMain.DebugLog("no victim available!"); }
 		}
 		
-		private void addRemoteVessel(ProtoVessel protovessel, Guid vessel_id, KMPVesselUpdate update = null, double distance = 501d)
+		private void addRemoteVessel(ProtoVessel protovessel, Guid vessel_id, KMPVessel kvessel = null, KMPVesselUpdate update = null, double distance = 501d)
 		{
+			if (vessel_id == FlightGlobals.ActiveVessel.id && (serverVessels_InUse.ContainsKey(vessel_id) ? !serverVessels_InUse.ContainsKey(vessel_id) : false)) return;
 			KMPClientMain.DebugLog("addRemoteVessel");
 			Vector3 newWorldPos = Vector3.zero, newOrbitVel = Vector3.zero;
 			bool setTarget = false, wasLoaded = false;
+			Vessel oldVessel = null;
 			try
 			{
 				//Ensure this vessel isn't already loaded
-				Vessel oldVessel = FlightGlobals.Vessels.Find (v => v.id == vessel_id);
+				oldVessel = FlightGlobals.Vessels.Find (v => v.id == vessel_id);
 				if (oldVessel != null) {
-					KMPClientMain.DebugLog("killing extant vessel");
 					wasLoaded = oldVessel.loaded;
 					if (protovessel.vesselType == VesselType.EVA && wasLoaded)
 					{
@@ -2115,12 +2117,15 @@ namespace KMP
 							if (oldVessel.altitude > 10000d)
 								newOrbitVel = oldVessel.GetObtVelocity();
 						}
-						if (!oldVessel.isActiveVessel) oldVessel.Die();
-						else oldVessel.Unload();
+						if (!oldVessel.isActiveVessel)
+						{
+							KMPClientMain.DebugLog("killing extant vessel");
+							oldVessel.Die();
+						}
 					}
 				}
 				
-				if (protovessel.vesselType != VesselType.EVA && serverVessels_Parts.ContainsKey(vessel_id))
+				if (protovessel.vesselType != VesselType.EVA && serverVessels_Parts.ContainsKey(vessel_id) && !oldVessel.isActiveVessel)
 				{
 					KMPClientMain.DebugLog("killing known precursor vessels");
 					foreach (Part part in serverVessels_Parts[vessel_id])
@@ -2184,8 +2189,19 @@ namespace KMP
 				}
 				if (vessels.ContainsKey(vessel_id.ToString()) && (!serverVessels_LoadDelay.ContainsKey(vessel_id) || (serverVessels_LoadDelay.ContainsKey(vessel_id) ? serverVessels_LoadDelay[vessel_id] < UnityEngine.Time.realtimeSinceStartup : false)))
 				{
-					protovessel.Load(HighLogic.CurrentGame.flightState);
-					Vessel created_vessel = protovessel.vesselRef;
+					Vessel created_vessel = null;
+					
+					if (oldVessel != null && oldVessel.isActiveVessel)
+					{
+						oldVessel.StartFromBackup(protovessel);
+						oldVessel.Initialize();
+						created_vessel = oldVessel;
+					}
+					else
+					{
+						protovessel.Load(HighLogic.CurrentGame.flightState);
+						created_vessel = protovessel.vesselRef;
+					}
 					if (created_vessel != null)
 					{
 						try
@@ -2224,7 +2240,7 @@ namespace KMP
 								KMPClientMain.DebugLog("update included");
 								
 								//Update rotation
-								
+								if (kvessel != null) created_vessel.transform.up = kvessel.worldDirection;
 								created_vessel.SetRotation(new Quaternion(update.rot[0],update.rot[1],update.rot[2],update.rot[3]));
 								
 								if (update.relTime == RelativeTime.PRESENT)
@@ -2255,8 +2271,12 @@ namespace KMP
 								}
 							}
 						}
-						if (!syncing && !distanceBlocksUnload) //This explicit Unload helps correct the effects of "Can't remove Part (Script) because PartBuoyancy (Script) depends on it" errors and associated NREs seen during rendezvous mode switching, but for unknown reasons it causes problems if active during universe sync
+						if (!syncing && !distanceBlocksUnload) 
+						{
+							//This explicit Unload helps correct the effects of "Can't remove Part (Script) because PartBuoyancy (Script) depends on it" errors and associated NREs seen during rendezvous mode switching, but for unknown reasons it causes problems if active during universe sync
+							KMPClientMain.DebugLog("explicit unload");
 							created_vessel.Unload();
+						}
 						if (setTarget) StartCoroutine(setDockingTarget(created_vessel));
 						KMPClientMain.DebugLog(created_vessel.id.ToString() + " initialized");
 					}
