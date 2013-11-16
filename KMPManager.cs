@@ -1716,7 +1716,12 @@ namespace KMP
 														}
 														
 														//Update FlightCtrlState
-														extant_vessel.ctrlState.CopyFrom(vessel_update.flightCtrlState.getAsFlightCtrlState(0.75f));
+
+														if (extant_vessel.id == FlightGlobals.ActiveVessel.id) {
+															FlightInputHandler.state.CopyFrom(vessel_update.flightCtrlState.getAsFlightCtrlState(0.75f));
+														} else {
+															extant_vessel.ctrlState.CopyFrom(vessel_update.flightCtrlState.getAsFlightCtrlState(0.75f));
+														}
 													}
 													else 
 													{
