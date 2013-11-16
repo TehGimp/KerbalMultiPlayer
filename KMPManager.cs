@@ -2211,8 +2211,8 @@ namespace KMP
 					
 					if (oldVessel != null && oldVessel.isActiveVessel)
 					{
-						oldVessel.StartFromBackup(protovessel);
-						oldVessel.Initialize();
+						oldVessel.protoVessel = protovessel;
+						oldVessel.Load();
 						created_vessel = oldVessel;
 					}
 					else
