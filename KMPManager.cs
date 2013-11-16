@@ -210,6 +210,16 @@ namespace KMP
 			}
 		}
 
+		public bool isObserving 
+		{
+			get 
+			{
+				return isInFlight && (serverVessels_InUse.ContainsKey(FlightGlobals.ActiveVessel.id) && serverVessels_InUse[FlightGlobals.ActiveVessel.id]) ||
+					(serverVessels_IsPrivate.ContainsKey(FlightGlobals.ActiveVessel.id) && serverVessels_IsPrivate[FlightGlobals.ActiveVessel.id] &&
+						(!serverVessels_IsMine.ContainsKey(FlightGlobals.ActiveVessel.id) || !serverVessels_IsMine[FlightGlobals.ActiveVessel.id]));
+			}
+		}
+
 		public bool isIdle
 		{
 			get
@@ -621,8 +631,7 @@ namespace KMP
 		{
 			if (!syncing && isInFlight && !warping
                 && !isInSafetyBubble(FlightGlobals.ship_position,FlightGlobals.ActiveVessel.mainBody,FlightGlobals.ActiveVessel.altitude)
-			    && (serverVessels_IsMine.ContainsKey(FlightGlobals.ActiveVessel.id) ? serverVessels_IsMine[FlightGlobals.ActiveVessel.id] : true)
-			    && (serverVessels_InUse.ContainsKey(FlightGlobals.ActiveVessel.id) ? !serverVessels_InUse[FlightGlobals.ActiveVessel.id] : true))
+			    && !isObserving)
 			{
 				lastTick = Planetarium.GetUniversalTime();
 				//Write vessel status
@@ -1628,10 +1637,19 @@ namespace KMP
 												{
 													double tick = Planetarium.GetUniversalTime();
 													//Update orbit whenever out of sync or other vessel in past/future, or not in docking range
-													if (!throttled && (vessel_update.relTime == RelativeTime.PRESENT && ourDistance > (INACTIVE_VESSEL_RANGE+500f)) || (vessel_update.relTime != RelativeTime.PRESENT && Math.Abs(tick-vessel_update.tick) > 1.5d) || vessel_update.id == FlightGlobals.ActiveVessel.id)
+						  							if (!throttled && (vessel_update.relTime == RelativeTime.PRESENT && (ourDistance > (INACTIVE_VESSEL_RANGE+500f))) || 
+						  								(vessel_update.relTime != RelativeTime.PRESENT && Math.Abs(tick-vessel_update.tick) > 1.5d && vessel_update.id != FlightGlobals.ActiveVessel.id))
 													{
 														syncExtantVesselOrbit(vessel,vessel_update.tick,extant_vessel,vessel_update.w_pos[0]);
 														serverVessels_ObtSyncDelay[vessel_update.id] = UnityEngine.Time.realtimeSinceStartup + 1f;
+													}
+												}
+												
+												if (vessel_update.id == FlightGlobals.ActiveVessel.id && vessel_update.relTime != RelativeTime.PRESENT) {
+													
+													VesselStatusInfo status;
+													if (playerStatus.TryGetValue(vessel_update.player, out status)) {
+														StartCoroutine(sendSubspaceSyncRequest(status.currentSubspaceID));
 													}
 												}
 												
@@ -3291,7 +3309,7 @@ namespace KMP
 					StartCoroutine(shareScreenshot());
 				
 				GUIStyle syncButtonStyle = new GUIStyle(GUI.skin.button);
-				if (showServerSync && isInFlight && FlightGlobals.ActiveVessel.ctrlState.mainThrottle == 0f)
+				if (showServerSync && isInFlight && FlightGlobals.ActiveVessel.ctrlState.mainThrottle == 0f && !isObserving)
 				{
 					syncButtonStyle.normal.textColor = new Color(0.28f, 0.86f, 0.94f);
 					syncButtonStyle.hover.textColor = new Color(0.48f, 0.96f, 0.96f);
@@ -3913,7 +3931,7 @@ namespace KMP
 			}
 			bool syncRequest = false;
 			if (!isInFlight) GUI.enabled = false;
-			if (showSync && FlightGlobals.ActiveVessel.ctrlState.mainThrottle == 0f) syncRequest |= GUILayout.Button("Sync",syncButtonStyle);
+			if (showSync && FlightGlobals.ActiveVessel.ctrlState.mainThrottle == 0f && !isObserving) syncRequest |= GUILayout.Button("Sync",syncButtonStyle);
 			GUI.enabled = true;
 			
 			if (big)
