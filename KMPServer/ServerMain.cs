@@ -20,7 +20,6 @@ namespace KMPServer
 			ServerSettings.readFromFile(settings);
 			ServerSettings.loadWhitelist(settings);
 			ServerSettings.loadBans(settings);
-            ServerSettings.loadAdmins(settings);
 
 			bool settingsChanged = false;
 
@@ -154,41 +153,6 @@ namespace KMPServer
 
 						ServerSettings.saveWhitelist(settings);
 						break;
-
-                    case "/admin":
-                        if (parts.Length != 3)
-                        {
-                            Log.Info("Invalid usage. /admin [add|del] [user]");
-                        }
-
-                        switch (parts[1])
-                        {
-                            case "add":
-                                if (!settings.admins.Contains(parts[2], StringComparer.InvariantCultureIgnoreCase))
-                                {
-                                    settings.admins.Add(parts[2].ToLowerInvariant());
-                                    Log.Info("{0} has been added to the admin list", parts[2]);
-                                }
-                                else
-                                {
-                                    Log.Info("{0} is already on the admin list", parts[2]);
-                                }
-                                break;
-                            case "del":
-                                if (settings.admins.Contains(parts[2], StringComparer.InvariantCultureIgnoreCase))
-                                {
-                                    settings.admins.Remove(parts[2].ToLowerInvariant());
-                                    Log.Info("{0} has been removed from the admin list", parts[2]);
-                                }
-                                else
-                                {
-                                    Log.Info("{0} was not already on the admin list", parts[2]);
-                                }
-                                break;
-                        }
-
-                        ServerSettings.saveAdmins(settings);
-                        break;
 
 					case "/set":
 						if (parts.Length < 3)

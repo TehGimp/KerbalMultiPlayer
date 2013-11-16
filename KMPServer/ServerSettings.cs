@@ -14,7 +14,6 @@ namespace KMPServer
 		public const String SERVER_CONFIG_FILENAME = "KMPServerConfig.txt";
 		public const string SERVER_WHITELIST_FILENAME = "KMPWhitelist.txt";
 		public const string SERVER_BANS_FILENAME = "KMPBans.txt";
-        public const string SERVER_ADMINS_FILENAME = "KMPAdmins.txt";
 
 		public class BanRecord
 		{
@@ -68,15 +67,6 @@ namespace KMPServer
 					return _whitelist;
 				}
 			}
-
-            private List<string> _admins = new List<string>();
-            internal List<string> admins
-            {
-                get
-                {
-                    return _admins;
-                }
-            }
 
 			private ScreenshotSettings _screenshotSettings = new ScreenshotSettings();
 			internal ScreenshotSettings screenshotSettings
@@ -270,44 +260,6 @@ namespace KMPServer
 			}
 			catch { }
 		}
-
-        public static void saveAdmins(ConfigStore Store)
-        {
-            string FileName = SERVER_ADMINS_FILENAME;
-
-            try
-            {
-                if (File.Exists(FileName))
-                {
-                    File.SetAttributes(FileName, FileAttributes.Normal);
-                }
-
-                using (StreamWriter configWriter = new StreamWriter(FileName))
-                {
-                    foreach (var u in Store.admins)
-                    {
-                        configWriter.WriteLine(u.ToLowerInvariant());
-                    }
-                }
-            }
-            catch { }
-        }
-			
-
-        public static void loadAdmins(ConfigStore store)
-        {
-            string fileName = SERVER_ADMINS_FILENAME;
-
-            try
-            {
-                if (File.Exists(fileName))
-                {
-                    store.admins.Clear();
-                    store.admins.AddRange(File.ReadAllLines(fileName));
-                }
-            }
-            catch { }
-        }
 
 		//Write the setting store out to a file by reflecting over its members.
 		public static void writeToFile(ConfigStore Store)
