@@ -3245,7 +3245,8 @@ namespace KMP
 					GUILayout.BeginHorizontal();
 					
 					if (GUILayout.Button("Disconnect & Exit"))
-					{	
+					{
+                        disconnect();
 						KMPClientMain.sendConnectionEndMessage("Quit");
 						KMPClientMain.clearConnectionState();
 						KMPClientMain.intentionalConnectionEnd = true;
