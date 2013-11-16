@@ -24,7 +24,18 @@ namespace KMP
         public static float chatboxX = 0;
         public static float chatboxY = 20;
 
+        public static bool offsetingEnabled = true;
+
+        public static float trackerOffsetX = 200;
+        public static float trackerOffsetY = 20;
+
+        public static float editorOffsetX = 255;
+        public static float editorOffsetY = 20;
+
+        public static GameScenes lastScene = GameScenes.MAINMENU;
+
         public static bool showInput = false;
+        public static bool draggable = false;
 
         public static bool displayCommands = false;
         public static Vector2 scrollPos = Vector2.zero;
@@ -72,18 +83,36 @@ namespace KMP
 
         public static Rect getWindowPos()
         {
-            if (HighLogic.LoadedScene == GameScenes.TRACKSTATION)
+            if (offsetingEnabled && !draggable)
             {
-                windowPos.x = chatboxX + 200;
-                windowPos.y = chatboxY + 20;
+                switch (HighLogic.LoadedScene)
+                {
 
-                return windowPos;
+                    case GameScenes.TRACKSTATION:
+                        windowPos.x = chatboxX + trackerOffsetX;
+                        windowPos.y = chatboxY + trackerOffsetY;
+
+                        return windowPos;
+                    case GameScenes.SPH:
+                        windowPos.x = chatboxX + editorOffsetX;
+                        windowPos.y = chatboxY + editorOffsetY;
+
+                        return windowPos;
+                    case GameScenes.EDITOR:
+                        windowPos.x = chatboxX + editorOffsetX;
+                        windowPos.y = chatboxY + editorOffsetY;
+
+                        return windowPos;
+                    default:
+                        windowPos.x = chatboxX;
+                        windowPos.y = chatboxY;
+
+                        return windowPos;
+                }
+
             }
             else
             {
-                windowPos.x = chatboxX;
-                windowPos.y = chatboxY;
-
                 return windowPos;
             }
         }

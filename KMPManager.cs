@@ -596,6 +596,7 @@ namespace KMP
 			}
 			if (String.IsNullOrEmpty(message)) KMPClientMain.SetMessage("Disconnected");
 			else KMPClientMain.SetMessage("Disconnected: " + message);
+            saveGlobalSettings();
 			gameRunning = false;
 		}
 		
@@ -2544,6 +2545,14 @@ namespace KMP
 
             KMPGlobalSettings.instance.chatDXDisplayWindowX = KMPChatDX.windowPos.x;
             KMPGlobalSettings.instance.chatDXDisplayWindowY = KMPChatDX.windowPos.y;
+            KMPGlobalSettings.instance.chatDXDisplayWindowWidth = KMPChatDX.chatboxWidth;
+            KMPGlobalSettings.instance.chatDXDisplayWindowHeight = KMPChatDX.chatboxHeight;
+
+            KMPGlobalSettings.instance.chatDXOffsetEnabled = KMPChatDX.offsetingEnabled;
+            KMPGlobalSettings.instance.chatDXEditorOffsetX = KMPChatDX.editorOffsetX;
+            KMPGlobalSettings.instance.chatDXEditorOffsetY = KMPChatDX.editorOffsetY;
+            KMPGlobalSettings.instance.chatDXTrackingOffsetX = KMPChatDX.trackerOffsetX;
+            KMPGlobalSettings.instance.chatDXTrackingOffsetY = KMPChatDX.trackerOffsetY;
 
 			//Serialize global settings to file
 			try
@@ -2594,8 +2603,19 @@ namespace KMP
 					KMPChatDisplay.windowPos.x = KMPGlobalSettings.instance.chatDisplayWindowX;
 					KMPChatDisplay.windowPos.y = KMPGlobalSettings.instance.chatDisplayWindowY;
 
-                    KMPChatDX.windowPos.x = KMPGlobalSettings.instance.chatDXDisplayWindowX;
-                    KMPChatDisplay.windowPos.y = KMPGlobalSettings.instance.chatDXDisplayWindowY;
+                    KMPChatDX.chatboxX = KMPGlobalSettings.instance.chatDXDisplayWindowX;
+                    KMPChatDX.chatboxY = KMPGlobalSettings.instance.chatDXDisplayWindowY;
+
+                    KMPChatDX.chatboxWidth = KMPGlobalSettings.instance.chatDXDisplayWindowWidth;
+                    KMPChatDX.chatboxHeight = KMPGlobalSettings.instance.chatDXDisplayWindowHeight;
+
+                    KMPChatDX.offsetingEnabled = KMPGlobalSettings.instance.chatDXOffsetEnabled;
+                    KMPChatDX.editorOffsetX = KMPGlobalSettings.instance.chatDXEditorOffsetX;
+                    KMPChatDX.editorOffsetY = KMPGlobalSettings.instance.chatDXEditorOffsetY;
+                    KMPChatDX.trackerOffsetX = KMPGlobalSettings.instance.chatDXTrackingOffsetX;
+                    KMPChatDX.trackerOffsetY = KMPGlobalSettings.instance.chatDXTrackingOffsetY;
+
+
 					success = true;
 				}
 			}
@@ -2858,64 +2878,64 @@ namespace KMP
 			{
 				if (!gameRunning) return;
 				if (FlightDriver.Pause) FlightDriver.SetPause(false);
-	
-				//Find an instance of the game's RenderingManager
-				if (renderManager == null)
-					renderManager = (RenderingManager) FindObjectOfType(typeof(RenderingManager));
-	
-				//Find an instance of the game's PlanetariumCamera
-				if (planetariumCam == null)
-					planetariumCam = (PlanetariumCamera)FindObjectOfType(typeof(PlanetariumCamera));
-	
-				if (Input.GetKeyDown(KMPGlobalSettings.instance.guiToggleKey))
-					KMPInfoDisplay.infoDisplayActive = !KMPInfoDisplay.infoDisplayActive;
-	
-				if (Input.GetKeyDown(KMPGlobalSettings.instance.screenshotKey))
-					StartCoroutine(shareScreenshot());
+
+                //Find an instance of the game's RenderingManager
+                if (renderManager == null)
+                    renderManager = (RenderingManager)FindObjectOfType(typeof(RenderingManager));
+
+                //Find an instance of the game's PlanetariumCamera
+                if (planetariumCam == null)
+                    planetariumCam = (PlanetariumCamera)FindObjectOfType(typeof(PlanetariumCamera));
+
+                if (Input.GetKeyDown(KMPGlobalSettings.instance.guiToggleKey))
+                    KMPInfoDisplay.infoDisplayActive = !KMPInfoDisplay.infoDisplayActive;
+
+                if (Input.GetKeyDown(KMPGlobalSettings.instance.screenshotKey))
+                    StartCoroutine(shareScreenshot());
 
                 if (Input.GetKeyDown(KMPGlobalSettings.instance.chatTalkKey))
                     KMPChatDX.showInput = true;
 
                 if (Input.GetKeyDown(KMPGlobalSettings.instance.chatHideKey))
-				{
+                {
                     KMPGlobalSettings.instance.chatDXWindowEnabled = !KMPGlobalSettings.instance.chatDXWindowEnabled;
-					if (KMPGlobalSettings.instance.chatDXWindowEnabled) KMPChatDX.enqueueChatLine("Press Chat key (" + (KMPGlobalSettings.instance.chatTalkKey == KeyCode.BackQuote ? "~" : KMPGlobalSettings.instance.chatTalkKey.ToString()) + ") to send a message");
-				}
+                    if (KMPGlobalSettings.instance.chatDXWindowEnabled) KMPChatDX.enqueueChatLine("Press Chat key (" + (KMPGlobalSettings.instance.chatTalkKey == KeyCode.BackQuote ? "~" : KMPGlobalSettings.instance.chatTalkKey.ToString()) + ") to send a message");
+                }
 
-				if (Input.anyKeyDown)
-					lastKeyPressTime = UnityEngine.Time.realtimeSinceStartup;
-	
-				//Handle key-binding
-				if (mappingGUIToggleKey)
-				{
-					KeyCode key = KeyCode.F7;
-					if (getAnyKeyDown(ref key))
-					{
-						if (key != KeyCode.Mouse0)
- 			            {
-							KMPGlobalSettings.instance.guiToggleKey = key;
-							mappingGUIToggleKey = false;
-						}
-					}
-				}
-	
-				if (mappingScreenshotKey)
-				{
-					KeyCode key = KeyCode.F8;
-					if (getAnyKeyDown(ref key))
-					{
-						if (key != KeyCode.Mouse0)
- 			            {
-							KMPGlobalSettings.instance.screenshotKey = key;
-							mappingScreenshotKey = false;
-						}
-					}
-				}
+                if (Input.anyKeyDown)
+                    lastKeyPressTime = UnityEngine.Time.realtimeSinceStartup;
 
-                if(mappingChatKey)
+                //Handle key-binding
+                if (mappingGUIToggleKey)
+                {
+                    KeyCode key = KeyCode.F7;
+                    if (getAnyKeyDown(ref key))
+                    {
+                        if (key != KeyCode.Mouse0)
+                        {
+                            KMPGlobalSettings.instance.guiToggleKey = key;
+                            mappingGUIToggleKey = false;
+                        }
+                    }
+                }
+
+                if (mappingScreenshotKey)
+                {
+                    KeyCode key = KeyCode.F8;
+                    if (getAnyKeyDown(ref key))
+                    {
+                        if (key != KeyCode.Mouse0)
+                        {
+                            KMPGlobalSettings.instance.screenshotKey = key;
+                            mappingScreenshotKey = false;
+                        }
+                    }
+                }
+
+                if (mappingChatKey)
                 {
                     KeyCode key = KeyCode.Y;
-                    if(getAnyKeyDown(ref key))
+                    if (getAnyKeyDown(ref key))
                     {
                         KMPGlobalSettings.instance.chatTalkKey = key;
                         mappingChatKey = false;
@@ -3293,7 +3313,8 @@ namespace KMP
 					GUILayout.BeginHorizontal();
 					
 					if (GUILayout.Button("Disconnect & Exit"))
-					{	
+					{
+                        disconnect();
 						KMPClientMain.sendConnectionEndMessage("Quit");
 						KMPClientMain.clearConnectionState();
 						KMPClientMain.intentionalConnectionEnd = true;
@@ -3477,7 +3498,6 @@ namespace KMP
 						}
 						else
 						{
-
 							String sHostname = newHost.Trim() + ":" + newPort.Trim();
 							favorites.Add(sHostname);
 
@@ -3550,8 +3570,8 @@ namespace KMP
 						{
 							favorites.Remove(KMPConnectionDisplay.activeHostname);
 							KMPConnectionDisplay.activeHostname = "";
+							KMPClientMain.SetFavorites(favorites);
 						}
-						KMPClientMain.SetFavorites(favorites);
 					}
 					GUI.enabled = true;
 			
@@ -3733,7 +3753,7 @@ namespace KMP
 
             /* Display Chat */
 
-            GUI.depth = 2;
+
         
 
             GUILayout.BeginVertical();
@@ -3752,6 +3772,25 @@ namespace KMP
                 if (line.name == "")
                 {
                     GUILayout.Label(line.message, KMPChatDX.chatStyle);
+
+                    var position = GUILayoutUtility.GetLastRect();
+
+                    var style = KMPChatDX.chatStyle;
+                    style.normal.textColor = new Color(0, 0, 0);
+
+                    position.x--;
+                    GUI.Label(position, line.message, style);
+                    position.x += 2;
+                    GUI.Label(position, line.message, style);
+                    position.x--;
+                    position.y--;
+                    GUI.Label(position, line.message, style);
+                    position.y += 2;
+                    GUI.Label(position, line.message, style);
+
+                    KMPChatDX.chatStyle.normal.textColor = line.color;
+                    position.y--;
+                    GUI.Label(position, line.message, style);
                 }
                 else
                 {
@@ -3812,13 +3851,19 @@ namespace KMP
                 GUILayout.EndHorizontal();
             }
 
-  
-
-          
-
             GUILayout.EndVertical();
-            GUI.depth = 2;
-            GUI.BringWindowToBack(windowID);
+
+            if (KMPChatDX.draggable)
+            {
+                GUI.depth = 0;
+                GUI.BringWindowToFront(windowID);
+                GUI.DragWindow();
+            }
+            else
+            {
+                GUI.depth = 2;
+                GUI.BringWindowToBack(windowID);
+            }
         }
 
 
