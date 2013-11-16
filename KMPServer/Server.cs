@@ -2066,7 +2066,6 @@ namespace KMPServer
                         sb.Append("!quit - Leaves the server\n");
                         sb.Append(KMPCommon.SHARE_CRAFT_COMMAND + " <craftname> - Shares the craft of name <craftname> with all other players\n");
                         sb.Append(KMPCommon.GET_CRAFT_COMMAND + " <playername> - Gets the most recent craft shared by the specified player\n");
-						sb.Append("!whereami - Display server information\n");
                         sb.Append("!motd - Displays Server MOTD\n");
                         sb.Append("!rules - Displays Server Rules\n");
 						sb.Append("!bubble - Displays server bubble size, and how far you are from its borders\n");
