@@ -753,11 +753,6 @@ namespace KMP
 						debugging = !debugging;
 						enqueuePluginChatMessage("debug " + debugging);
 					}
-                    else if (line_lower == "!clear")
-                    {
-                        handled = true;
-                        KMPChatDX.chatLineQueue.Clear();
-                    }
                     else if (line_lower == "!bubble")
                     {
                         if (gameManager.horizontalDistanceToSafetyBubbleEdge() < 1 || gameManager.verticalDistanceToSafetyBubbleEdge() < 1)
@@ -938,6 +933,11 @@ namespace KMP
                         }
                         else
                             enqueueTextMessage("Craft file not found: " + craft_name);
+                    }
+                    else if (line_lower == "!clear")
+                    {
+                        handled = true;
+                        KMPChatDX.chatLineQueue.Clear();
                     }
 
 				}
