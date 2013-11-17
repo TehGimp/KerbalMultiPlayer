@@ -577,7 +577,7 @@ namespace KMP
 						serverVessels_PartCounts[vessel.id] = 0;
 						foreach (Part part in serverVessels_Parts[vessel.id])
 						{
-							try { if (!part.vessel.isEVA) part.vessel.Die(); } catch {}
+							try { if (!part.vessel.isEVA && !part.vessel.isActiveVessel) part.vessel.Die(); } catch {}
 						}
 						ProtoVessel protovessel = new ProtoVessel(serverVessels_ProtoVessels[vessel.id], HighLogic.CurrentGame);
 						addRemoteVessel(protovessel,vessel.id);
@@ -1541,7 +1541,21 @@ namespace KMP
 				{
 					KMPClientMain.DebugLog("killing vessel");
 					Vessel extant_vessel = FlightGlobals.Vessels.Find(v => v.id == vessel_update.id);
-					if (extant_vessel != null && !extant_vessel.isEVA) try { extant_vessel.Die(); } catch {}
+					if (extant_vessel != null)
+					{
+						if (extant_vessel.isActiveVessel)
+						{
+							kickToTrackingStation();	
+						}
+						else if (extant_vessel.isEVA)
+						{
+							try { extant_vessel.rootPart.explode(); } catch {}
+						}
+						else
+						{
+							try { extant_vessel.Die(); } catch {}
+						}
+					}
 					return;
 				}
 				
@@ -2209,9 +2223,18 @@ namespace KMP
 					
 					if (oldVessel != null && oldVessel.isActiveVessel)
 					{
-						oldVessel.protoVessel = protovessel;
-						oldVessel.Load();
-						created_vessel = oldVessel;
+						
+						oldVessel.MakeInactive();
+						foreach (Part part in oldVessel.parts)
+						{
+							part.Die();
+						}
+						oldVessel.Die();
+						protovessel.Load(HighLogic.CurrentGame.flightState);
+						created_vessel = protovessel.vesselRef;
+						created_vessel.Load();
+						created_vessel.MakeActive();
+						FlightGlobals.SetActiveVessel(created_vessel);
 					}
 					else
 					{
@@ -2227,7 +2250,7 @@ namespace KMP
 			            catch (NullReferenceException)
 			            {
 			            }
-						if (!created_vessel.loaded) created_vessel.Load();
+						if (!created_vessel.loaded && !oldVessel.isActiveVessel) created_vessel.Load();
 						KMPClientMain.DebugLog(created_vessel.id.ToString() + " initializing: ProtoParts=" + protovessel.protoPartSnapshots.Count+ ",Parts=" + created_vessel.Parts.Count + ",Sit=" + created_vessel.situation.ToString() + ",type=" + created_vessel.vesselType + ",alt=" + protovessel.altitude);
 						
 						vessels[vessel_id.ToString()].vessel.vesselRef = created_vessel;
