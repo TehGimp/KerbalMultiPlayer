@@ -3475,7 +3475,9 @@ namespace KMP
 					if (String.IsNullOrEmpty(KMPConnectionDisplay.activeHostname) || String.IsNullOrEmpty(KMPClientMain.GetUsername()))
 						allowConnect = false;
 			
-					if (!allowConnect) GUI.enabled = false;
+					if (!allowConnect)
+						GUI.enabled = false;
+
 					bool connectPressed = GUILayout.Button("Connect");
 					GUI.enabled = true;
 			

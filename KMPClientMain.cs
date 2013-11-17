@@ -1698,6 +1698,7 @@ namespace KMP
         }
 
 
+        // Reads the client's KMPClientConfig.xml file
         public static void readConfigFile()
         {
             try
@@ -2169,10 +2170,21 @@ namespace KMP
             //			}
         }
 
+
+        // Returns the absolute path of the directory which contains KerbalMultiPlayer.dll as a String
+        // E.g. "C:\Program Files (x86)\Steam\SteamApps\common\Kerbal Space Program\GameData\KMP\Plugins"
+        // Note the lack of ending DirectorySeparator.
+        internal static String getKMPDirectory()
+        {
+            return System.IO.Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location);
+        }
+
+        // Verifies that the folder structure for /saves/KMP/Ships/VAB and /saves/KMP/Ships/SPH exists
+        // Creates the tree if it does not exist.
         internal static void verifyShipsDirectory()
         {
             char cSep = '/';
-            String sPath = System.IO.Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location);
+            String sPath = getKMPDirectory();
             System.IO.DirectoryInfo dir = System.IO.Directory.GetParent(sPath);
             dir = dir.Parent.Parent;
             sPath = dir.FullName;
@@ -2191,9 +2203,10 @@ namespace KMP
                 System.IO.Directory.CreateDirectory(sPath + cSep + "SPH");
         }
 
+        // Checks to see if start.sfs exists in the /saves/KMP/ directory.
         internal static bool startSaveExists()
         {
-            String sPath = System.IO.Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location);
+            String sPath = getKMPDirectory();
             System.IO.DirectoryInfo dir = System.IO.Directory.GetParent(sPath);
             dir = dir.Parent.Parent;
             sPath = dir.FullName;
