@@ -757,6 +757,11 @@ namespace KMP
                         debugging = !debugging;
                         enqueuePluginChatMessage("debug " + debugging);
                     }
+					else if(line_lower == "!clear")
+					{
+						KMPChatDX.chatLineQueue.Clear();
+						handled = true;
+					}
                     else if (line_lower == "!bubble")
                     {
                         if (gameManager.horizontalDistanceToSafetyBubbleEdge() < 1 || gameManager.verticalDistanceToSafetyBubbleEdge() < 1)

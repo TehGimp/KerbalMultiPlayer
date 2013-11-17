@@ -2085,6 +2085,7 @@ namespace KMPServer
                         sb.Append("!chat offset [tracking|editor] [offsetX] [offsetY] - Set the offset values (pixels)\n");
                         sb.Append("!chat [width|height|top|left] [value] <percent|pixels>\n");
                         sb.Append("!whereami - Displays server connection information");
+						sb.Append("!clear - Clears the chat window");
                         sb.Append(Environment.NewLine);
 
                         sendTextMessage(cl, sb.ToString());
