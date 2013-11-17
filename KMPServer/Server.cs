@@ -328,21 +328,9 @@ namespace KMPServer
 				autoDekesslerTimer = new Timer(_ => dekesslerServerCommand(new string[0]), null, settings.autoDekesslerTime * 60000, settings.autoDekesslerTime * 60000);
 				Log.Debug("Starting AutoDekessler: Timer Set to " + settings.autoDekesslerTime + " Minutes");
 			}
-            
-            //Begin listening for HTTP requests
 
-            httpListener = new HttpListener(); //Might need a replacement as HttpListener needs admin rights
-            try
-            {
-                httpListener.Prefixes.Add("http://*:" + settings.httpPort + '/');
-                httpListener.Start();
-                httpListener.BeginGetContext(asyncHTTPCallback, httpListener);
-            }
-            catch (Exception e)
-            {
-                Log.Error("Error starting http server: {0}", e);
-                Log.Error("Please try running the server as an administrator");
-            }
+            if (settings.httpBroadcast)
+                startHttpServer();
 
             long last_backup_time = 0;
 
@@ -380,6 +368,28 @@ namespace KMPServer
             Log.Info("Server session ended.");
             if (quit) { Log.Info("Quitting"); Thread.Sleep(1000); Environment.Exit(0); }
 
+        }
+
+        private void startHttpServer()
+        {
+            //Begin listening for HTTP requests
+            httpListener = new HttpListener(); //Might need a replacement as HttpListener needs admin rights
+            try
+            {
+                httpListener.Prefixes.Add("http://*:" + settings.httpPort + '/');
+                httpListener.Start();
+                httpListener.BeginGetContext(asyncHTTPCallback, httpListener);
+            }
+            catch (Exception e)
+            {
+                Log.Error("Error starting http server: {0}", e);
+                Log.Error("Please try running the server as an administrator");
+            }
+        }
+
+        private void killHttpServer()
+        {
+            httpListener.Stop();
         }
 
         private void handleCommands()

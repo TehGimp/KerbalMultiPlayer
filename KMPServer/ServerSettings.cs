@@ -32,6 +32,7 @@ namespace KMPServer
 			public string ipBinding = "0.0.0.0";
 			public int port = 2076;
 			public int httpPort = 8081;
+            public bool httpBroadcast = true;
 			public int maxClients = 8;
 			public float updatesPerSecond = 60;
 			public int screenshotInterval = 3000;
@@ -50,6 +51,7 @@ namespace KMPServer
 			public double safetyBubbleRadius = 20000d;
             public bool autoDekessler = false;
             public int autoDekesslerTime = 30;
+            
 
 			private List<BanRecord> _bans = new List<BanRecord>();
 			internal List<BanRecord> bans
