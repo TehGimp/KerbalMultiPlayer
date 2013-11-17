@@ -1259,6 +1259,7 @@ namespace KMP
 		private IEnumerator<WaitForFixedUpdate> returnToSpaceCenter()
 		{
 			yield return new WaitForFixedUpdate();
+			FlightInputHandler.state.mainThrottle = 0;
 			if (FlightGlobals.ClearToSave() == ClearToSaveStatus.CLEAR || !isInFlight || FlightGlobals.ActiveVessel.state == Vessel.State.DEAD)
 			{
 				if (!forceQuit)
@@ -1273,6 +1274,7 @@ namespace KMP
 		private IEnumerator<WaitForFixedUpdate> returnToTrackingStation()
 		{
 			yield return new WaitForFixedUpdate();
+			FlightInputHandler.state.mainThrottle = 0;
 			if (HighLogic.LoadedSceneIsFlight && isInFlight && FlightGlobals.ready)
 				HighLogic.LoadScene(GameScenes.TRACKSTATION);
 			else if (HighLogic.LoadedScene != GameScenes.TRACKSTATION)
