@@ -317,25 +317,27 @@ namespace KMP
             }
 
             //Look up the actual IP address
-            IPHostEntry host_entry = new IPHostEntry();
-            try
-            {
-                host_entry = Dns.GetHostEntry(trimmed_hostname);
-            }
-            catch (SocketException)
-            {
-                host_entry = null;
-            }
-            catch (ArgumentException)
-            {
-                host_entry = null;
-            }
-
             IPAddress address = null;
-            if (host_entry != null && host_entry.AddressList.Length == 1)
-                address = host_entry.AddressList.First();
-            else
-                IPAddress.TryParse(trimmed_hostname, out address);
+            IPAddress.TryParse(trimmed_hostname, out address);
+            if (address == null) {
+                IPHostEntry host_entry = new IPHostEntry();
+                try
+                {
+                    host_entry = Dns.GetHostEntry(trimmed_hostname);
+                }
+                catch (SocketException)
+                {
+                    host_entry = null;
+                }
+                catch (ArgumentException)
+                {
+                    host_entry = null;
+                }
+                if (host_entry != null)
+                {
+                    address = host_entry.AddressList.First(a => a.AddressFamily == AddressFamily.InterNetwork);
+                }
+            }
 
             if (address == null)
             {
