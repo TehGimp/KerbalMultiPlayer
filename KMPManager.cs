@@ -45,6 +45,7 @@ namespace KMP
 			public Orbit orbit;
 			public float lastUpdateTime;
 			public int currentSubspaceID;
+			public Guid vesselID;
 		}
 
 		//Singleton
@@ -1279,6 +1280,10 @@ namespace KMP
 				else
 					status.currentSubspaceID = -1;
 				
+				if (status_array.Length >= 5) {
+					status.vesselID = new Guid(status_array[4]);
+				}
+				
 				status.orbit = null;
 				status.lastUpdateTime = UnityEngine.Time.realtimeSinceStartup;
 				status.color = KMPVessel.generateActiveColor(status.ownerName);
@@ -1420,6 +1425,10 @@ namespace KMP
 						playerStatus[status.ownerName] = status;
 					else
 						playerStatus.Add(status.ownerName, status);
+										
+					if (isInFlight && status.vesselID == FlightGlobals.ActiveVessel.id && status.currentSubspaceID > 0) {
+						StartCoroutine(sendSubspaceSyncRequest(status.currentSubspaceID));
+					}
 				}
 			}
 		}
@@ -1662,17 +1671,6 @@ namespace KMP
 													{
 														syncExtantVesselOrbit(vessel,vessel_update.tick,extant_vessel,vessel_update.w_pos[0]);
 														serverVessels_ObtSyncDelay[vessel_update.id] = UnityEngine.Time.realtimeSinceStartup + 1f;
-													}
-												}
-												
-												if (vessel_update.id == FlightGlobals.ActiveVessel.id && vessel_update.relTime != RelativeTime.PRESENT) {
-													
-													VesselStatusInfo status;
-													if (playerStatus.TryGetValue(vessel_update.player, out status)) {
-														if (status.currentSubspaceID > 0)
-														{
-															StartCoroutine(sendSubspaceSyncRequest(status.currentSubspaceID));
-														}
 													}
 												}
 												
