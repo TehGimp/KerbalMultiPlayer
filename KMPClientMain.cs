@@ -37,8 +37,10 @@ namespace KMP
 
         public const String USERNAME_LABEL = "username";
         public const String IP_LABEL = "hostname";
+		public const String PORT_LABEL = "port";
         public const String AUTO_RECONNECT_LABEL = "reconnect";
         public const String FAVORITE_LABEL = "pos";
+		public const String NAME_LABEL = "name";
 
         //public const String INTEROP_CLIENT_FILENAME = "interopclient.txt";
         //public const String INTEROP_PLUGIN_FILENAME = "interopplugin.txt";
@@ -87,13 +89,13 @@ namespace KMP
                 return mUsername;
             }
         }
-        public static String hostname = "localhost";
+        public static String hostname = "localhost:2076";
         public static int updateInterval = 100;
         public static int screenshotInterval = 1000;
         public static bool autoReconnect = true;
         public static byte inactiveShipsPerUpdate = 0;
         public static ScreenshotSettings screenshotSettings = new ScreenshotSettings();
-        public static ArrayList favorites = new ArrayList();
+		public static Dictionary<String, String[]> favorites = new Dictionary<String, String[]>();
 
         //Connection
         public static int clientID;
@@ -224,12 +226,12 @@ namespace KMP
             }
         }
 
-        public static ArrayList GetFavorites()
+        public static Dictionary<String, String[]> GetFavorites()
         {
             return favorites;
         }
 
-        public static void SetFavorites(ArrayList newFavorites)
+        public static void SetFavorites(Dictionary<String, String[]> newFavorites)
         {
             // Verification of change is handled in KMPManager
             favorites = newFavorites;
@@ -1750,7 +1752,8 @@ namespace KMP
                     int.TryParse(xmlNode.Attributes[FAVORITE_LABEL].Value, out nPos);
                     if (nPos >= 0)
                     {
-                        favorites.Add(xmlNode.Attributes[IP_LABEL].Value);
+						String[] sArr = {xmlNode.Attributes[IP_LABEL].Value,  xmlNode.Attributes[PORT_LABEL].Value, xmlNode.Attributes[USERNAME_LABEL].Value};
+                        favorites.Add(xmlNode.Attributes[NAME_LABEL].Value, sArr);
                     }
                 }
             }
@@ -1787,11 +1790,17 @@ namespace KMP
             xFav.RemoveAll(); // Delete all the favourites
 
             int count = 0;
-            foreach (String sIP in favorites) // Rebuild the favourites from memory
+            foreach (String sIP in favorites.Keys) // Rebuild the favourites from memory
             {
+				String[] sArr = new String[favorites.Count];
+				favorites.TryGetValue(sIP, out sArr);
+
                 XmlElement xEl = xmlDoc.CreateElement("favourite");
                 xEl.SetAttribute(FAVORITE_LABEL, "" + count);
-                xEl.SetAttribute(IP_LABEL, sIP);
+				xEl.SetAttribute(NAME_LABEL, sIP);
+                xEl.SetAttribute(IP_LABEL, sArr[0]);
+				xEl.SetAttribute(PORT_LABEL, sArr[1]);
+				xEl.SetAttribute(USERNAME_LABEL, sArr[2]);
                 xFav.AppendChild(xEl);
                 count++;
             }

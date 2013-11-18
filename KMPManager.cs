@@ -113,6 +113,7 @@ namespace KMP
 		private bool addPressed = false;
 		private string newHost = "localhost";
 		private string newPort = "2076";
+		private string newFamiliar = "Server";
 		
 		private bool forceQuit = false;
 		private bool gameRunning = false;
@@ -3414,33 +3415,52 @@ namespace KMP
 			GUILayout.BeginHorizontal();
 				if (addPressed)
 				{
+					GUILayout.BeginVertical();
+					GUILayout.BeginHorizontal();
+					GUILayoutOption[] name_options = new GUILayoutOption[1];
+					name_options[0] = GUILayout.MaxWidth(240);
+					GUILayout.Label("Server Name:");
+					newFamiliar = GUILayout.TextField(newFamiliar, name_options);
+						
+						
+					GUILayout.EndHorizontal();
+
+					GUILayout.BeginHorizontal();
 					GUILayoutOption[] field_options = new GUILayoutOption[1];
 					field_options[0] = GUILayout.MaxWidth(50);
 					GUILayout.Label("Address:");
 					newHost = GUILayout.TextField(newHost);
 					GUILayout.Label("Port:");
-					newPort = GUILayout.TextField(newPort,field_options);
+					newPort = GUILayout.TextField(newPort, field_options);
+					
 					bool addHostPressed = GUILayout.Button("Add",field_options);
 					if (addHostPressed)
 					{
 						KMPClientMain.SetServer(newHost.Trim());
-						ArrayList favorites = KMPClientMain.GetFavorites();
+						Dictionary<String, String[]> favorites = KMPClientMain.GetFavorites();
+						String[] sArr = {newHost.Trim(), newPort.Trim(), KMPClientMain.GetUsername()};
 
-						if (favorites.Contains(newHost.Trim() + ":" + newPort.Trim()))
+						if (favorites.ContainsKey(newFamiliar.Trim()))
 						{
-							ScreenMessages.PostScreenMessage("This server is already on the list", 300f, ScreenMessageStyle.UPPER_CENTER);
+							ScreenMessages.PostScreenMessage("Server name taken", 300f, ScreenMessageStyle.UPPER_CENTER);
+						}
+						else if(favorites.ContainsValue(sArr))
+						{
+							ScreenMessages.PostScreenMessage("This server already exists", 300f, ScreenMessageStyle.UPPER_CENTER);
 						}
 						else
 						{
-							String sHostname = newHost.Trim() + ":" + newPort.Trim();
-							favorites.Add(sHostname);
+							favorites.Add(newFamiliar.Trim(), sArr);
 
 							//Close the add server bar after a server has been added and select the new server
 							addPressed = false;
-							KMPConnectionDisplay.activeHostname = sHostname;
+							KMPConnectionDisplay.activeHostname = newHost.Trim()+":"+newPort.Trim();
+							KMPConnectionDisplay.activeFamiliar = newFamiliar;
 							KMPClientMain.SetFavorites(favorites);
 						}
 					}
+					GUILayout.EndHorizontal();
+					GUILayout.EndVertical();
 				}
 			GUILayout.EndHorizontal();
 			
@@ -3459,10 +3479,10 @@ namespace KMP
 					GUILayout.EndHorizontal();
 			
 					KMPConnectionDisplay.scrollPos = GUILayout.BeginScrollView(KMPConnectionDisplay.scrollPos, connection_list_options);
-						foreach (String hostname in KMPClientMain.GetFavorites())
+						foreach (String familiar in KMPClientMain.GetFavorites().Keys)
 						{
-							if (!String.IsNullOrEmpty(hostname))
-								connectionButton(hostname);
+							if (!String.IsNullOrEmpty(familiar))
+								connectionButton(familiar);
 						}
 					GUILayout.EndScrollView();
 			
@@ -3474,7 +3494,7 @@ namespace KMP
 				GUILayout.BeginVertical(pane_options);
 			
 					bool allowConnect = true;
-					if (String.IsNullOrEmpty(KMPConnectionDisplay.activeHostname) || String.IsNullOrEmpty(KMPClientMain.GetUsername()))
+					if (String.IsNullOrEmpty(KMPConnectionDisplay.activeFamiliar) || String.IsNullOrEmpty(KMPClientMain.GetUsername()))
 						allowConnect = false;
 			
 					if (!allowConnect)
@@ -3497,15 +3517,16 @@ namespace KMP
 						"Add Server",
 						GUI.skin.button);
 					
-					if (String.IsNullOrEmpty(KMPConnectionDisplay.activeHostname)) GUI.enabled = false;
+					if (String.IsNullOrEmpty(KMPConnectionDisplay.activeFamiliar)) GUI.enabled = false;
 					bool deletePressed = GUILayout.Button("Remove");
 					if (deletePressed)
 					{
-						ArrayList favorites = KMPClientMain.GetFavorites();
-						if (favorites.Contains(KMPConnectionDisplay.activeHostname))
+						Dictionary<String, String[]> favorites = KMPClientMain.GetFavorites();
+						if (favorites.ContainsKey(KMPConnectionDisplay.activeFamiliar))
 						{
-							favorites.Remove(KMPConnectionDisplay.activeHostname);
+							favorites.Remove(KMPConnectionDisplay.activeFamiliar);
 							KMPConnectionDisplay.activeHostname = "";
+							KMPConnectionDisplay.activeFamiliar = "";
 							KMPClientMain.SetFavorites(favorites);
 						}
 					}
@@ -3522,7 +3543,7 @@ namespace KMP
 
 					if (String.IsNullOrEmpty(KMPClientMain.GetUsername()))
 						GUILayout.Label("Please specify a username", status_options);
-					else if (String.IsNullOrEmpty(KMPConnectionDisplay.activeHostname))
+					else if (String.IsNullOrEmpty(KMPConnectionDisplay.activeFamiliar))
 						GUILayout.Label("Please add or select a server", status_options);
 					else if (!KMPClientMain.startSaveExists())
 						GUILayout.Label("ERROR!  Start save missing!  Verify client installation!", status_options);
@@ -4027,13 +4048,25 @@ namespace KMP
 		
 		private void connectionButton(String name)
 		{
-			bool player_selected = GUILayout.Toggle(KMPConnectionDisplay.activeHostname == name, name, GUI.skin.button);
-			if (player_selected != (KMPConnectionDisplay.activeHostname == name))
+			Dictionary<String, String[]> favorites = KMPClientMain.GetFavorites();
+			String[] sArr = new String[favorites.Count];
+			favorites.TryGetValue(name, out sArr);
+			String hostname = sArr[0] + ":" + sArr[1];
+
+			bool player_selected = GUILayout.Toggle(KMPConnectionDisplay.activeFamiliar == name, name, GUI.skin.button);
+			if (player_selected != (KMPConnectionDisplay.activeHostname == hostname))
 			{
-				if (KMPConnectionDisplay.activeHostname != name)
-					KMPConnectionDisplay.activeHostname = name;
+				if (KMPConnectionDisplay.activeHostname != hostname)
+					KMPConnectionDisplay.activeHostname = hostname;
 				else
 					KMPConnectionDisplay.activeHostname = String.Empty;
+			}
+			if(player_selected != (KMPConnectionDisplay.activeFamiliar == name))
+			{
+				if (KMPConnectionDisplay.activeFamiliar != name)
+					KMPConnectionDisplay.activeFamiliar = name;
+				else
+					KMPConnectionDisplay.activeFamiliar = String.Empty;
 			}
 		}
 		

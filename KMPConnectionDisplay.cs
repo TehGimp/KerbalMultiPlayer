@@ -14,6 +14,7 @@ namespace KMP
 
 		public static bool windowEnabled = true;
 		public static String activeHostname = String.Empty;
+		public static String activeFamiliar = String.Empty;
 
 		public static Rect windowPos 
 		{
