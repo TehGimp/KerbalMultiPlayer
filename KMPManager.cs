@@ -1320,6 +1320,12 @@ namespace KMP
 			FlightGlobals.fetch.SetVesselTarget(vessel);
 		}
 		
+		private IEnumerator<WaitForFixedUpdate> setActiveVessel(Vessel vessel)
+		{
+			yield return new WaitForFixedUpdate();
+			FlightGlobals.SetActiveVessel(vessel);
+		}
+		
 		private IEnumerator<WaitForEndOfFrame> sendSubspaceSyncRequest(int subspace = -1, bool docking = false)
 		{
 			yield return new WaitForEndOfFrame();
@@ -2126,7 +2132,7 @@ namespace KMP
 			if (vessel_id == FlightGlobals.ActiveVessel.id && (serverVessels_InUse.ContainsKey(vessel_id) ? !serverVessels_InUse.ContainsKey(vessel_id) : false)) return;
 			KMPClientMain.DebugLog("addRemoteVessel");
 			Vector3 newWorldPos = Vector3.zero, newOrbitVel = Vector3.zero;
-			bool setTarget = false, wasLoaded = false;
+			bool setTarget = false, wasLoaded = false, wasActive = false;
 			Vessel oldVessel = null;
 			try
 			{
@@ -2151,7 +2157,7 @@ namespace KMP
 						{
 							KMPClientMain.DebugLog("killing extant vessel");
 							oldVessel.Die();
-						}
+						} else wasActive = true;
 					}
 				}
 				
@@ -2219,111 +2225,105 @@ namespace KMP
 				}
 				if (vessels.ContainsKey(vessel_id.ToString()) && (!serverVessels_LoadDelay.ContainsKey(vessel_id) || (serverVessels_LoadDelay.ContainsKey(vessel_id) ? serverVessels_LoadDelay[vessel_id] < UnityEngine.Time.realtimeSinceStartup : false)))
 				{
-					Vessel created_vessel = null;
-					
-					if (oldVessel != null && oldVessel.isActiveVessel)
+					if (wasActive)
 					{
-						
-						oldVessel.MakeInactive();
-						foreach (Part part in oldVessel.parts)
-						{
-							part.Die();
-						}
+						FlightGlobals.SetActiveVessel(null);
 						oldVessel.Die();
-						protovessel.Load(HighLogic.CurrentGame.flightState);
-						created_vessel = protovessel.vesselRef;
-						created_vessel.Load();
-						created_vessel.MakeActive();
-						FlightGlobals.SetActiveVessel(created_vessel);
+						KMPClientMain.DebugLog("Active vessel cleared");
 					}
-					else
-					{
-						protovessel.Load(HighLogic.CurrentGame.flightState);
-						created_vessel = protovessel.vesselRef;
-					}
-					if (created_vessel != null)
-					{
-						try
-			            {
-			                OrbitPhysicsManager.HoldVesselUnpack(1);
-			            }
-			            catch (NullReferenceException)
-			            {
-			            }
-						if (!created_vessel.loaded && !oldVessel.isActiveVessel) created_vessel.Load();
-						KMPClientMain.DebugLog(created_vessel.id.ToString() + " initializing: ProtoParts=" + protovessel.protoPartSnapshots.Count+ ",Parts=" + created_vessel.Parts.Count + ",Sit=" + created_vessel.situation.ToString() + ",type=" + created_vessel.vesselType + ",alt=" + protovessel.altitude);
-						
-						vessels[vessel_id.ToString()].vessel.vesselRef = created_vessel;
-						serverVessels_PartCounts[vessel_id] = created_vessel.Parts.Count;
-						serverVessels_Parts[vessel_id] = new List<Part>();
-						serverVessels_Parts[vessel_id].AddRange(created_vessel.Parts);
-						
-						bool distanceBlocksUnload = false;
-						
-						if (created_vessel.vesselType != VesselType.Flag && created_vessel.vesselType != VesselType.EVA)
-						{
-							foreach (Part part in created_vessel.Parts)
-							{
-								part.OnLoad();
-								part.OnJustAboutToBeDestroyed += checkRemoteVesselIntegrity;
-								part.explosionPotential = 0;
-								part.terrainCollider = new PQS_PartCollider();
-								part.terrainCollider.part = part;
-								part.terrainCollider.useVelocityCollider = false;
-								part.terrainCollider.useGravityCollider = false;
-								part.breakingForce = float.MaxValue;
-								part.breakingTorque = float.MaxValue;
-							}
-							if (update != null && update.bodyName == FlightGlobals.ActiveVessel.mainBody.name)
-							{
-								KMPClientMain.DebugLog("update included");
-								
-								//Update rotation
-								if (kvessel != null) created_vessel.transform.up = kvessel.worldDirection;
-								created_vessel.SetRotation(new Quaternion(update.rot[0],update.rot[1],update.rot[2],update.rot[3]));
-								
-								if (update.relTime == RelativeTime.PRESENT)
-								{	
-									if (newWorldPos != Vector3.zero) 
-									{
-										KMPClientMain.DebugLog("repositioning");
-										created_vessel.transform.position = newWorldPos;
-										if (wasLoaded) distanceBlocksUnload = Vector3.Distance(created_vessel.transform.position,FlightGlobals.ActiveVessel.transform.position) < 2000f;
-									}
-									if (newOrbitVel != Vector3.zero) 
-									{
-										KMPClientMain.DebugLog("updating velocity");
-										created_vessel.ChangeWorldVelocity((-1 * created_vessel.GetObtVelocity()) + newOrbitVel);
-									}
-									
-									//Update FlightCtrlState
-									if (created_vessel.ctrlState == null) created_vessel.ctrlState = new FlightCtrlState();
-									created_vessel.ctrlState.CopyFrom(update.flightCtrlState.getAsFlightCtrlState(0.75f));
-								}
-								else
-								{
-									serverVessels_InPresent[update.id] = false;
-									foreach (Part part in created_vessel.Parts)
-									{
-										part.setOpacity(0.3f);
-									}
-								}
-							}
-						}
-						if (!syncing && !distanceBlocksUnload) 
-						{
-							//This explicit Unload helps correct the effects of "Can't remove Part (Script) because PartBuoyancy (Script) depends on it" errors and associated NREs seen during rendezvous mode switching, but for unknown reasons it causes problems if active during universe sync
-							KMPClientMain.DebugLog("explicit unload");
-							created_vessel.Unload();
-						}
-						if (setTarget) StartCoroutine(setDockingTarget(created_vessel));
-						KMPClientMain.DebugLog(created_vessel.id.ToString() + " initialized");
-					}
+					StartCoroutine(loadProtovessel(newWorldPos, newOrbitVel, wasLoaded, wasActive, setTarget, protovessel, vessel_id, kvessel, update, distance));
 				}
 			}
 			catch (Exception e)
 			{
 				KMPClientMain.DebugLog("Error adding remote vessel: " + e.Message + " " + e.StackTrace);
+			}
+		}
+		
+		private IEnumerator<WaitForFixedUpdate> loadProtovessel(Vector3 newWorldPos, Vector3 newOrbitVel, bool wasLoaded, bool wasActive, bool setTarget, ProtoVessel protovessel, Guid vessel_id, KMPVessel kvessel = null, KMPVesselUpdate update = null, double distance = 501d)
+		{
+			yield return new WaitForFixedUpdate();
+			protovessel.Load(HighLogic.CurrentGame.flightState);
+			Vessel created_vessel = protovessel.vesselRef;
+			
+			if (created_vessel != null)
+			{
+				try
+	            {
+	                OrbitPhysicsManager.HoldVesselUnpack(1);
+	            }
+	            catch (NullReferenceException)
+	            {
+	            }
+				if (!created_vessel.loaded) created_vessel.Load();
+				KMPClientMain.DebugLog(created_vessel.id.ToString() + " initializing: ProtoParts=" + protovessel.protoPartSnapshots.Count+ ",Parts=" + created_vessel.Parts.Count + ",Sit=" + created_vessel.situation.ToString() + ",type=" + created_vessel.vesselType + ",alt=" + protovessel.altitude);
+				
+				vessels[vessel_id.ToString()].vessel.vesselRef = created_vessel;
+				serverVessels_PartCounts[vessel_id] = created_vessel.Parts.Count;
+				serverVessels_Parts[vessel_id] = new List<Part>();
+				serverVessels_Parts[vessel_id].AddRange(created_vessel.Parts);
+				
+				bool distanceBlocksUnload = false;
+				
+				if (created_vessel.vesselType != VesselType.Flag && created_vessel.vesselType != VesselType.EVA)
+				{
+					foreach (Part part in created_vessel.Parts)
+					{
+						part.OnLoad();
+						part.OnJustAboutToBeDestroyed += checkRemoteVesselIntegrity;
+						part.explosionPotential = 0;
+						part.terrainCollider = new PQS_PartCollider();
+						part.terrainCollider.part = part;
+						part.terrainCollider.useVelocityCollider = false;
+						part.terrainCollider.useGravityCollider = false;
+						part.breakingForce = float.MaxValue;
+						part.breakingTorque = float.MaxValue;
+					}
+					if (update != null && update.bodyName == FlightGlobals.ActiveVessel.mainBody.name)
+					{
+						KMPClientMain.DebugLog("update included");
+						
+						//Update rotation
+						if (kvessel != null) created_vessel.transform.up = kvessel.worldDirection;
+						created_vessel.SetRotation(new Quaternion(update.rot[0],update.rot[1],update.rot[2],update.rot[3]));
+						
+						if (update.relTime == RelativeTime.PRESENT)
+						{	
+							if (newWorldPos != Vector3.zero) 
+							{
+								KMPClientMain.DebugLog("repositioning");
+								created_vessel.transform.position = newWorldPos;
+								if (wasLoaded) distanceBlocksUnload = Vector3.Distance(created_vessel.transform.position,FlightGlobals.ActiveVessel.transform.position) < 2000f;
+							}
+							if (newOrbitVel != Vector3.zero) 
+							{
+								KMPClientMain.DebugLog("updating velocity");
+								created_vessel.ChangeWorldVelocity((-1 * created_vessel.GetObtVelocity()) + newOrbitVel);
+							}
+							
+							//Update FlightCtrlState
+							if (created_vessel.ctrlState == null) created_vessel.ctrlState = new FlightCtrlState();
+							created_vessel.ctrlState.CopyFrom(update.flightCtrlState.getAsFlightCtrlState(0.75f));
+						}
+						else
+						{
+							serverVessels_InPresent[update.id] = false;
+							foreach (Part part in created_vessel.Parts)
+							{
+								part.setOpacity(0.3f);
+							}
+						}
+					}
+				}
+				if (!syncing && !distanceBlocksUnload && !wasActive) 
+				{
+					//This explicit Unload helps correct the effects of "Can't remove Part (Script) because PartBuoyancy (Script) depends on it" errors and associated NREs seen during rendezvous mode switching, but for unknown reasons it causes problems if active during universe sync
+					KMPClientMain.DebugLog("explicit unload");
+					created_vessel.Unload();
+				}
+				if (setTarget) StartCoroutine(setDockingTarget(created_vessel));
+				if (wasActive) StartCoroutine(setActiveVessel(created_vessel));
+				KMPClientMain.DebugLog(created_vessel.id.ToString() + " initialized");
 			}
 		}
 		
@@ -2668,7 +2668,7 @@ namespace KMP
 			{
 				success = false;
 			}
-			catch (System.IO.IsolatedStorage.IsolatedStorageException e)
+			catch (System.IO.IsolatedStorage.IsolatedStorageException)
 			{
 				success = false;
 			}
