@@ -2351,10 +2351,11 @@ namespace KMPServer
                     if (vessel_update != null)
                     {
                         OwnerID = cl.playerID;
-                        vessel_info = new String[4];
+                        vessel_info = new String[5];
                         vessel_info[0] = vessel_update.player;
                         vessel_info[2] = "Using vessel: " + vessel_update.name;
                         vessel_info[3] = "";
+                        vessel_info[4] = vessel_update.id.ToString();
 
                         //Log.Info("Unpacked update from tick=" + vessel_update.tick + " @ client tick=" + cl.lastTick);
                         ConfigNode node = vessel_update.getProtoVesselNode();
