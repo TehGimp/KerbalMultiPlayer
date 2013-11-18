@@ -1669,7 +1669,10 @@ namespace KMP
 													
 													VesselStatusInfo status;
 													if (playerStatus.TryGetValue(vessel_update.player, out status)) {
-														StartCoroutine(sendSubspaceSyncRequest(status.currentSubspaceID));
+														if (status.currentSubspaceID > 0)
+														{
+															StartCoroutine(sendSubspaceSyncRequest(status.currentSubspaceID));
+														}
 													}
 												}
 												
