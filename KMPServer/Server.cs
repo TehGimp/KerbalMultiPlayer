@@ -2073,7 +2073,8 @@ namespace KMPServer
                         sb.Append("!chat dragwindow <true|false> - Makes the chat draggable\n");
                         sb.Append("!chat offsetting <true|false> - Turn on/off the tracking center and editor offsets\n");
                         sb.Append("!chat offset [tracking|editor] [offsetX] [offsetY] - Set the offset values (pixels)\n");
-                        sb.Append("!chat [width|height|top|left] [value] <percent|pixels>");
+                        sb.Append("!chat [width|height|top|left] [value] <percent|pixels>\n");
+                        sb.Append("!whereami - Displays server connection information");
                         sb.Append(Environment.NewLine);
 
                         sendTextMessage(cl, sb.ToString());
