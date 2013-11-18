@@ -2155,20 +2155,17 @@ namespace KMP
 							if (oldVessel.altitude > 10000d)
 								newOrbitVel = oldVessel.GetObtVelocity();
 						}
-						if (!oldVessel.isActiveVessel)
-						{
-							KMPClientMain.DebugLog("killing extant vessel");
-							oldVessel.Die();
-						} else wasActive = true;
+						if (oldVessel.isActiveVessel)
+							wasActive = true;
 					}
 				}
 				
-				if (protovessel.vesselType != VesselType.EVA && serverVessels_Parts.ContainsKey(vessel_id) && !oldVessel.isActiveVessel)
+				if (protovessel.vesselType != VesselType.EVA && serverVessels_Parts.ContainsKey(vessel_id))
 				{
 					KMPClientMain.DebugLog("killing known precursor vessels");
 					foreach (Part part in serverVessels_Parts[vessel_id])
 					{
-						try { if (!part.vessel.isEVA) part.vessel.Die(); } catch {}
+						try { if (!part.vessel.isEVA && part.vessel.id != oldVessel.id) part.vessel.Die(); } catch {}
 					}
 				}
 			} catch {}
@@ -2230,8 +2227,12 @@ namespace KMP
 					if (wasActive)
 					{
 						FlightGlobals.SetActiveVessel(null);
-						oldVessel.Die();
 						KMPClientMain.DebugLog("Active vessel cleared");
+					}
+					if (oldVessel != null)
+					{
+						KMPClientMain.DebugLog("Killing extant vessel");
+						oldVessel.Die();
 					}
 					StartCoroutine(loadProtovessel(newWorldPos, newOrbitVel, wasLoaded, wasActive, setTarget, protovessel, vessel_id, kvessel, update, distance));
 				}
