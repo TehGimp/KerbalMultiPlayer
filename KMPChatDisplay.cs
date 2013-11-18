@@ -29,7 +29,7 @@ namespace KMP
 		public const int MAX_CHAT_LINES = 16;
 		public const int MAX_CHAT_LINE_LENGTH = 128;
 		public const float NAME_COLOR_SATURATION_FACTOR = 0.35f;
-		public static GUILayoutOption[] layoutOptions;
+		//public static GUILayoutOption[] layoutOptions;
 
 		public static bool displayCommands = false;
 		public static Rect windowPos = new Rect(Screen.width - WINDOW_WIDTH_NORMAL - 8, Screen.height / 2 - WINDOW_HEIGHT / 2, WINDOW_WIDTH_NORMAL, WINDOW_HEIGHT);
