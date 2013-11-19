@@ -3268,6 +3268,11 @@ namespace KMPServer
                 Thread.Sleep(GHOST_CHECK_DELAY);
             }
         }
+
+        private bool isAdmin(String username)
+        {
+            return settings.admins.Contains(username);
+        }
     }
 
 }
