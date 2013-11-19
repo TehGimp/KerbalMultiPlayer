@@ -77,7 +77,7 @@ namespace KMP
                         else this.color = KMPVessel.generateActiveColor(name) * NAME_COLOR_SATURATION_FACTOR
                             + Color.white * (1.0f - NAME_COLOR_SATURATION_FACTOR);
                     }
-                } 
+                }
             }
         }
 

@@ -19,12 +19,12 @@ namespace KMPServer
                 return asSqlLite.AddWithValue(parameterName, value);
             }
 
-//            var asMySQL = cmd as MySqlParameterCollection;
-//
-//            if (asMySQL != null)
-//            {
-//                return asMySQL.AddWithValue(parameterName, value);
-//            }
+            //            var asMySQL = cmd as MySqlParameterCollection;
+            //
+            //            if (asMySQL != null)
+            //            {
+            //                return asMySQL.AddWithValue(parameterName, value);
+            //            }
 
             throw new ArgumentException("Parameter Collection must be with SQLite or MySql");
         }
