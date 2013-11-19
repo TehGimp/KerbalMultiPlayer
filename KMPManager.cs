@@ -2879,8 +2879,11 @@ namespace KMP
                     KeyCode key = KeyCode.Y;
                     if (getAnyKeyDown(ref key))
                     {
-                        KMPGlobalSettings.instance.chatTalkKey = key;
-                        mappingChatKey = false;
+                        if (key != KeyCode.Mouse0)
+                        {
+                            KMPGlobalSettings.instance.chatTalkKey = key;
+                            mappingChatKey = false;
+                        }
                     }
                 }
 
@@ -2889,8 +2892,11 @@ namespace KMP
                     KeyCode key = KeyCode.F9;
                     if (getAnyKeyDown(ref key))
                     {
-                        KMPGlobalSettings.instance.chatHideKey = key;
-                        mappingChatDXToggleKey = false;
+                        if (key != KeyCode.Mouse0)
+                        {
+                            KMPGlobalSettings.instance.chatHideKey = key;
+                            mappingChatDXToggleKey = false;
+                        }
                     }
                 }
 			} catch (Exception ex) { KMPClientMain.DebugLog ("u err: " + ex.Message + " " + ex.StackTrace); }
