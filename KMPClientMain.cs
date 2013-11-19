@@ -37,10 +37,10 @@ namespace KMP
 
         public const String USERNAME_LABEL = "username";
         public const String IP_LABEL = "hostname";
-		public const String PORT_LABEL = "port";
+        public const String PORT_LABEL = "port";
         public const String AUTO_RECONNECT_LABEL = "reconnect";
         public const String FAVORITE_LABEL = "pos";
-		public const String NAME_LABEL = "name";
+        public const String NAME_LABEL = "name";
 
         //public const String INTEROP_CLIENT_FILENAME = "interopclient.txt";
         //public const String INTEROP_PLUGIN_FILENAME = "interopplugin.txt";
@@ -95,7 +95,7 @@ namespace KMP
         public static bool autoReconnect = true;
         public static byte inactiveShipsPerUpdate = 0;
         public static ScreenshotSettings screenshotSettings = new ScreenshotSettings();
-		public static Dictionary<String, String[]> favorites = new Dictionary<String, String[]>();
+        public static Dictionary<String, String[]> favorites = new Dictionary<String, String[]>();
 
         //Connection
         public static int clientID;
@@ -321,7 +321,8 @@ namespace KMP
             //Look up the actual IP address
             IPAddress address = null;
             IPAddress.TryParse(trimmed_hostname, out address);
-            if (address == null) {
+            if (address == null)
+            {
                 IPHostEntry host_entry = new IPHostEntry();
                 try
                 {
@@ -759,11 +760,11 @@ namespace KMP
                         debugging = !debugging;
                         enqueuePluginChatMessage("debug " + debugging);
                     }
-					else if(line_lower == "!clear")
-					{
-						KMPChatDX.chatLineQueue.Clear();
-						handled = true;
-					}
+                    else if (line_lower == "!clear")
+                    {
+                        KMPChatDX.chatLineQueue.Clear();
+                        handled = true;
+                    }
                     else if (line_lower == "!bubble")
                     {
                         if (gameManager.horizontalDistanceToSafetyBubbleEdge() < 1 || gameManager.verticalDistanceToSafetyBubbleEdge() < 1)
@@ -1752,7 +1753,7 @@ namespace KMP
                     int.TryParse(xmlNode.Attributes[FAVORITE_LABEL].Value, out nPos);
                     if (nPos >= 0)
                     {
-						String[] sArr = {xmlNode.Attributes[IP_LABEL].Value,  xmlNode.Attributes[PORT_LABEL].Value, xmlNode.Attributes[USERNAME_LABEL].Value};
+                        String[] sArr = { xmlNode.Attributes[IP_LABEL].Value, xmlNode.Attributes[PORT_LABEL].Value, xmlNode.Attributes[USERNAME_LABEL].Value };
                         favorites.Add(xmlNode.Attributes[NAME_LABEL].Value, sArr);
                     }
                 }
@@ -1792,15 +1793,15 @@ namespace KMP
             int count = 0;
             foreach (String sIP in favorites.Keys) // Rebuild the favourites from memory
             {
-				String[] sArr = new String[favorites.Count];
-				favorites.TryGetValue(sIP, out sArr);
+                String[] sArr = new String[favorites.Count];
+                favorites.TryGetValue(sIP, out sArr);
 
                 XmlElement xEl = xmlDoc.CreateElement("favourite");
                 xEl.SetAttribute(FAVORITE_LABEL, "" + count);
-				xEl.SetAttribute(NAME_LABEL, sIP);
+                xEl.SetAttribute(NAME_LABEL, sIP);
                 xEl.SetAttribute(IP_LABEL, sArr[0]);
-				xEl.SetAttribute(PORT_LABEL, sArr[1]);
-				xEl.SetAttribute(USERNAME_LABEL, sArr[2]);
+                xEl.SetAttribute(PORT_LABEL, sArr[1]);
+                xEl.SetAttribute(USERNAME_LABEL, sArr[2]);
                 xFav.AppendChild(xEl);
                 count++;
             }
