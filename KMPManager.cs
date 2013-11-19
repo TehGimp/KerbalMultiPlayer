@@ -951,7 +951,8 @@ namespace KMP
 			Vector3 vel = vessel.mainBody.transform.InverseTransformDirection(vessel.GetObtVelocity());
 			Vector3d o_vel = vessel.obt_velocity;
 			Vector3d s_vel = vessel.srf_velocity;
-			Quaternion rot = vessel.transform.rotation;
+			Vector3 forw = vessel.mainBody.transform.InverseTransformDirection(vessel.transform.forward);
+//			Quaternion rot = vessel.transform.rotation;
 			
 			for (int i = 0; i < 3; i++)
 			{
@@ -960,11 +961,12 @@ namespace KMP
 				update.vel[i] = vel[i];
 				update.o_vel[i] = o_vel[i];
 				update.s_vel[i] = s_vel[i];
+				update.rot[i] = forw[i];
 			}
-			for (int i = 0; i < 4; i++)
-			{
-				update.rot[i] = rot[i];
-			}
+//			for (int i = 0; i < 4; i++)
+//			{
+//				update.rot[i] = rot[i];
+//			}
 			update.w_pos[0] = vessel.orbit.LAN;
 			if (vessel.situation == Vessel.Situations.LANDED || vessel.situation == Vessel.Situations.SPLASHED)
 			{
@@ -1698,12 +1700,10 @@ namespace KMP
 													if (extant_vessel.loaded)
 													{
 														KMPClientMain.DebugLog("rotation set");
-														extant_vessel.transform.up = vessel.worldDirection;
-														Quaternion rot = new Quaternion(vessel_update.rot[0],vessel_update.rot[1],vessel_update.rot[2],vessel_update.rot[3]);
-														extant_vessel.SetRotation(rot);
+														extant_vessel.transform.LookAt(extant_vessel.transform.position + extant_vessel.mainBody.transform.TransformDirection(new Vector3(vessel_update.rot[0],vessel_update.rot[1],vessel_update.rot[2])).normalized,vessel.worldDirection);
 														extant_vessel.angularMomentum = Vector3.zero;
-														extant_vessel.VesselSAS.LockHeading(rot);
-														extant_vessel.VesselSAS.currentRotation = rot;
+//														extant_vessel.VesselSAS.LockHeading(extant_vessel.transform.rotation);
+//														extant_vessel.VesselSAS.currentRotation = rot;
 														extant_vessel.VesselSAS.SetDampingMode(false);
 													}
 													
@@ -1797,8 +1797,9 @@ namespace KMP
 													}
 													
 													//Update rotation only
-													extant_vessel.transform.up = vessel.worldDirection;
-													extant_vessel.SetRotation(new Quaternion(vessel_update.rot[0],vessel_update.rot[1],vessel_update.rot[2],vessel_update.rot[3]));
+													extant_vessel.transform.LookAt(extant_vessel.transform.position + extant_vessel.mainBody.transform.TransformDirection(new Vector3(vessel_update.rot[0],vessel_update.rot[1],vessel_update.rot[2])).normalized,vessel.worldDirection);
+													//extant_vessel.transform.up = vessel.worldDirection;
+													//extant_vessel.transform.rotation = new Quaternion(vessel_update.rot[0],vessel_update.rot[1],vessel_update.rot[2],vessel_update.rot[3]);
 												}
 											}
 										}
@@ -2281,10 +2282,6 @@ namespace KMP
 	            {
 	            }
 				if (!created_vessel.loaded) created_vessel.Load();
-//				if (wasActive) 
-//				{
-//					FlightGlobals.ForceSetActiveVessel(created_vessel);
-//				}
 				
 				KMPClientMain.DebugLog(created_vessel.id.ToString() + " initializing: ProtoParts=" + protovessel.protoPartSnapshots.Count+ ",Parts=" + created_vessel.Parts.Count + ",Sit=" + created_vessel.situation.ToString() + ",type=" + created_vessel.vesselType + ",alt=" + protovessel.altitude);
 				
@@ -2312,10 +2309,6 @@ namespace KMP
 					if (update != null && update.bodyName == FlightGlobals.ActiveVessel.mainBody.name)
 					{
 						KMPClientMain.DebugLog("update included");
-						
-						//Update rotation
-						if (kvessel != null) created_vessel.transform.up = kvessel.worldDirection;
-						created_vessel.SetRotation(new Quaternion(update.rot[0],update.rot[1],update.rot[2],update.rot[3]));
 						
 						if (update.relTime == RelativeTime.PRESENT)
 						{	
