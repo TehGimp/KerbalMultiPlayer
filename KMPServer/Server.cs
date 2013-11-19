@@ -2154,23 +2154,13 @@ namespace KMPServer
             catch (NullReferenceException) { }
         }
 
-        private string[] profanity = { "fucker", "faggot", "shit", "fuck", "cunt", "piss", "fag", "dick", "cock", "asshole" };
-        private string[] replacements = { "kerper", "kerpot", "kerp", "guck", "kump", "heph", "olp", "derp", "beet", "hepderm" };
-
         private string WashMouthWithSoap(string message_text)
         {
             var msg = message_text;
 
-            for (var i = 0; i < profanity.Length; i++)
+            foreach (var kvp in settings.Profanity)
             {
-                string word = profanity[i];
-                int profIndex = msg.IndexOf(word, StringComparison.InvariantCultureIgnoreCase);
-
-                if (profIndex > -1)
-                {
-                    msg = msg.Remove(profIndex, word.Length);
-                    msg = msg.Insert(profIndex, replacements[i]);
-                }
+                msg = msg.Replace(kvp.Key, kvp.Value);
             }
 
             return msg;
