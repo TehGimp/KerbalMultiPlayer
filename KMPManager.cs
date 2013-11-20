@@ -2829,7 +2829,7 @@ namespace KMP
                 if (planetariumCam == null)
                     planetariumCam = (PlanetariumCamera)FindObjectOfType(typeof(PlanetariumCamera));
 
-                if (Input.GetKeyDown(KMPGlobalSettings.instance.guiToggleKey))
+                if (Input.GetKeyDown(KMPGlobalSettings.instance.guiToggleKey) || Input.GetKeyDown(KeyCode.F2))
                     KMPInfoDisplay.infoDisplayActive = !KMPInfoDisplay.infoDisplayActive;
 
                 if (Input.GetKeyDown(KMPGlobalSettings.instance.screenshotKey))
@@ -2838,7 +2838,7 @@ namespace KMP
                 if (Input.GetKeyDown(KMPGlobalSettings.instance.chatTalkKey))
                     KMPChatDX.showInput = true;
 
-                if (Input.GetKeyDown(KMPGlobalSettings.instance.chatHideKey))
+                if (Input.GetKeyDown(KMPGlobalSettings.instance.chatHideKey) || Input.GetKeyDown(KeyCode.F2))
                 {
                     KMPGlobalSettings.instance.chatDXWindowEnabled = !KMPGlobalSettings.instance.chatDXWindowEnabled;
                     if (KMPGlobalSettings.instance.chatDXWindowEnabled) KMPChatDX.enqueueChatLine("Press Chat key (" + (KMPGlobalSettings.instance.chatTalkKey == KeyCode.BackQuote ? "~" : KMPGlobalSettings.instance.chatTalkKey.ToString()) + ") to send a message");
