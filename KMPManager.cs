@@ -4156,7 +4156,7 @@ namespace KMP
 			bool should_lock = HighLogic.LoadedSceneIsEditor && shouldDrawGUI && (
 					KMPInfoDisplay.infoWindowPos.Contains(mousePos)
 					|| (KMPScreenshotDisplay.windowEnabled && KMPScreenshotDisplay.windowPos.Contains(mousePos))
-					|| (KMPGlobalSettings.instance.chatDXWindowEnabled && KMPChatDisplay.windowPos.Contains(mousePos))
+					//|| (KMPGlobalSettings.instance.chatDXWindowEnabled && KMPChatDisplay.windowPos.Contains(mousePos))
 					);
 
 			if (should_lock && !isEditorLocked && !EditorLogic.editorLocked)
