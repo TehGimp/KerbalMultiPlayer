@@ -2067,23 +2067,25 @@ namespace KMP
 
         private static void sendMessageTCP(KMPCommon.ClientMessageID id, byte[] data)
         {
-            byte[] message_bytes = buildMessageByteArray(id, data);
-
             lock (tcpSendLock)
             {
-                try
+                byte[] message_bytes = buildMessageByteArray(id, data);
+                int send_bytes_actually_sent = 0;
+                while (send_bytes_actually_sent < message_bytes.Length)
                 {
-                    //Send message
-                    tcpSocket.Send(message_bytes, message_bytes.Length, SocketFlags.None);
+                    try
+                    {
+                        //Send message
+                        send_bytes_actually_sent += tcpSocket.Send(message_bytes, send_bytes_actually_sent, message_bytes.Length - send_bytes_actually_sent, SocketFlags.None);
                     //					Just do a blocking send
                     //					tcpSocket.BeginSend(message_bytes, 0, message_bytes.Length, SocketFlags.None,
                     //      					new AsyncCallback(SendCallback), tcpSocket); 
+                    }
+                    catch (System.InvalidOperationException) { }
+                    catch (KSP.IO.IOException) { }
+
                 }
-                catch (System.InvalidOperationException) { }
-                catch (KSP.IO.IOException) { }
-
             }
-
             lastTCPMessageSendTime = stopwatch.ElapsedMilliseconds;
         }
 
