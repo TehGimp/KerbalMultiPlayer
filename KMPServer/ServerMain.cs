@@ -70,6 +70,7 @@ namespace KMPServer
 			Log.Info("");
 			Log.Info("/set [key] [value] to modify a setting.");
 			Log.Info("/whitelist [add|del] [user] to update whitelist.");
+            Log.Info("/admin [add|del] [user] to update admin list.");
 			Log.Info("/quit to exit, or /start to begin the server.");
 			Log.Info("");
 
