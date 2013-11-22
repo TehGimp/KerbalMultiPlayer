@@ -3134,6 +3134,7 @@ namespace KMPServer
 
                 Log.Error("Saving secondary copy of last backup.");
                 File.Copy(DB_FILE + ".bak", DB_FILE + ".before_failure.bak", true);
+                throw;
             }
         }
 
