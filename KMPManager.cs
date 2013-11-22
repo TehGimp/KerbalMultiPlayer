@@ -2739,7 +2739,7 @@ namespace KMP
 				success = false;
 				Debug.Log(e.Message);
 			}
-			catch (System.IO.IsolatedStorage.IsolatedStorageException)
+			catch (System.IO.IsolatedStorage.IsolatedStorageException e)
 			{
 				success = false;
 				Debug.Log(e.Message);
