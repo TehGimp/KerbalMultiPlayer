@@ -182,7 +182,7 @@ namespace KMP
         {
             gameManager = manager;
             UnityEngine.Debug.Log("KMP Client version " + KMPCommon.PROGRAM_VERSION);
-            UnityEngine.Debug.Log("    Created by Shaun Esau");
+            UnityEngine.Debug.Log("    Created by Shaun Esau and developed by the KMP team http://sesau.ca/ksp/KMP_contribs.html");
             UnityEngine.Debug.Log("    Based on Kerbal LiveFeed created by Alfred Lam");
 
             stopwatch = new Stopwatch();

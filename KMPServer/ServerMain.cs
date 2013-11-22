@@ -48,7 +48,7 @@ namespace KMPServer
 
 			Console.Title = "KMP Server " + KMPCommon.PROGRAM_VERSION;
 			Log.Info("KMP Server version {0}", KMPCommon.PROGRAM_VERSION);
-			Log.Info("    Created by Shaun Esau");
+			Log.Info("    Created by Shaun Esau and developed by the KMP team http://sesau.ca/ksp/KMP_contribs.html");
 			Log.Info("    Based on Kerbal LiveFeed created by Alfred Lam");
 			Log.Info("");
 

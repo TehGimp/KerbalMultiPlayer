@@ -4327,11 +4327,10 @@ namespace KMP
 			Vector2 mousePos = Input.mousePosition;
 			mousePos.y = Screen.height - mousePos.y;
 
-			bool should_lock = HighLogic.LoadedSceneIsEditor && shouldDrawGUI && (
-					KMPInfoDisplay.infoWindowPos.Contains(mousePos)
-					|| (KMPScreenshotDisplay.windowEnabled && KMPScreenshotDisplay.windowPos.Contains(mousePos))
-					//|| (KMPGlobalSettings.instance.chatDXWindowEnabled && KMPChatDisplay.windowPos.Contains(mousePos))
-					);
+			bool should_lock = HighLogic.LoadedSceneIsEditor
+				&& shouldDrawGUI
+					&& (KMPInfoDisplay.infoWindowPos.Contains(mousePos)
+						|| (KMPScreenshotDisplay.windowEnabled && KMPScreenshotDisplay.windowPos.Contains(mousePos)));
 
 			if (should_lock && !isEditorLocked && !EditorLogic.editorLocked)
 			{
