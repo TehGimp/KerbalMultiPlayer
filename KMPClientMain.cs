@@ -2177,7 +2177,7 @@ namespace KMP
 
         public static void DebugLog(String logEntry)
         {
-            //!!if (debugging)
+            if (debugging)
                 UnityEngine.Debug.Log(logEntry);
             //			lock (debugLogLock)
             //			{
