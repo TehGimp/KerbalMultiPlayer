@@ -2520,9 +2520,11 @@ namespace KMP
 			{
 				byte[] serialized = KSP.IO.IOUtils.SerializeToBinary(KMPGlobalSettings.instance);
 				KSP.IO.File.WriteAllBytes<KMPManager>(serialized, GLOBAL_SETTINGS_FILENAME);
+				Debug.Log("Saved Global Settings to file.");
 			}
-			catch 
+			catch (Exception e)
 			{
+				Debug.Log(e.Message);
 			}
 		}
 
@@ -2534,7 +2536,7 @@ namespace KMP
 				//Deserialize global settings from file
 				//byte[] bytes = KSP.IO.File.ReadAllBytes<KMPManager>(GLOBAL_SETTINGS_FILENAME); //Apparently KSP.IO.File.ReadAllBytes is broken
 				String sPath = System.IO.Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location);
-				sPath += "PluginData/";
+				sPath += "/PluginData/KerbalMultiPlayer/";
 				byte[] bytes = System.IO.File.ReadAllBytes(sPath + GLOBAL_SETTINGS_FILENAME);
 				object deserialized = KSP.IO.IOUtils.DeserializeFromBinary(bytes);
 
@@ -2549,7 +2551,7 @@ namespace KMP
 					if (KMPGlobalSettings.instance.guiToggleKey == KeyCode.None)
 						KMPGlobalSettings.instance.guiToggleKey = KeyCode.F7;
 
-					if (KMPGlobalSettings.instance.screenshotKey != KeyCode.None)
+					if (KMPGlobalSettings.instance.screenshotKey == KeyCode.None)
 						KMPGlobalSettings.instance.screenshotKey = KeyCode.F8;
 
                     if (KMPGlobalSettings.instance.chatTalkKey == KeyCode.None)
@@ -2580,17 +2582,20 @@ namespace KMP
 					success = true;
 				}
 			}
-			catch (KSP.IO.IOException)
+			catch (KSP.IO.IOException e)
 			{
 				success = false;
+				Debug.Log(e.Message);
 			}
-			catch (System.IO.IOException)
+			catch (System.IO.IOException e)
 			{
 				success = false;
+				Debug.Log(e.Message);
 			}
 			catch (System.IO.IsolatedStorage.IsolatedStorageException e)
 			{
 				success = false;
+				Debug.Log(e.Message);
 			}
 			if (!success)
 			{
