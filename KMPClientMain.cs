@@ -327,11 +327,7 @@ namespace KMP
                 {
                     host_entry = Dns.GetHostEntry(trimmed_hostname);
                 }
-                catch (SocketException)
-                {
-                    host_entry = null;
-                }
-                catch (ArgumentException)
+                catch (Exception e)
                 {
                     host_entry = null;
                 }
@@ -341,26 +337,20 @@ namespace KMP
                         //This is a test to see if the client has IPv6 connectivity. May not be correct but this is the only way to make sure.
                         IPAddress ipv6_test_address = null;
                         try {
-                        ipv6_test_address = host_entry.AddressList.First();
-                        TcpClient ipv6_test_tcpClient = new TcpClient(AddressFamily.InterNetworkV6);
-                        IPEndPoint ipv6_test_endpoint = new IPEndPoint(ipv6_test_address, port);
-                            try {
-                                ipv6_test_tcpClient.Connect(ipv6_test_endpoint);
-                                if (ipv6_test_tcpClient.Client.Connected) {
-                                    address = ipv6_test_address;
-                                } else {
-                                    address = host_entry.AddressList.First(a => a.AddressFamily == AddressFamily.InterNetwork);
-                                }
-                            }
-                            catch (Exception) {
+                            ipv6_test_address = host_entry.AddressList.First();
+                            TcpClient ipv6_test_tcpClient = new TcpClient(AddressFamily.InterNetworkV6);
+                            IPEndPoint ipv6_test_endpoint = new IPEndPoint(ipv6_test_address, port);
+                            ipv6_test_tcpClient.Connect(ipv6_test_endpoint);
+                            if (ipv6_test_tcpClient.Client.Connected) {
+                                address = ipv6_test_address;
+                                ipv6_test_tcpClient.Close();
+                            } else {
                                 address = host_entry.AddressList.First(a => a.AddressFamily == AddressFamily.InterNetwork);
                             }
                         }
-                        catch (SocketException) {
+                        catch (Exception e) {
                             address = host_entry.AddressList.First(a => a.AddressFamily == AddressFamily.InterNetwork);
                         }
-                        catch (ArgumentException) {
-                            address = host_entry.AddressList.First(a => a.AddressFamily == AddressFamily.InterNetwork);}
                     } else {
                         address = host_entry.AddressList.First(a => a.AddressFamily == AddressFamily.InterNetwork);
                     }
