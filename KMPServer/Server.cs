@@ -301,14 +301,24 @@ namespace KMPServer
             ghostCheckThread = new Thread(new ThreadStart(checkGhosts));
 
             threadException = null;
-
+            if (settings.ipBinding == "0.0.0.0" && settings.hostIPv6 == true) {
+                settings.ipBinding = "::";
+            }
             tcpListener = new TcpListener(IPAddress.Parse(settings.ipBinding), settings.port);
+            
             listenThread.Start();
 
             try
             {
-                udpClient = new UdpClient(settings.port);
-                udpClient.BeginReceive(asyncUDPReceive, null);
+                if (settings.hostIPv6 == true) {
+                    udpClient = new UdpClient(settings.port, AddressFamily.InterNetworkV6);
+                    udpClient.BeginReceive(asyncUDPReceive, null);
+                    //udpClient.Client.AllowNatTraversal(1);
+                } else {
+                    udpClient = new UdpClient(settings.port, AddressFamily.InterNetwork);
+                    udpClient.BeginReceive(asyncUDPReceive, null);
+                }
+                
             }
             catch
             {
@@ -897,6 +907,7 @@ namespace KMPServer
             {
                 Log.Info("Listening for clients...");
                 tcpListener.Start(4);
+                
                 while (true)
                 {
 
@@ -1249,7 +1260,9 @@ namespace KMPServer
         {
             try
             {
-
+                if (settings.ipBinding == "0.0.0.0" && settings.hostIPv6 == true) {
+                    settings.ipBinding = "::";
+                }
                 IPEndPoint endpoint = new IPEndPoint(IPAddress.Parse(settings.ipBinding), settings.port);
                 if (udpClient == null) { return; }
                 byte[] received = udpClient.EndReceive(result, ref endpoint);
