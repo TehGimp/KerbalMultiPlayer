@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -337,7 +337,33 @@ namespace KMP
                 }
                 if (host_entry != null)
                 {
-                    address = host_entry.AddressList.First(a => a.AddressFamily == AddressFamily.InterNetwork);
+                    if (System.Net.Sockets.Socket.OSSupportsIPv6 == true) {
+                        //This is a test to see if the client has IPv6 connectivity. May not be correct but this is the only way to make sure.
+                        IPAddress ipv6_test_address = null;
+                        try {
+                        ipv6_test_address = host_entry.AddressList.First();
+                        TcpClient ipv6_test_tcpClient = new TcpClient(AddressFamily.InterNetworkV6);
+                        IPEndPoint ipv6_test_endpoint = new IPEndPoint(ipv6_test_address, port);
+                            try {
+                                ipv6_test_tcpClient.Connect(ipv6_test_endpoint);
+                                if (ipv6_test_tcpClient.Client.Connected) {
+                                    address = ipv6_test_address;
+                                } else {
+                                    address = host_entry.AddressList.First(a => a.AddressFamily == AddressFamily.InterNetwork);
+                                }
+                            }
+                            catch (Exception) {
+                                address = host_entry.AddressList.First(a => a.AddressFamily == AddressFamily.InterNetwork);
+                            }
+                        }
+                        catch (SocketException) {
+                            address = host_entry.AddressList.First(a => a.AddressFamily == AddressFamily.InterNetwork);
+                        }
+                        catch (ArgumentException) {
+                            address = host_entry.AddressList.First(a => a.AddressFamily == AddressFamily.InterNetwork);}
+                    } else {
+                        address = host_entry.AddressList.First(a => a.AddressFamily == AddressFamily.InterNetwork);
+                    }
                 }
             }
 
@@ -349,16 +375,23 @@ namespace KMP
 
             IPEndPoint endpoint = new IPEndPoint(address, port);
 
-            SetMessage("Connecting to server: " + address + ":" + port);
+            SetMessage("Connecting to server: " + address + " port " + port);
 
             try
             {
-                TcpClient tcpClient = new TcpClient();
-                tcpClient.NoDelay = true;
-                tcpClient.Connect(endpoint);
-                tcpSocket = tcpClient.Client;
+                
+                if (System.Net.Sockets.Socket.OSSupportsIPv6 == true && endpoint.AddressFamily == AddressFamily.InterNetworkV6) {
+                    TcpClient tcpClient = new TcpClient(AddressFamily.InterNetworkV6);
+                    tcpClient.NoDelay = true;
+                    tcpClient.Connect(endpoint);
+                    tcpSocket = tcpClient.Client;
+                } else {
+                    TcpClient tcpClient = new TcpClient(AddressFamily.InterNetwork);
+                    tcpClient.NoDelay = true;
+                    tcpClient.Connect(endpoint);
+                    tcpSocket = tcpClient.Client;
+                }
                 //tcpSocket.SetSocketOption(SocketOptionLevel.Tcp, SocketOptionName.KeepAlive, true);
-
                 if (tcpSocket.Connected)
                 {
                     SetMessage("TCP connection established");
@@ -393,8 +426,13 @@ namespace KMP
                     //Init udp socket
                     try
                     {
-                        udpSocket = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp);
-                        udpSocket.Connect(endpoint);
+                        if (System.Net.Sockets.Socket.OSSupportsIPv6 == true && endpoint.AddressFamily == AddressFamily.InterNetworkV6) {
+                            udpSocket = new Socket(AddressFamily.InterNetworkV6, SocketType.Dgram, ProtocolType.Udp);
+                            udpSocket.Connect(endpoint);
+                        } else {
+                            udpSocket = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp);
+                            udpSocket.Connect(endpoint);
+                        }
                     }
                     catch
                     {
@@ -455,7 +493,7 @@ namespace KMP
             {
                 SetMessage("Disconnected");
                 if (tcpSocket != null)
-                    tcpSocket.Close();
+                   tcpSocket.Close();
 
                 tcpSocket = null;
             }
