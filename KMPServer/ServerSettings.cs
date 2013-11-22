@@ -51,7 +51,33 @@ namespace KMPServer
 			public double safetyBubbleRadius = 20000d;
             public bool autoDekessler = false;
             public int autoDekesslerTime = 30;
-            
+            public string profanityWords = "fucker:kerper,faggot:kerpot,shit:kerp,fuck:guck,cunt:kump,piss:heph,fag:olp,dick:derp,cock:beet,asshole:hepderm,nigger:haggar";
+
+            private IEnumerable<KeyValuePair<string, string>> _profanity = null;
+            public IEnumerable<KeyValuePair<string, string>> Profanity
+            {
+                get
+                {
+                    if (_profanity == null)
+                    {
+                        try
+                        {
+                            //Uses a Enumerable KVP instead of a dictionary to avoid an extra conversion.
+                            _profanity = profanityWords.Split(',').Select(ws =>
+                            {
+                                var wx = ws.Split(':');
+                                return new KeyValuePair<string, string>(wx[0], wx[1]);
+                            });
+                        }
+                        catch
+                        {
+                            _profanity = new Dictionary<string, string>();
+                        }
+                    }
+
+                    return _profanity;
+                }
+            }
 
 			private List<BanRecord> _bans = new List<BanRecord>();
 			internal List<BanRecord> bans

@@ -116,6 +116,7 @@ namespace KMP
 		private bool addPressed = false;
 		private string newHost = "localhost";
 		private string newPort = "2076";
+		private string newFamiliar = "Server";
 		
 		private bool forceQuit = false;
 		private bool gameRunning = false;
@@ -2666,9 +2667,11 @@ namespace KMP
 			{
 				byte[] serialized = KSP.IO.IOUtils.SerializeToBinary(KMPGlobalSettings.instance);
 				KSP.IO.File.WriteAllBytes<KMPManager>(serialized, GLOBAL_SETTINGS_FILENAME);
+				Debug.Log("Saved Global Settings to file.");
 			}
-			catch 
+			catch (Exception e)
 			{
+				Debug.Log(e.Message);
 			}
 		}
 
@@ -2680,7 +2683,7 @@ namespace KMP
 				//Deserialize global settings from file
 				//byte[] bytes = KSP.IO.File.ReadAllBytes<KMPManager>(GLOBAL_SETTINGS_FILENAME); //Apparently KSP.IO.File.ReadAllBytes is broken
 				String sPath = System.IO.Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location);
-				sPath += "PluginData/";
+				sPath += "/PluginData/KerbalMultiPlayer/";
 				byte[] bytes = System.IO.File.ReadAllBytes(sPath + GLOBAL_SETTINGS_FILENAME);
 				object deserialized = KSP.IO.IOUtils.DeserializeFromBinary(bytes);
 
@@ -2695,7 +2698,7 @@ namespace KMP
 					if (KMPGlobalSettings.instance.guiToggleKey == KeyCode.None)
 						KMPGlobalSettings.instance.guiToggleKey = KeyCode.F7;
 
-					if (KMPGlobalSettings.instance.screenshotKey != KeyCode.None)
+					if (KMPGlobalSettings.instance.screenshotKey == KeyCode.None)
 						KMPGlobalSettings.instance.screenshotKey = KeyCode.F8;
 
                     if (KMPGlobalSettings.instance.chatTalkKey == KeyCode.None)
@@ -2726,17 +2729,20 @@ namespace KMP
 					success = true;
 				}
 			}
-			catch (KSP.IO.IOException)
+			catch (KSP.IO.IOException e)
 			{
 				success = false;
+				Debug.Log(e.Message);
 			}
-			catch (System.IO.IOException)
+			catch (System.IO.IOException e)
 			{
 				success = false;
+				Debug.Log(e.Message);
 			}
 			catch (System.IO.IsolatedStorage.IsolatedStorageException)
 			{
 				success = false;
+				Debug.Log(e.Message);
 			}
 			if (!success)
 			{
@@ -2997,7 +3003,7 @@ namespace KMP
                 if (planetariumCam == null)
                     planetariumCam = (PlanetariumCamera)FindObjectOfType(typeof(PlanetariumCamera));
 
-                if (Input.GetKeyDown(KMPGlobalSettings.instance.guiToggleKey))
+                if (Input.GetKeyDown(KMPGlobalSettings.instance.guiToggleKey) || Input.GetKeyDown(KeyCode.F2))
                     KMPInfoDisplay.infoDisplayActive = !KMPInfoDisplay.infoDisplayActive;
 
                 if (Input.GetKeyDown(KMPGlobalSettings.instance.screenshotKey))
@@ -3006,7 +3012,7 @@ namespace KMP
                 if (Input.GetKeyDown(KMPGlobalSettings.instance.chatTalkKey))
                     KMPChatDX.showInput = true;
 
-                if (Input.GetKeyDown(KMPGlobalSettings.instance.chatHideKey))
+                if (Input.GetKeyDown(KMPGlobalSettings.instance.chatHideKey) || Input.GetKeyDown(KeyCode.F2))
                 {
                     KMPGlobalSettings.instance.chatDXWindowEnabled = !KMPGlobalSettings.instance.chatDXWindowEnabled;
                     if (KMPGlobalSettings.instance.chatDXWindowEnabled) KMPChatDX.enqueueChatLine("Press Chat key (" + (KMPGlobalSettings.instance.chatTalkKey == KeyCode.BackQuote ? "~" : KMPGlobalSettings.instance.chatTalkKey.ToString()) + ") to send a message");
@@ -3047,8 +3053,11 @@ namespace KMP
                     KeyCode key = KeyCode.Y;
                     if (getAnyKeyDown(ref key))
                     {
-                        KMPGlobalSettings.instance.chatTalkKey = key;
-                        mappingChatKey = false;
+                        if (key != KeyCode.Mouse0)
+                        {
+                            KMPGlobalSettings.instance.chatTalkKey = key;
+                            mappingChatKey = false;
+                        }
                     }
                 }
 
@@ -3057,8 +3066,11 @@ namespace KMP
                     KeyCode key = KeyCode.F9;
                     if (getAnyKeyDown(ref key))
                     {
-                        KMPGlobalSettings.instance.chatHideKey = key;
-                        mappingChatDXToggleKey = false;
+                        if (key != KeyCode.Mouse0)
+                        {
+                            KMPGlobalSettings.instance.chatHideKey = key;
+                            mappingChatDXToggleKey = false;
+                        }
                     }
                 }
 			} catch (Exception ex) { KMPClientMain.DebugLog ("u err: " + ex.Message + " " + ex.StackTrace); }
@@ -3590,33 +3602,52 @@ namespace KMP
 			GUILayout.BeginHorizontal();
 				if (addPressed)
 				{
+					GUILayout.BeginVertical();
+					GUILayout.BeginHorizontal();
+					GUILayoutOption[] name_options = new GUILayoutOption[1];
+					name_options[0] = GUILayout.MaxWidth(240);
+					GUILayout.Label("Server Name:");
+					newFamiliar = GUILayout.TextField(newFamiliar, name_options);
+						
+						
+					GUILayout.EndHorizontal();
+
+					GUILayout.BeginHorizontal();
 					GUILayoutOption[] field_options = new GUILayoutOption[1];
 					field_options[0] = GUILayout.MaxWidth(50);
 					GUILayout.Label("Address:");
 					newHost = GUILayout.TextField(newHost);
 					GUILayout.Label("Port:");
-					newPort = GUILayout.TextField(newPort,field_options);
+					newPort = GUILayout.TextField(newPort, field_options);
+					
 					bool addHostPressed = GUILayout.Button("Add",field_options);
 					if (addHostPressed)
 					{
 						KMPClientMain.SetServer(newHost.Trim());
-						ArrayList favorites = KMPClientMain.GetFavorites();
+						Dictionary<String, String[]> favorites = KMPClientMain.GetFavorites();
+						String[] sArr = {newHost.Trim(), newPort.Trim(), KMPClientMain.GetUsername()};
 
-						if (favorites.Contains(newHost.Trim() + ":" + newPort.Trim()))
+						if (favorites.ContainsKey(newFamiliar.Trim()))
 						{
-							ScreenMessages.PostScreenMessage("This server is already on the list", 300f, ScreenMessageStyle.UPPER_CENTER);
+							ScreenMessages.PostScreenMessage("Server name taken", 300f, ScreenMessageStyle.UPPER_CENTER);
+						}
+						else if(favorites.ContainsValue(sArr))
+						{
+							ScreenMessages.PostScreenMessage("This server already exists", 300f, ScreenMessageStyle.UPPER_CENTER);
 						}
 						else
 						{
-							String sHostname = newHost.Trim() + ":" + newPort.Trim();
-							favorites.Add(sHostname);
+							favorites.Add(newFamiliar.Trim(), sArr);
 
 							//Close the add server bar after a server has been added and select the new server
 							addPressed = false;
-							KMPConnectionDisplay.activeHostname = sHostname;
+							KMPConnectionDisplay.activeHostname = newHost.Trim()+":"+newPort.Trim();
+							KMPConnectionDisplay.activeFamiliar = newFamiliar;
 							KMPClientMain.SetFavorites(favorites);
 						}
 					}
+					GUILayout.EndHorizontal();
+					GUILayout.EndVertical();
 				}
 			GUILayout.EndHorizontal();
 			
@@ -3635,10 +3666,10 @@ namespace KMP
 					GUILayout.EndHorizontal();
 			
 					KMPConnectionDisplay.scrollPos = GUILayout.BeginScrollView(KMPConnectionDisplay.scrollPos, connection_list_options);
-						foreach (String hostname in KMPClientMain.GetFavorites())
+						foreach (String familiar in KMPClientMain.GetFavorites().Keys)
 						{
-							if (!String.IsNullOrEmpty(hostname))
-								connectionButton(hostname);
+							if (!String.IsNullOrEmpty(familiar))
+								connectionButton(familiar);
 						}
 					GUILayout.EndScrollView();
 			
@@ -3650,7 +3681,7 @@ namespace KMP
 				GUILayout.BeginVertical(pane_options);
 			
 					bool allowConnect = true;
-					if (String.IsNullOrEmpty(KMPConnectionDisplay.activeHostname) || String.IsNullOrEmpty(KMPClientMain.GetUsername()))
+					if (String.IsNullOrEmpty(KMPConnectionDisplay.activeFamiliar) || String.IsNullOrEmpty(KMPClientMain.GetUsername()))
 						allowConnect = false;
 			
 					if (!allowConnect)
@@ -3673,15 +3704,16 @@ namespace KMP
 						"Add Server",
 						GUI.skin.button);
 					
-					if (String.IsNullOrEmpty(KMPConnectionDisplay.activeHostname)) GUI.enabled = false;
+					if (String.IsNullOrEmpty(KMPConnectionDisplay.activeFamiliar)) GUI.enabled = false;
 					bool deletePressed = GUILayout.Button("Remove");
 					if (deletePressed)
 					{
-						ArrayList favorites = KMPClientMain.GetFavorites();
-						if (favorites.Contains(KMPConnectionDisplay.activeHostname))
+						Dictionary<String, String[]> favorites = KMPClientMain.GetFavorites();
+						if (favorites.ContainsKey(KMPConnectionDisplay.activeFamiliar))
 						{
-							favorites.Remove(KMPConnectionDisplay.activeHostname);
+							favorites.Remove(KMPConnectionDisplay.activeFamiliar);
 							KMPConnectionDisplay.activeHostname = "";
+							KMPConnectionDisplay.activeFamiliar = "";
 							KMPClientMain.SetFavorites(favorites);
 						}
 					}
@@ -3698,7 +3730,7 @@ namespace KMP
 
 					if (String.IsNullOrEmpty(KMPClientMain.GetUsername()))
 						GUILayout.Label("Please specify a username", status_options);
-					else if (String.IsNullOrEmpty(KMPConnectionDisplay.activeHostname))
+					else if (String.IsNullOrEmpty(KMPConnectionDisplay.activeFamiliar))
 						GUILayout.Label("Please add or select a server", status_options);
 					else if (!KMPClientMain.startSaveExists())
 						GUILayout.Label("ERROR!  Start save missing!  Verify client installation!", status_options);
@@ -4203,13 +4235,25 @@ namespace KMP
 		
 		private void connectionButton(String name)
 		{
-			bool player_selected = GUILayout.Toggle(KMPConnectionDisplay.activeHostname == name, name, GUI.skin.button);
-			if (player_selected != (KMPConnectionDisplay.activeHostname == name))
+			Dictionary<String, String[]> favorites = KMPClientMain.GetFavorites();
+			String[] sArr = new String[favorites.Count];
+			favorites.TryGetValue(name, out sArr);
+			String hostname = sArr[0] + ":" + sArr[1];
+
+			bool player_selected = GUILayout.Toggle(KMPConnectionDisplay.activeFamiliar == name, name, GUI.skin.button);
+			if (player_selected != (KMPConnectionDisplay.activeHostname == hostname))
 			{
-				if (KMPConnectionDisplay.activeHostname != name)
-					KMPConnectionDisplay.activeHostname = name;
+				if (KMPConnectionDisplay.activeHostname != hostname)
+					KMPConnectionDisplay.activeHostname = hostname;
 				else
 					KMPConnectionDisplay.activeHostname = String.Empty;
+			}
+			if(player_selected != (KMPConnectionDisplay.activeFamiliar == name))
+			{
+				if (KMPConnectionDisplay.activeFamiliar != name)
+					KMPConnectionDisplay.activeFamiliar = name;
+				else
+					KMPConnectionDisplay.activeFamiliar = String.Empty;
 			}
 		}
 		
@@ -4293,7 +4337,7 @@ namespace KMP
 			bool should_lock = HighLogic.LoadedSceneIsEditor && shouldDrawGUI && (
 					KMPInfoDisplay.infoWindowPos.Contains(mousePos)
 					|| (KMPScreenshotDisplay.windowEnabled && KMPScreenshotDisplay.windowPos.Contains(mousePos))
-					|| (KMPGlobalSettings.instance.chatDXWindowEnabled && KMPChatDisplay.windowPos.Contains(mousePos))
+					//|| (KMPGlobalSettings.instance.chatDXWindowEnabled && KMPChatDisplay.windowPos.Contains(mousePos))
 					);
 
 			if (should_lock && !isEditorLocked && !EditorLogic.editorLocked)
