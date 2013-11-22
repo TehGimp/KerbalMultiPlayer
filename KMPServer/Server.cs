@@ -435,6 +435,10 @@ namespace KMPServer
 					{
 						Log.Error("Error handling server command. Maybe a typo? {0} {1}", e.Message,e.StackTrace);
 					}
+					catch (IndexOutOfRangeException e)
+					{
+						Log.Error("Command found but missing elements.");
+					}
                 }
             }
             catch (ThreadAbortException)
@@ -645,17 +649,29 @@ namespace KMPServer
         //Kicks the specified user from the server
         private void kickServerCommand(String[] parts)
         {
-            String kick_name = parts[1].ToLower();
-            var clientToDisconnect = clients.Where(cl => cl.username.ToLower() == kick_name && cl.isReady).FirstOrDefault();
-            if (clientToDisconnect != null)
-            {
-                markClientForDisconnect(clientToDisconnect, "You were kicked from the server.");
-                Log.Info("{0} was kicked from the server.", clientToDisconnect.username);
-            }
-            else
-            {
-                Log.Info("Username {0} not found.", kick_name);
-            }
+			if (parts.Length == 2)
+			{
+				try
+				{
+					String kick_name = parts[1].ToLower();
+					var clientToDisconnect = clients.Where(cl => cl.username.ToLower() == kick_name && cl.isReady).FirstOrDefault();
+					if (clientToDisconnect != null)
+					{
+						markClientForDisconnect(clientToDisconnect, "You were kicked from the server.");
+						Log.Info("{0} was kicked from the server.", clientToDisconnect.username);
+					}
+					else
+					{
+						Log.Info("Username {0} not found.", kick_name);
+					}
+				} catch (Exception e)
+				{
+					Log.Error("Could not kick user.");
+					Log.Debug(e.Message);
+				}
+			}
+			else
+				Log.Info("Could not parse /kick command.  Format is \"/kick <username>\"");
         }
 
         //Lists the users currently connected
@@ -716,11 +732,11 @@ namespace KMPServer
                 }
                 catch (FormatException)
                 {
-                    Log.Info("Supplied token is invalid.");
+                    Log.Error("Supplied token is invalid.");
                 }
                 catch (Exception)
                 {
-                    Log.Info("Registration failed, possibly due to a malformed /register command.");
+                    Log.Error("Registration failed, possibly due to a malformed /register command.");
                 }
             }
             else
@@ -760,11 +776,11 @@ namespace KMPServer
                     }
                     catch (FormatException)
                     {
-                        Log.Info("Supplied token is invalid.");
+                        Log.Error("Supplied token is invalid.");
                     }
                     catch (Exception)
                     {
-                        Log.Info("Update failed, possibly due to a malformed /update command.");
+                        Log.Error("Update failed, possibly due to a malformed /update command.");
                     }
                 }
                 else
@@ -792,7 +808,7 @@ namespace KMPServer
 				}
 				catch (Exception e)
 				{
-					Log.Info("Unregister failed.");
+					Log.Error("Unregister failed.");
 					Log.Debug(e.Message);
 				}
 			}
