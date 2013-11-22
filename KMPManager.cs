@@ -153,7 +153,7 @@ namespace KMP
 		
 		public Vector3d kscPosition = Vector3d.zero;
 		
-		public Vector3d activeVesselPosition = Vector3d.zero;
+		public Vector3 activeVesselPosition = Vector3d.zero;
 		public Dictionary<Guid, Vector3d> dockingRelVel = new Dictionary<Guid, Vector3d>();
 		
 		public GameObject ksc = null;
@@ -431,7 +431,7 @@ namespace KMP
 						unlockCrewGUI();
 					}
 					checkRemoteVesselIntegrity();
-					activeVesselPosition = FlightGlobals.ActiveVessel.findWorldCenterOfMass();
+					activeVesselPosition = FlightGlobals.ship_CoM;
 					dockingRelVel.Clear();
 				}
 				
@@ -819,8 +819,8 @@ namespace KMP
 									KMPClientMain.DebugLog ("sending docking-mode update, distance: " + enumerator.Current.Key + " id: " + FlightGlobals.ActiveVessel.id);
 									update.relativeTo = FlightGlobals.ActiveVessel.id;
 									Vector3d w_pos = Vector3d.zero;
-									w_pos = enumerator.Current.Value.findWorldCenterOfMass() - FlightGlobals.ActiveVessel.findWorldCenterOfMass();
-									Vector3d o_vel = enumerator.Current.Value.GetObtVelocity() - FlightGlobals.ActiveVessel.GetObtVelocity();
+									w_pos = FlightGlobals.ActiveVessel.mainBody.transform.InverseTransformDirection(enumerator.Current.Value.findWorldCenterOfMass() - FlightGlobals.ship_CoM);
+									Vector3d o_vel = FlightGlobals.ActiveVessel.mainBody.transform.InverseTransformDirection(enumerator.Current.Value.GetObtVelocity() - FlightGlobals.ActiveVessel.GetObtVelocity());
 									update.clearProtoVessel();
 									for (int i = 0; i < 3; i++)
 									{
@@ -1936,8 +1936,8 @@ namespace KMP
 									update.state = State.INACTIVE;
 									//Rendezvous relative position data
 									update.relativeTo = FlightGlobals.ActiveVessel.id;
-									Vector3d w_pos = updateFrom.GetWorldPos3D() - activeVesselPosition;
-									Vector3d o_vel = updateFrom.GetObtVelocity() - FlightGlobals.ActiveVessel.GetObtVelocity();
+									Vector3d w_pos = FlightGlobals.ActiveVessel.mainBody.transform.InverseTransformDirection(updateFrom.findWorldCenterOfMass() - activeVesselPosition);
+									Vector3d o_vel = FlightGlobals.ActiveVessel.mainBody.transform.InverseTransformDirection(updateFrom.GetObtVelocity() - FlightGlobals.ActiveVessel.GetObtVelocity());
 									for (int i = 0; i < 3; i++)
 									{
 										update.w_pos[i] = w_pos[i];
@@ -1956,13 +1956,13 @@ namespace KMP
 								
 								Vector3d updateFromPos = updateFrom.findWorldCenterOfMass();
 								Vector3d relPos = activeVesselPosition-updateFromPos;
-								Vector3d updateRelPos = new Vector3d(vessel_update.w_pos[0],vessel_update.w_pos[1],vessel_update.w_pos[2]);
+								Vector3d updateRelPos = updateFrom.mainBody.transform.TransformDirection(new Vector3d(vessel_update.w_pos[0],vessel_update.w_pos[1],vessel_update.w_pos[2]));
 								
 								if (!dockingRelVel.ContainsKey(updateFrom.id))
 									dockingRelVel[updateFrom.id] = updateFrom.GetObtVelocity();
 	
 								Vector3d relVel = FlightGlobals.ActiveVessel.GetObtVelocity()-dockingRelVel[updateFrom.id];
-								Vector3d updateRelVel = new Vector3d(vessel_update.o_vel[0],vessel_update.o_vel[1],vessel_update.o_vel[2]);
+								Vector3d updateRelVel = updateFrom.mainBody.transform.TransformDirection(new Vector3d(vessel_update.o_vel[0],vessel_update.o_vel[1],vessel_update.o_vel[2]));
 								Vector3d diffPos = updateRelPos - relPos;
 								Vector3d diffVel = updateRelVel - relVel;
 								diffPos *= 0.45d;
@@ -1971,9 +1971,9 @@ namespace KMP
 								
 								bool applyUpdate = true;
 								double curTick = Planetarium.GetUniversalTime();
-								if (serverVessels_RendezvousSmoothPos.ContainsKey(updateFrom.id) ? (relPos.sqrMagnitude > (serverVessels_RendezvousSmoothPos[updateFrom.id].Key * 62500d) && serverVessels_RendezvousSmoothPos[updateFrom.id].Value > (curTick-10d)): false)
+								if (serverVessels_RendezvousSmoothPos.ContainsKey(updateFrom.id) ? (relPos.sqrMagnitude > (serverVessels_RendezvousSmoothPos[updateFrom.id].Key * 1000000d) && serverVessels_RendezvousSmoothPos[updateFrom.id].Value > (curTick-7.5d)): false)
 									applyUpdate = false;
-								if (serverVessels_RendezvousSmoothVel.ContainsKey(updateFrom.id) ? (relVel.sqrMagnitude > (serverVessels_RendezvousSmoothVel[updateFrom.id].Key * 1000000d) && serverVessels_RendezvousSmoothVel[updateFrom.id].Value > (curTick-10d)): false)
+								if (serverVessels_RendezvousSmoothVel.ContainsKey(updateFrom.id) ? (relVel.sqrMagnitude > (serverVessels_RendezvousSmoothVel[updateFrom.id].Key * 100000000d) && serverVessels_RendezvousSmoothVel[updateFrom.id].Value > (curTick-7.5d)): false)
 									applyUpdate = false;
 								
 								double expectedDist = Vector3d.Distance(newPos, activeVesselPosition);
