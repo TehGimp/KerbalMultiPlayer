@@ -159,6 +159,7 @@ namespace KMPServer
                         if (parts.Length != 3)
                         {
                             Log.Info("Invalid usage. /admin [add|del] [user]");
+							break;
                         }
 
                         switch (parts[1])
