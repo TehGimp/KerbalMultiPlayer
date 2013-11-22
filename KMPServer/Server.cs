@@ -777,14 +777,27 @@ namespace KMPServer
         //Unregisters the specified username from the server
         private void unregisterServerCommand(String[] parts)
         {
-            String dereg = parts[1];
-            DbCommand cmd = universeDB.CreateCommand();
-            string sql = "DELETE FROM kmpPlayer WHERE Guid = @dereg OR Name LIKE @dereg;";
-            cmd.CommandText = sql;
-            cmd.Parameters.AddWithValue("dereg", dereg);
-            cmd.ExecuteNonQuery();
-            cmd.Dispose();
-            Log.Info("Players with name/token {0} removed from player roster.", dereg);
+			if (parts.Length == 2)
+			{
+				try
+				{
+					String dereg = parts[1];
+					DbCommand cmd = universeDB.CreateCommand();
+					string sql = "DELETE FROM kmpPlayer WHERE Guid = @dereg OR Name LIKE @dereg;";
+					cmd.CommandText = sql;
+					cmd.Parameters.AddWithValue("dereg", dereg);
+					cmd.ExecuteNonQuery();
+					cmd.Dispose();
+					Log.Info("Players with name/token {0} removed from player roster.", dereg);
+				}
+				catch (Exception e)
+				{
+					Log.Info("Unregister failed.");
+					Log.Debug(e.Message);
+				}
+			}
+			else
+				Log.Info("Could not parse unregister command.  Format is \"/unregister <username OR GUID>\"");
         }
 
         //Clears old debris
