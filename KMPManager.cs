@@ -1360,6 +1360,7 @@ namespace KMP
 				if (!isInFlight)
 				{
 					KMPClientMain.DebugLog("Killing vessel immediately: " + vessel.id);
+					FlightGlobals.Vessels.Remove(vessel);
 					vessel.Die();
 				} else StartCoroutine(killVesselOnNextUpdate(vessel));
 			}
@@ -1602,18 +1603,7 @@ namespace KMP
 					Vessel extant_vessel = FlightGlobals.Vessels.Find(v => v.id == vessel_update.id);
 					if (extant_vessel != null)
 					{
-						if (extant_vessel.isActiveVessel)
-						{
-							kickToTrackingStation();
-						}
-//						else if (extant_vessel.isEVA)
-//						{
-//							try { extant_vessel.rootPart.explode(); } catch {}
-//						}
-						else
-						{
-							try { killVessel(extant_vessel); } catch {}
-						}
+						try { killVessel(extant_vessel); } catch {}
 					}
 					return;
 				}
@@ -1896,10 +1886,12 @@ namespace KMP
 					if (vessel_update.id == FlightGlobals.ActiveVessel.id)
 					{
 						//This is our vessel!
-						if (vessel_update.getProtoVesselNode() != null && docking)
+						if (vessel_update.getProtoVesselNode() != null)
 						{
 							KMPClientMain.DebugLog("Received updated protovessel for active vessel");
 							serverVessels_ProtoVessels[vessel_update.id] = vessel_update.getProtoVesselNode();
+							ProtoVessel protovessel = new ProtoVessel(serverVessels_ProtoVessels[vessel_update.id], HighLogic.CurrentGame);
+							addRemoteVessel(protovessel,vessel_update.id,vessel,vessel_update,0);
 						}
 						
 						if (vessel_update.isDockUpdate && vessel_update.relTime == RelativeTime.PRESENT)
@@ -1907,12 +1899,10 @@ namespace KMP
 							//Someone docked with us and has control
 							docking = true;
 							syncing = true;
-							ScreenMessages.PostScreenMessage("Other player has control of newly docked vessel",2.5f,ScreenMessageStyle.UPPER_LEFT);
+							ScreenMessages.PostScreenMessage("Other player has control of newly docked vessel",2.5f,ScreenMessageStyle.UPPER_CENTER);
 							KMPClientMain.DebugLog("Received docking update");
 							serverVessels_PartCounts[FlightGlobals.ActiveVessel.id] = 0;
 							serverVessels_InUse[vessel_update.id] = true;
-							//Return to tracking station
-							//Invoke("dockedKickToTrackingStation",0.25f);
 							return;
 						}
 						//Try to negotiate our relative position with whatever sent this update
@@ -1965,10 +1955,13 @@ namespace KMP
 								
 								bool applyUpdate = true;
 								double curTick = Planetarium.GetUniversalTime();
-								if (serverVessels_RendezvousSmoothPos.ContainsKey(updateFrom.id) ? (relPos.sqrMagnitude > (serverVessels_RendezvousSmoothPos[updateFrom.id].Key * 1000000d) && serverVessels_RendezvousSmoothPos[updateFrom.id].Value > (curTick-7.5d)): false)
-									applyUpdate = false;
-								if (serverVessels_RendezvousSmoothVel.ContainsKey(updateFrom.id) ? (relVel.sqrMagnitude > (serverVessels_RendezvousSmoothVel[updateFrom.id].Key * 100000000d) && serverVessels_RendezvousSmoothVel[updateFrom.id].Value > (curTick-7.5d)): false)
-									applyUpdate = false;
+								if (vessel_update.distance >= INACTIVE_VESSEL_RANGE) //If distance >= INACTIVE_VESSEL_RANGE then the other player didn't have us loaded--don't ignore even a large correction in this case
+								{
+									if (serverVessels_RendezvousSmoothPos.ContainsKey(updateFrom.id) ? (relPos.sqrMagnitude > (serverVessels_RendezvousSmoothPos[updateFrom.id].Key * 1000000d) && serverVessels_RendezvousSmoothPos[updateFrom.id].Value > (curTick-7.5d)): false)
+										applyUpdate = false;
+									if (serverVessels_RendezvousSmoothVel.ContainsKey(updateFrom.id) ? (relVel.sqrMagnitude > (serverVessels_RendezvousSmoothVel[updateFrom.id].Key * 100000000d) && serverVessels_RendezvousSmoothVel[updateFrom.id].Value > (curTick-7.5d)): false)
+										applyUpdate = false;
+								}
 								
 								double expectedDist = Vector3d.Distance(newPos, activeVesselPosition);
 								if (applyUpdate)
