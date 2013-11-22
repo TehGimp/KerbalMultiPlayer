@@ -3098,15 +3098,20 @@ namespace KMPServer
 
             if (asSqlite == null) { return; }
 
+            Log.Info("Backing up old disk DB...");
             try
             {
-                Log.Info("Backing up old disk DB...");
-                try
-                {
-                    File.Copy(DB_FILE, DB_FILE + ".bak", true);
-                    File.Delete(DB_FILE);
-                }
-                catch { }
+                File.Copy(DB_FILE, DB_FILE + ".bak", true);
+                File.Delete(DB_FILE);
+                Log.Debug("Successfully backup up database.");
+            }
+            catch (Exception e)
+            {
+                Log.Error("Failed to backup DB:");
+                Log.Error(e.Message);
+            }
+            try
+            {
                 SQLiteConnection diskDB = new SQLiteConnection(DB_FILE_CONN);
                 diskDB.Open();
                 asSqlite.BackupDatabase(diskDB, "main", "main", -1, null, 0);
@@ -3122,9 +3127,13 @@ namespace KMPServer
                 diskDB.Close();
                 Log.Info("Universe saved to disk.");
             }
-            catch (IOException)
+            catch(Exception e)
             {
-                Log.Error("Backing up of database failed. Try again in a few seconds.");
+                Log.Error("Failed to save database:");
+                Log.Error(e.Message);
+
+                Log.Error("Saving secondary copy of last backup.");
+                File.Copy(DB_FILE + ".bak", DB_FILE + ".before_failure.bak", true);
             }
         }
 
