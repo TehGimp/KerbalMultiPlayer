@@ -2561,7 +2561,7 @@ namespace KMPServer
                         past_data = ObjectToByteArray(vessel_update);
                     }
                 }
-                else if (secondaryUpdate)
+                else if (cl != null)
                 {
                     //Secondary update
                     var vessel_update = ByteArrayToObject<KMPVesselUpdate>(data);
@@ -2641,7 +2641,7 @@ namespace KMPServer
             byte[] owned_message_bytes = buildMessageArray(KMPCommon.ServerMessageID.PLUGIN_UPDATE, owned_data);
             byte[] past_message_bytes = buildMessageArray(KMPCommon.ServerMessageID.PLUGIN_UPDATE, past_data);
 
-            foreach (var client in clients.ToList().Where(c => c != cl && c.isReady && c.activityLevel != Client.ActivityLevel.INACTIVE && (c.activityLevel == Client.ActivityLevel.IN_GAME || !secondaryUpdate)))
+            foreach (var client in clients.ToList().Where(c => c != cl && c.isReady && c.activityLevel != Client.ActivityLevel.INACTIVE))
             {
                 if ((client.currentSubspaceID == cl.currentSubspaceID)
                     && !client.warping && !cl.warping
