@@ -425,7 +425,7 @@ namespace KMPServer
 	                        case "/help": displayCommands(); break;
 	                        case "/kick": kickServerCommand(parts); break;
 	                        case "/listclients": listServerCommand(); break;
-                            case "/quit": quitServerCommand(parts); bRunning = false; break;
+                            case "/quit":
 	                        case "/stop": quitServerCommand(parts); bRunning = false; break;
 	                        case "/save": saveServerCommand(); break;
 	                        case "/register": registerServerCommand(parts); break;
@@ -3267,7 +3267,6 @@ namespace KMPServer
 			Log.Info("/motd [message] - Sets message of the day, leave blank for none");
 			Log.Info("/rules [rules] - Sets server rules, leave blank for none");
             Log.Info("/say <-u username> [message] - Send a Server message <to specified user>");
-            Log.Info("/admin [add/del] <username> - Sets or removes <specified user> as Administrator");
 			Log.Info("/help - Displays all commands in the server\n");
 
             // to add a new command to the command list just copy the Log.Info method and add how to use that command.
