@@ -265,12 +265,6 @@ namespace KMP
 						if (ssUIButton.tooltip == "Terminate") ssUIButton.Unlock();
 					}
 				}
-
-                if (isInFlight && FlightGlobals.ActiveVessel.mainBody.name == "Kerbin" && FlightGlobals.ActiveVessel.altitude < SAFETY_BUBBLE_CEILING)
-                {
-					if (ksc == null) ksc = GameObject.Find("KSC");
-					kscPosition = new Vector3d(ksc.transform.position[0],ksc.transform.position[1],ksc.transform.position[2]);
-				} else kscPosition = Vector3d.zero;
 				
 				if (lastWarpRate != TimeWarp.CurrentRate)
 				{
@@ -4288,11 +4282,12 @@ namespace KMP
 			if (body == null) body = FlightGlobals.Bodies.Find(b => b.name == "Kerbin");
 			
 			//If KSC out of range, syncing, not at Kerbin, or past ceiling we're definitely clear
-			if (kscPosition == Vector3d.zero || syncing || body.name != "Kerbin" || altitude > SAFETY_BUBBLE_CEILING)
+			if (syncing || body.name != "Kerbin" || altitude > SAFETY_BUBBLE_CEILING)
 				return false;
 			
 			//Cylindrical safety bubble -- project vessel position to a plane positioned at KSC with normal pointed away from surface
 			Vector3d kscNormal = body.GetSurfaceNVector(-0.102668048654,-74.5753856554);
+			Vector3d kscPosition = body.GetWorldSurfacePosition(-0.102668048654,-74.5753856554,60);
 			double projectionDistance = Vector3d.Dot(kscNormal, (pos - kscPosition)) * -1;
 			Vector3d projectedPos = pos + (Vector3d.Normalize(kscNormal)*projectionDistance);
 			
@@ -4304,15 +4299,15 @@ namespace KMP
 			CelestialBody body = FlightGlobals.ActiveVessel.mainBody;
 			Vector3d pos = FlightGlobals.ship_position;
 			double altitude = FlightGlobals.ActiveVessel.altitude;
-			//Assume Kerbin if body isn't supplied for some reason
-			if (body == null) body = FlightGlobals.Bodies.Find(b => b.name == "Kerbin");
 			
+			if (body == null) return -1d;
 			//If KSC out of range, syncing, not at Kerbin, or past ceiling we're definitely clear
-			if (kscPosition == Vector3d.zero || syncing || body.name != "Kerbin" || altitude > SAFETY_BUBBLE_CEILING)
+			if (syncing || body.name != "Kerbin" || altitude > SAFETY_BUBBLE_CEILING)
 				return -1d;
 			
 			//Cylindrical safety bubble -- project vessel position to a plane positioned at KSC with normal pointed away from surface
 			Vector3d kscNormal = body.GetSurfaceNVector(-0.102668048654,-74.5753856554);
+			Vector3d kscPosition = body.GetWorldSurfacePosition(-0.102668048654,-74.5753856554,60);
 			double projectionDistance = Vector3d.Dot(kscNormal, (pos - kscPosition)) * -1;
 			Vector3d projectedPos = pos + (Vector3d.Normalize(kscNormal)*projectionDistance);
 			
@@ -4323,11 +4318,10 @@ namespace KMP
 		{
 			CelestialBody body = FlightGlobals.ActiveVessel.mainBody;
 			double altitude = FlightGlobals.ActiveVessel.altitude;
-			//Assume Kerbin if body isn't supplied for some reason
-			if (body == null) body = FlightGlobals.Bodies.Find(b => b.name == "Kerbin");
-			
+
+			if (body == null) return -1d;
 			//If KSC out of range, syncing, not at Kerbin, or past ceiling we're definitely clear
-			if (kscPosition == Vector3d.zero || syncing || body.name != "Kerbin" || altitude > SAFETY_BUBBLE_CEILING)
+			if (syncing || body.name != "Kerbin" || altitude > SAFETY_BUBBLE_CEILING)
 				return -1d;
 			
 			
