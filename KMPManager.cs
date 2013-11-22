@@ -619,7 +619,7 @@ namespace KMP
 			if (playerName == null || playerName.Length == 0)
 				return;
 
-			writePrimaryUpdate();
+			if (!docking) writePrimaryUpdate();
 			
 			//nearby vessels
             if (isInFlight
@@ -1973,7 +1973,7 @@ namespace KMP
 								double curTick = Planetarium.GetUniversalTime();
 								if (serverVessels_RendezvousSmoothPos.ContainsKey(updateFrom.id) ? (relPos.sqrMagnitude > (serverVessels_RendezvousSmoothPos[updateFrom.id].Key * 62500d) && serverVessels_RendezvousSmoothPos[updateFrom.id].Value > (curTick-10d)): false)
 									applyUpdate = false;
-								if (serverVessels_RendezvousSmoothVel.ContainsKey(updateFrom.id) ? (relVel.sqrMagnitude > (serverVessels_RendezvousSmoothVel[updateFrom.id].Key * 62500d) && serverVessels_RendezvousSmoothVel[updateFrom.id].Value > (curTick-10d)): false)
+								if (serverVessels_RendezvousSmoothVel.ContainsKey(updateFrom.id) ? (relVel.sqrMagnitude > (serverVessels_RendezvousSmoothVel[updateFrom.id].Key * 1000000d) && serverVessels_RendezvousSmoothVel[updateFrom.id].Value > (curTick-10d)): false)
 									applyUpdate = false;
 								
 								double expectedDist = Vector3d.Distance(newPos, activeVesselPosition);
@@ -1990,7 +1990,7 @@ namespace KMP
 						            {
 						            }
 		
-									if (diffPos.sqrMagnitude < 1000000d && diffPos.sqrMagnitude > 0.5d)
+									if (diffPos.sqrMagnitude < 1000000d && diffPos.sqrMagnitude > 0.1d)
 									{
 										KMPClientMain.DebugLog("Docking Krakensbane shift");
 										foreach (Vessel otherVessel in FlightGlobals.Vessels.Where(v => v.packed == false && v.id != FlightGlobals.ActiveVessel.id && v.id == updateFrom.id))
@@ -2791,16 +2791,22 @@ namespace KMP
 			docking = true;
 			KMPClientMain.DebugLog("Dock event: " + data.to.vessel.id + " " + data.from.vessel.id);
 			//Destroy old vessels for other players
-			removeDockedVessel(data.to.vessel);
 			removeDockedVessel(data.from.vessel);
+			removeDockedVessel(data.to.vessel);
 			//Fix displayed crew
 			clearCrewGUI();
-			Invoke("setDoneDocking",3f);
+			Invoke("setMidDocking",2f);
 		}
 		
-		private void setNotDocking()
+		private void setMidDocking()
 		{
-			docking = false;	
+			writePrimaryUpdate();
+			Invoke("setFinishDocking",2f);
+		}
+		
+		private void setFinishDocking()
+		{
+			docking = false;
 		}
 		
 		private void removeDockedVessel(Vessel vessel)
