@@ -38,7 +38,7 @@ namespace KMPServer
         }
 
         public const long CLIENT_TIMEOUT_DELAY = 16000;
-        public const long CLIENT_HANDSHAKE_TIMEOUT_DELAY = 18000;
+        public const long CLIENT_HANDSHAKE_TIMEOUT_DELAY = 6000;
         public const int GHOST_CHECK_DELAY = 30000;
         public const int SLEEP_TIME = 10;
         public const int MAX_SCREENSHOT_COUNT = 10000;
@@ -109,7 +109,7 @@ namespace KMPServer
                 float relevant_player_count = 0;
 
                 //Create a weighted count of clients in-flight and not in-flight to estimate the amount of update traffic
-                relevant_player_count = flight_clients.Count + (clients.Count - flight_clients.Count) * NOT_IN_FLIGHT_UPDATE_WEIGHT;
+                relevant_player_count = flight_clients.Count + (activeClientCount() - flight_clients.Count) * NOT_IN_FLIGHT_UPDATE_WEIGHT;
 
                 if (relevant_player_count <= 0)
                     return ServerSettings.MIN_UPDATE_INTERVAL;
@@ -359,9 +359,9 @@ namespace KMPServer
                     }
                 }
 
-                if (currentMillisecond - last_backup_time > DATABASE_BACKUP_INTERVAL && (clients.Count > 0 || !backedUpSinceEmpty))
+                if (currentMillisecond - last_backup_time > DATABASE_BACKUP_INTERVAL && (activeClientCount() > 0 || !backedUpSinceEmpty))
                 {
-                    if (clients.Count <= 0)
+                    if (activeClientCount() <= 0)
                     {
                         backedUpSinceEmpty = true;
                         cleanDatabase();
@@ -658,7 +658,7 @@ namespace KMPServer
         //Reports the number of clients connected to the server
         private void countServerCommand()
         {
-            Log.Info("In-Game Clients: {0}", clients.Count);
+            Log.Info("In-Game Clients: {0}", activeClientCount());
             Log.Info("In-Flight Clients: {0}", flight_clients.Count);
         }
 
@@ -695,7 +695,7 @@ namespace KMPServer
         {
             //Display player list
             StringBuilder sb = new StringBuilder();
-            if (clients.Count > 0)
+            if (activeClientCount() > 0)
             {
                 foreach (var client in clients.ToList().Where(c => c.isReady))
                 {
@@ -1125,7 +1125,7 @@ namespace KMPServer
         private Client addClient(TcpClient tcp_client)
         {
 
-            if (tcp_client == null || !tcp_client.Connected || clients.Count >= settings.maxClients)
+            if (tcp_client == null || !tcp_client.Connected || activeClientCount() >= settings.maxClients)
                 return null;
             Client newClient = new Client(this);
             newClient.tcpClient = tcp_client;
@@ -1241,7 +1241,7 @@ namespace KMPServer
             if (clients.Contains(client)) clients.Remove(client);
             if (flight_clients.Contains(client)) flight_clients.Remove(client);
             client = null;
-            if (clients.Count > 0) backedUpSinceEmpty = false;
+            if (activeClientCount() > 0) backedUpSinceEmpty = false;
         }
 
         public void clientActivityLevelChanged(Client cl)
@@ -1363,7 +1363,7 @@ namespace KMPServer
                 response_builder.Append('\n');
 
                 response_builder.Append("Num Players: ");
-                response_builder.Append(clients.Count);
+                response_builder.Append(activeClientCount());
                 response_builder.Append('/');
                 response_builder.Append(settings.maxClients);
                 response_builder.Append('\n');
@@ -1855,7 +1855,7 @@ namespace KMPServer
                 Log.Info("Rejected client due to being banned: {0}", username);
                 accepted = false;
             }
-
+			
             if (!accepted)
             return;
 
@@ -1901,7 +1901,7 @@ namespace KMPServer
             cmd.Dispose();
 
             //Send the active user count to the client
-            if (clients.Count == 2)
+            if (activeClientCount() == 2)
             {
                 //Get the username of the other user on the server
                 sb.Append("There is currently 1 other user on this server: ");
@@ -1915,39 +1915,48 @@ namespace KMPServer
             else
             {
                 sb.Append("There are currently ");
-                sb.Append(clients.Count - 1);
+                sb.Append(activeClientCount());
                 sb.Append(" other users on this server.");
-                if (clients.Count > 1)
+                if (activeClientCount() > 1)
                 {
                     sb.Append(" Enter !list to see them.");
                 }
             }
-
-
-            cl.username = username;
-            cl.receivedHandshake = true;
-            cl.guid = guid;
-            cl.playerID = playerID;
-
-            sendServerMessage(cl, sb.ToString());
-            sendServerSettings(cl);
-
-			//Send the MOTD
-			sb.Remove(0, sb.Length);
-			sb.Append(settings.serverMotd);
-			sendMotdMessage(cl, sb.ToString());
-
-            Log.Info("{0} (#{2}) has joined the server using client version {1}", username, version, playerID);
-
-            //Build join message
-            //sb.Clear();
-            sb.Remove(0, sb.Length);
-            sb.Append("User ");
-            sb.Append(username);
-            sb.Append(" has joined the server.");
-
-            //Send the join message to all other clients
-            sendServerMessageToAll(sb.ToString(), cl);
+			
+			//Check if server has filled up while waiting for handshake
+			if (activeClientCount() >= settings.maxClients)
+			{
+				markClientForDisconnect(cl, "The server is full.");
+				Log.Info("Rejected client, server is full.");
+			}
+			else
+			{
+				//Server isn't full, accept client
+	            cl.username = username;
+	            cl.receivedHandshake = true;
+	            cl.guid = guid;
+	            cl.playerID = playerID;
+	
+	            sendServerMessage(cl, sb.ToString());
+	            sendServerSettings(cl);
+	
+				//Send the MOTD
+				sb.Remove(0, sb.Length);
+				sb.Append(settings.serverMotd);
+				sendMotdMessage(cl, sb.ToString());
+	
+	            Log.Info("{0} (#{2}) has joined the server using client version {1}", username, version, playerID);
+	
+	            //Build join message
+	            //sb.Clear();
+	            sb.Remove(0, sb.Length);
+	            sb.Append("User ");
+	            sb.Append(username);
+	            sb.Append(" has joined the server.");
+	
+	            //Send the join message to all other clients
+	            sendServerMessageToAll(sb.ToString(), cl);
+			}
 
 			
         }
@@ -3359,6 +3368,10 @@ namespace KMPServer
         {
             return settings.admins.Contains(username);
         }
+		
+		private int activeClientCount()
+		{
+			return clients.Where(cl => cl.isReady).Count();
+		}
     }
-
 }
