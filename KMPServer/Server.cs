@@ -3102,7 +3102,6 @@ namespace KMPServer
             try
             {
                 File.Copy(DB_FILE, DB_FILE + ".bak", true);
-                File.Delete(DB_FILE);
                 Log.Debug("Successfully backup up database.");
             }
             catch (Exception e)
