@@ -14,7 +14,7 @@ namespace KMPServer
 		public const String SERVER_CONFIG_FILENAME = "KMPServerConfig.txt";
 		public const string SERVER_WHITELIST_FILENAME = "KMPWhitelist.txt";
 		public const string SERVER_BANS_FILENAME = "KMPBans.txt";
-        public const string SERVER_ADMINS_FILENAME = "KMPAdmins.txt";
+		public const string SERVER_ADMINS_FILENAME = "KMPAdmins.txt";
 
 		public class BanRecord
 		{
@@ -32,7 +32,7 @@ namespace KMPServer
 			public string ipBinding = "0.0.0.0";
 			public int port = 2076;
 			public int httpPort = 8081;
-            public bool httpBroadcast = true;
+			public bool httpBroadcast = true;
 			public int maxClients = 8;
 			public float updatesPerSecond = 60;
 			public int screenshotInterval = 3000;
@@ -50,35 +50,36 @@ namespace KMPServer
 			public int screenshotHeight = 600;
 			public bool profanityFilter = true;
 			public double safetyBubbleRadius = 20000d;
-            public bool autoDekessler = false;
-            public int autoDekesslerTime = 30;
-            public string profanityWords = "fucker:kerper,faggot:kerpot,shit:kerp,fuck:guck,cunt:kump,piss:heph,fag:olp,dick:derp,cock:beet,asshole:hepderm,nigger:haggar";
+			public bool autoDekessler = false;
+			public int autoDekesslerTime = 30;
+			public string profanityWords = "fucker:kerper,faggot:kerpot,shit:kerp,fuck:guck,cunt:kump,piss:heph,fag:olp,dick:derp,cock:beet,asshole:hepderm,nigger:haggar";
 
             private IEnumerable<KeyValuePair<string, string>> _profanity = null;
             public IEnumerable<KeyValuePair<string, string>> Profanity
-            {
-                get
-                {
-                    if (_profanity == null)
-                    {
-                        try
-                        {
-                            //Uses a Enumerable KVP instead of a dictionary to avoid an extra conversion.
-                            _profanity = profanityWords.Split(',').Select(ws =>
-                            {
-                                var wx = ws.Split(':');
-                                return new KeyValuePair<string, string>(wx[0], wx[1]);
-                            });
-                        }
-                        catch
-                        {
-                            _profanity = new Dictionary<string, string>();
-                        }
-                    }
+			{
+        		get
+        		{
+            		if (_profanity == null)
+           			{
+                		try
+                		{
+                    		//Uses a Enumerable KVP instead of a dictionary to avoid an extra conversion.
+                    		_profanity = profanityWords.Split(',').Select(ws =>
+                    		{
+                        		var wx = ws.Split(':');
+                        		return new KeyValuePair<string, string>(wx[0], wx[1]);
+                    		});
+                		}
 
-                    return _profanity;
-                }
-            }
+                		catch
+                		{
+                    		_profanity = new Dictionary<string, string>();
+                		}
+            		}
+
+            		return _profanity;
+        		}
+			}
 
 			private List<BanRecord> _bans = new List<BanRecord>();
 			internal List<BanRecord> bans
@@ -98,14 +99,14 @@ namespace KMPServer
 				}
 			}
 
-            private List<string> _admins = new List<string>();
-            internal List<string> admins
-            {
-                get
-                {
-                    return _admins;
-                }
-            }
+		    private List<string> _admins = new List<string>();
+		    internal List<string> admins
+		    {
+		        get
+		        {
+		            return _admins;
+		        }
+		    }
 
 			private ScreenshotSettings _screenshotSettings = new ScreenshotSettings();
 			internal ScreenshotSettings screenshotSettings
@@ -176,6 +177,7 @@ namespace KMPServer
 
 				f.SetValue(Store, newValue);
 			}
+
 			catch
 			{
 				throw new ArgumentException(string.Format("{0} is not a valid value for {1}", Value, Key));
@@ -216,7 +218,7 @@ namespace KMPServer
 					}
 				}
 			}
-			catch { }
+			catch { }//empty? Really?
 		}
 
 		public static void loadBans(ConfigStore Store)
@@ -260,7 +262,7 @@ namespace KMPServer
 					}
 				}
 			}
-			catch { }
+			catch { } //Empty? Really?
 		}
 
 		public static void saveWhitelist(ConfigStore Store)
@@ -282,7 +284,7 @@ namespace KMPServer
 					}
 				}
 			}
-			catch { }
+			catch { } //Empty? Really?
 		}
 
 		public static void loadWhitelist(ConfigStore Store)
@@ -297,7 +299,7 @@ namespace KMPServer
 					Store.whitelist.AddRange(File.ReadAllLines(FileName));
 				}
 			}
-			catch { }
+			catch { } //Are we really using Try/Catch effectively? 
 		}
 
         public static void saveAdmins(ConfigStore Store)
@@ -319,7 +321,7 @@ namespace KMPServer
                     }
                 }
             }
-            catch { }
+            catch { } //...
         }
 			
 
@@ -335,7 +337,7 @@ namespace KMPServer
                     store.admins.AddRange(File.ReadAllLines(fileName));
                 }
             }
-            catch { }
+            catch { } //Haven't seen this done before
         }
 
 		//Write the setting store out to a file by reflecting over its members.
@@ -360,7 +362,7 @@ namespace KMPServer
 					}
 				}
 			}
-			catch (Exception)
+			catch (Exception) //Ooh, that's a little different. Why go to the effort to write Exception but not a debug/output line?
 			{
 
 			}
@@ -454,7 +456,7 @@ namespace KMPServer
 			}
 			catch (Exception)
 			{
-
+			// I understand you might sometimes want to leave one blank, but comment it when done. Just don't leave them all blank. It's frustrating to debug a project that's in development when 99% of the catches are empty
 			}
 
 			foreach (FieldInfo f in Store.GetType().GetFields())
