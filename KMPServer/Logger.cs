@@ -8,7 +8,8 @@ namespace KMPServer
 {
     public static class Log
     {
-        private static string LogFilename = "KMPServer.log";
+        private static string LogFolder = @"logs\";
+        private static string LogFilename =  LogFolder + "kmpserver " + DateTime.Now.ToString("dd-MM-yyyy HH-mm-ss") + ".log";
         
         public enum LogLevels : int
         {
@@ -25,6 +26,10 @@ namespace KMPServer
 
         private static void WriteLog(LogLevels level, string format, params object[] args)
         {
+
+            if (!Directory.Exists(LogFolder))
+                Directory.CreateDirectory(LogFolder);
+
             if (level < MinLogLevel) { return; }
 
             lock (Console.Out)
