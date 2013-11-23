@@ -14,7 +14,7 @@ namespace KMPServer
 		public const String SERVER_CONFIG_FILENAME = "KMPServerConfig.txt";
 		public const string SERVER_WHITELIST_FILENAME = "KMPWhitelist.txt";
 		public const string SERVER_BANS_FILENAME = "KMPBans.txt";
-        public const string SERVER_ADMINS_FILENAME = "KMPAdmins.txt";
+		public const string SERVER_ADMINS_FILENAME = "KMPAdmins.txt";
 
 		public class BanRecord
 		{
@@ -32,7 +32,7 @@ namespace KMPServer
 			public string ipBinding = "0.0.0.0";
 			public int port = 2076;
 			public int httpPort = 8081;
-            public bool httpBroadcast = true;
+			public bool httpBroadcast = true;
 			public int maxClients = 8;
 			public float updatesPerSecond = 60;
 			public int screenshotInterval = 3000;
@@ -50,35 +50,35 @@ namespace KMPServer
 			public int screenshotHeight = 600;
 			public bool profanityFilter = true;
 			public double safetyBubbleRadius = 20000d;
-            public bool autoDekessler = false;
-            public int autoDekesslerTime = 30;
-            public string profanityWords = "fucker:kerper,faggot:kerpot,shit:kerp,fuck:guck,cunt:kump,piss:heph,fag:olp,dick:derp,cock:beet,asshole:hepderm,nigger:haggar";
+			public bool autoDekessler = false;
+			public int autoDekesslerTime = 30;
+			public string profanityWords = "fucker:kerper,faggot:kerpot,shit:kerp,fuck:guck,cunt:kump,piss:heph,fag:olp,dick:derp,cock:beet,asshole:hepderm,nigger:haggar";
 
-            private IEnumerable<KeyValuePair<string, string>> _profanity = null;
-            public IEnumerable<KeyValuePair<string, string>> Profanity
-            {
-                get
-                {
-                    if (_profanity == null)
-                    {
-                        try
-                        {
-                            //Uses a Enumerable KVP instead of a dictionary to avoid an extra conversion.
-                            _profanity = profanityWords.Split(',').Select(ws =>
-                            {
-                                var wx = ws.Split(':');
-                                return new KeyValuePair<string, string>(wx[0], wx[1]);
-                            });
-                        }
-                        catch
-                        {
-                            _profanity = new Dictionary<string, string>();
-                        }
-                    }
+			private IEnumerable<KeyValuePair<string, string>> _profanity = null;
+			public IEnumerable<KeyValuePair<string, string>> Profanity
+			{
+				get
+				{
+					if (_profanity == null)
+					{
+						try
+						{
+							//Uses a Enumerable KVP instead of a dictionary to avoid an extra conversion.
+							_profanity = profanityWords.Split(',').Select(ws =>
+							{
+								var wx = ws.Split(':');
+								return new KeyValuePair<string, string>(wx[0], wx[1]);
+							});
+						}
+						catch
+						{
+							_profanity = new Dictionary<string, string>();
+						}
+					}
 
-                    return _profanity;
-                }
-            }
+					return _profanity;
+				}
+			}
 
 			private List<BanRecord> _bans = new List<BanRecord>();
 			internal List<BanRecord> bans
@@ -98,14 +98,14 @@ namespace KMPServer
 				}
 			}
 
-            private List<string> _admins = new List<string>();
-            internal List<string> admins
-            {
-                get
-                {
-                    return _admins;
-                }
-            }
+			private List<string> _admins = new List<string>();
+			internal List<string> admins
+			{
+				get
+				{
+					return _admins;
+				}
+			}
 
 			private ScreenshotSettings _screenshotSettings = new ScreenshotSettings();
 			internal ScreenshotSettings screenshotSettings
@@ -300,43 +300,43 @@ namespace KMPServer
 			catch { }
 		}
 
-        public static void saveAdmins(ConfigStore Store)
-        {
-            string FileName = SERVER_ADMINS_FILENAME;
+		public static void saveAdmins(ConfigStore Store)
+		{
+			string FileName = SERVER_ADMINS_FILENAME;
 
-            try
-            {
-                if (File.Exists(FileName))
-                {
-                    File.SetAttributes(FileName, FileAttributes.Normal);
-                }
+			try
+			{
+				if (File.Exists(FileName))
+				{
+					File.SetAttributes(FileName, FileAttributes.Normal);
+				}
 
-                using (StreamWriter configWriter = new StreamWriter(FileName))
-                {
-                    foreach (var u in Store.admins)
-                    {
-                        configWriter.WriteLine(u.ToLowerInvariant());
-                    }
-                }
-            }
-            catch { }
-        }
+				using (StreamWriter configWriter = new StreamWriter(FileName))
+				{
+					foreach (var u in Store.admins)
+					{
+						configWriter.WriteLine(u.ToLowerInvariant());
+					}
+				}
+			}
+			catch { }
+		}
 			
 
-        public static void loadAdmins(ConfigStore store)
-        {
-            string fileName = SERVER_ADMINS_FILENAME;
+		public static void loadAdmins(ConfigStore store)
+		{
+			string fileName = SERVER_ADMINS_FILENAME;
 
-            try
-            {
-                if (File.Exists(fileName))
-                {
-                    store.admins.Clear();
-                    store.admins.AddRange(File.ReadAllLines(fileName));
-                }
-            }
-            catch { }
-        }
+			try
+			{
+				if (File.Exists(fileName))
+				{
+					store.admins.Clear();
+					store.admins.AddRange(File.ReadAllLines(fileName));
+				}
+			}
+			catch { }
+		}
 
 		//Write the setting store out to a file by reflecting over its members.
 		public static void writeToFile(ConfigStore Store)
