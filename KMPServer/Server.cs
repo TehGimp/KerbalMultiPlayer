@@ -92,6 +92,8 @@ namespace KMPServer
         private bool backedUpSinceEmpty = false;
         private Dictionary<Guid, long> recentlyDestroyed = new Dictionary<Guid, long>();
 
+		private Boolean bHandleCommandsRunning = true;
+
         public long currentMillisecond
         {
             get
@@ -402,53 +404,57 @@ namespace KMPServer
             httpListener.Stop();
         }
 
+		private void processCommand (String input)
+		{
+			try
+			{
+				String cleanInput = input.ToLower().Trim();
+                var rawParts = input.Split(new char[] { ' ' }, 2);
+				var parts = cleanInput.Split(new char[] { ' ' }, 2);
+                //if (!parts[0].StartsWith("/")) { return; } //Allow server to send chat messages
+                switch (parts[0])
+                {
+                    case "/ban": banServerCommand(parts); break;
+                    case "/clearclients": clearClientsServerCommand(); break;
+                    case "/countclients": countServerCommand(); break;
+                    case "/help": displayCommands(); break;
+                    case "/kick": kickServerCommand(parts); break;
+                    case "/listclients": listServerCommand(); break;
+                    case "/quit":
+                    case "/stop": quitServerCommand(parts); bHandleCommandsRunning = false; break;
+                    case "/save": saveServerCommand(); break;
+                    case "/register": registerServerCommand(parts); break;
+                    case "/update": updateServerCommand(cleanInput); break;
+                    case "/unregister": unregisterServerCommand(parts); break;
+                    case "/dekessler": dekesslerServerCommand(parts); break;
+                    case "/countships": countShipsServerCommand(); break;
+                    case "/listships": listShipsServerCommand(); break;
+					case "/say": sayServerCommand(rawParts); break;
+					case "/motd": motdServerCommand(rawParts); break;
+					case "/rules": rulesServerCommand(rawParts); break;
+					case "/setinfo": serverInfoServerCommand(rawParts);break;
+                    default: Log.Info("Unknown Command: "+cleanInput); break;
+            	}
+			}
+			catch (FormatException e)
+			{
+				Log.Error("Error handling server command. Maybe a typo? {0} {1}", e.Message,e.StackTrace);
+			}
+			catch (IndexOutOfRangeException)
+			{
+				Log.Error("Command found but missing elements.");
+			}
+		}
+
         private void handleCommands()
         {
             Thread.CurrentThread.CurrentCulture = new CultureInfo("en-GB");
             try
             {
-                Boolean bRunning = true;
-                while (bRunning)
+                while (bHandleCommandsRunning)
                 {
-					try
-					{
-	                    String rawInput = Console.ReadLine();
-						String cleanInput = rawInput.ToLower().Trim();
-	                    var rawParts = rawInput.Split(new char[] { ' ' }, 2);
-						var parts = cleanInput.Split(new char[] { ' ' }, 2);
-	                    //if (!parts[0].StartsWith("/")) { return; } //Allow server to send chat messages
-	                    switch (parts[0])
-	                    {
-	                        case "/ban": banServerCommand(parts); break;
-	                        case "/clearclients": clearClientsServerCommand(); break;
-	                        case "/countclients": countServerCommand(); break;
-	                        case "/help": displayCommands(); break;
-	                        case "/kick": kickServerCommand(parts); break;
-	                        case "/listclients": listServerCommand(); break;
-                            case "/quit":
-	                        case "/stop": quitServerCommand(parts); bRunning = false; break;
-	                        case "/save": saveServerCommand(); break;
-	                        case "/register": registerServerCommand(parts); break;
-	                        case "/update": updateServerCommand(cleanInput); break;
-	                        case "/unregister": unregisterServerCommand(parts); break;
-	                        case "/dekessler": dekesslerServerCommand(parts); break;
-	                        case "/countships": countShipsServerCommand(); break;
-	                        case "/listships": listShipsServerCommand(); break;
-							case "/say": sayServerCommand(rawParts); break;
-							case "/motd": motdServerCommand(rawParts); break;
-							case "/rules": rulesServerCommand(rawParts); break;
-							case "/setinfo": serverInfoServerCommand(rawParts);break;
-	                        default: Log.Info("Unknown Command: "+cleanInput); break;
-                    	}
-					}
-					catch (FormatException e)
-					{
-						Log.Error("Error handling server command. Maybe a typo? {0} {1}", e.Message,e.StackTrace);
-					}
-					catch (IndexOutOfRangeException e)
-					{
-						Log.Error("Command found but missing elements.");
-					}
+					String input = Console.ReadLine();
+					processCommand (input);
                 }
             }
             catch (ThreadAbortException)
@@ -2126,7 +2132,10 @@ namespace KMPServer
                         sb.Append("!chat offsetting <true|false> - Turn on/off the tracking center and editor offsets\n");
                         sb.Append("!chat offset [tracking|editor] [offsetX] [offsetY] - Set the offset values (pixels)\n");
                         sb.Append("!chat [width|height|top|left] [value] <percent|pixels>\n");
-                        sb.Append("!whereami - Displays server connection information");
+                        sb.Append("!whereami - Displays server connection information\n");
+						if(isAdmin(cl.username)) {
+							sb.Append(KMPCommon.RCON_COMMAND + " <cmd> - Execute command /<cmd> as if typed from server console\n");
+						}
 						sb.Append("!clear - Clears the chat window");
                         sb.Append(Environment.NewLine);
 
@@ -2180,6 +2189,19 @@ namespace KMPServer
 
                         return;
                     }
+                    else if (message_lower.Length > (KMPCommon.RCON_COMMAND.Length + 1)
+                        && message_lower.Substring(0, KMPCommon.RCON_COMMAND.Length) == KMPCommon.RCON_COMMAND)
+                    {
+						if(isAdmin(cl.username)) {
+							String command = message_lower.Substring(KMPCommon.RCON_COMMAND.Length + 1);
+							Log.Info("RCON from client {0} (#{1}): {2}", cl.username, cl.clientIndex, command);
+							processCommand("/"+command);
+						} else {
+							sendTextMessage(cl, "You are not an admin!");
+						}
+
+						return;
+					}
                 }
 
                 if (settings.profanityFilter)
@@ -2332,6 +2354,17 @@ namespace KMPServer
             byte[] message_bytes = buildMessageArray(KMPCommon.ServerMessageID.TEXT_MESSAGE, encoder.GetBytes(message));
 
             foreach (var client in clients.ToList().Where(cl => cl.isReady && cl != exclude))
+            {
+                client.queueOutgoingMessage(message_bytes);
+            }
+        }
+
+        public void sendTextMessageToAdmins(String message, Client exclude = null)
+        {
+            UnicodeEncoding encoder = new UnicodeEncoding();
+            byte[] message_bytes = buildMessageArray(KMPCommon.ServerMessageID.TEXT_MESSAGE, encoder.GetBytes(message));
+
+            foreach (var client in clients.ToList().Where(cl => cl.isReady && cl != exclude && isAdmin(cl.username)))
             {
                 client.queueOutgoingMessage(message_bytes);
             }
