@@ -3094,10 +3094,6 @@ namespace KMPServer
 
         public void backupDatabase()
         {
-            var asSqlite = universeDB as SQLiteConnection;
-
-            if (asSqlite == null) { return; }
-
             Log.Info("Backing up old disk DB...");
             try
             {
@@ -3109,33 +3105,48 @@ namespace KMPServer
                 Log.Error("Failed to backup DB:");
                 Log.Error(e.Message);
             }
+
+
             try
             {
-                SQLiteConnection diskDB = new SQLiteConnection(DB_FILE_CONN);
-                diskDB.Open();
-                asSqlite.BackupDatabase(diskDB, "main", "main", -1, null, 0);
-                DbCommand cmd = diskDB.CreateCommand();
-                string sql = "DELETE FROM kmpSubspace WHERE LastTick < (SELECT MIN(s.LastTick) FROM kmpSubspace s" +
-                    " INNER JOIN kmpVessel v ON v.Subspace = s.ID);" +
-                    " DELETE FROM kmpVesselUpdateHistory;" +
-                    " DELETE FROM kmpVesselUpdate WHERE ID IN (SELECT ID FROM kmpVesselUpdate vu" +
-                    " WHERE Subspace != (SELECT ID FROM kmpSubspace WHERE LastTick = (SELECT MAX(LastTick)" +
-                    " FROM kmpSubspace WHERE ID IN (SELECT Subspace FROM kmpVesselUpdate WHERE Guid = vu.Guid))));";
-                cmd.CommandText = sql;
-                cmd.ExecuteNonQuery();
-                diskDB.Close();
+                saveDatabaseToDisk();
                 Log.Info("Universe saved to disk.");
             }
             catch(Exception e)
             {
                 Log.Error("Failed to save database:");
                 Log.Error(e.Message);
+                Log.Error(e.ToString());
                 Log.Error(e.StackTrace);
 
-                Log.Error("Saving secondary copy of last backup.");
+                Log.Info("Saving secondary copy of last backup.");
                 File.Copy(DB_FILE + ".bak", DB_FILE + ".before_failure.bak", true);
-                throw e;
+
+                Log.Info("Press any key to quit - ensure database is valid or reset database before restarting server.");
+                Console.ReadKey();
+                Environment.Exit(0);
             }
+        }
+
+        public void saveDatabaseToDisk()
+        {
+            var asSqlite = universeDB as SQLiteConnection;
+
+            if (asSqlite == null) { return; }
+
+            SQLiteConnection diskDB = new SQLiteConnection(DB_FILE_CONN);
+            diskDB.Open();
+            asSqlite.BackupDatabase(diskDB, "main", "main", -1, null, 0);
+            DbCommand cmd = diskDB.CreateCommand();
+            string sql = "DELETE FROM kmpSubspace WHERE LastTick < (SELECT MIN(s.LastTick) FROM kmpSubspace s" +
+                " INNER JOIN kmpVessel v ON v.Subspace = s.ID);" +
+                " DELETE FROM kmpVesselUpdateHistory;" +
+                " DELETE FROM kmpVesselUpdate WHERE ID IN (SELECT ID FROM kmpVesselUpdate vu" +
+                " WHERE Subspace != (SELECT ID FROM kmpSubspace WHERE LastTick = (SELECT MAX(LastTick)" +
+                " FROM kmpSubspace WHERE ID IN (SELECT Subspace FROM kmpVesselUpdate WHERE Guid = vu.Guid))));";
+            cmd.CommandText = sql;
+            cmd.ExecuteNonQuery();
+            diskDB.Close();
         }
 
         public void cleanDatabase()
