@@ -3130,10 +3130,11 @@ namespace KMPServer
             {
                 Log.Error("Failed to save database:");
                 Log.Error(e.Message);
+                Log.Error(e.StackTrace);
 
                 Log.Error("Saving secondary copy of last backup.");
                 File.Copy(DB_FILE + ".bak", DB_FILE + ".before_failure.bak", true);
-                throw;
+                throw e;
             }
         }
 
