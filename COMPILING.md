@@ -3,36 +3,51 @@ ALL PLATFORMS
 
 GIT
 ---
-Cloning:
-git clone https://github.com/TehGimp/KerbalMultiPlayer.git
+Cloning
 
-Updating:
-git fetch --all
-git merge
+    git clone https://github.com/TehGimp/KerbalMultiPlayer.git
 
-Contributing:
-#First you will need to fork "KerbalMultiPlayer" on github, and set up your SSH key.
-git remote remove origin
-git remote add upstream https://github.com/TehGimp/KerbalMultiPlayer.git
-git remote add origin git@github.com:YOUR_USER_NAME_HERE/KerbalMultiPlayer.git
+Updating
 
-#Make a branch so you don't bork your master.
-git branch bugfix-number
-git checkout bugfix-number
-#Do your changes here with your favourite text editor or IDE.
-git add -A
-git commit -a
-git push
+    git fetch --all
+    git merge
 
-#When you are happy with the code, open a pull request on github
+Contributing
+First you will need to fork "KerbalMultiPlayer" on github, and set up your SSH key.
+
+    git remote remove origin
+    git remote add upstream https://github.com/TehGimp/KerbalMultiPlayer.git
+    git remote add origin git@github.com:YOUR_USER_NAME_HERE/KerbalMultiPlayer.git
+    git fetch --all
+    git push --set-upstream origin master
+
+Make a branch so you don't bork your master.
+
+    git branch bugfix-number
+    git checkout bugfix-number
+
+Do your changes here with your favourite text editor or IDE.
+
+    git add -A
+    git commit -a
+    git push --set-upstream origin bugfix-number
+
+When you are happy with the code, open a pull request on github. After it is merged you can delete it and merge it in your master
+
+    git checkout master
+    git fetch -all
+    git merge upstream/master
+    git branch -D bugfix-number
+    git push origin :bugfix-number
+
 
 DEPENDANCIES - DON'T MISS THIS STEP!:
 -------------------------------------
 
 In order to compile KMP, You need to copy these 3 files from "KSP_ROOT/KSP_Data/Managed/" into the root directory of your KMP clone.
-Assembly-CSharp-firstpass.dll
-Assembly-CSharp.dll
-UnityEngine.dll
+* Assembly-CSharp-firstpass.dll
+* Assembly-CSharp.dll
+* UnityEngine.dll
 
 WINDOWS
 =======
