@@ -2132,7 +2132,10 @@ namespace KMPServer
                         sb.Append("!chat offsetting <true|false> - Turn on/off the tracking center and editor offsets\n");
                         sb.Append("!chat offset [tracking|editor] [offsetX] [offsetY] - Set the offset values (pixels)\n");
                         sb.Append("!chat [width|height|top|left] [value] <percent|pixels>\n");
-                        sb.Append("!whereami - Displays server connection information");
+                        sb.Append("!whereami - Displays server connection information\n");
+						if(isAdmin(cl.username)) {
+							sb.Append(KMPCommon.RCON_COMMAND + " <cmd> - Execute command /<cmd> as if typed from server console\n");
+						}
 						sb.Append("!clear - Clears the chat window");
                         sb.Append(Environment.NewLine);
 
@@ -2191,7 +2194,7 @@ namespace KMPServer
                     {
 						if(isAdmin(cl.username)) {
 							String command = message_lower.Substring(KMPCommon.RCON_COMMAND.Length + 1);
-							Log.Info("RCON: {0}", command);
+							Log.Info("RCON from client {0} (#{1}): {2}", cl.username, cl.clientIndex, command);
 							processCommand("/"+command);
 						} else {
 							sendTextMessage(cl, "You are not an admin!");
@@ -2351,6 +2354,17 @@ namespace KMPServer
             byte[] message_bytes = buildMessageArray(KMPCommon.ServerMessageID.TEXT_MESSAGE, encoder.GetBytes(message));
 
             foreach (var client in clients.ToList().Where(cl => cl.isReady && cl != exclude))
+            {
+                client.queueOutgoingMessage(message_bytes);
+            }
+        }
+
+        public void sendTextMessageToAdmins(String message, Client exclude = null)
+        {
+            UnicodeEncoding encoder = new UnicodeEncoding();
+            byte[] message_bytes = buildMessageArray(KMPCommon.ServerMessageID.TEXT_MESSAGE, encoder.GetBytes(message));
+
+            foreach (var client in clients.ToList().Where(cl => cl.isReady && cl != exclude && isAdmin(cl.username)))
             {
                 client.queueOutgoingMessage(message_bytes);
             }

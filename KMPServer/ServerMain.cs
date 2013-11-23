@@ -14,6 +14,8 @@ namespace KMPServer
 
 		public const int AUTO_RESTART_DELAY = 1000;
 
+		public static Server server = null;
+
 		static void Main(string[] args)
 		{
 			ServerSettings.ConfigStore settings = new ServerSettings.ConfigStore();
@@ -250,7 +252,7 @@ namespace KMPServer
 
 		static ServerStatus hostServer(ServerSettings.ConfigStore settings)
 		{
-			Server server = new Server(settings);
+			server = new Server(settings);
 
 			try
 			{
