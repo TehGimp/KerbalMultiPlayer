@@ -17,6 +17,8 @@
 # Monodevelop project stuff
 **/*.userprefs
 **/*.pidb
+*.userprefs
+bin
 
 # Windows runtime
 *.exe

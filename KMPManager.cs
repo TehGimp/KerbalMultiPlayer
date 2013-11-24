@@ -3931,7 +3931,10 @@ namespace KMP
                 }
                 else
                 {
-                    var text = line.name + ": " + line.message;
+					var text = line.name + ": " + line.message;
+					if(line.isAdmin) {
+						text = "[" + KMPCommon.ADMIN_MARKER + "] " + text;
+					}
                     GUILayout.Label(text, KMPChatDX.chatStyle);
 
                     var position = GUILayoutUtility.GetLastRect();
