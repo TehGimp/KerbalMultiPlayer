@@ -540,7 +540,7 @@ namespace KMPServer
         private void deleteShipServerCommand(string[] parts)
         {
         	DbCommand cmd = universeDB.CreateCommand();
-            String sql = "UPDATE kmpVessel SET Destroyed = \"1\" WHERE Guid = @guid;";
+            String sql = "UPDATE kmpVessel SET Destroyed = 1 WHERE Guid = @guid;";
             try
             {
             	Guid tokill = new Guid(parts[1]);
