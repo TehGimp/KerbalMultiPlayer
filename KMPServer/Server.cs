@@ -429,6 +429,7 @@ namespace KMPServer
                     case "/dekessler": dekesslerServerCommand(parts); break;
                     case "/countships": countShipsServerCommand(); break;
                     case "/listships": listShipsServerCommand(); break;
+					case "/deleteship": deleteShipServerCommand(parts); break;
 					case "/say": sayServerCommand(rawParts); break;
 					case "/motd": motdServerCommand(rawParts); break;
 					case "/rules": rulesServerCommand(rawParts); break;
@@ -535,6 +536,36 @@ namespace KMPServer
         {
             countShipsServerCommand(true);
         }
+        
+        private void deleteShipServerCommand(string[] parts)
+        {
+        	DbCommand cmd = universeDB.CreateCommand();
+            String sql = "UPDATE kmpVessel SET Destroyed = \"1\" WHERE Guid = @guid;";
+            try
+            {
+            	Guid tokill = new Guid(parts[1]);
+            	cmd.Parameters.AddWithValue("guid", tokill.ToByteArray());
+           		cmd.CommandText = sql;
+				int rows = -1;
+	            rows = cmd.ExecuteNonQuery();
+	            if(rows != -1 && rows != 0)
+	            {
+	            	Log.Info("Vessel {0} marked for deletion.", parts[1]);
+	            }
+	            
+	            else
+	            {
+	            	Log.Info("Vessel {0} not found.", parts[1]);
+	            }
+			}
+            
+            catch (FormatException)
+            {
+				Log.Info("Vessel ID invalid.");
+            }
+
+        }
+        
 		//Sets MOTD
 		private void motdServerCommand(string[] parts)
 		{
@@ -3324,6 +3355,7 @@ namespace KMPServer
             Log.Info("/update [username] [token] - Update existing roster entry for player <username>/token <token> (one param must match existing roster entry, other will be updated)");
             Log.Info("/unregister [username/token] - Remove any player that has a matching username or token from the roster");
             Log.Info("/clearclients - Attempt to clear 'ghosted' clients");
+			Log.Info("/deleteship [ID] - Removes ship from universe."); 
             Log.Info("/dekessler <mins> - Remove debris that has not been updated for at least <mins> minutes (in-game time) (If no <mins> value is specified, debris that is older than 30 minutes will be cleared)");
             Log.Info("/save - Backup universe");
 			Log.Info("/setinfo [info] - Updates the server info seen on master server list");
