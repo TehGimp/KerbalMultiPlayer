@@ -30,6 +30,7 @@ public class KMPCommon
 
 	public const String SHARE_CRAFT_COMMAND = "!sharecraft";//"/" chat commands handled by client
 	public const String GET_CRAFT_COMMAND = "!getcraft";	//"!" chat commands handled by server
+	public const String RCON_COMMAND = "!rcon";
 
 	public const byte CRAFT_TYPE_VAB = 0;
 	public const byte CRAFT_TYPE_SPH = 1;

@@ -135,3 +135,7 @@ assist you with enabling mod parts. Never attempt to use mod parts on a server t
 expressly enabled them--even though KMP will attempt to stop you from doing so, if you were to
 successfully launch a vessel that includes parts that other players don't have, those players may
 encounter significant issues.
+
+By default only the stock parts are whitelisted in "KSP_DIR/GameData/KMP/Plugins/PluginData/KerbalMultiPlayer/KMPPartList.txt".
+If you are playing on a server where mods are allowed, they should provide a KMPPartList.txt along with a list of mods to install.
+If you are a server operator, you will need to change the "_" (underscore) in part names to a "." (dot).
