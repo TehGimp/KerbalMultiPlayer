@@ -49,12 +49,17 @@ In order to compile KMP, You need to copy these 3 files from "KSP_ROOT/KSP_Data/
 * Assembly-CSharp.dll
 * UnityEngine.dll
 
+
 WINDOWS
 =======
 
 Visual Studio
 -------------
-To be written by a windows developer.
+To edit and compile, open up the KerbalMultiPlayer.sln file with Visual Studio. 
+Upon opening, you may receive errors relating towards KMPServerList which can be safely ignored. If you have installed all dependencies, you should be able to build the solution.
+Builds will be stored in either \bin\Release for the client, or \KLFServer\bin\Release for the server.
+
+Debugging does not seem to work at this current point with the server or client. (?)
 
 MAC
 ===
