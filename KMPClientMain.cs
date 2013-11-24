@@ -180,7 +180,15 @@ namespace KMP
 
         public static void InitMPClient(KMPManager manager)
         {
+            if (Environment.GetCommandLineArgs().Contains("-kmpdebug"))
+                Log.MinLogLevel = Log.LogLevels.Debug;
+            else
+                Log.MinLogLevel = Log.LogLevels.Info;
+
             gameManager = manager;
+
+            Log.Debug("KMP has been started with debug mode enabled.");
+
             UnityEngine.Debug.Log("KMP Client version " + KMPCommon.PROGRAM_VERSION);
             UnityEngine.Debug.Log("    Created by Shaun Esau and developed by the KMP team http://sesau.ca/ksp/KMP_contribs.html");
             UnityEngine.Debug.Log("    Based on Kerbal LiveFeed created by Alfred Lam");
