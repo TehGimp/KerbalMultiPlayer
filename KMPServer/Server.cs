@@ -3325,8 +3325,6 @@ namespace KMPServer
             Log.Info("/unregister [username/token] - Remove any player that has a matching username or token from the roster");
             Log.Info("/clearclients - Attempt to clear 'ghosted' clients");
             Log.Info("/dekessler <mins> - Remove debris that has not been updated for at least <mins> minutes (in-game time) (If no <mins> value is specified, debris that is older than 30 minutes will be cleared)");
-            Log.Info("/countships - Lists number of ships in universe.");
-            Log.Info("/listships - List all ships in universe along with their ID");
             Log.Info("/save - Backup universe");
 			Log.Info("/setinfo [info] - Updates the server info seen on master server list");
 			Log.Info("/motd [message] - Sets message of the day, leave blank for none");
