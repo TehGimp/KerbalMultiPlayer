@@ -68,10 +68,22 @@ To be written by a mac developer.
 
 LINUX
 =====
+Required packages: mono-complete, build-essential (or your distribution's equivilent)
+
+Note: Mixed results have been experienced with mono-compiler versions below 3. Server may encounters crashes when people join.
+To check your mono-compiler version, use:
+	
+	mcs --version
+
+Distributions known to include mono-compiler 3 and above:
+
+	Debian Unstable/Sid
+	
 
 MonoDevelop
 -----------
-To be written by a MonoDevelop user.
+To edit and compile, open up the KerbalMultiPlayer.sln file with MonoDevelop and make your changes.
+On the top menu hit build > build all. No errors should be reported at all.
 
 xbuild
 ------
