@@ -55,29 +55,35 @@ namespace KMP
             public String name;
             public String message;
             public Color color;
+			public bool isAdmin;
 
             public ChatLine(String line)
             {
                 this.color = Color.yellow;
                 this.name = "";
                 this.message = line;
+				this.isAdmin = false;
 
                 //Check if the message has a name
-                if (line.Length > 3 && line.First() == '<')
+                if (line.Length > 3 && (line.First() == '<' || (line.StartsWith("["+KMPCommon.ADMIN_MARKER+"]") && line.Contains('<'))))
                 {
-                    int name_length = line.IndexOf('>');
+					int name_start = line.IndexOf('<');
+                    int name_end = line.IndexOf('>');
+					int name_length = name_end - name_start - 1;
                     if (name_length > 0)
                     {
-                        name_length = name_length - 1;
-                        this.name = line.Substring(1, name_length);
-                        this.message = line.Substring(name_length + 2);
+                        this.name = line.Substring(name_start+1, name_length);
+                        this.message = line.Substring(name_end + 1);
 
                         if (this.name == "Server")
                             this.color = Color.magenta;
-                        else this.color = KMPVessel.generateActiveColor(name) * NAME_COLOR_SATURATION_FACTOR
+						else if (line.StartsWith("["+KMPCommon.ADMIN_MARKER+"]")) {
+							this.color = Color.red;
+							this.isAdmin = true;
+						} else this.color = KMPVessel.generateActiveColor(name) * NAME_COLOR_SATURATION_FACTOR
                             + Color.white * (1.0f - NAME_COLOR_SATURATION_FACTOR);
                     }
-                } 
+                }
             }
         }
 

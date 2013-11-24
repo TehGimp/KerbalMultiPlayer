@@ -337,7 +337,7 @@ namespace KMP
                 {
                     host_entry = Dns.GetHostEntry(trimmed_hostname);
                 }
-                catch (Exception e)
+                catch (Exception)
                 {
                     host_entry = null;
                 }
@@ -358,7 +358,7 @@ namespace KMP
                                 address = host_entry.AddressList.First(a => a.AddressFamily == AddressFamily.InterNetwork);
                             }
                         }
-                        catch (Exception e) {
+                        catch (Exception) {
                             address = host_entry.AddressList.First(a => a.AddressFamily == AddressFamily.InterNetwork);
                         }
                     } else {
