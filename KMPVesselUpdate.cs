@@ -246,8 +246,9 @@ namespace KMP
 					{
 						proto = new ProtoVessel(_vessel);
 					}
-					catch 
+					catch (Exception e)
 					{
+					    KMP.Log.Debug("Exception thrown in InitKMPVesselUpdate(), catch 1, Exception: {0}", e.ToString());
 						proto = null;
 					}
 					if (proto != null)
