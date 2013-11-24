@@ -2247,7 +2247,7 @@ namespace KMPServer
                 if (settings.profanityFilter)
                     message_text = WashMouthWithSoap(message_text);
 
-                string full_message = string.Format("<{0}> {1}", cl.username, message_text);
+				string full_message = string.Format("{2}<{0}> {1}", cl.username, message_text, (isAdmin(cl.username) ? "["+KMPCommon.ADMIN_MARKER+"] " : ""));
 
                 //Console.SetCursorPosition(0, Console.CursorTop);
                 Log.Chat(cl.username, message_text);
