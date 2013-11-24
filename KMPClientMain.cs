@@ -185,7 +185,9 @@ namespace KMP
             else
                 Log.MinLogLevel = Log.LogLevels.Info;
 
+
             gameManager = manager;
+
 
             Log.Debug("KMP has been started with debug mode enabled.");
 
