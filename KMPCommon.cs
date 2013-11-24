@@ -165,8 +165,9 @@ public class KMPCommon
 	            }
 	        }
 		}
-		catch
+		catch (Exception e)
 		{
+		    KMP.Log.Debug("Exception thrown in Compress(), catch 1, Exception: {0}", e.ToString());
 			return null;
 		}
         finally
@@ -207,8 +208,9 @@ public class KMPCommon
 				reader.Close();
             }
         }
-		catch
+		catch (Exception e)
 		{
+		    KMP.Log.Debug("Exception thrown in Decompress(), catch 1, Exception: {0}", e.ToString());
 			return null;
 		}
         finally

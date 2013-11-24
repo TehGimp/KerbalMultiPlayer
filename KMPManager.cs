@@ -291,7 +291,7 @@ namespace KMP
 				{
 					foreach (Vessel vessel in FlightGlobals.Vessels.FindAll(v => v.vesselName.Contains("> Debris")))
 					{
-						try { if (!vessel.isEVA) killVessel(vessel); } catch {}
+						try { if (!vessel.isEVA) killVessel(vessel); } catch (Exception e) { KMP.Log.Debug("Exception thrown in updateStep(), catch 1, Exception: {0}", e.ToString()); }
 					}
 				}
 				
@@ -388,8 +388,9 @@ namespace KMP
 				            {
 				                OrbitPhysicsManager.HoldVesselUnpack(1);
 				            }
-				            catch (NullReferenceException)
+				            catch (NullReferenceException e)
 				            {
+                        KMP.Log.Debug("Exception thrown in updateStep(), catch 2, Exception: {0}", e.ToString());
 				            }
 							//Krakensbane shift to new orbital location
 							if (targetTick > currentTick+2.5d //if badly out of sync
@@ -408,7 +409,7 @@ namespace KMP
 						Planetarium.SetUniversalTime(targetTick);
 						KMPClientMain.DebugLog("sync completed");
 					}
-				} catch (Exception e) { KMPClientMain.DebugLog("error during sync: " + e.Message + " " + e.StackTrace); }
+				} catch (Exception e) { KMP.Log.Debug("Exception thrown in updateStep(), catch 3, Exception: {0}", e.ToString()); KMPClientMain.DebugLog("error during sync: " + e.Message + " " + e.StackTrace); }
 
 				writeUpdates();
 				
@@ -504,7 +505,7 @@ namespace KMP
 						Invoke("OnFirstFlightReady",1f);	
 					}
 				}
-			} catch (Exception ex) { KMPClientMain.DebugLog("uS err: " + ex.Message + " " + ex.StackTrace); }
+			} catch (Exception ex) { KMP.Log.Debug("Exception thrown in updateStep(), catch 4, Exception: {0}", ex.ToString()); KMPClientMain.DebugLog("uS err: " + ex.Message + " " + ex.StackTrace); }
 		}
 		
 		private void dockedKickToTrackingStation()
@@ -575,7 +576,7 @@ namespace KMP
 						serverVessels_PartCounts[vessel.id] = 0;
 						foreach (Part part in serverVessels_Parts[vessel.id])
 						{
-							try { if (!part.vessel.isEVA && part.vessel.id != FlightGlobals.ActiveVessel.id) killVessel(part.vessel); } catch {}
+							try { if (!part.vessel.isEVA && part.vessel.id != FlightGlobals.ActiveVessel.id) killVessel(part.vessel); } catch (Exception e) { KMP.Log.Debug("Exception thrown in checkRemoteVesselIntegrity(), catch 1, Exception: {0}", e.ToString()); }
 						}
 						ProtoVessel protovessel = new ProtoVessel(serverVessels_ProtoVessels[vessel.id], HighLogic.CurrentGame);
 						addRemoteVessel(protovessel,vessel.id);
@@ -585,6 +586,7 @@ namespace KMP
 			}
 			catch (Exception ex)
 			{
+        KMP.Log.Debug("Exception thrown in checkRemoteVesselIntegrity(), catch 2, Exception: {0}", ex.ToString());
 				KMPClientMain.DebugLog("cRVI err: " + ex.Message + " " + ex.StackTrace);
 			}
 		}
@@ -656,7 +658,7 @@ namespace KMP
 				KMPClientMain.DebugLog("sending primary update");
 				try{
 					enqueuePluginInteropMessage(KMPCommon.PluginInteropMessageID.PRIMARY_PLUGIN_UPDATE, KSP.IO.IOUtils.SerializeToBinary(update));
-				} catch (Exception e) { KMPClientMain.DebugLog("err: " + e.Message); }
+				} catch (Exception e) { KMP.Log.Debug("Exception thrown in writePrimaryUpdate(), catch 1, Exception: {0}", e.ToString()); KMPClientMain.DebugLog("err: " + e.Message); }
 			}
 			else
 			{
@@ -774,8 +776,9 @@ namespace KMP
 								}
 								if (include) nearest_vessels.Add(distance, vessel);
 							}
-							catch (ArgumentException)
+							catch (ArgumentException e)
 							{
+                  KMP.Log.Debug("Exception thrown in writeSecondaryUpdates(), catch 1, Exception: {0}", e.ToString());
 							}
 						}
 					}
@@ -822,8 +825,9 @@ namespace KMP
 										update.o_vel[i] = o_vel[i];
 									}
 								}
-								catch
+								catch (Exception e)
 								{
+                  KMP.Log.Debug("Exception thrown in writeSecondaryUpdates(), catch 2, Exception: {0}", e.ToString());
 									update = original_update;
 								}
 							}
@@ -1603,7 +1607,7 @@ namespace KMP
 					Vessel extant_vessel = FlightGlobals.Vessels.Find(v => v.id == vessel_update.id);
 					if (extant_vessel != null)
 					{
-						try { killVessel(extant_vessel); } catch {}
+						try { killVessel(extant_vessel); } catch (Exception e) { KMP.Log.Debug("Exception thrown in applyVesselUpdate(), catch 1, Exception: {0}", e.ToString()); }
 					}
 					return;
 				}
@@ -1866,7 +1870,7 @@ namespace KMP
 										{
 											KMPClientMain.DebugLog("New vessel, but no matching protovessel available");
 										}
-									} catch (Exception e) { KMPClientMain.DebugLog("Vessel add error: " + e.Message + "\n" + e.StackTrace); }
+									} catch (Exception e) { KMP.Log.Debug("Exception thrown in applyVesselUpdate(), catch 2, Exception: {0}", e.ToString()); KMPClientMain.DebugLog("Vessel add error: " + e.Message + "\n" + e.StackTrace); }
 								}
 							}
 							else
@@ -1973,8 +1977,9 @@ namespace KMP
 						            {
 						                OrbitPhysicsManager.HoldVesselUnpack(1);
 						            }
-						            catch (NullReferenceException)
+						            catch (NullReferenceException e)
 						            {
+                             KMP.Log.Debug("Exception thrown in applyVesselUpdate(), catch 3, Exception: {0}", e.ToString());
 						            }
 		
 									if (diffPos.sqrMagnitude < 1000000d && diffPos.sqrMagnitude > 0.1d)
@@ -2212,10 +2217,10 @@ namespace KMP
 					KMPClientMain.DebugLog("killing known precursor vessels");
 					foreach (Part part in serverVessels_Parts[vessel_id])
 					{
-						try { if (!part.vessel.isEVA && part.vessel.id != oldVessel.id) part.vessel.Die(); } catch {}
+						try { if (!part.vessel.isEVA && part.vessel.id != oldVessel.id) part.vessel.Die(); } catch (Exception e) {  KMP.Log.Debug("Exception thrown in addRemoteVessel(), catch 1, Exception: {0}", e.ToString()); }
 					}
 				}
-			} catch {}
+			} catch (Exception e) {  KMP.Log.Debug("Exception thrown in addRemoteVessel(), catch 2, Exception: {0}", e.ToString()); }
 			try
 			{
 				if ((protovessel.vesselType != VesselType.Debris && protovessel.vesselType != VesselType.Unknown) && protovessel.situation == Vessel.Situations.SUB_ORBITAL && protovessel.altitude < 25d)
@@ -2299,6 +2304,7 @@ namespace KMP
 			}
 			catch (Exception e)
 			{
+         KMP.Log.Debug("Exception thrown in addRemoteVessel(), catch 3, Exception: {0}", e.ToString());
 				KMPClientMain.DebugLog("Error adding remote vessel: " + e.Message + " " + e.StackTrace);
 			}
 		}
@@ -2315,8 +2321,9 @@ namespace KMP
 	            {
 	                OrbitPhysicsManager.HoldVesselUnpack(1);
 	            }
-	            catch (NullReferenceException)
+	            catch (NullReferenceException e)
 	            {
+                  KMP.Log.Debug("Exception thrown in loadProtovessel(), catch 1, Exception: {0}", e.ToString());
 	            }
 				if (!created_vessel.loaded) created_vessel.Load();
 				
@@ -2401,7 +2408,7 @@ namespace KMP
 				{
 					KSP.IO.File.Delete<KMPManager>(filename);
 				}
-				catch { }
+				catch (Exception e) { KMP.Log.Debug("Exception thrown in safeDelete(), catch 1, Exception: {0}", e.ToString()); }
 			}
 		}
 
@@ -2426,7 +2433,7 @@ namespace KMP
 //						id = (KMPCommon.ClientInteropMessageID)id_int;
 
 					interopInQueue.Enqueue(bytes);
-				} catch { }
+				} catch (Exception e) { KMP.Log.Debug("Exception thrown in acceptClientInterop(), catch 1, Exception: {0}", e.ToString()); }
 			}
 		}
 		
@@ -2485,7 +2492,7 @@ namespace KMP
 						}
 					}
 				}
-				catch { }
+				catch (Exception e) { KMP.Log.Debug("Exception thrown in processClientInterop(), catch 1, Exception: {0}", e.ToString()); }
 			}
 		}
 
@@ -2509,7 +2516,7 @@ namespace KMP
 					}
 					success = true;
 				}
-				catch { }
+				catch (Exception e) { KMP.Log.Debug("Exception thrown in writePluginInterop(), catch 1, Exception: {0}", e.ToString()); }
 			}
 
 			return success;
@@ -2576,7 +2583,7 @@ namespace KMP
 						}
 						break;
 				}
-			} catch (Exception e) { KMPClientMain.DebugLog(e.Message); }
+			} catch (Exception e) { KMP.Log.Debug("Exception thrown in handleInteropMessage(), catch 1, Exception: {0}", e.ToString()); KMPClientMain.DebugLog(e.Message); }
 		}
 		
 		private IEnumerator<WaitForEndOfFrame> applyScreenshotTexture(byte[] image_data)
@@ -2658,6 +2665,7 @@ namespace KMP
 			}
 			catch (Exception e)
 			{
+        KMP.Log.Debug("Exception thrown in saveGlobalSettings(), catch 1, Exception: {0}", e.ToString());
 				Debug.Log(e.Message);
 			}
 		}
@@ -2718,16 +2726,19 @@ namespace KMP
 			}
 			catch (KSP.IO.IOException e)
 			{
+        KMP.Log.Debug("Exception thrown in loadGlobalSettings(), catch 1, Exception: {0}", e.ToString());
 				success = false;
 				Debug.Log(e.Message);
 			}
 			catch (System.IO.IOException e)
 			{
+        KMP.Log.Debug("Exception thrown in loadGlobalSettings(), catch 2, Exception: {0}", e.ToString());
 				success = false;
 				Debug.Log(e.Message);
 			}
 			catch (System.IO.IsolatedStorage.IsolatedStorageException e)
 			{
+        KMP.Log.Debug("Exception thrown in loadGlobalSettings(), catch 3, Exception: {0}", e.ToString());
 				success = false;
 				Debug.Log(e.Message);
 			}
@@ -2736,7 +2747,7 @@ namespace KMP
 				try
 				{
 					KSP.IO.File.Delete<KMPManager>(GLOBAL_SETTINGS_FILENAME);
-				} catch {}
+				} catch (Exception e) { KMP.Log.Debug("Exception thrown in loadGlobalSettings(), catch 4, Exception: {0}", e.ToString()); }
 				KMPGlobalSettings.instance = new KMPGlobalSettings();
 			}
 		}
@@ -2754,8 +2765,9 @@ namespace KMP
             {
                 platform = Environment.OSVersion.Platform;
             } 
-            catch(Exception)
+            catch (Exception e)
             {
+                KMP.Log.Debug("Exception thrown in Awake(), catch 1, Exception: {0}", e.ToString());
                 platform = PlatformID.Unix;
             }
 			Debug.Log("KMP loaded");
@@ -3066,7 +3078,7 @@ namespace KMP
                         }
                     }
                 }
-			} catch (Exception ex) { KMPClientMain.DebugLog ("u err: " + ex.Message + " " + ex.StackTrace); }
+			} catch (Exception ex) { KMP.Log.Debug("Exception thrown in Update(), catch 1, Exception: {0}", ex.ToString()); KMPClientMain.DebugLog ("u err: " + ex.Message + " " + ex.StackTrace); }
 		}
 
 		public void OnGUI()
@@ -3196,7 +3208,10 @@ namespace KMP
 					GameEvents.onVesselLoaded.Remove(this.OnVesselLoaded);
 					GameEvents.onVesselTerminated.Remove(this.OnVesselTerminated);
 					GameEvents.onVesselDestroy.Remove(this.OnVesselDestroy);
-				} catch { }
+				}
+        catch (Exception e) {
+              KMP.Log.Debug("Exception thrown in drawGUI(), catch 1, Exception: {0}", e.ToString());
+        }
 				GUILayout.Window(
 					999996,
 					KMPConnectionDisplay.windowPos,
@@ -3310,7 +3325,9 @@ namespace KMP
 				}
 				GUILayout.EndVertical();
 			}
-			catch {}
+			catch (Exception e) {
+          KMP.Log.Debug("Exception thrown in lockWindow(), catch 1, Exception: {0}", e.ToString());
+      }
 		}
 		
 		private void infoDisplayWindow(int windowID)

@@ -279,6 +279,7 @@ namespace KMP
                 {
 
                     //Write an error log
+                    KMP.Log.Debug("Exception thrown in beginConnect(), catch 1, Exception: {0}", e.ToString());
                     KSP.IO.TextWriter writer = KSP.IO.File.AppendText<KMPClientMain>("KMPClientlog.txt");
                     writer.WriteLine(e.ToString());
                     if (threadExceptionStackTrace != null && threadExceptionStackTrace.Length > 0)
@@ -339,6 +340,7 @@ namespace KMP
                 }
                 catch (Exception e)
                 {
+                    KMP.Log.Debug("Exception thrown in connectionLoop(), catch 1, Exception: {0}", e.ToString());
                     host_entry = null;
                 }
                 if (host_entry != null)
@@ -359,6 +361,7 @@ namespace KMP
                             }
                         }
                         catch (Exception e) {
+                            KMP.Log.Debug("Exception thrown in connectionLoop(), catch 2, Exception: {0}", e.ToString());
                             address = host_entry.AddressList.First(a => a.AddressFamily == AddressFamily.InterNetwork);
                         }
                     } else {
@@ -434,8 +437,9 @@ namespace KMP
                             udpSocket.Connect(endpoint);
                         }
                     }
-                    catch
+                    catch (Exception e)
                     {
+                        KMP.Log.Debug("Exception thrown in connectionLoop(), catch 3, Exception: {0}", e.ToString());
                         if (udpSocket != null)
                             udpSocket.Close();
 
@@ -489,8 +493,9 @@ namespace KMP
                 }
 
             }
-            catch (Exception)
+            catch (Exception e)
             {
+                KMP.Log.Debug("Exception thrown in connectionLoop(), catch 4, Exception: {0}", e.ToString());
                 SetMessage("Disconnected");
                 if (tcpSocket != null)
                    tcpSocket.Close();
@@ -696,8 +701,9 @@ namespace KMP
                                     System.IO.File.WriteAllBytes(filename, craft_bytes);
                                     enqueueTextMessage("Received craft file: " + craft_name);
                                 }
-                                catch
+                                catch (Exception e)
                                 {
+                                    KMP.Log.Debug("Exception thrown in handleMessage(), catch 1, Exception: {0}", e.ToString());
                                     enqueueTextMessage("Error saving received craft file: " + craft_name);
                                 }
                             }
@@ -753,7 +759,9 @@ namespace KMP
                     udpSocket.Close();
                 udpSocket = null;
             }
-            catch (ThreadAbortException) { }
+            catch (ThreadAbortException e) {
+                KMP.Log.Debug("Exception thrown in clearConnectionState(), catch 1, Exception: {0}", e.ToString());
+            }
             DebugLog("Disconnected");
         }
 
@@ -897,8 +905,9 @@ namespace KMP
 
                                         enqueueTextMessage(String.Format("The {0} offsets has been set to X: {1} Y: {2}", (target == 0) ? "tracking station" : "rocket/spaceplane editor", offsetX, offsetY));
                                     }
-                                    catch (Exception)
+                                    catch (Exception e)
                                     {
+                                        KMP.Log.Debug("Exception thrown in handleChatInput(), catch 1, Exception: {0}", e.ToString());
                                         enqueueTextMessage("Syntax error. Usage: !chat offset [tracking|editor] [offsetX] [offsetY]");
                                     }
                                 }
@@ -946,8 +955,9 @@ namespace KMP
 
                                         enqueueTextMessage(sb.ToString());
                                     }
-                                    catch (Exception)
+                                    catch (Exception e)
                                     {
+                                        KMP.Log.Debug("Exception thrown in handleChatInput(), catch 2, Exception: {0}", e.ToString());
                                         enqueueTextMessage("Syntax error. Usage: !chat [width|height|top|left] [value] <percent|pixels>\nWhere value is a number.");
                                     }
                                 }
@@ -975,8 +985,9 @@ namespace KMP
                                 byte[] craft_bytes = System.IO.File.ReadAllBytes(filename);
                                 sendShareCraftMessage(craft_name, craft_bytes, craft_type);
                             }
-                            catch
+                            catch (Exception e)
                             {
+                                KMP.Log.Debug("Exception thrown in handleChatInput(), catch 3, Exception: {0}", e.ToString());
                                 enqueueTextMessage("Error reading craft file: " + filename);
                             }
                         }
@@ -1048,11 +1059,13 @@ namespace KMP
                 }
 
             }
-            catch (ThreadAbortException)
+            catch (ThreadAbortException e)
             {
+                KMP.Log.Debug("Exception thrown in handlePluginInterop(), catch 1, Exception: {0}", e.ToString());
             }
             catch (Exception e)
             {
+                KMP.Log.Debug("Exception thrown in handlePluginInterop(), catch 2, Exception: {0}", e.ToString());
                 DebugLog("Error in handlePluginInterop: " + e.Message);
                 passExceptionToMain(e);
             }
@@ -1081,11 +1094,13 @@ namespace KMP
                 }
 
             }
-            catch (ThreadAbortException)
+            catch (ThreadAbortException e)
             {
+                KMP.Log.Debug("Exception thrown in handlePluginUpdates(), catch 1, Exception: {0}", e.ToString());
             }
             catch (Exception e)
             {
+                KMP.Log.Debug("Exception thrown in handlePluginUpdates(), catch 2, Exception: {0}", e.ToString());
                 passExceptionToMain(e);
             }
         }
@@ -1157,11 +1172,13 @@ namespace KMP
                 }
 
             }
-            catch (ThreadAbortException)
+            catch (ThreadAbortException e)
             {
+                KMP.Log.Debug("Exception thrown in handleConnection(), catch 1, Exception: {0}", e.ToString());
             }
             catch (Exception e)
             {
+                KMP.Log.Debug("Exception thrown in handleConnection(), catch 2, Exception: {0}", e.ToString());
                 passExceptionToMain(e);
             }
         }
@@ -1186,8 +1203,9 @@ namespace KMP
                                 UnityEngine.Debug.Log(message.message);
                             }
                         }
-                        catch (KSP.IO.IOException)
+                        catch (KSP.IO.IOException e)
                         {
+                            KMP.Log.Debug("Exception thrown in handleChat(), catch 1, Exception: {0}", e.ToString());
                         }
                     }
 
@@ -1195,11 +1213,13 @@ namespace KMP
                 }
 
             }
-            catch (ThreadAbortException)
+            catch (ThreadAbortException e)
             {
+                KMP.Log.Debug("Exception thrown in handleChat(), catch 2, Exception: {0}", e.ToString());
             }
             catch (Exception e)
             {
+                KMP.Log.Debug("Exception thrown in handleChat(), catch 3, Exception: {0}", e.ToString());
                 passExceptionToMain(e);
             }
         }
@@ -1216,9 +1236,15 @@ namespace KMP
                         thread.Join();
                 }
             }
-            catch (ThreadAbortException) { }
-            catch (ThreadStateException) { }
-            catch (ThreadInterruptedException) { }
+            catch (ThreadAbortException e) {
+                KMP.Log.Debug("Exception thrown in safeAbort(), catch 1, Exception: {0}", e.ToString());
+            }
+            catch (ThreadStateException e) {
+                KMP.Log.Debug("Exception thrown in safeAbort(), catch 2, Exception: {0}", e.ToString());
+            }
+            catch (ThreadInterruptedException e) {
+                KMP.Log.Debug("Exception thrown in safeAbort(), catch 3, Exception: {0}", e.ToString());
+            }
         }
 
         //Plugin Interop
@@ -1243,8 +1269,9 @@ namespace KMP
                         }
                         success = true;
                     }
-                    catch
+                    catch (Exception e)
                     {
+                        KMP.Log.Debug("Exception thrown in writePluginInterop(), catch 1, Exception: {0}", e.ToString());
                     }
                 }
             }
@@ -1308,7 +1335,9 @@ namespace KMP
                         }
                     }
                 }
-                catch { }
+                catch (Exception e) {
+                    KMP.Log.Debug("Exception thrown in processPluginInterop(), catch 1, Exception: {0}", e.ToString());
+                }
             }
         }
         public static void acceptPluginInterop(byte[] bytes)
@@ -1317,7 +1346,9 @@ namespace KMP
             {
                 interopInQueue.Enqueue(bytes);
             }
-            catch { }
+            catch (Exception e) {
+                KMP.Log.Debug("Exception thrown in acceptPluginInterop(), catch 1, Exception: {0}", e.ToString());
+            }
         }
 
         //		static void readPluginInterop()
@@ -1578,8 +1609,9 @@ namespace KMP
                 {
                     KSP.IO.File.Delete<KMPClientMain>(filename);
                 }
-                catch (KSP.IO.IOException)
+                catch (KSP.IO.IOException e)
                 {
+                    KMP.Log.Debug("Exception thrown in writePluginInterop(), catch 1, Exception: {0}", e.ToString());
                 }
             }
         }
@@ -1660,8 +1692,9 @@ namespace KMP
                     writer.Close();
                 }
             }
-            catch
+            catch (Exception e)
             {
+                KMP.Log.Debug("Exception thrown in readPartsList(), catch 1, Exception: {0}", e.ToString());
                 //Generate the stock part list
                 partList = new List<string>();
 
@@ -1729,8 +1762,9 @@ namespace KMP
                 reader.Close();
                 playerGuid = new Guid(line);
             }
-            catch
+            catch (Exception e)
             {
+                KMP.Log.Debug("Exception thrown in readTokenFile(), catch 1, Exception: {0}", e.ToString());
                 //Generate a new token for server authentication
                 playerGuid = Guid.NewGuid();
                 KSP.IO.TextWriter writer = KSP.IO.File.CreateText<KMPClientMain>(CLIENT_TOKEN_FILENAME);
@@ -1763,16 +1797,18 @@ namespace KMP
                     }
                     xmlDoc.Load(sPath);
                 }
-                catch
+                catch (Exception e)
                 {
+                    KMP.Log.Debug("Exception thrown in readConfigFile(), catch 1, Exception: {0}", e.ToString());
                     try
                     {
                         xmlDoc.LoadXml(buildNewXML());
                         xmlDoc.Save(sPath);
                         xmlDoc.Load(sPath);
                     }
-                    catch
+                    catch (Exception seconde)
                     {
+                        KMP.Log.Debug("Exception thrown in readConfigFile(), catch 2, Exception: {0}", seconde.ToString());
                         username = "";
                         hostname = "";
                         autoReconnect = true;
@@ -1795,8 +1831,9 @@ namespace KMP
                     }
                 }
             }
-            catch
+            catch (Exception e)
             {
+                KMP.Log.Debug("Exception thrown in readConfigFile(), catch 3, Exception: {0}", e.ToString());
                 username = "";
                 hostname = "";
                 autoReconnect = true;
@@ -1865,14 +1902,17 @@ namespace KMP
                         new AsyncCallback(ReceiveCallback), state);
                 }
             }
-            catch (KSP.IO.IOException)
+            catch (KSP.IO.IOException e)
             {
+                KMP.Log.Debug("Exception thrown in beginAsyncRead(), catch 1, Exception: {0}", e.ToString());
             }
-            catch (InvalidOperationException)
+            catch (InvalidOperationException e)
             {
+                KMP.Log.Debug("Exception thrown in beginAsyncRead(), catch 2, Exception: {0}", e.ToString());
             }
             catch (Exception e)
             {
+                KMP.Log.Debug("Exception thrown in beginAsyncRead(), catch 3, Exception: {0}", e.ToString());
                 passExceptionToMain(e);
             }
         }
@@ -1912,14 +1952,17 @@ namespace KMP
                     //		            }
                 }
             }
-            catch (InvalidOperationException)
+            catch (InvalidOperationException e)
             {
+                KMP.Log.Debug("Exception thrown in ReceiveCallback(), catch 1, Exception: {0}", e.ToString());
             }
-            catch (ThreadAbortException)
+            catch (ThreadAbortException e)
             {
+                KMP.Log.Debug("Exception thrown in ReceiveCallback(), catch 2, Exception: {0}", e.ToString());
             }
             catch (Exception e)
             {
+                KMP.Log.Debug("Exception thrown in ReceiveCallback(), catch 3, Exception: {0}", e.ToString());
                 passExceptionToMain(e);
             }
         }
@@ -2119,8 +2162,12 @@ namespace KMP
                     //					tcpSocket.BeginSend(message_bytes, 0, message_bytes.Length, SocketFlags.None,
                     //      					new AsyncCallback(SendCallback), tcpSocket); 
                     }
-                    catch (System.InvalidOperationException) { }
-                    catch (KSP.IO.IOException) { }
+                    catch (System.InvalidOperationException e) {
+                        KMP.Log.Debug("Exception thrown in sendMessageTCP(), catch 1, Exception: {0}", e.ToString());
+                    }
+                    catch (KSP.IO.IOException e) {
+                        KMP.Log.Debug("Exception thrown in sendMessageTCP(), catch 2, Exception: {0}", e.ToString());
+                    }
 
                 }
             }
@@ -2158,7 +2205,9 @@ namespace KMP
                 {
                     udpSocket.Send(buildMessageByteArray(id, data, KMPCommon.intToBytes(clientID)));
                 }
-                catch { }
+                catch (Exception e) {
+                    KMP.Log.Debug("Exception thrown in sendMessageUDP(), catch 1, Exception: {0}", e.ToString());
+                }
 
                 lock (udpTimestampLock)
                 {
