@@ -38,6 +38,7 @@ UnityEngine.dll
 # retain select dlls
 !System.Data.SQLite.dll
 !SQLite.Interop.dll
+!sqlite3.dll
 
 #NuGet
 packages/
