@@ -78,6 +78,8 @@ To check your mono-compiler version, use:
 Distributions known to include mono-compiler 3 and above:
 
 	Debian Unstable/Sid
+	Gentoo, provided by dev-lang/mono in portage tree and also in dotnet overlay
+	Arch, provided by mono package, repository: Extra
 	
 
 MonoDevelop
