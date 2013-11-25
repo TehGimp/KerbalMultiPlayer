@@ -330,6 +330,7 @@ namespace KMP
             }
 
             //Look up the actual IP address
+            bool ipv6_connected = false;
             IPAddress address = null;
             IPAddress.TryParse(trimmed_hostname, out address);
             if (address == null) {
@@ -345,27 +346,29 @@ namespace KMP
                 }
                 if (host_entry != null)
                 {
-                    if (System.Net.Sockets.Socket.OSSupportsIPv6 == true) {
-                        //This is a test to see if the client has IPv6 connectivity. May not be correct but this is the only way to make sure.
-                        IPAddress ipv6_test_address = null;
+                    IPAddress ipv4_address = Array.Find(host_entry.AddressList, a => a.AddressFamily == AddressFamily.InterNetwork);
+                    IPAddress ipv6_address = Array.Find(host_entry.AddressList, a => a.AddressFamily == AddressFamily.InterNetworkV6);
+                    address = ipv4_address;
+                    if ( ipv6_address != null ) {
                         try {
-                            ipv6_test_address = host_entry.AddressList.First();
-                            TcpClient ipv6_test_tcpClient = new TcpClient(AddressFamily.InterNetworkV6);
-                            IPEndPoint ipv6_test_endpoint = new IPEndPoint(ipv6_test_address, port);
-                            ipv6_test_tcpClient.Connect(ipv6_test_endpoint);
-                            if (ipv6_test_tcpClient.Client.Connected) {
-                                address = ipv6_test_address;
-                                ipv6_test_tcpClient.Close();
+                            //Connects IPv6 Hostnames
+                            TcpClient ipv6_tcpClient = new TcpClient(ipv6_address.AddressFamily);
+                            ipv6_tcpClient.NoDelay = true;
+                            IPEndPoint ipv6_endpoint = new IPEndPoint(ipv6_address, port);
+                            SetMessage("Connecting to IPv6: [" + ipv6_address + "]:" + port);
+                            ipv6_tcpClient.Connect(ipv6_endpoint);
+                            if (ipv6_tcpClient.Client.Connected) {
+                                ipv6_connected = true;
+                                address = ipv6_address;
+                                tcpSocket = ipv6_tcpClient.Client;
                             } else {
-                                address = host_entry.AddressList.First(a => a.AddressFamily == AddressFamily.InterNetwork);
+                                ipv6_tcpClient = null;
+                                ipv6_endpoint = null;
                             }
                         }
                         catch (Exception e) {
                             KMP.Log.Debug("Exception thrown in connectionLoop(), catch 2, Exception: {0}", e.ToString());
-                            address = host_entry.AddressList.First(a => a.AddressFamily == AddressFamily.InterNetwork);
                         }
-                    } else {
-                        address = host_entry.AddressList.First(a => a.AddressFamily == AddressFamily.InterNetwork);
                     }
                 }
             }
@@ -376,21 +379,21 @@ namespace KMP
                 return false;
             }
 
-            IPEndPoint endpoint = new IPEndPoint(address, port);
 
-            SetMessage("Connecting to server: " + address + " port " + port);
+            
 
             try
             {
-                
-                if (System.Net.Sockets.Socket.OSSupportsIPv6 == true && endpoint.AddressFamily == AddressFamily.InterNetworkV6) {
-                    TcpClient tcpClient = new TcpClient(AddressFamily.InterNetworkV6);
+                //Connects IPv4 Hostnames, And IPv6/IPv4 IP's.
+                if (ipv6_connected == false) {
+                    TcpClient tcpClient = new TcpClient(address.AddressFamily);
                     tcpClient.NoDelay = true;
-                    tcpClient.Connect(endpoint);
-                    tcpSocket = tcpClient.Client;
-                } else {
-                    TcpClient tcpClient = new TcpClient(AddressFamily.InterNetwork);
-                    tcpClient.NoDelay = true;
+                    IPEndPoint endpoint = new IPEndPoint(address, port);
+                    if (address.AddressFamily == AddressFamily.InterNetworkV6) {
+                        SetMessage("Connecting to IPv6: [" + address + "]:" + port);
+                    } else {
+                        SetMessage("Connecting to IPv4: " + address + ":" + port);
+                    }
                     tcpClient.Connect(endpoint);
                     tcpSocket = tcpClient.Client;
                 }
@@ -429,13 +432,9 @@ namespace KMP
                     //Init udp socket
                     try
                     {
-                        if (System.Net.Sockets.Socket.OSSupportsIPv6 == true && endpoint.AddressFamily == AddressFamily.InterNetworkV6) {
-                            udpSocket = new Socket(AddressFamily.InterNetworkV6, SocketType.Dgram, ProtocolType.Udp);
-                            udpSocket.Connect(endpoint);
-                        } else {
-                            udpSocket = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp);
-                            udpSocket.Connect(endpoint);
-                        }
+                        IPEndPoint endpoint = new IPEndPoint(address, port);
+                        udpSocket = new Socket(endpoint.AddressFamily, SocketType.Dgram, ProtocolType.Udp);
+                        udpSocket.Connect(endpoint);
                     }
                     catch (Exception e)
                     {
