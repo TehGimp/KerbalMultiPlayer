@@ -1,4 +1,4 @@
-﻿//#define DEBUG_OUT
+//#define DEBUG_OUT
 //#define SEND_UPDATES_TO_SENDER
 
 using System;
@@ -50,6 +50,9 @@ namespace KMPServer
         public const String SCREENSHOT_DIR = "KMPScreenshots";
         public const string DB_FILE_CONN = "Data Source=KMP_universe.db";
         public const string DB_FILE = "KMP_universe.db";
+        public const string MOD_CONTROL_FILE = "KMPModControl.txt";
+        
+        public static byte[] kmpModControl;
 
         public const int UNIVERSE_VERSION = 4;
 
@@ -220,7 +223,122 @@ namespace KMPServer
 
             startDatabase();
         }
+        
+		private static void generatePartsList(TextWriter writer)
+        {
+                List<string> partList = new List<string>();
 
+                //0.21 (& below) parts
+                partList.Add("StandardCtrlSrf"); partList.Add("CanardController"); partList.Add("noseCone"); partList.Add("AdvancedCanard"); partList.Add("airplaneTail");
+                partList.Add("deltaWing"); partList.Add("noseConeAdapter"); partList.Add("rocketNoseCone"); partList.Add("smallCtrlSrf"); partList.Add("standardNoseCone");
+                partList.Add("sweptWing"); partList.Add("tailfin"); partList.Add("wingConnector"); partList.Add("winglet"); partList.Add("R8winglet");
+                partList.Add("winglet3"); partList.Add("Mark1Cockpit"); partList.Add("Mark2Cockpit"); partList.Add("Mark1-2Pod"); partList.Add("advSasModule");
+                partList.Add("asasmodule1-2"); partList.Add("avionicsNoseCone"); partList.Add("crewCabin"); partList.Add("cupola"); partList.Add("landerCabinSmall");
+
+                partList.Add("mark3Cockpit"); partList.Add("mk1pod"); partList.Add("mk2LanderCabin"); partList.Add("probeCoreCube"); partList.Add("probeCoreHex");
+                partList.Add("probeCoreOcto"); partList.Add("probeCoreOcto2"); partList.Add("probeCoreSphere"); partList.Add("probeStackLarge"); partList.Add("probeStackSmall");
+                partList.Add("sasModule"); partList.Add("seatExternalCmd"); partList.Add("rtg"); partList.Add("batteryBank"); partList.Add("batteryBankLarge");
+                partList.Add("batteryBankMini"); partList.Add("batteryPack"); partList.Add("ksp.r.largeBatteryPack"); partList.Add("largeSolarPanel"); partList.Add("solarPanels1");
+                partList.Add("solarPanels2"); partList.Add("solarPanels3"); partList.Add("solarPanels4"); partList.Add("solarPanels5"); partList.Add("JetEngine");
+
+                partList.Add("engineLargeSkipper"); partList.Add("ionEngine"); partList.Add("liquidEngine"); partList.Add("liquidEngine1-2"); partList.Add("liquidEngine2");
+                partList.Add("liquidEngine2-2"); partList.Add("liquidEngine3"); partList.Add("liquidEngineMini"); partList.Add("microEngine"); partList.Add("nuclearEngine");
+                partList.Add("radialEngineMini"); partList.Add("radialLiquidEngine1-2"); partList.Add("sepMotor1"); partList.Add("smallRadialEngine"); partList.Add("solidBooster");
+                partList.Add("solidBooster1-1"); partList.Add("toroidalAerospike"); partList.Add("turboFanEngine"); partList.Add("MK1Fuselage"); partList.Add("Mk1FuselageStructural");
+                partList.Add("RCSFuelTank"); partList.Add("RCSTank1-2"); partList.Add("rcsTankMini"); partList.Add("rcsTankRadialLong"); partList.Add("fuelTank");
+
+                partList.Add("fuelTank1-2"); partList.Add("fuelTank2-2"); partList.Add("fuelTank3-2"); partList.Add("fuelTank4-2"); partList.Add("fuelTankSmall");
+                partList.Add("fuelTankSmallFlat"); partList.Add("fuelTank.long"); partList.Add("miniFuelTank"); partList.Add("mk2Fuselage"); partList.Add("mk2SpacePlaneAdapter");
+                partList.Add("mk3Fuselage"); partList.Add("mk3spacePlaneAdapter"); partList.Add("radialRCSTank"); partList.Add("toroidalFuelTank"); partList.Add("xenonTank");
+                partList.Add("xenonTankRadial"); partList.Add("adapterLargeSmallBi"); partList.Add("adapterLargeSmallQuad"); partList.Add("adapterLargeSmallTri"); partList.Add("adapterSmallMiniShort");
+                partList.Add("adapterSmallMiniTall"); partList.Add("nacelleBody"); partList.Add("radialEngineBody"); partList.Add("smallHardpoint"); partList.Add("stationHub");
+
+                partList.Add("structuralIBeam1"); partList.Add("structuralIBeam2"); partList.Add("structuralIBeam3"); partList.Add("structuralMiniNode"); partList.Add("structuralPanel1");
+                partList.Add("structuralPanel2"); partList.Add("structuralPylon"); partList.Add("structuralWing"); partList.Add("strutConnector"); partList.Add("strutCube");
+                partList.Add("strutOcto"); partList.Add("trussAdapter"); partList.Add("trussPiece1x"); partList.Add("trussPiece3x"); partList.Add("CircularIntake");
+                partList.Add("landingLeg1"); partList.Add("landingLeg1-2"); partList.Add("RCSBlock"); partList.Add("stackDecoupler"); partList.Add("airScoop");
+                partList.Add("commDish"); partList.Add("decoupler1-2"); partList.Add("dockingPort1"); partList.Add("dockingPort2"); partList.Add("dockingPort3");
+
+                partList.Add("dockingPortLarge"); partList.Add("dockingPortLateral"); partList.Add("fuelLine"); partList.Add("ladder1"); partList.Add("largeAdapter");
+                partList.Add("largeAdapter2"); partList.Add("launchClamp1"); partList.Add("linearRcs"); partList.Add("longAntenna"); partList.Add("miniLandingLeg");
+                partList.Add("parachuteDrogue"); partList.Add("parachuteLarge"); partList.Add("parachuteRadial"); partList.Add("parachuteSingle"); partList.Add("radialDecoupler");
+                partList.Add("radialDecoupler1-2"); partList.Add("radialDecoupler2"); partList.Add("ramAirIntake"); partList.Add("roverBody"); partList.Add("sensorAccelerometer");
+                partList.Add("sensorBarometer"); partList.Add("sensorGravimeter"); partList.Add("sensorThermometer"); partList.Add("spotLight1"); partList.Add("spotLight2");
+
+                partList.Add("stackBiCoupler"); partList.Add("stackDecouplerMini"); partList.Add("stackPoint1"); partList.Add("stackQuadCoupler"); partList.Add("stackSeparator");
+                partList.Add("stackSeparatorBig"); partList.Add("stackSeparatorMini"); partList.Add("stackTriCoupler"); partList.Add("telescopicLadder"); partList.Add("telescopicLadderBay");
+                partList.Add("SmallGearBay"); partList.Add("roverWheel1"); partList.Add("roverWheel2"); partList.Add("roverWheel3"); partList.Add("wheelMed"); partList.Add("flag");
+                partList.Add("kerbalEVA");
+
+                //0.22 parts
+                partList.Add("mediumDishAntenna"); partList.Add("GooExperiment"); partList.Add("science.module");
+
+                //0.23 parts
+                partList.Add("RAPIER"); partList.Add("Large.Crewed.Lab");
+
+                foreach(string part in partList) writer.WriteLine(part);
+        }
+        
+        private static void readModControl()
+        {
+            try
+            {	Log.Info("Reading {0}", MOD_CONTROL_FILE);
+            	kmpModControl = File.ReadAllBytes(MOD_CONTROL_FILE);
+            	Log.Info("Mod control reloaded.");
+            }
+            catch
+            {
+            	Log.Info(MOD_CONTROL_FILE + " not found, generating...");
+                TextWriter writer = File.CreateText(MOD_CONTROL_FILE);
+                writer.WriteLine("#You can comment by starting a line with a #, these are ignored by the server.");
+                writer.WriteLine("#Commenting will NOT work unless the line STARTS with a #.");
+                writer.WriteLine("#Sections supported are md5, partslist, resource-blacklist and resource-whitelist.");
+                writer.WriteLine("#You cannot use both resource-blacklist AND resource-whitelist in the same file.");
+                writer.WriteLine("#resource-blacklist bans ONLY the files you specify whereas resource-whitelist bans ALL resources except those you specify.");
+                writer.WriteLine("#Each section has its own type of formatting. Examples have been given.");
+                writer.WriteLine("#Sections are defined as follows");
+                writer.WriteLine();
+                writer.WriteLine("!required");
+                writer.WriteLine();
+                writer.WriteLine("#Here you can define GameData (mod) folders that the client requires before joining the server");
+                writer.WriteLine("#[Folder]");
+                writer.WriteLine("#Example: MechJeb2");
+                writer.WriteLine();
+                writer.WriteLine("Squad");
+                writer.WriteLine("#NOTE: This squad entry ensures that the client hasn't deleted the default parts. Disable this if undesired.");
+                writer.WriteLine();
+                writer.WriteLine("!md5");
+                writer.WriteLine();
+                writer.WriteLine("#To generate the md5 of a file you can use a utility such as this one: http://onlinemd5.com/");
+                writer.WriteLine("#For the MD5 section, file paths are read from inside GameData. If a client's MD5 does not match, they will not be permitted entry.");
+                writer.WriteLine("#You may not specify multiple MD5s for the same file. Do not put spaces around equals sign. Follow the example carefully.");
+                writer.WriteLine("#[File Path]=[MD5]");
+                writer.WriteLine("#Example: MechJeb2/Plugins/MechJeb2.dll=64E6E05C88F3466C63EDACD5CF8E5919");
+                writer.WriteLine();
+                writer.WriteLine("!resource-blacklist");
+                writer.WriteLine();
+                writer.WriteLine("#In this section you can specify the files to ban (or permit, if you change blacklist to whitelist).");
+                writer.WriteLine("#You do not need to specify a path, just a resource name.");
+                writer.WriteLine("#You can control any file from GameData here. It's prefered if you just specify the names of resources (as parts are controled by the partlist).");
+                writer.WriteLine("#[File]");
+                writer.WriteLine("#Example: MechJeb2.dll");
+                writer.WriteLine();
+                writer.WriteLine("!partslist");
+                writer.WriteLine();
+                writer.WriteLine("#This is a list of parts to allow users to put on their ships.");
+                writer.WriteLine("#If a part the client has doesn't appear on this list, they can still join the server but not use the part.");
+                writer.WriteLine("#The default stock parts have been added already for you.");
+                writer.WriteLine("#To add a mod part, add the name from the part's .cfg file. The name is the name from the PART{} section, where underscores are replaced with periods.");
+                writer.WriteLine("#[partname]");
+                writer.WriteLine("#Example: mumech.MJ2.Pod (NOTE: In the part.cfg this MechJeb2 pod is named mumech_MJ2_Pod. The _ have been replaced with .)");
+                writer.WriteLine("#You can use this application to generate partlists from a KSP installation if you want to add mod parts: http://forum.kerbalspaceprogram.com/threads/57284");
+                writer.WriteLine();
+                generatePartsList(writer);
+                writer.Close();
+                readModControl();
+            }
+        }
+        
         public void saveScreenshot(byte[] bytes, String player)
         {
             if (!Directory.Exists(SCREENSHOT_DIR))
@@ -290,7 +408,10 @@ namespace KMPServer
 
             //Start hosting server
             stopwatch.Start();
-
+			
+			//read info for server sided mod support
+			readModControl();
+			
             Log.Info("Hosting server on port {0} ...", settings.port);
 
             clients = new SynchronizedCollection<Client>(settings.maxClients);
@@ -432,6 +553,7 @@ namespace KMPServer
                     case "/countships": countShipsServerCommand(); break;
                     case "/listships": listShipsServerCommand(); break;
 					case "/deleteship": deleteShipServerCommand(parts); break;
+					case "/reloadmodfile": reloadModFileServerCommand(); break;
 					case "/say": sayServerCommand(rawParts); break;
 					case "/motd": motdServerCommand(rawParts); break;
 					case "/rules": rulesServerCommand(rawParts); break;
@@ -569,6 +691,11 @@ namespace KMPServer
 				Log.Info("Vessel ID invalid.");
             }
 
+        }
+        
+        private void reloadModFileServerCommand()
+        {
+        	readModControl();
         }
         
 		private void motdServerCommand(string[] parts)
@@ -2398,9 +2525,12 @@ namespace KMPServer
         {
             //Encode version string
             UnicodeEncoding encoder = new UnicodeEncoding();
+            
+
+
             byte[] version_bytes = encoder.GetBytes(KMPCommon.PROGRAM_VERSION);
 
-            byte[] data_bytes = new byte[version_bytes.Length + 16];
+            byte[] data_bytes = new byte[version_bytes.Length + 20 + kmpModControl.Length];
 
             //Write net protocol version
             KMPCommon.intToBytes(KMPCommon.NET_PROTOCOL_VERSION).CopyTo(data_bytes, 0);
@@ -2413,10 +2543,13 @@ namespace KMPServer
 
             //Write client ID
             KMPCommon.intToBytes(cl.clientIndex).CopyTo(data_bytes, 8 + version_bytes.Length);
-			
+            
 			//Write gameMode
             KMPCommon.intToBytes(settings.gameMode).CopyTo(data_bytes, 12 + version_bytes.Length);
 			
+            KMPCommon.intToBytes(kmpModControl.Length).CopyTo(data_bytes, 16 + version_bytes.Length);
+            kmpModControl.CopyTo(data_bytes, 20 + version_bytes.Length);
+
             cl.queueOutgoingMessage(KMPCommon.ServerMessageID.HANDSHAKE, data_bytes);
         }
 
@@ -3031,7 +3164,6 @@ namespace KMPServer
 
         private byte[] serverSettingBytes()
         {
-
             byte[] bytes = new byte[KMPCommon.SERVER_SETTINGS_LENGTH];
 
             KMPCommon.intToBytes(updateInterval).CopyTo(bytes, 0); //Update interval
@@ -3040,6 +3172,7 @@ namespace KMPServer
 			BitConverter.GetBytes(settings.safetyBubbleRadius).CopyTo(bytes,12); //Safety bubble radius
             bytes[20] = inactiveShipsPerClient; //Inactive ships per client
             bytes[21] = Convert.ToByte(settings.cheatsEnabled);
+
             return bytes;
         }
 
@@ -3500,6 +3633,7 @@ namespace KMPServer
 			Log.Info("/deleteship [ID] - Removes ship from universe."); 
             Log.Info("/dekessler <mins> - Remove debris that has not been updated for at least <mins> minutes (in-game time) (If no <mins> value is specified, debris that is older than 30 minutes will be cleared)");
             Log.Info("/save - Backup universe");
+            Log.Info("/reloadmodfile - Reloads the {0} file. Note that this will not recheck any currently logged in clients, only those joining", MOD_CONTROL_FILE);
 			Log.Info("/setinfo [info] - Updates the server info seen on master server list");
 			Log.Info("/motd [message] - Sets message of the day, leave blank for none");
 			Log.Info("/rules [rules] - Sets server rules, leave blank for none");
