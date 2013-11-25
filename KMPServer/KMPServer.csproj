@@ -110,7 +110,7 @@
       <LastGenOutput>Reference.cs</LastGenOutput>
     </None>
   </ItemGroup>
-  <PropertyGroup>
-    <PostBuildEvent>xcopy "$(ProjectDir)sqlite3.dll" "$(TargetDir)"</PostBuildEvent>
-  </PropertyGroup>
+  <Target Name="BeforeBuild">
+    <Copy SourceFiles="sqlite3.dll" DestinationFolder="$(OutDir)" />
+  </Target>
 </Project>
