@@ -424,7 +424,7 @@ namespace KMPServer
                     case "/stop": quitServerCommand(parts); bHandleCommandsRunning = false; break;
                     case "/save": saveServerCommand(); break;
                     case "/register": registerServerCommand(parts); break;
-                    case "/update": updateServerCommand(cleanInput); break;
+                    case "/update": updateServerCommand(parts); break;
                     case "/unregister": unregisterServerCommand(parts); break;
                     case "/dekessler": dekesslerServerCommand(parts); break;
                     case "/countships": countShipsServerCommand(); break;
@@ -539,10 +539,10 @@ namespace KMPServer
         
         private void deleteShipServerCommand(string[] parts)
         {
-        	DbCommand cmd = universeDB.CreateCommand();
-            String sql = "UPDATE kmpVessel SET Destroyed = 1 WHERE Guid = @guid;";
             try
             {
+				DbCommand cmd = universeDB.CreateCommand();
+            	String sql = "UPDATE kmpVessel SET Destroyed = 1 WHERE Guid = @guid;";
             	Guid tokill = new Guid(parts[1]);
             	cmd.Parameters.AddWithValue("guid", tokill.ToByteArray());
            		cmd.CommandText = sql;
@@ -566,47 +566,48 @@ namespace KMPServer
 
         }
         
-		//Sets MOTD
 		private void motdServerCommand(string[] parts)
 		{
 			if(parts.Length > 1)
 			{
 				settings.serverMotd = (String) parts[1];
-				ServerSettings.writeToFile(settings);
-				Log.Info("Message of the day updated");
 			}
 			else
 			{
-				Log.Info("You forgot to add the MOTD");
+				settings.serverMotd = "";
 			}
+			ServerSettings.writeToFile(settings);
+			Log.Info("MOTD Updated");
 		}
-		//Sets Rules
+		
 		private void rulesServerCommand(string[] parts)
 		{
 			if(parts.Length > 1)
-				{
-					settings.serverRules = (String) parts[1];
-					ServerSettings.writeToFile(settings);
-					Log.Info("Rules Updated");
-				}
+			{
+				settings.serverRules = (String) parts[1];
+			}
 			else
-				{
-					Log.Info("You forgot to type the rules!");
-				}
+			{
+				settings.serverRules = "";
+			}
+			ServerSettings.writeToFile(settings);	
+			Log.Info("Rules Updated");
 		}
+		
 		private void serverInfoServerCommand(string[] parts)
 		{
 			if(parts.Length > 1)
 			{
 				settings.serverInfo = (String) parts[1];
-				ServerSettings.writeToFile(settings);
-				Log.Info("Server Info Updated");
 			}
 			else
 			{
-				Log.Info("You forgot to add info");
+				settings.serverInfo = "";
 			}
+			ServerSettings.writeToFile(settings);
+			Log.Info("Server Info Updated");
 		}
+		
         //Ban specified user, by name, from the server
         private void banServerCommand(string[] parts)
         {
@@ -614,11 +615,12 @@ namespace KMPServer
 
             if (parts.Length > 1)
             {
-                String ban_name = parts[1];
+				String[] args = parts[1].Split(' ');
+                String ban_name = args[0];
                 Guid guid = Guid.Empty;
-                if (parts.Length == 3)
+                if (args.Length == 2)
                 {
-                    days = Convert.ToInt32(parts[2]);
+                    days = Convert.ToInt32(args[1]);
                 }
 
                 var userToBan = clients.Where(c => c.username.ToLower() == ban_name && c.isReady).FirstOrDefault();
@@ -627,24 +629,21 @@ namespace KMPServer
                 {
                     markClientForDisconnect(userToBan, "You were banned from the server!");
                     guid = userToBan.guid;
-                }
 
-                var rec = new ServerSettings.BanRecord()
-                {
-                    BannedGUID = guid,
-                    BannedIP = userToBan.IPAddress,
-                    BannedName = ban_name,
-                    Expires = DateTime.Now.AddDays(days),
-                    Why = "Ban by console",
-                    WhoBy = "Console",
-                    When = DateTime.Now,
-                };
-
-                settings.bans.Add(rec);
-                ServerSettings.saveBans(settings);
-
-                if (!Guid.Empty.Equals(guid))
-                {
+	                var rec = new ServerSettings.BanRecord()
+	                {
+	                    BannedGUID = guid,
+	                    BannedIP = userToBan.IPAddress,
+	                    BannedName = ban_name,
+	                    Expires = DateTime.Now.AddDays(days),
+	                    Why = "Ban by console",
+	                    WhoBy = "Console",
+	                    When = DateTime.Now,
+	                };
+	
+	                settings.bans.Add(rec);
+	                ServerSettings.saveBans(settings);
+	
                     DbCommand cmd = universeDB.CreateCommand();
                     string sql = "UPDATE kmpPlayer SET Guid = @newGuid WHERE Guid = @guid;";
                     cmd.Parameters.AddWithValue("newGuid", Guid.NewGuid());
@@ -652,8 +651,8 @@ namespace KMPServer
                     cmd.CommandText = sql;
                     cmd.ExecuteNonQuery();
                     cmd.Dispose();
-                    Log.Info("Player '{0}' and all known aliases banned from server permanently. Use /unregister to allow this user to reconnect.", ban_name);
-                }
+                    Log.Info("Player '{0}' and all known aliases banned from server for {1} days. Edit KMPBans.txt or /unregister to allow this user to reconnect.", ban_name, days);
+				}
                 else
                 {
                     Log.Info("Failed to locate player {0}.", ban_name);
@@ -747,19 +746,18 @@ namespace KMPServer
             stop = true;
             if (parts[0] == "/quit")
                 quit = true;
-            //Disconnect all clients
+            //Disconnect all clients, no need to clean them all up since we're shutting down anyway
             foreach (var c in clients.ToList())
             {
                 disconnectClient(c, "Server is shutting down");
             }
-            //No need to clean them all up, we're shutting down anyway
             autoDekesslerTimer.Dispose();
         }
 
         //Registers the specified username to the server
         private void registerServerCommand(String[] parts)
         {
-            String[] args = parts.Skip(1).ToArray();
+            String[] args = parts[1].Split(' ');
             if (args.Length == 2)
             {
                 try
@@ -801,39 +799,36 @@ namespace KMPServer
         }
 
         //Updates the specified username GUID
-        private void updateServerCommand(String input)
+        private void updateServerCommand(String[] parts)
         {
-            if (input.Length > 8 && input.Substring(0, 8) == "/update ")
+            String[] args = parts[1].Split(' ');
+            if (args.Length == 2)
             {
-                String[] args = input.Substring(8, input.Length - 8).Split(' ');
-                if (args.Length == 2)
+                try
                 {
-                    try
-                    {
-                        Guid guid = new Guid(args[1]);
-                        String username_lower = args[0].ToLower();
-                        DbCommand cmd = universeDB.CreateCommand();
-                        string sql = "UPDATE kmpPlayer SET Name=@username, Guid=@guid WHERE Name LIKE @username OR Guid = @guid;";
-                        cmd.CommandText = sql;
-                        cmd.Parameters.AddWithValue("username", username_lower);
-                        cmd.Parameters.AddWithValue("guid", guid);
-                        cmd.ExecuteNonQuery();
-                        cmd.Dispose();
-                        Log.Info("Updated roster with player {0} and token {1}.", args[0], args[1]);
-                    }
-                    catch (FormatException)
-                    {
-                        Log.Error("Supplied token is invalid.");
-                    }
-                    catch (Exception)
-                    {
-                        Log.Error("Update failed, possibly due to a malformed /update command.");
-                    }
+                    Guid guid = new Guid(args[1]);
+                    String username_lower = args[0].ToLower();
+                    DbCommand cmd = universeDB.CreateCommand();
+                    string sql = "UPDATE kmpPlayer SET Name=@username, Guid=@guid WHERE Name LIKE @username OR Guid = @guid;";
+                    cmd.CommandText = sql;
+                    cmd.Parameters.AddWithValue("username", username_lower);
+                    cmd.Parameters.AddWithValue("guid", guid);
+                    cmd.ExecuteNonQuery();
+                    cmd.Dispose();
+                    Log.Info("Updated roster with player {0} and token {1}.", args[0], args[1]);
                 }
-                else
+                catch (FormatException)
                 {
-                    Log.Info("Could not parse update command. Format is \"/update <username> <token>\"");
+                    Log.Error("Supplied token is invalid.");
                 }
+                catch (Exception)
+                {
+                    Log.Error("Update failed, possibly due to a malformed /update command.");
+                }
+            }
+            else
+            {
+                Log.Info("Could not parse update command. Format is \"/update <username> <token>\"");
             }
         }
 
@@ -867,9 +862,9 @@ namespace KMPServer
         private void dekesslerServerCommand(String[] parts)
         {
             int minsToKeep = 30;
-            if (parts.Length >= 2)
+            if (parts.Length == 2)
             {
-                String[] args = parts.Skip(1).ToArray();
+                String[] args = parts[1].Split(' ');
                 if (args.Length == 1)
                     minsToKeep = Convert.ToInt32(args[0]);
                 else
