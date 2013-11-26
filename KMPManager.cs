@@ -3022,6 +3022,7 @@ namespace KMP
 						CheatOptions.InfiniteRCS = false;
 					if (CheatOptions.NoCrashDamage == true)
 						CheatOptions.NoCrashDamage = false;
+					Destroy(FindObjectOfType(typeof(DebugToolbar)));
 				}
 
                 //Find an instance of the game's RenderingManager
