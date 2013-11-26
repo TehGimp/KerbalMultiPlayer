@@ -2754,8 +2754,9 @@ namespace KMPServer
                         client.queueOutgoingMessage(message_bytes);
                 }
                 else if (!secondaryUpdate
-                     && firstSubspaceIsPresentOrFutureOfSecondSubspace(client.currentSubspaceID, cl.currentSubspaceID)
-                     && !client.warping && !cl.warping && client.lastTick != -1d)
+						&& !client.warping && !cl.warping
+				     	&& client.lastTick != -1d
+                     	&& firstSubspaceIsPresentOrFutureOfSecondSubspace(client.currentSubspaceID, cl.currentSubspaceID))
                 {
                     client.queueOutgoingMessage(past_message_bytes);
                 }

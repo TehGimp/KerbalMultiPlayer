@@ -162,6 +162,7 @@ namespace KMP
 		private int chatMessagesWaiting = 0;
 		private Vessel lastEVAVessel = null;
 		private bool showServerSync = false;
+		private bool inGameSyncing = false;
 
 		private bool configRead = false;
 
@@ -254,6 +255,8 @@ namespace KMP
 			{
 				if (HighLogic.LoadedScene == GameScenes.LOADING || !gameRunning)
 					return; //Don't do anything while the game is loading or not in KMP game
+				
+				if (syncing) ScreenMessages.PostScreenMessage("Synchronizing universe, please wait...",1f,ScreenMessageStyle.UPPER_CENTER);
 				
 				if (!isInFlight && HighLogic.LoadedScene == GameScenes.TRACKSTATION)
 				{
@@ -1370,7 +1373,7 @@ namespace KMP
 					KMPClientMain.DebugLog("Killing vessel immediately: " + vessel.id);
 					vessel.Die();
 					FlightGlobals.Vessels.Remove(vessel);
-					destroyVesselOnNextUpdate(vessel);
+					StartCoroutine(destroyVesselOnNextUpdate(vessel));
 				} else StartCoroutine(killVesselOnNextUpdate(vessel));
 			}
 		}
@@ -1383,7 +1386,7 @@ namespace KMP
 				KMPClientMain.DebugLog("Killing vessel");
 				vessel.Die();
 				FlightGlobals.Vessels.Remove(vessel);
-				destroyVesselOnNextUpdate(vessel);
+				StartCoroutine(destroyVesselOnNextUpdate(vessel));
 			}
 		}
 		
@@ -1401,10 +1404,10 @@ namespace KMP
 		{
 			yield return new WaitForEndOfFrame();
 			KMPClientMain.DebugLog("sending subspace sync request to subspace " + subspace);
-			if (!docking) writePluginUpdate();
+			if (!syncing) inGameSyncing = true;
+			syncing = true;
 			byte[] update_bytes = KMPCommon.intToBytes(subspace);
 			enqueuePluginInteropMessage(KMPCommon.PluginInteropMessageID.SSYNC, update_bytes);
-			showServerSync = false;
 		}
 		
 		private IEnumerator<WaitForEndOfFrame> shareScreenshot()
@@ -2204,6 +2207,7 @@ namespace KMP
 		private void addRemoteVessel(ProtoVessel protovessel, Guid vessel_id, KMPVessel kvessel = null, KMPVesselUpdate update = null, double distance = 501d)
 		{
 			if (vessel_id == FlightGlobals.ActiveVessel.id && (serverVessels_InUse.ContainsKey(vessel_id) ? !serverVessels_InUse.ContainsKey(vessel_id) : false)) return;
+			if (serverVessels_LoadDelay.ContainsKey(vessel_id) ? serverVessels_LoadDelay[vessel_id] < UnityEngine.Time.realtimeSinceStartup : false) return;
 			KMPClientMain.DebugLog("addRemoteVessel");
 			Vector3 newWorldPos = Vector3.zero, newOrbitVel = Vector3.zero;
 			bool setTarget = false, wasLoaded = false, wasActive = false;
@@ -2294,7 +2298,7 @@ namespace KMP
 						}
 					}
 				}
-				if (vessels.ContainsKey(vessel_id.ToString()) && (serverVessels_LoadDelay.ContainsKey(vessel_id) ? serverVessels_LoadDelay[vessel_id] < UnityEngine.Time.realtimeSinceStartup : true))
+				if (vessels.ContainsKey(vessel_id.ToString()))
 				{
 					if (wasActive)
 					{
@@ -2318,6 +2322,7 @@ namespace KMP
 					{
 						KMPClientMain.DebugLog("Killing extant vessel");
 						oldVessel.Die();
+						StartCoroutine(destroyVesselOnNextUpdate(oldVessel));
 					}
 					StartCoroutine(loadProtovessel(oldVessel, newWorldPos, newOrbitVel, wasLoaded, wasActive, setTarget, protovessel, vessel_id, kvessel, update, distance));
 				}
@@ -2353,6 +2358,7 @@ namespace KMP
 				serverVessels_PartCounts[vessel_id] = created_vessel.Parts.Count;
 				serverVessels_Parts[vessel_id] = new List<Part>();
 				serverVessels_Parts[vessel_id].AddRange(created_vessel.Parts);
+				serverVessels_LoadDelay[vessel_id] = UnityEngine.Time.realtimeSinceStartup + 5f;
 				
 				if (created_vessel.vesselType != VesselType.Flag && created_vessel.vesselType != VesselType.EVA)
 				{
@@ -2885,7 +2891,7 @@ namespace KMP
 			if (!docking) //Don't worry about destruction events during docking, could be other player updating us
 			{
 				//Mark vessel to stay unloaded for a bit, to help prevent any performance impact from vessels that are still in-universe, but that can't load under current conditions
-				serverVessels_LoadDelay[vessel.id] = UnityEngine.Time.realtimeSinceStartup + 10f;
+				serverVessels_LoadDelay[data.id] = UnityEngine.Time.realtimeSinceStartup + 10f;
 				
 				if (serverVessels_RemoteID.ContainsKey(data.id) //Send destroy message to server if  is a remote vessel
 			    	&& ((isInFlight && data.id == FlightGlobals.ActiveVessel.id) //and is in-flight/ours OR
@@ -2938,7 +2944,6 @@ namespace KMP
 				GameEvents.onFlightReady.Add(this.OnFlightReady);
 				MapView.EnterMapView();
 				MapView.MapCamera.SetTarget("Kerbin");
-				ScreenMessages.PostScreenMessage("Synchronizing universe, please wait...",30f,ScreenMessageStyle.UPPER_CENTER);
 				StartCoroutine(sendSubspaceSyncRequest(-1,true));
 				Invoke("handleSyncTimeout",55f);
 				docking = false;
@@ -2964,17 +2969,23 @@ namespace KMP
 		
 		public void HandleSyncCompleted()
 		{
-			if (!forceQuit && syncing) Invoke("finishSync",5f);
+			if (!forceQuit && syncing && !inGameSyncing && gameRunning) Invoke("finishSync",5f);
+			else
+			{
+				syncing = false;
+				inGameSyncing = false;
+				showServerSync = false;
+			}
 		}
 		
 		private void handleSyncTimeout()
 		{
-			if (!forceQuit && syncing) Invoke("finishSync",5f);
+			if (!forceQuit && syncing && gameRunning) Invoke("finishSync",5f);
 		}
 		
 		private void finishSync()
 		{
-			if (!forceQuit && syncing)
+			if (!forceQuit && syncing && gameRunning)
 			{
 				ScreenMessages.PostScreenMessage("Universe synchronized",1f,ScreenMessageStyle.UPPER_RIGHT);
 				StartCoroutine(returnToSpaceCenter());
