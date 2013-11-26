@@ -1610,6 +1610,7 @@ namespace KMP
 				else
 					playerStatus.Add(status.ownerName, status);
 			}
+			
 			if (!vessel_update.id.Equals(Guid.Empty) && !docking)
 			{
 				//Update vessel privacy locks
@@ -1627,10 +1628,12 @@ namespace KMP
 					}
 					return;
 				}
-				
-				//Store protovessel if included
-				if (vessel_update.getProtoVesselNode() != null) serverVessels_ProtoVessels[vessel_update.id] = vessel_update.getProtoVesselNode();
 			}
+			
+			//Store protovessel if included
+			if (vessel_update.getProtoVesselNode() != null) serverVessels_ProtoVessels[vessel_update.id] = vessel_update.getProtoVesselNode();
+			
+			//Apply update if able
 			if (isInFlightOrTracking)
 			{
 				if (vessel_update.relativeTo == Guid.Empty && (vessel_update.id != FlightGlobals.ActiveVessel.id || (serverVessels_InUse[vessel_update.id] || (serverVessels_IsPrivate[vessel_update.id] && !serverVessels_IsMine[vessel_update.id]))))

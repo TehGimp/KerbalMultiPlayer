@@ -2713,6 +2713,7 @@ namespace KMPServer
                                     cmd.Parameters.AddWithValue("kmpID", vessel_update.kmpID);
                                     cmd.ExecuteNonQuery();
                                     cmd.Dispose();
+									sendVesselStatusUpdateToAll(cl, vessel_update.kmpID);
                                 }
                                 //No one else is controlling it, so store the update
                                 storeVesselUpdate(vessel_update, cl, true);
