@@ -18,13 +18,13 @@ public class KMPCommon
     }
 
 	public const Int32 FILE_FORMAT_VERSION = 10000;
-	public const Int32 NET_PROTOCOL_VERSION = 10005;
+	public const Int32 NET_PROTOCOL_VERSION = 10006;
 	public const int MSG_HEADER_LENGTH = 8;
     public const int MAX_MESSAGE_SIZE = 1024 * 1024; //Enough room for a max-size craft file
 	public const int MESSAGE_COMPRESSION_THRESHOLD = 4096;
 	public const int INTEROP_MSG_HEADER_LENGTH = 8;
 
-	public const int SERVER_SETTINGS_LENGTH = 21;
+	public const int SERVER_SETTINGS_LENGTH = 22;
 
 	public const int MAX_CRAFT_FILE_BYTES = 1024 * 1024;
 

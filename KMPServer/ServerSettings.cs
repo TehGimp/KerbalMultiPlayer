@@ -40,6 +40,7 @@ namespace KMPServer
 			public bool autoHost = false;
 			public bool saveScreenshots = true;
 			public bool hostIPv6 = false;
+      public bool cheatsEnabled = true;
 			public String joinMessage = String.Empty;
 			public String serverInfo = String.Empty;
 			public String serverMotd = String.Empty;
