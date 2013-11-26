@@ -2882,16 +2882,21 @@ namespace KMP
 		
 		private void OnVesselDestroy(Vessel data)
 		{
-			if (!docking //Send destroy message to server if not currently in docking event
-			    && serverVessels_RemoteID.ContainsKey(data.id) //and is a remote vessel
-			    && ((isInFlight && data.id == FlightGlobals.ActiveVessel.id) //and is in-flight/ours OR
+			if (!docking) //Don't worry about destruction events during docking, could be other player updating us
+			{
+				//Mark vessel to stay unloaded for a bit, to help prevent any performance impact from vessels that are still in-universe, but that can't load under current conditions
+				serverVessels_LoadDelay[vessel.id] = UnityEngine.Time.realtimeSinceStartup + 10f;
+				
+				if (serverVessels_RemoteID.ContainsKey(data.id) //Send destroy message to server if  is a remote vessel
+			    	&& ((isInFlight && data.id == FlightGlobals.ActiveVessel.id) //and is in-flight/ours OR
 			    	|| (HighLogic.LoadedScene == GameScenes.TRACKSTATION //still at trackstation
 			    			&& activeTermination //and activeTermination is set
 			    			&& (data.vesselType == VesselType.Debris || (serverVessels_IsMine.ContainsKey(data.id) ? serverVessels_IsMine[data.id] : true))))) //and target is debris or owned vessel
-			{
-				activeTermination = false;
-				KMPClientMain.DebugLog("Vessel destroyed: " + data.id);
-				sendRemoveVesselMessage(data);
+				{
+					activeTermination = false;
+					KMPClientMain.DebugLog("Vessel destroyed: " + data.id);
+					sendRemoveVesselMessage(data);
+				}
 			}
 		}
 			
