@@ -75,7 +75,7 @@ namespace KMP
 
 		public const double PRIVATE_VESSEL_MIN_TARGET_DISTANCE = 500d;
 		
-		public const ControlTypes BLOCK_ALL_CONTROLS = ControlTypes.ALL_SHIP_CONTROLS | ControlTypes.ACTIONS_ALL | ControlTypes.EVA_INPUT | ControlTypes.TIMEWARP | ControlTypes.MISC | ControlTypes.GROUPS_ALL | ControlTypes.CUSTOM_ACTION_GROUPS | ControlTypes.ACTIONS_EXTERNAL;
+		public const ControlTypes BLOCK_ALL_CONTROLS = ControlTypes.ALL_SHIP_CONTROLS | ControlTypes.ACTIONS_ALL | ControlTypes.EVA_INPUT | ControlTypes.TIMEWARP | ControlTypes.MISC | ControlTypes.GROUPS_ALL | ControlTypes.CUSTOM_ACTION_GROUPS;
 		
 		public UnicodeEncoding encoder = new UnicodeEncoding();
 
@@ -417,10 +417,16 @@ namespace KMP
 				//If in flight, check remote vessels, set position variable for docking-mode position updates
 				if (isInFlight)
 				{
-					if (controlsLocked) lockCrewGUI(); //Prevent EVA'ing crew
+					if (controlsLocked)
+					{
+						//Prevent EVA'ing crew
+						lockCrewGUI();
+						KMPClientMain.DebugLog("il: " + InputLockManager.PrintLockStack());
+					}
 					else 
 					{
-						InputLockManager.ClearControlLocks(); //Clear locks
+						//Clear locks
+						InputLockManager.ClearControlLocks();
 						unlockCrewGUI();
 					}
 					checkRemoteVesselIntegrity();
@@ -2987,17 +2993,17 @@ namespace KMP
 		
 		private void lockCrewGUI()
 		{
-//			foreach (Kerbal kerbal in KerbalGUIManager.ActiveCrew)
-//			{
-//				kerbal.state = Kerbal.States.NO_SIGNAL;
-//			}
 			FlightGlobals.ActiveVessel.DespawnCrew();
+			FlightEVA.fetch.DisableInterface();
 		}
 		
 		private void unlockCrewGUI()
 		{
 			if (FlightGlobals.ActiveVessel.GetVesselCrew().Count > 0 && KerbalGUIManager.ActiveCrew.Count < 1)
+			{
 			    FlightGlobals.ActiveVessel.SpawnCrew();
+				FlightEVA.fetch.EnableInterface();
+			}
 		}
 		
 		public void Update()
