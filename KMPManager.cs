@@ -890,6 +890,7 @@ namespace KMP
 
 			//Check for new/forced update
 			if (!forceFullUpdate //not a forced update
+			    && !docking //not in the middle of a docking event
 			    && (serverVessels_PartCounts.ContainsKey(vessel.id) ? 
 			    	(vessel.id != FlightGlobals.ActiveVessel.id || (UnityEngine.Time.realtimeSinceStartup - lastFullProtovesselUpdate) < FULL_PROTOVESSEL_UPDATE_TIMEOUT) //not active vessel, or full protovessel timeout hasn't passed
 			    	: false)) //have a serverVessels_PartCounts entry
@@ -2846,7 +2847,7 @@ namespace KMP
 				serverVessels_PartCounts[data.vessel.id] = 0;
 				serverVessels_ProtoVessels.Remove(data.vessel.id);
 			}
-			docking = false;
+			Invoke("setFinishDocking",1f);
 		}
 		
 		private void OnCrewOnEva(GameEvents.FromToAction<Part,Part> data)
