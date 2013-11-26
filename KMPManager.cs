@@ -2999,15 +2999,16 @@ namespace KMP
 				killedThisUpdate.Clear();
 				
 				if (FlightDriver.Pause) FlightDriver.SetPause(false);
-
-				if (CheatOptions.InfiniteFuel == true)
-					CheatOptions.InfiniteFuel = false;
-				if (CheatOptions.InfiniteEVAFuel == true)
-					CheatOptions.InfiniteEVAFuel = false;
-				if (CheatOptions.InfiniteRCS == true)
-					CheatOptions.InfiniteRCS = false;
-				if (CheatOptions.NoCrashDamage == true)
-					CheatOptions.NoCrashDamage = false;
+				if (KMPClientMain.cheatsEnabled == false) {
+					if (CheatOptions.InfiniteFuel == true)
+						CheatOptions.InfiniteFuel = false;
+					if (CheatOptions.InfiniteEVAFuel == true)
+						CheatOptions.InfiniteEVAFuel = false;
+					if (CheatOptions.InfiniteRCS == true)
+						CheatOptions.InfiniteRCS = false;
+					if (CheatOptions.NoCrashDamage == true)
+						CheatOptions.NoCrashDamage = false;
+				}
 
                 //Find an instance of the game's RenderingManager
                 if (renderManager == null)

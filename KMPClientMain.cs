@@ -174,6 +174,7 @@ namespace KMP
         public static KMPManager gameManager;
         public static long lastPing;
         public static bool debugging = true;
+        public static bool cheatsEnabled = false;
 
         public static List<string> partList = new List<string>();
 
@@ -622,6 +623,7 @@ namespace KMP
                                     inactiveShipsPerUpdate = data[20];
                                     lastClientDataChangeTime = stopwatch.ElapsedMilliseconds;
                                 }
+                                cheatsEnabled = Convert.ToBoolean(data[21]);
                             }
 
                             receivedSettings = true;

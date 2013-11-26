@@ -2956,7 +2956,7 @@ namespace KMPServer
             KMPCommon.intToBytes(settings.screenshotSettings.maxHeight).CopyTo(bytes, 8); //Screenshot height
 			BitConverter.GetBytes(settings.safetyBubbleRadius).CopyTo(bytes,12); //Safety bubble radius
             bytes[20] = inactiveShipsPerClient; //Inactive ships per client
-
+            bytes[21] = Convert.ToByte(settings.cheatsEnabled);
             return bytes;
         }
 
