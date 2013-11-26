@@ -144,8 +144,6 @@ namespace KMP
 		
 		public Dictionary<Guid, float> newFlags = new Dictionary<Guid, float>();
 		
-		public List<Guid> killedThisUpdate = new List<Guid>();
-		
 		private Krakensbane krakensbane;
 		
 		public double lastTick = 0d;
@@ -1358,14 +1356,14 @@ namespace KMP
 		
 		private void killVessel(Vessel vessel)
 		{
-			if (vessel !=null && !killedThisUpdate.Contains(vessel.id))
+			if (vessel !=null)
 			{
-				killedThisUpdate.Add(vessel.id);
 				if (!isInFlight)
 				{
 					KMPClientMain.DebugLog("Killing vessel immediately: " + vessel.id);
-					FlightGlobals.Vessels.Remove(vessel);
 					vessel.Die();
+					FlightGlobals.Vessels.Remove(vessel);
+					destroyVesselOnNextUpdate(vessel);
 				} else StartCoroutine(killVesselOnNextUpdate(vessel));
 			}
 		}
@@ -1377,6 +1375,18 @@ namespace KMP
 			{
 				KMPClientMain.DebugLog("Killing vessel");
 				vessel.Die();
+				FlightGlobals.Vessels.Remove(vessel);
+				destroyVesselOnNextUpdate(vessel);
+			}
+		}
+		
+		private IEnumerator<WaitForFixedUpdate> destroyVesselOnNextUpdate(Vessel vessel)
+		{
+			yield return new WaitForFixedUpdate();
+			if (vessel != null)
+			{
+				KMPClientMain.DebugLog("Cleaning up killed vessel");
+				Destroy(vessel);
 			}
 		}
 		
@@ -2995,8 +3005,6 @@ namespace KMP
 			try
 			{
 				if (!gameRunning) return;
-				
-				killedThisUpdate.Clear();
 				
 				if (FlightDriver.Pause) FlightDriver.SetPause(false);
 				if (KMPClientMain.cheatsEnabled == false) {
