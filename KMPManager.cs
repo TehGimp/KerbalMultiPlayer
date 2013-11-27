@@ -264,6 +264,7 @@ namespace KMP
 					{
 						ScreenSafeUIButton ssUIButton = (ScreenSafeUIButton) button;
 						if (ssUIButton.tooltip == "Terminate") ssUIButton.Unlock();
+						if (ssUIButton.tooltip == "Fly") ssUIButton.Unlock();
 					}
 				}
 				
