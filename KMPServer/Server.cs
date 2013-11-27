@@ -3168,17 +3168,26 @@ namespace KMPServer
 
         public void backupDatabase()
         {
+			
             Log.Info("Backing up old disk DB...");
             try
             {
+				if (!File.Exists(DB_FILE))
+					throw new IOException();
+
                 File.Copy(DB_FILE, DB_FILE + ".bak", true);
                 Log.Debug("Successfully backup up database.");
             }
+			catch (IOException e)
+			{
+				Log.Error("Database does not exist.  Recreating.");
+			}
             catch (Exception e)
             {
                 Log.Error("Failed to backup DB:");
                 Log.Error(e.Message);
             }
+			
 
 
             try
