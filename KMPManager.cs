@@ -813,7 +813,7 @@ namespace KMP
 							if (enumerator.Current.Value.loaded
 							    && (serverVessels_InUse.ContainsKey(enumerator.Current.Value.id) ? serverVessels_InUse[enumerator.Current.Value.id] : false)
 							    && FlightGlobals.ActiveVessel.altitude > 10000
-							    && (serverVessels_LoadDelay.ContainsKey(enumerator.Current.Value.id) ? (serverVessels_LoadDelay[enumerator.Current.Value.id] < UnityEngine.Time.realtimeSinceStartup) : true)
+							    //&& (serverVessels_LoadDelay.ContainsKey(enumerator.Current.Value.id) ? (serverVessels_LoadDelay[enumerator.Current.Value.id] < UnityEngine.Time.realtimeSinceStartup) : true)
 							    )
 							{
 								KMPVesselUpdate original_update = update;
@@ -1665,8 +1665,8 @@ namespace KMP
 								extant_vessel.vesselName = vessel_update.name;
 							}
 						}
-						if (serverVessels_LoadDelay.ContainsKey(vessel_update.id) ? (serverVessels_LoadDelay[vessel_update.id] < UnityEngine.Time.realtimeSinceStartup) : true)
-						{
+//						if (serverVessels_LoadDelay.ContainsKey(vessel_update.id) ? (serverVessels_LoadDelay[vessel_update.id] < UnityEngine.Time.realtimeSinceStartup) : true)
+//						{
 							float incomingDistance = 2500f;
 							if (!syncing && vessel.worldPosition != Vector3.zero && vessel_update.relTime == RelativeTime.PRESENT)
 								incomingDistance = Vector3.Distance(vessel.worldPosition,FlightGlobals.ship_position);
@@ -1901,11 +1901,11 @@ namespace KMP
 							{
 								KMPClientMain.DebugLog("Vessel update ignored: we are closer to target vessel or have recently updated from someone who was closer");
 							}
-						}
-						else
-						{
-							KMPClientMain.DebugLog("Vessel update ignored: target vessel on load delay list");
-						}
+//						}
+//						else
+//						{
+//							KMPClientMain.DebugLog("Vessel update ignored: target vessel on load delay list");
+//						}
 					}
 				}
 				else
@@ -1934,7 +1934,11 @@ namespace KMP
 							return;
 						}
 						//Try to negotiate our relative position with whatever sent this update
-						if (FlightGlobals.ActiveVessel.altitude > 10000d && vessel_update.relativeTo != Guid.Empty && Math.Abs(Planetarium.GetUniversalTime() - vessel_update.tick) < 4d && (serverVessels_LoadDelay.ContainsKey(vessel_update.id) ? serverVessels_LoadDelay[vessel_update.id] < UnityEngine.Time.realtimeSinceStartup : true))
+						if (FlightGlobals.ActiveVessel.altitude > 10000d
+						    && vessel_update.relativeTo != Guid.Empty
+						    && Math.Abs(Planetarium.GetUniversalTime() - vessel_update.tick) < 4d
+						    //&& (serverVessels_LoadDelay.ContainsKey(vessel_update.id) ? serverVessels_LoadDelay[vessel_update.id] < UnityEngine.Time.realtimeSinceStartup : true)
+						    )
 						{
 							Vessel updateFrom = FlightGlobals.Vessels.Find (v => v.id == vessel_update.relativeTo);
 							if (updateFrom != null && !updateFrom.loaded)
