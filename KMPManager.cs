@@ -1404,6 +1404,7 @@ namespace KMP
 		{
 			yield return new WaitForEndOfFrame();
 			KMPClientMain.DebugLog("sending subspace sync request to subspace " + subspace);
+			showServerSync = false;
 			if (!syncing) inGameSyncing = true;
 			syncing = true;
 			byte[] update_bytes = KMPCommon.intToBytes(subspace);
@@ -2972,10 +2973,15 @@ namespace KMP
 			if (!forceQuit && syncing && !inGameSyncing && gameRunning) Invoke("finishSync",5f);
 			else
 			{
-				syncing = false;
-				inGameSyncing = false;
-				showServerSync = false;
+				Invoke("finishInGameSync",1f);
 			}
+		}
+		
+		private void finishInGameSync()
+		{
+			syncing = false;
+			inGameSyncing = false;
+			showServerSync = false;
 		}
 		
 		private void handleSyncTimeout()
@@ -4086,7 +4092,7 @@ namespace KMP
 			{
 				String vessel_name = status.vesselName;
 				
-				if (status.currentSubspaceID > 0)
+				if (status.currentSubspaceID > 0 && !syncing)
 				{
 					showSync = true;
 					showServerSync = true;

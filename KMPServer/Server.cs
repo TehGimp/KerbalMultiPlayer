@@ -1572,7 +1572,7 @@ namespace KMPServer
                     DbCommand cmd = universeDB.CreateCommand();
                     string sql = "INSERT INTO kmpSubspace (LastTick) VALUES (@tick);";
                     cmd.CommandText = sql;
-                    cmd.Parameters.AddWithValue("tick", cl.lastTick.ToString("0.0").Replace(",", "."));
+                    cmd.Parameters.AddWithValue("tick", 0d);
                     cmd.ExecuteNonQuery();
                     cmd.Dispose();
                     cmd = universeDB.CreateCommand();
@@ -1594,8 +1594,8 @@ namespace KMPServer
                     }
 
                     cl.currentSubspaceID = newSubspace;
-                    cl.lastTick = -1d;
-                    sendSubspace(cl, false);
+                    sendSubspace(cl, false, false);
+					cl.lastTick = -1d;
                     cl.warping = false;
                     Log.Activity("{0} set to new subspace {1}", cl.username, newSubspace);
                 }
@@ -2032,11 +2032,11 @@ namespace KMPServer
             cmd.Dispose();
         }
 
-        private void sendSubspace(Client cl, bool excludeOwnActive = false)
+        private void sendSubspace(Client cl, bool excludeOwnActive = false, bool sendTimeSync = true)
         {
             if (!cl.warping)
             {
-                sendSubspaceSync(cl);
+                if (sendTimeSync) sendSubspaceSync(cl);
                 Log.Activity("Sending all vessels in current subspace for " + cl.username);
                 DbCommand cmd = universeDB.CreateCommand();
                 string sql = "SELECT  vu.UpdateMessage, v.ProtoVessel, v.Private, v.OwnerID" +
@@ -2097,7 +2097,11 @@ namespace KMPServer
             {
                 reader.Close();
             }
-            if (sendSync) sendSyncMessage(cl, tick);
+            if (sendSync)
+			{
+				sendSyncMessage(cl, tick);
+				cl.lastTick = tick;
+			}
         }
 
         private void sendServerSync(Client cl)
@@ -2746,7 +2750,7 @@ namespace KMPServer
             {
                 if ((client.currentSubspaceID == cl.currentSubspaceID)
                     && !client.warping && !cl.warping
-                    && client.lastTick != -1d)
+                    && (cl.activityLevel == Client.ActivityLevel.IN_GAME || cl.lastTick > 0d))
                 {
                     if (OwnerID == client.playerID)
                         client.queueOutgoingMessage(owned_message_bytes);
@@ -2755,16 +2759,16 @@ namespace KMPServer
                 }
                 else if (!secondaryUpdate
 						&& !client.warping && !cl.warping
-				     	&& client.lastTick != -1d
+				     	&& (cl.activityLevel == Client.ActivityLevel.IN_GAME || cl.lastTick > 0d)
                      	&& firstSubspaceIsPresentOrFutureOfSecondSubspace(client.currentSubspaceID, cl.currentSubspaceID))
                 {
                     client.queueOutgoingMessage(past_message_bytes);
                 }
-                else if (!secondaryUpdate && client.lastTick != -1d)
+                else if (!secondaryUpdate && (cl.activityLevel == Client.ActivityLevel.IN_GAME || cl.lastTick > 0d))
                 {
                     if (vessel_info != null)
                     {
-                        if (client.warping) vessel_info[1] = "Unknown due to warp";
+                        if (client.warping || cl.warping) vessel_info[1] = "Unknown due to warp";
                         else
                         {
                             vessel_info[1] = "In the future";
@@ -3266,7 +3270,9 @@ namespace KMPServer
             cmd.Parameters.AddWithValue("compSubspace", comparisonSubspace);
             compTime = Convert.ToDouble(cmd.ExecuteScalar());
             cmd.Dispose();
-
+			
+			if (compTime < 1d || refTime < 1d) return true;
+			
             return (compTime >= refTime);
         }
 
