@@ -195,30 +195,59 @@ namespace KMPServer
                         break;
 
 					case "/set":
-						if (parts.Length < 3)
+                        if (parts[1].Equals("help"))
+                        {
+                            Log.Info("ipBinding - The IP address the server should bind to. Defaults to binding to all available IPs." + Environment.NewLine);
+                            Log.Info("port - The port used for connecting to the server.");
+                            Log.Info("httpPort - The port used for viewing server information from a web browser.");
+                            Log.Info("httpBroadcast - ?"); // missing setting information
+                            Log.Info("maxClients - The maximum number of players that can be connected to the server simultaneously." + Environment.NewLine);
+                            Log.Info("updatesPerSecond - CHANGING THIS VALUE IS NOT RECOMMENDED - The number of updates that will be received from all clients combined per second. The higher you set this number, the more frequently clients will send updates. As the number of active clients increases, the frequency of updates will decrease to not exceed this many updates per second. " + Environment.NewLine + "WARNING: If this value is set too high then players will be more likely to be disconnected due to lag, while if it is set too low the gameplay experience will degrade significantly." + Environment.NewLine);
+                            Log.Info("screenshotInterval - The minimum time a client must wait after sharing a screenshot before they can share another one." + Environment.NewLine);
+                            Log.Info("autoRestart - If true, the server will attempt to restart after catching an unhandled exception." + Environment.NewLine);
+                            Log.Info("autoHost - If true, the server will start hosting immediately rather than requiring the admin to enter the 'H' command." + Environment.NewLine);
+                            Log.Info("saveScreenshots - If true, the server will save all screenshots to the KMPScreenshots folder." + Environment.NewLine);
+                            Log.Info("hostIPV6 - If true, the server will be listening on a IPv6 address." + Environment.NewLine);
+                            Log.Info("cheatsEnabled - If true, enable cheats." + Environment.NewLine);
+                            Log.Info("joinMessage - A message shown to players when they join the server." + Environment.NewLine);
+                            Log.Info("serverInfo - A message displayed to anyone viewing server information in a browser." + Environment.NewLine);
+                            Log.Info("serverMotd - A message displayed to users when they login to the server that can be changed while the server is running." + Environment.NewLine);
+                            Log.Info("serverRules - A message displayed to users when they ask to view the server's rules." + Environment.NewLine);
+                            Log.Info("totalInactiveShips - The maximum number of inactive ships in the server." + Environment.NewLine);
+                            Log.Info("LogLevel - Log verbosity. Choose from: Debug, Activity, Info, Notice, Warning, or Error" + Environment.NewLine);
+                            Log.Info("whitelisted - If true, enable whitelist." + Environment.NewLine);
+                            Log.Info("screenshotHeight - The height of screenshots took by players." + Environment.NewLine);
+                            Log.Info("screenshotWidth - The width of screenshots took by players." + Environment.NewLine);
+                            Log.Info("profanityFilter - Enable/disable the built-in profanity filter" + Environment.NewLine);
+                            Log.Info("safetyBubbleRadius - The radius of the 'safety cylinder' which prevents collisions near KSC." + Environment.NewLine);
+                            Log.Info("autoDekessler - If true, server will clean up all debris in 'autoDekesslerTime'." + Environment.NewLine);
+                            Log.Info("autoDekesslerTime - Time, in minutes, that the server will clean up all debris." + Environment.NewLine);
+                            Log.Info("profanityWords - Replaces the first word with the second." + Environment.NewLine);
+                        }
+						else if (parts.Length < 3)
 						{
 							Log.Info("Invalid usage. Usage is /set [key] [value]");
 						}
-						else
-						{
-							string val = String.Join(" ", parts.Skip(2).ToArray());
-							if (settings.Contains(parts[1]))
-							{
-								try
-								{
-									ServerSettings.modifySetting(settings, parts[1], val);
-									Log.Info("{0} changed to {1}", parts[1], val);
-									ServerSettings.writeToFile(settings);
-									Log.MinLogLevel = settings.LogLevel;
-								}
-								catch
-								{
-									Log.Info("{0} cannot be set to {1}", parts[1], val);
-								}
-							}
-							else
-								Log.Info("No key found for {0}", parts[1]);
-						}
+                        else
+                        {
+                            string val = String.Join(" ", parts.Skip(2).ToArray());
+                            if (settings.Contains(parts[1]))
+                            {
+                                try
+                                {
+                                    ServerSettings.modifySetting(settings, parts[1], val);
+                                    Log.Info("{0} changed to {1}", parts[1], val);
+                                    ServerSettings.writeToFile(settings);
+                                    Log.MinLogLevel = settings.LogLevel;
+                                }
+                                catch
+                                {
+                                    Log.Info("{0} cannot be set to {1}", parts[1], val);
+                                }
+                            }
+                            else
+                                Log.Info("No key found for {0}", parts[1]);
+                        }
 						break;
 
 					case "/start":
