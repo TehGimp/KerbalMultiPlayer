@@ -2194,12 +2194,6 @@ namespace KMPServer
                         sendTextMessage(cl, sb.ToString());
                         return;
                     }
-                    else if(message_lower == "!whereami")
-                    {
-                        String res = "Connected to: " + settings.serverInfo + " - ( " + settings.ipBinding + ":" + settings.port + " )";
-                        sendTextMessage(cl, res);
-                        return;
-                    }
                     else if (message_lower.Length > (KMPCommon.GET_CRAFT_COMMAND.Length + 1)
                         && message_lower.Substring(0, KMPCommon.GET_CRAFT_COMMAND.Length) == KMPCommon.GET_CRAFT_COMMAND)
                     {

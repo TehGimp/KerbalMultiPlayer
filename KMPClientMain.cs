@@ -811,6 +811,15 @@ namespace KMP
 						KMPChatDX.chatLineQueue.Clear();
 						handled = true;
 					}
+                    else if (line_lower == "!whereami")
+                    {
+                        handled = true;
+
+                        sb.Append("You are connected to: ");
+                        sb.Append(hostname);
+
+                        enqueuePluginChatMessage(sb.ToString());
+                    }
                     else if (line_lower == "!bubble")
                     {
                         if (gameManager.horizontalDistanceToSafetyBubbleEdge() < 1 || gameManager.verticalDistanceToSafetyBubbleEdge() < 1)
