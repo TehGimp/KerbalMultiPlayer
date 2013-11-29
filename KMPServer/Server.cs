@@ -460,6 +460,9 @@ namespace KMPServer
 					processCommand (input);
                 }
             }
+			catch (ArgumentOutOfRangeException)
+			{
+			}
             catch (ThreadAbortException)
             {
             }
