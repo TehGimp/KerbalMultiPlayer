@@ -43,7 +43,6 @@ namespace KMPServer
         public const int SLEEP_TIME = 10;
         public const int MAX_SCREENSHOT_COUNT = 10000;
         public const int UDP_ACK_THROTTLE = 1000;
-        public const int DATABASE_BACKUP_INTERVAL = 300000;
 
         public const float NOT_IN_FLIGHT_UPDATE_WEIGHT = 1.0f / 4.0f;
         public const int ACTIVITY_RESET_DELAY = 10000;
@@ -62,6 +61,7 @@ namespace KMPServer
 
         public object threadExceptionLock = new object();
         public static object consoleWriteLock = new object();
+		public static object databaseVacuumLock = new object();
 
         public Thread listenThread;
         public Thread commandThread;
@@ -93,7 +93,9 @@ namespace KMPServer
         private Dictionary<Guid, long> recentlyDestroyed = new Dictionary<Guid, long>();
 
 		private Boolean bHandleCommandsRunning = true;
-
+		
+		private int uncleanedBackups = 0;
+		
         public long currentMillisecond
         {
             get
@@ -359,7 +361,7 @@ namespace KMPServer
                     }
                 }
 
-                if (currentMillisecond - last_backup_time > DATABASE_BACKUP_INTERVAL && (activeClientCount() > 0 || !backedUpSinceEmpty))
+                if (currentMillisecond - last_backup_time > (settings.backupInterval * 60000) && (activeClientCount() > 0 || !backedUpSinceEmpty))
                 {
                     if (activeClientCount() <= 0)
                     {
@@ -1472,66 +1474,69 @@ namespace KMPServer
 
         public void handleMessage(Client cl, KMPCommon.ClientMessageID id, byte[] data)
         {
-            if (!cl.isValid)
-            { return; }
-
-            if (!AllowNullDataMessages.Contains(id) && data == null) { return; }
-            if (!AllowClientNotReadyMessages.Contains(id) && !cl.isReady) { return; }
-
-            try
-            {
-                //Log.Info("Message id: " + id.ToString() + " from client: " + cl + " data: " + (data != null ? data.Length.ToString() : "0"));
-
-                UnicodeEncoding encoder = new UnicodeEncoding();
-
-                switch (id)
-                {
-                    case KMPCommon.ClientMessageID.HANDSHAKE:
-                        HandleHandshake(cl, data, encoder);
-                        break;
-                    case KMPCommon.ClientMessageID.PRIMARY_PLUGIN_UPDATE:
-                    case KMPCommon.ClientMessageID.SECONDARY_PLUGIN_UPDATE:
-                        HandlePluginUpdate(cl, id, data);
-                        break;
-                    case KMPCommon.ClientMessageID.TEXT_MESSAGE:
-                        handleClientTextMessage(cl, encoder.GetString(data, 0, data.Length));
-                        break;
-                    case KMPCommon.ClientMessageID.SCREEN_WATCH_PLAYER:
-                        HandleScreenWatchPlayer(cl, data, encoder);
-                        break;
-                    case KMPCommon.ClientMessageID.SCREENSHOT_SHARE:
-                        HandleScreenshotShare(cl, data);
-                        break;
-                    case KMPCommon.ClientMessageID.CONNECTION_END:
-                        HandleConnectionEnd(cl, data, encoder);
-                        break;
-                    case KMPCommon.ClientMessageID.SHARE_CRAFT_FILE:
-                        HandleShareCraftFile(cl, data, encoder);
-                        break;
-                    case KMPCommon.ClientMessageID.ACTIVITY_UPDATE_IN_FLIGHT:
-                        HandleActivityUpdateInFlight(cl);
-                        break;
-                    case KMPCommon.ClientMessageID.ACTIVITY_UPDATE_IN_GAME:
-                        HandleActivityUpdateInGame(cl);
-                        break;
-                    case KMPCommon.ClientMessageID.PING:
-                        cl.queueOutgoingMessage(KMPCommon.ServerMessageID.PING_REPLY, null);
-                        break;
-                    case KMPCommon.ClientMessageID.UDP_PROBE:
-                        HandleUDPProbe(cl, data);
-                        break;
-                    case KMPCommon.ClientMessageID.WARPING:
-                        HandleWarping(cl, data);
-                        break;
-                    case KMPCommon.ClientMessageID.SSYNC:
-                        HandleSSync(cl, data);
-                        break;
-                }
-            }
-            catch (NullReferenceException)
-            {
-
-            }
+			lock (databaseVacuumLock)
+			{
+	            if (!cl.isValid)
+	            { return; }
+	
+	            if (!AllowNullDataMessages.Contains(id) && data == null) { return; }
+	            if (!AllowClientNotReadyMessages.Contains(id) && !cl.isReady) { return; }
+	
+	            try
+	            {
+	                //Log.Info("Message id: " + id.ToString() + " from client: " + cl + " data: " + (data != null ? data.Length.ToString() : "0"));
+	
+	                UnicodeEncoding encoder = new UnicodeEncoding();
+	
+	                switch (id)
+	                {
+	                    case KMPCommon.ClientMessageID.HANDSHAKE:
+	                        HandleHandshake(cl, data, encoder);
+	                        break;
+	                    case KMPCommon.ClientMessageID.PRIMARY_PLUGIN_UPDATE:
+	                    case KMPCommon.ClientMessageID.SECONDARY_PLUGIN_UPDATE:
+	                        HandlePluginUpdate(cl, id, data);
+	                        break;
+	                    case KMPCommon.ClientMessageID.TEXT_MESSAGE:
+	                        handleClientTextMessage(cl, encoder.GetString(data, 0, data.Length));
+	                        break;
+	                    case KMPCommon.ClientMessageID.SCREEN_WATCH_PLAYER:
+	                        HandleScreenWatchPlayer(cl, data, encoder);
+	                        break;
+	                    case KMPCommon.ClientMessageID.SCREENSHOT_SHARE:
+	                        HandleScreenshotShare(cl, data);
+	                        break;
+	                    case KMPCommon.ClientMessageID.CONNECTION_END:
+	                        HandleConnectionEnd(cl, data, encoder);
+	                        break;
+	                    case KMPCommon.ClientMessageID.SHARE_CRAFT_FILE:
+	                        HandleShareCraftFile(cl, data, encoder);
+	                        break;
+	                    case KMPCommon.ClientMessageID.ACTIVITY_UPDATE_IN_FLIGHT:
+	                        HandleActivityUpdateInFlight(cl);
+	                        break;
+	                    case KMPCommon.ClientMessageID.ACTIVITY_UPDATE_IN_GAME:
+	                        HandleActivityUpdateInGame(cl);
+	                        break;
+	                    case KMPCommon.ClientMessageID.PING:
+	                        cl.queueOutgoingMessage(KMPCommon.ServerMessageID.PING_REPLY, null);
+	                        break;
+	                    case KMPCommon.ClientMessageID.UDP_PROBE:
+	                        HandleUDPProbe(cl, data);
+	                        break;
+	                    case KMPCommon.ClientMessageID.WARPING:
+	                        HandleWarping(cl, data);
+	                        break;
+	                    case KMPCommon.ClientMessageID.SSYNC:
+	                        HandleSSync(cl, data);
+	                        break;
+	                }
+	            }
+	            catch (NullReferenceException)
+	            {
+	
+	            }
+			}
         }
 
         private void HandleSSync(Client cl, byte[] data)
@@ -3172,7 +3177,7 @@ namespace KMPServer
                 File.Copy(DB_FILE, DB_FILE + ".bak", true);
                 Log.Debug("Successfully backup up database.");
             }
-			catch (IOException e)
+			catch (IOException)
 			{
 				Log.Error("Database does not exist.  Recreating.");
 			}
@@ -3186,6 +3191,8 @@ namespace KMPServer
 
             try
             {
+				if (uncleanedBackups > settings.maxDirtyBackups) cleanDatabase();
+				else uncleanedBackups++;
                 saveDatabaseToDisk();
                 Log.Info("Universe saved to disk.");
             }
@@ -3231,21 +3238,56 @@ namespace KMPServer
             try
             {
                 Log.Info("Attempting to optimize database...");
-
-                DbCommand cmd = universeDB.CreateCommand();
-                string sql = "DELETE FROM kmpSubspace WHERE LastTick < (SELECT MIN(s.LastTick) FROM kmpSubspace s" +
-                    " INNER JOIN kmpVessel v ON v.Subspace = s.ID);" +
-                    " DELETE FROM kmpVesselUpdateHistory;" +
-                    " DELETE FROM kmpVesselUpdate WHERE ID IN (SELECT ID FROM kmpVesselUpdate vu" +
-                    " WHERE Subspace != (SELECT ID FROM kmpSubspace WHERE LastTick = (SELECT MAX(LastTick) FROM kmpSubspace" +
-                    " WHERE ID IN (SELECT Subspace FROM kmpVesselUpdate WHERE Guid = vu.Guid))));";
-                cmd.CommandText = sql;
-                cmd.ExecuteNonQuery();
-
-                cmd = universeDB.CreateCommand();
-                sql = "VACUUM;";
-                cmd.CommandText = sql;
-                cmd.ExecuteNonQuery();
+				
+				uncleanedBackups = 0;
+				
+				if (activeClientCount() > 0)
+				{
+					//Get the oldest tick for an active player
+					double earliestClearTick = -1d;
+					
+					foreach (Client client in clients)
+					{
+						DbCommand cmd = universeDB.CreateCommand();
+						string sql = "SELECT LastTick FROM kmpSubspace WHERE ID = @subspace;";
+						cmd.Parameters.AddWithValue("subspace", client.currentSubspaceID);
+		                cmd.CommandText = sql;
+		                double clientTick = Convert.ToDouble(cmd.ExecuteScalar());
+						if (earliestClearTick < 0d || clientTick < earliestClearTick) earliestClearTick = clientTick;
+					}
+					
+					//Clear anything before that
+					DbCommand cmd2 = universeDB.CreateCommand();
+	                string sql2 = "DELETE FROM kmpSubspace WHERE LastTick < @minTick AND LastTick < (SELECT MIN(s.LastTick) FROM kmpSubspace s" +
+	                    " INNER JOIN kmpVessel v ON v.Subspace = s.ID);" +
+	                    " DELETE FROM kmpVesselUpdateHistory WHERE Tick < @minTick;" +
+	                    " DELETE FROM kmpVesselUpdate WHERE ID IN (SELECT ID FROM kmpVesselUpdate vu" +
+	                    " WHERE Subspace IN (SELECT ID FROM kmpSubspace WHERE LastTick < @minTick));";
+					cmd2.Parameters.AddWithValue("minTick", earliestClearTick);
+	                cmd2.CommandText = sql2;
+	                cmd2.ExecuteNonQuery();
+				}
+				else
+				{
+					//Clear all but the latest subspace
+	                DbCommand cmd = universeDB.CreateCommand();
+	                string sql = "DELETE FROM kmpSubspace WHERE LastTick < (SELECT MIN(s.LastTick) FROM kmpSubspace s" +
+	                    " INNER JOIN kmpVessel v ON v.Subspace = s.ID);" +
+	                    " DELETE FROM kmpVesselUpdateHistory;" +
+	                    " DELETE FROM kmpVesselUpdate WHERE ID IN (SELECT ID FROM kmpVesselUpdate vu" +
+	                    " WHERE Subspace != (SELECT ID FROM kmpSubspace WHERE LastTick = (SELECT MAX(LastTick) FROM kmpSubspace" +
+	                    " WHERE ID IN (SELECT Subspace FROM kmpVesselUpdate WHERE Guid = vu.Guid))));";
+	                cmd.CommandText = sql;
+	                cmd.ExecuteNonQuery();
+				}
+				
+				lock (databaseVacuumLock)
+				{
+	                DbCommand cmd = universeDB.CreateCommand();
+	                string sql = "VACUUM;";
+	                cmd.CommandText = sql;
+	                cmd.ExecuteNonQuery();
+				}
 
                 Log.Info("Optimized in-memory universe database.");
             }

@@ -34,13 +34,15 @@ namespace KMPServer
 			public int httpPort = 8081;
 			public bool httpBroadcast = true;
 			public int maxClients = 8;
-			public float updatesPerSecond = 60;
 			public int screenshotInterval = 3000;
 			public bool autoRestart = false;
 			public bool autoHost = false;
 			public bool saveScreenshots = true;
 			public bool hostIPv6 = false;
-      public bool cheatsEnabled = true;
+			public bool cheatsEnabled = true;
+			public int backupInterval = 5;
+			public int maxDirtyBackups = 36;
+			public float updatesPerSecond = 60;
 			public String joinMessage = String.Empty;
 			public String serverInfo = String.Empty;
 			public String serverMotd = String.Empty;

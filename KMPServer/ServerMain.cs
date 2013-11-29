@@ -203,13 +203,16 @@ namespace KMPServer
                             Log.Info("httpPort - The port used for viewing server information from a web browser.");
                             Log.Info("httpBroadcast - ?"); // missing setting information
                             Log.Info("maxClients - The maximum number of players that can be connected to the server simultaneously." + Environment.NewLine);
-                            Log.Info("updatesPerSecond - CHANGING THIS VALUE IS NOT RECOMMENDED - The number of updates that will be received from all clients combined per second. The higher you set this number, the more frequently clients will send updates. As the number of active clients increases, the frequency of updates will decrease to not exceed this many updates per second. " + Environment.NewLine + "WARNING: If this value is set too high then players will be more likely to be disconnected due to lag, while if it is set too low the gameplay experience will degrade significantly." + Environment.NewLine);
+                            
                             Log.Info("screenshotInterval - The minimum time a client must wait after sharing a screenshot before they can share another one." + Environment.NewLine);
                             Log.Info("autoRestart - If true, the server will attempt to restart after catching an unhandled exception." + Environment.NewLine);
                             Log.Info("autoHost - If true, the server will start hosting immediately rather than requiring the admin to enter the 'H' command." + Environment.NewLine);
                             Log.Info("saveScreenshots - If true, the server will save all screenshots to the KMPScreenshots folder." + Environment.NewLine);
                             Log.Info("hostIPV6 - If true, the server will be listening on a IPv6 address." + Environment.NewLine);
                             Log.Info("cheatsEnabled - If true, enable cheats." + Environment.NewLine);
+							Log.Info("backupInterval - Time, in minutes, between universe database backups." + Environment.NewLine);
+							Log.Info("maxDirtyBackups - The maximum number of backups the server will perform before forcing database optimization (which otherwise happens only when the server is empty)." + Environment.NewLine);
+							Log.Info("updatesPerSecond - CHANGING THIS VALUE IS NOT RECOMMENDED - The number of updates that will be received from all clients combined per second. The higher you set this number, the more frequently clients will send updates. As the number of active clients increases, the frequency of updates will decrease to not exceed this many updates per second. " + Environment.NewLine + "WARNING: If this value is set too high then players will be more likely to be disconnected due to lag, while if it is set too low the gameplay experience will degrade significantly." + Environment.NewLine);
                             Log.Info("joinMessage - A message shown to players when they join the server." + Environment.NewLine);
                             Log.Info("serverInfo - A message displayed to anyone viewing server information in a browser." + Environment.NewLine);
                             Log.Info("serverMotd - A message displayed to users when they login to the server that can be changed while the server is running." + Environment.NewLine);
