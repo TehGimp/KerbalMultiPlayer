@@ -110,6 +110,7 @@ namespace KMP
 		private bool mappingScreenshotKey = false;
         private bool mappingChatKey = false;
         private bool mappingChatDXToggleKey = false;
+		private bool isGameHUDHidden = false;
 
         PlatformID platform;
 		
@@ -3063,9 +3064,13 @@ namespace KMP
                 //Find an instance of the game's PlanetariumCamera
                 if (planetariumCam == null)
                     planetariumCam = (PlanetariumCamera)FindObjectOfType(typeof(PlanetariumCamera));
+				if (Input.GetKeyDown(KeyCode.F2))
+				{
+					isGameHUDHidden = !isGameHUDHidden;
+				}
 
-                if (Input.GetKeyDown(KMPGlobalSettings.instance.guiToggleKey) || Input.GetKeyDown(KeyCode.F2))
-                    KMPInfoDisplay.infoDisplayActive = !KMPInfoDisplay.infoDisplayActive;
+				if (Input.GetKeyDown(KMPGlobalSettings.instance.guiToggleKey) && isGameHUDHidden == false)
+					KMPInfoDisplay.infoDisplayActive = !KMPInfoDisplay.infoDisplayActive;
 
                 if (Input.GetKeyDown(KMPGlobalSettings.instance.screenshotKey))
                     StartCoroutine(shareScreenshot());
@@ -3073,9 +3078,9 @@ namespace KMP
                 if (Input.GetKeyDown(KMPGlobalSettings.instance.chatTalkKey))
                     KMPChatDX.showInput = true;
 
-                if (Input.GetKeyDown(KMPGlobalSettings.instance.chatHideKey) || Input.GetKeyDown(KeyCode.F2))
+                if (Input.GetKeyDown(KMPGlobalSettings.instance.chatHideKey) && isGameHUDHidden == false)
                 {
-                    KMPGlobalSettings.instance.chatDXWindowEnabled = !KMPGlobalSettings.instance.chatDXWindowEnabled;
+		    KMPGlobalSettings.instance.chatDXWindowEnabled = !KMPGlobalSettings.instance.chatDXWindowEnabled;
                     if (KMPGlobalSettings.instance.chatDXWindowEnabled) KMPChatDX.enqueueChatLine("Press Chat key (" + (KMPGlobalSettings.instance.chatTalkKey == KeyCode.BackQuote ? "~" : KMPGlobalSettings.instance.chatTalkKey.ToString()) + ") to send a message");
                 }
 
@@ -3237,7 +3242,7 @@ namespace KMP
 			KMPConnectionDisplay.windowEnabled = (HighLogic.LoadedScene == GameScenes.MAINMENU) && globalUIToggle;
 
             
-            if (KMPGlobalSettings.instance.chatDXWindowEnabled)
+            if (KMPGlobalSettings.instance.chatDXWindowEnabled && isGameHUDHidden == false)
             {
                 KMPChatDX.windowPos = GUILayout.Window(
                     999994,
@@ -3279,7 +3284,7 @@ namespace KMP
 			
 			if (!KMPConnectionDisplay.windowEnabled && KMPClientMain.handshakeCompleted && KMPClientMain.tcpSocket != null)
 			{
-				if(KMPInfoDisplay.infoDisplayActive)
+				if(KMPInfoDisplay.infoDisplayActive && isGameHUDHidden == false)
 				{
 					KMPInfoDisplay.infoWindowPos = GUILayout.Window(
 						999999,
