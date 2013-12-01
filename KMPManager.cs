@@ -2678,12 +2678,12 @@ namespace KMP
 			KMPGlobalSettings.instance.chatDisplayWindowX = KMPChatDisplay.windowPos.x;
 			KMPGlobalSettings.instance.chatDisplayWindowY = KMPChatDisplay.windowPos.y;
 
-            KMPGlobalSettings.instance.chatDXDisplayWindowX = KMPChatDX.windowPos.x;
-            KMPGlobalSettings.instance.chatDXDisplayWindowY = KMPChatDX.windowPos.y;
+            KMPGlobalSettings.instance.chatDXDisplayWindowX = KMPChatDX.chatboxX;
+            KMPGlobalSettings.instance.chatDXDisplayWindowY = KMPChatDX.chatboxY;
             KMPGlobalSettings.instance.chatDXDisplayWindowWidth = KMPChatDX.chatboxWidth;
             KMPGlobalSettings.instance.chatDXDisplayWindowHeight = KMPChatDX.chatboxHeight;
 
-            KMPGlobalSettings.instance.chatDXOffsetEnabled = KMPChatDX.offsetingEnabled;
+            KMPGlobalSettings.instance.chatDXOffsetEnabled = KMPChatDX.offsettingEnabled;
             KMPGlobalSettings.instance.chatDXEditorOffsetX = KMPChatDX.editorOffsetX;
             KMPGlobalSettings.instance.chatDXEditorOffsetY = KMPChatDX.editorOffsetY;
             KMPGlobalSettings.instance.chatDXTrackingOffsetX = KMPChatDX.trackerOffsetX;
@@ -2747,7 +2747,7 @@ namespace KMP
                     KMPChatDX.chatboxWidth = KMPGlobalSettings.instance.chatDXDisplayWindowWidth;
                     KMPChatDX.chatboxHeight = KMPGlobalSettings.instance.chatDXDisplayWindowHeight;
 
-                    KMPChatDX.offsetingEnabled = KMPGlobalSettings.instance.chatDXOffsetEnabled;
+                    KMPChatDX.offsettingEnabled = KMPGlobalSettings.instance.chatDXOffsetEnabled;
                     KMPChatDX.editorOffsetX = KMPGlobalSettings.instance.chatDXEditorOffsetX;
                     KMPChatDX.editorOffsetY = KMPGlobalSettings.instance.chatDXEditorOffsetY;
                     KMPChatDX.trackerOffsetX = KMPGlobalSettings.instance.chatDXTrackingOffsetX;

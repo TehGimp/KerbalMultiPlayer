@@ -885,11 +885,11 @@ namespace KMP
                                 }
                                 else
                                 {
-                                    state = !KMPChatDX.offsetingEnabled;
+                                    state = !KMPChatDX.offsettingEnabled;
                                 }
 
-                                KMPChatDX.offsetingEnabled = state;
-                                enqueueTextMessage(String.Format("Chat window offsetting has been {0}", (KMPChatDX.offsetingEnabled) ? "enabled" : "disabled"));
+                                KMPChatDX.offsettingEnabled = state;
+                                enqueueTextMessage(String.Format("Chat window offsetting has been {0}", (KMPChatDX.offsettingEnabled) ? "enabled" : "disabled"));
                             }
                             else if (command == "offset")
                             {

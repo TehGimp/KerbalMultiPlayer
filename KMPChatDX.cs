@@ -24,7 +24,7 @@ namespace KMP
         public static float chatboxX = 0;
         public static float chatboxY = 20;
 
-        public static bool offsetingEnabled = true;
+        public static bool offsettingEnabled = true;
 
         public static float trackerOffsetX = 200;
         public static float trackerOffsetY = 20;
@@ -42,7 +42,6 @@ namespace KMP
 
         public static GUIStyle windowStyle = new GUIStyle();
         public static GUIStyle chatStyle = new GUIStyle();
-
 
         public static GUILayoutOption[] layoutOptions;
         public static Rect windowPos = new Rect(chatboxX, chatboxY, chatboxWidth, chatboxHeight);
@@ -89,7 +88,7 @@ namespace KMP
 
         public static Rect getWindowPos()
         {
-            if (offsetingEnabled && !draggable)
+            if (offsettingEnabled && !draggable)
             {
                 switch (HighLogic.LoadedScene)
                 {
