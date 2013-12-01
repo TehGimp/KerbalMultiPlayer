@@ -1988,7 +1988,7 @@ namespace KMP
 								
 								bool applyUpdate = true;
 								double curTick = Planetarium.GetUniversalTime();
-								if (vessel_update.distance >= INACTIVE_VESSEL_RANGE) //If distance >= INACTIVE_VESSEL_RANGE then the other player didn't have us loaded--don't ignore even a large correction in this case
+								if (vessel_update.distance <= INACTIVE_VESSEL_RANGE) //If distance >= INACTIVE_VESSEL_RANGE then the other player didn't have us loaded--don't ignore even a large correction in this case
 								{
 									if (serverVessels_RendezvousSmoothPos.ContainsKey(updateFrom.id) ? (relPos.sqrMagnitude > (serverVessels_RendezvousSmoothPos[updateFrom.id].Key * 1000000d) && serverVessels_RendezvousSmoothPos[updateFrom.id].Value > (curTick-7.5d)): false)
 										applyUpdate = false;
@@ -2008,10 +2008,10 @@ namespace KMP
 						            }
 						            catch (NullReferenceException e)
 						            {
-                             KMP.Log.Debug("Exception thrown in applyVesselUpdate(), catch 3, Exception: {0}", e.ToString());
+										KMP.Log.Debug("Exception thrown in applyVesselUpdate(), catch 3, Exception: {0}", e.ToString());
 						            }
 		
-									if (diffPos.sqrMagnitude < 1000000d && diffPos.sqrMagnitude > 0.1d)
+									if (diffPos.sqrMagnitude < 1000000d && diffPos.sqrMagnitude > 0.05d)
 									{
 										KMPClientMain.DebugLog("Docking Krakensbane shift");
 										foreach (Vessel otherVessel in FlightGlobals.Vessels.Where(v => v.packed == false && v.id != FlightGlobals.ActiveVessel.id && v.id == updateFrom.id))
@@ -2214,6 +2214,7 @@ namespace KMP
 		{
 			if (vessel_id == FlightGlobals.ActiveVessel.id && (serverVessels_InUse.ContainsKey(vessel_id) ? !serverVessels_InUse.ContainsKey(vessel_id) : false)) return;
 			if (serverVessels_LoadDelay.ContainsKey(vessel_id) ? serverVessels_LoadDelay[vessel_id] < UnityEngine.Time.realtimeSinceStartup : false) return;
+			serverVessels_LoadDelay[vessel_id] = UnityEngine.Time.realtimeSinceStartup + 5f;
 			KMPClientMain.DebugLog("addRemoteVessel");
 			Vector3 newWorldPos = Vector3.zero, newOrbitVel = Vector3.zero;
 			bool setTarget = false, wasLoaded = false, wasActive = false;
@@ -2364,7 +2365,6 @@ namespace KMP
 				serverVessels_PartCounts[vessel_id] = created_vessel.Parts.Count;
 				serverVessels_Parts[vessel_id] = new List<Part>();
 				serverVessels_Parts[vessel_id].AddRange(created_vessel.Parts);
-				serverVessels_LoadDelay[vessel_id] = UnityEngine.Time.realtimeSinceStartup + 5f;
 				
 				if (created_vessel.vesselType != VesselType.Flag && created_vessel.vesselType != VesselType.EVA)
 				{

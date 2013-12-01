@@ -1935,7 +1935,7 @@ namespace KMPServer
             cmd.Dispose();
 
             //Send the active user count to the client
-            if (activeClientCount() == 2)
+            if (activeClientCount() == 1)
             {
                 //Get the username of the other user on the server
                 sb.Append("There is currently 1 other user on this server: ");
