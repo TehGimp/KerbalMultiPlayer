@@ -122,7 +122,6 @@ namespace KMP
 		private bool forceQuit = false;
 		private bool gameRunning = false;
 		private bool activeTermination = false;
-		private bool tsLoadedThisUpdate = false;
 		
 		//Vessel dictionaries
 		public Dictionary<Guid, Vessel.Situations> sentVessels_Situations = new Dictionary<Guid, Vessel.Situations>();
@@ -262,7 +261,6 @@ namespace KMP
 				
 				if (!isInFlight && HighLogic.LoadedScene == GameScenes.TRACKSTATION)
 				{
-					tsLoadedThisUpdate = false;
 					foreach (object button in GameObject.FindObjectsOfType(typeof(ScreenSafeUIButton)))
 					{
 						ScreenSafeUIButton ssUIButton = (ScreenSafeUIButton) button;
