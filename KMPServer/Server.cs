@@ -3263,9 +3263,7 @@ namespace KMPServer
 					DbCommand cmd2 = universeDB.CreateCommand();
 	                string sql2 = "DELETE FROM kmpSubspace WHERE LastTick < @minTick AND LastTick < (SELECT MIN(s.LastTick) FROM kmpSubspace s" +
 	                    " INNER JOIN kmpVessel v ON v.Subspace = s.ID);" +
-	                    " DELETE FROM kmpVesselUpdateHistory WHERE Tick < @minTick;" +
-	                    " DELETE FROM kmpVesselUpdate WHERE ID IN (SELECT ID FROM kmpVesselUpdate vu" +
-	                    " WHERE Subspace IN (SELECT ID FROM kmpSubspace WHERE LastTick < @minTick));";
+	                    " DELETE FROM kmpVesselUpdateHistory WHERE Tick < @minTick;";
 					cmd2.Parameters.AddWithValue("minTick", earliestClearTick);
 	                cmd2.CommandText = sql2;
 	                cmd2.ExecuteNonQuery();
