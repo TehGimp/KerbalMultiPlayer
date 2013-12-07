@@ -48,6 +48,9 @@ namespace KMPServer
 
 			Log.MinLogLevel = settings.LogLevel;
 
+		    Console.WindowHeight = (int)(Console.WindowHeight*settings.consoleScale);
+            Console.WindowWidth = (int)(Console.WindowWidth * settings.consoleScale);
+
 			Console.Title = "KMP Server " + KMPCommon.PROGRAM_VERSION;
 			Log.Info("KMP Server version {0}", KMPCommon.PROGRAM_VERSION);
 			Log.Info("    Created by Shaun Esau and developed by the KMP team http://sesau.ca/ksp/KMP_contribs.html");
@@ -227,6 +230,7 @@ namespace KMPServer
                             Log.Info("autoDekessler - If true, server will clean up all debris in 'autoDekesslerTime'." + Environment.NewLine);
                             Log.Info("autoDekesslerTime - Time, in minutes, that the server will clean up all debris." + Environment.NewLine);
                             Log.Info("profanityWords - Replaces the first word with the second." + Environment.NewLine);
+                            Log.Info("consoleScale - Changes the window size of the scale. Defaults to 1.0, requires restart." + Environment.NewLine);
                         }
 						else if (parts.Length < 3)
 						{
