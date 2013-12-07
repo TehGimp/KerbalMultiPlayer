@@ -56,6 +56,7 @@ namespace KMPServer
 			public bool autoDekessler = false;
 			public int autoDekesslerTime = 30;
 			public string profanityWords = "fucker:kerper,faggot:kerpot,shit:kerp,fuck:guck,cunt:kump,piss:heph,fag:olp,dick:derp,cock:beet,asshole:hepderm,nigger:haggar";
+		    public float consoleScale = 1.0f;
 
 			private IEnumerable<KeyValuePair<string, string>> _profanity = null;
 			public IEnumerable<KeyValuePair<string, string>> Profanity
