@@ -22,6 +22,17 @@ namespace KMPServer
             Error = 40,
         }
 
+        public static void InitLogger()
+        {
+            var logs = new DirectoryInfo(LogFolder).GetFiles().OrderBy(s => s.LastWriteTime).ToList();
+            while (logs.Count() >= ServerMain.settings.maximumLogs)
+            {
+                var first = logs.First();
+                first.Delete();
+                logs.Remove(first);
+            }
+        }
+
         private static void WriteLog(LogLevels level, string format, params object[] args)
         {
 
