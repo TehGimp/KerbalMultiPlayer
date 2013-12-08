@@ -22,15 +22,13 @@ namespace KMPServer
             Error = 40,
         }
 
-        public static LogLevels MinLogLevel { get; set; }
-
         private static void WriteLog(LogLevels level, string format, params object[] args)
         {
 
             if (!Directory.Exists(LogFolder))
                 Directory.CreateDirectory(LogFolder);
 
-            if (level < MinLogLevel) { return; }
+            if (level < ServerMain.settings.LogLevel) { return; }
 
             lock (Console.Out)
             {
