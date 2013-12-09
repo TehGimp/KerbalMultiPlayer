@@ -24,6 +24,9 @@ namespace KMPServer
 
         public static void InitLogger()
         {
+            if (!Directory.Exists(LogFolder))
+                Directory.CreateDirectory(LogFolder);
+
             var logs = new DirectoryInfo(LogFolder).GetFiles().OrderBy(s => s.LastWriteTime).ToList();
             while (logs.Count() >= ServerMain.settings.maximumLogs)
             {
@@ -35,10 +38,6 @@ namespace KMPServer
 
         private static void WriteLog(LogLevels level, string format, params object[] args)
         {
-
-            if (!Directory.Exists(LogFolder))
-                Directory.CreateDirectory(LogFolder);
-
             if (level < ServerMain.settings.LogLevel) { return; }
 
             lock (Console.Out)
