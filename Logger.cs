@@ -33,10 +33,10 @@ namespace KMP
                 case LogLevels.Activity:
                 case LogLevels.Info:
                 case LogLevels.Notice:
-                    UnityEngine.Debug.Log(output);
+                    UnityEngine.Debug.LogError(output);
                     break;
                 case LogLevels.Warning:
-                    UnityEngine.Debug.LogWarning(output);
+                    UnityEngine.Debug.LogError(output);
                     break;
                 case LogLevels.Error:
                     UnityEngine.Debug.LogError(output);
