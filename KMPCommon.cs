@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -167,9 +167,8 @@ public class KMPCommon
 	            }
 	        }
 		}
-		catch (Exception e)
+		catch
 		{
-		    KMP.Log.Debug("Exception thrown in Compress(), catch 1, Exception: {0}", e.ToString());
 			return null;
 		}
         finally
@@ -210,9 +209,8 @@ public class KMPCommon
 				reader.Close();
             }
         }
-		catch (Exception e)
+		catch
 		{
-		    KMP.Log.Debug("Exception thrown in Decompress(), catch 1, Exception: {0}", e.ToString());
 			return null;
 		}
         finally

@@ -294,7 +294,7 @@ namespace KMP
 				{
 					foreach (Vessel vessel in FlightGlobals.Vessels.FindAll(v => v.vesselName.Contains("> Debris")))
 					{
-						try { if (!vessel.isEVA) killVessel(vessel); } catch (Exception e) { KMP.Log.Debug("Exception thrown in updateStep(), catch 1, Exception: {0}", e.ToString()); }
+						try { if (!vessel.isEVA) killVessel(vessel); } catch (Exception e) { Log.Debug("Exception thrown in updateStep(), catch 1, Exception: {0}", e.ToString()); }
 					}
 				}
 				
@@ -351,7 +351,7 @@ namespace KMP
 						{
 							if (!serverVessels_IsMine[vesselTarget.id] && serverVessels_IsPrivate[vesselTarget.id])
 							{
-								KMPClientMain.DebugLog("Tried to target private vessel");
+								Log.Debug("Tried to target private vessel");
 								ScreenMessages.PostScreenMessage("Can't dock - Target vessel is Private", 4f, ScreenMessageStyle.UPPER_CENTER);
 								FlightGlobals.fetch.SetVesselTarget(null);
 							}
@@ -365,7 +365,7 @@ namespace KMP
 					double currentTick = Planetarium.GetUniversalTime();
 					if (isInFlight && targetTick > currentTick+0.05d)
 					{
-						KMPClientMain.DebugLog("Syncing to new time " + targetTick + " from " + Planetarium.GetUniversalTime());
+						Log.Debug("Syncing to new time " + targetTick + " from " + Planetarium.GetUniversalTime());
 						if (FlightGlobals.ActiveVessel.situation != Vessel.Situations.PRELAUNCH
 						    && FlightGlobals.ActiveVessel.situation != Vessel.Situations.LANDED
 						    && FlightGlobals.ActiveVessel.situation != Vessel.Situations.SPLASHED)
@@ -379,12 +379,12 @@ namespace KMP
 								       && FlightGlobals.ActiveVessel.orbit.EndUT > lastEndUT
 								       && FlightGlobals.ActiveVessel.orbit.nextPatch != null)
 								{
-									KMPClientMain.DebugLog("orbit EndUT < target: " + FlightGlobals.ActiveVessel.orbit.EndUT + " vs " + targetTick);
+									Log.Debug("orbit EndUT < target: " + FlightGlobals.ActiveVessel.orbit.EndUT + " vs " + targetTick);
 									lastEndUT =  FlightGlobals.ActiveVessel.orbit.EndUT;
 									FlightGlobals.ActiveVessel.orbitDriver.orbit = FlightGlobals.ActiveVessel.orbit.nextPatch;
 									FlightGlobals.ActiveVessel.orbitDriver.UpdateOrbit();
 									if (FlightGlobals.ActiveVessel.orbit.referenceBody == null) FlightGlobals.ActiveVessel.orbit.referenceBody = FlightGlobals.Bodies.Find(b => b.name == "Sun");
-									KMPClientMain.DebugLog("updated to next patch");
+									Log.Debug("updated to next patch");
 								}
 							}
 							try
@@ -393,13 +393,13 @@ namespace KMP
 				            }
 				            catch (NullReferenceException e)
 				            {
-                        KMP.Log.Debug("Exception thrown in updateStep(), catch 2, Exception: {0}", e.ToString());
+                        Log.Debug("Exception thrown in updateStep(), catch 2, Exception: {0}", e.ToString());
 				            }
 							//Krakensbane shift to new orbital location
 							if (targetTick > currentTick+2.5d //if badly out of sync
 							    && !(FlightGlobals.ActiveVessel.orbit.referenceBody.atmosphere && FlightGlobals.ActiveVessel.orbit.altitude < FlightGlobals.ActiveVessel.orbit.referenceBody.maxAtmosphereAltitude)) //and not in atmo
 							{
-								KMPClientMain.DebugLog("Krakensbane shift");
+								Log.Debug("Krakensbane shift");
 								Vector3d diffPos = FlightGlobals.ActiveVessel.orbit.getPositionAtUT(targetTick) - FlightGlobals.ship_position;
 								foreach (Vessel otherVessel in FlightGlobals.Vessels.Where(v => v.packed == false && (v.id != FlightGlobals.ActiveVessel.id || (v.loaded && Vector3d.Distance(FlightGlobals.ship_position,v.GetWorldPos3D()) < INACTIVE_VESSEL_RANGE))))
 		                			otherVessel.GoOnRails();
@@ -410,9 +410,9 @@ namespace KMP
 							}
 						}
 						Planetarium.SetUniversalTime(targetTick);
-						KMPClientMain.DebugLog("sync completed");
+						Log.Debug("sync completed");
 					}
-				} catch (Exception e) { KMP.Log.Debug("Exception thrown in updateStep(), catch 3, Exception: {0}", e.ToString()); KMPClientMain.DebugLog("error during sync: " + e.Message + " " + e.StackTrace); }
+				} catch (Exception e) { Log.Debug("Exception thrown in updateStep(), catch 3, Exception: {0}", e.ToString()); Log.Debug("error during sync: " + e.Message + " " + e.StackTrace); }
 
 				writeUpdates();
 				
@@ -426,7 +426,7 @@ namespace KMP
 					{
 						//Prevent EVA'ing crew
 						lockCrewGUI();
-						KMPClientMain.DebugLog("il: " + InputLockManager.PrintLockStack());
+						Log.Debug("il: " + InputLockManager.PrintLockStack());
 					}
 					else 
 					{
@@ -480,7 +480,7 @@ namespace KMP
 				{
 					if ((UnityEngine.Time.realtimeSinceStartup - pair.Value.lastUpdateTime) > VESSEL_TIMEOUT_DELAY)
 					{
-						KMPClientMain.DebugLog("deleted player status for timeout: " + pair.Key + " " + pair.Value.vesselName);
+						Log.Debug("deleted player status for timeout: " + pair.Key + " " + pair.Value.vesselName);
 						delete_list.Add(pair.Key);
 					}
 				}
@@ -504,7 +504,7 @@ namespace KMP
 					}
 					if (forceResync)
 					{
-						KMPClientMain.DebugLog("Resynced due to NRE flood");
+						Log.Debug("Resynced due to NRE flood");
 						ScreenMessages.PostScreenMessage("Unexpected error! Re-syncing...");
 						GameEvents.onFlightReady.Remove(this.OnFlightReady);
 						HighLogic.CurrentGame = GamePersistence.LoadGame("start",HighLogic.SaveFolder,false,true);
@@ -514,7 +514,7 @@ namespace KMP
 						Invoke("OnFirstFlightReady",1f);	
 					}
 				}
-			} catch (Exception ex) { KMP.Log.Debug("Exception thrown in updateStep(), catch 4, Exception: {0}", ex.ToString()); KMPClientMain.DebugLog("uS err: " + ex.Message + " " + ex.StackTrace); }
+			} catch (Exception ex) { Log.Debug("Exception thrown in updateStep(), catch 4, Exception: {0}", ex.ToString()); Log.Debug("uS err: " + ex.Message + " " + ex.StackTrace); }
 		}
 		
 		private void dockedKickToTrackingStation()
@@ -532,7 +532,7 @@ namespace KMP
 		{
 			if (!syncing)
 			{
-				KMPClientMain.DebugLog("Selected unavailable vessel, switching");
+				Log.Debug("Selected unavailable vessel, switching");
 				ScreenMessages.PostScreenMessage("Selected vessel is controlled from past or destroyed!", 5f,ScreenMessageStyle.UPPER_RIGHT);
 				syncing = true;
 				StartCoroutine(returnToTrackingStation());
@@ -581,11 +581,11 @@ namespace KMP
 				{
 					if (serverVessels_PartCounts[vessel.id] > 0 && serverVessels_PartCounts[vessel.id] > vessel.Parts.Count)
 					{
-						KMPClientMain.DebugLog("checkRemoteVesselIntegrity killing vessel: " + vessel.id);
+						Log.Debug("checkRemoteVesselIntegrity killing vessel: " + vessel.id);
 						serverVessels_PartCounts[vessel.id] = 0;
 						foreach (Part part in serverVessels_Parts[vessel.id])
 						{
-							try { if (!part.vessel.isEVA && part.vessel.id != FlightGlobals.ActiveVessel.id) killVessel(part.vessel); } catch (Exception e) { KMP.Log.Debug("Exception thrown in checkRemoteVesselIntegrity(), catch 1, Exception: {0}", e.ToString()); }
+							try { if (!part.vessel.isEVA && part.vessel.id != FlightGlobals.ActiveVessel.id) killVessel(part.vessel); } catch (Exception e) { Log.Debug("Exception thrown in checkRemoteVesselIntegrity(), catch 1, Exception: {0}", e.ToString()); }
 						}
 						ProtoVessel protovessel = new ProtoVessel(serverVessels_ProtoVessels[vessel.id], HighLogic.CurrentGame);
 						addRemoteVessel(protovessel,vessel.id);
@@ -595,8 +595,8 @@ namespace KMP
 			}
 			catch (Exception ex)
 			{
-        KMP.Log.Debug("Exception thrown in checkRemoteVesselIntegrity(), catch 2, Exception: {0}", ex.ToString());
-				KMPClientMain.DebugLog("cRVI err: " + ex.Message + " " + ex.StackTrace);
+        Log.Debug("Exception thrown in checkRemoteVesselIntegrity(), catch 2, Exception: {0}", ex.ToString());
+				Log.Debug("cRVI err: " + ex.Message + " " + ex.StackTrace);
 			}
 		}
 		
@@ -664,10 +664,10 @@ namespace KMP
 				else
 					playerStatus.Add(playerName, my_status);
 				
-				KMPClientMain.DebugLog("sending primary update");
+				Log.Debug("sending primary update");
 				try{
 					enqueuePluginInteropMessage(KMPCommon.PluginInteropMessageID.PRIMARY_PLUGIN_UPDATE, KSP.IO.IOUtils.SerializeToBinary(update));
-				} catch (Exception e) { KMP.Log.Debug("Exception thrown in writePrimaryUpdate(), catch 1, Exception: {0}", e.ToString()); KMPClientMain.DebugLog("err: " + e.Message); }
+				} catch (Exception e) { Log.Debug("Exception thrown in writePrimaryUpdate(), catch 1, Exception: {0}", e.ToString()); Log.Debug("err: " + e.Message); }
 			}
 			else
 			{
@@ -787,7 +787,7 @@ namespace KMP
 							}
 							catch (ArgumentException e)
 							{
-                  KMP.Log.Debug("Exception thrown in writeSecondaryUpdates(), catch 1, Exception: {0}", e.ToString());
+                                Log.Debug("Exception thrown in writeSecondaryUpdates(), catch 1, Exception: {0}", e.ToString());
 							}
 						}
 					}
@@ -822,7 +822,7 @@ namespace KMP
 								try
 								{
 									//Rendezvous relative position data
-									KMPClientMain.DebugLog ("sending docking-mode update, distance: " + enumerator.Current.Key + " id: " + FlightGlobals.ActiveVessel.id);
+									Log.Debug ("sending docking-mode update, distance: " + enumerator.Current.Key + " id: " + FlightGlobals.ActiveVessel.id);
 									update.relativeTo = FlightGlobals.ActiveVessel.id;
 									Vector3d w_pos = Vector3d.zero;
 									w_pos = FlightGlobals.ActiveVessel.mainBody.transform.InverseTransformDirection(enumerator.Current.Value.findWorldCenterOfMass() - FlightGlobals.ship_CoM);
@@ -836,12 +836,12 @@ namespace KMP
 								}
 								catch (Exception e)
 								{
-                  KMP.Log.Debug("Exception thrown in writeSecondaryUpdates(), catch 2, Exception: {0}", e.ToString());
+                  Log.Debug("Exception thrown in writeSecondaryUpdates(), catch 2, Exception: {0}", e.ToString());
 									update = original_update;
 								}
 							}
 							byte[] update_bytes = KSP.IO.IOUtils.SerializeToBinary(update);
-							KMPClientMain.DebugLog ("sending secondary update for: " + enumerator.Current.Value.id);
+							Log.Debug ("sending secondary update for: " + enumerator.Current.Value.id);
 							if (newVessel)
 								enqueuePluginInteropMessage(KMPCommon.PluginInteropMessageID.PRIMARY_PLUGIN_UPDATE, update_bytes);
 							else
@@ -855,7 +855,7 @@ namespace KMP
 		
 		private void sendRemoveVesselMessage(Vessel vessel, bool isDocking = false)
 		{
-			KMPClientMain.DebugLog ("sendRemoveVesselMessage");
+			Log.Debug ("sendRemoveVesselMessage");
 			KMPVesselUpdate update = getVesselUpdate(vessel);
 			update.situation = Situation.DESTROYED;
 			update.state = FlightGlobals.ActiveVessel.id == vessel.id ? State.ACTIVE : State.INACTIVE;
@@ -869,7 +869,7 @@ namespace KMP
 		{
 			if (isInFlight)
 			{
-				KMPClientMain.DebugLog ("sendVesselMessage");
+				Log.Debug ("sendVesselMessage");
 				KMPVesselUpdate update = getVesselUpdate(vessel, true);
 				update.state = FlightGlobals.ActiveVessel.id == vessel.id ? State.ACTIVE : State.INACTIVE;
 				update.isDockUpdate = isDocking;
@@ -887,11 +887,11 @@ namespace KMP
 			
 			//Create a KMPVesselUpdate from the vessel data
 			KMPVesselUpdate update;
-            //KMPClientMain.DebugLog("Vid: " + vessel.id);
-            //KMPClientMain.DebugLog("foreFullUpdate: " + forceFullUpdate);
-            //KMPClientMain.DebugLog("ParCountsContains: " + serverVessels_PartCounts.ContainsKey(vessel.id));
-            //KMPClientMain.DebugLog("TimeDelta: " + ((UnityEngine.Time.realtimeSinceStartup - lastFullProtovesselUpdate) < FULL_PROTOVESSEL_UPDATE_TIMEOUT));
-            //KMPClientMain.DebugLog("Throttle: " + (FlightGlobals.ActiveVessel.ctrlState.mainThrottle == 0f));
+            //Log.Debug("Vid: " + vessel.id);
+            //Log.Debug("foreFullUpdate: " + forceFullUpdate);
+            //Log.Debug("ParCountsContains: " + serverVessels_PartCounts.ContainsKey(vessel.id));
+            //Log.Debug("TimeDelta: " + ((UnityEngine.Time.realtimeSinceStartup - lastFullProtovesselUpdate) < FULL_PROTOVESSEL_UPDATE_TIMEOUT));
+            //Log.Debug("Throttle: " + (FlightGlobals.ActiveVessel.ctrlState.mainThrottle == 0f));
 
 			//Check for new/forced update
 			if (!forceFullUpdate //not a forced update
@@ -917,7 +917,7 @@ namespace KMP
 				else
 				{
 					//Vessel has changed
-					KMPClientMain.DebugLog("Full update: " + vessel.id);
+					Log.Debug("Full update: " + vessel.id);
 					update = new KMPVesselUpdate(vessel);
 					serverVessels_PartCounts[vessel.id] = vessel.Parts.Count;
 				}
@@ -928,7 +928,7 @@ namespace KMP
 				update = new KMPVesselUpdate(vessel);
 				if (vessel.id == FlightGlobals.ActiveVessel.id) 
 				{
-					KMPClientMain.DebugLog("First or forced proto update for active vessel: " + vessel.id);
+					Log.Debug("First or forced proto update for active vessel: " + vessel.id);
 					lastFullProtovesselUpdate = UnityEngine.Time.realtimeSinceStartup;
 				}
                 if (!vessel.packed) serverVessels_PartCounts[vessel.id] = vessel.Parts.Count;
@@ -953,7 +953,7 @@ namespace KMP
 			if (serverVessels_RemoteID.ContainsKey(vessel.id)) update.kmpID = serverVessels_RemoteID[vessel.id];
 			else
 			{
-				KMPClientMain.DebugLog("Generating new remote ID for vessel: " + vessel.id);
+				Log.Debug("Generating new remote ID for vessel: " + vessel.id);
 				Guid server_id = Guid.NewGuid();
 				serverVessels_RemoteID[vessel.id] = server_id;
 				update.kmpID = server_id;
@@ -1355,12 +1355,12 @@ namespace KMP
 			if (newWorldPos != Vector3.zero)
 			{
 				{
-					KMPClientMain.DebugLog("repositioning");
+					Log.Debug("repositioning");
 					vessel.transform.position = newWorldPos;
 				}
 				if (newOrbitVel != Vector3.zero) 
 				{
-					KMPClientMain.DebugLog("updating velocity");
+					Log.Debug("updating velocity");
 					vessel.ChangeWorldVelocity((-1 * vessel.GetObtVelocity()) + newOrbitVel);
 				}
 			}
@@ -1372,7 +1372,7 @@ namespace KMP
 			{
 				if (!isInFlightOrTracking && !syncing)
 				{
-					KMPClientMain.DebugLog("Killing vessel immediately: " + vessel.id);
+					Log.Debug("Killing vessel immediately: " + vessel.id);
 					try { vessel.Die(); } catch {}
 					try { FlightGlobals.Vessels.Remove(vessel); } catch {}
 					StartCoroutine(destroyVesselOnNextUpdate(vessel));
@@ -1385,7 +1385,7 @@ namespace KMP
 			yield return new WaitForFixedUpdate();
 			if (vessel != null)
 			{
-				KMPClientMain.DebugLog("Killing vessel");
+				Log.Debug("Killing vessel");
 				try { vessel.Die(); } catch {}
 				try { FlightGlobals.Vessels.Remove(vessel); } catch {}
 				StartCoroutine(destroyVesselOnNextUpdate(vessel));
@@ -1397,7 +1397,7 @@ namespace KMP
 			yield return new WaitForFixedUpdate();
 			if (vessel != null)
 			{
-				KMPClientMain.DebugLog("Cleaning up killed vessel");
+				Log.Debug("Cleaning up killed vessel");
 				Destroy(vessel);
 			}
 		}
@@ -1405,7 +1405,7 @@ namespace KMP
 		private IEnumerator<WaitForEndOfFrame> sendSubspaceSyncRequest(int subspace = -1, bool docking = false)
 		{
 			yield return new WaitForEndOfFrame();
-			KMPClientMain.DebugLog("sending subspace sync request to subspace " + subspace);
+			Log.Debug("sending subspace sync request to subspace " + subspace);
 			showServerSync = false;
 			if (!syncing) inGameSyncing = true;
 			syncing = true;
@@ -1505,7 +1505,7 @@ namespace KMP
 
 		private void handleVesselUpdate(KMPVesselUpdate vessel_update)
 		{
-			KMPClientMain.DebugLog("handleVesselUpdate");
+			Log.Debug("handleVesselUpdate");
 			
 			String vessel_key = vessel_update.id.ToString();
 
@@ -1553,15 +1553,15 @@ namespace KMP
 				/*Queue this update for the next update call because updating a vessel on the same step as
 				 * creating it usually causes problems for some reason */
 				newVesselUpdateQueue.Enqueue(vessel_update);
-				KMPClientMain.DebugLog("vessel update queued");
+				Log.Debug("vessel update queued");
 			}
 			else
 			{
 				applyVesselUpdate(vessel_update, vessel); //Apply the vessel update to the existing vessel
-				KMPClientMain.DebugLog("vessel update applied");
+				Log.Debug("vessel update applied");
 			}
 			
-			KMPClientMain.DebugLog("handleVesselUpdate done");
+			Log.Debug("handleVesselUpdate done");
 		}
 
 		private void applyVesselUpdate(KMPVesselUpdate vessel_update, KMPVessel vessel)
@@ -1597,7 +1597,7 @@ namespace KMP
 				vessel.setOrbitalData(update_body, pos, vel, dir);
 			}
 			
-			KMPClientMain.DebugLog("vessel state: " + vessel_update.state.ToString() + ", tick=" + vessel_update.tick + ", realTick=" + Planetarium.GetUniversalTime());
+			Log.Debug("vessel state: " + vessel_update.state.ToString() + ", tick=" + vessel_update.tick + ", realTick=" + Planetarium.GetUniversalTime());
 			if (vessel_update.state == State.ACTIVE && !vessel_update.isSyncOnlyUpdate && vessel_update.relTime != RelativeTime.FUTURE && !vessel_update.isDockUpdate)
 			{
 				//Update the player status info
@@ -1624,14 +1624,14 @@ namespace KMP
 				serverVessels_InUse[vessel_update.id] = vessel_update.state == State.ACTIVE;
 				serverVessels_IsPrivate[vessel_update.id] = vessel_update.isPrivate;
 				serverVessels_IsMine[vessel_update.id] = vessel_update.isMine;
-				KMPClientMain.DebugLog("status flags updated: " + (vessel_update.state == State.ACTIVE) + " " + vessel_update.isPrivate + " " + vessel_update.isMine);
+				Log.Debug("status flags updated: " + (vessel_update.state == State.ACTIVE) + " " + vessel_update.isPrivate + " " + vessel_update.isMine);
 				if (vessel_update.situation == Situation.DESTROYED && vessel_update.id != FlightGlobals.ActiveVessel.id)
 				{
-					KMPClientMain.DebugLog("Vessel reported destroyed, killing vessel");
+					Log.Debug("Vessel reported destroyed, killing vessel");
 					Vessel extant_vessel = FlightGlobals.Vessels.Find(v => v.id == vessel_update.id);
 					if (extant_vessel != null)
 					{
-						try { killVessel(extant_vessel); } catch (Exception e) { KMP.Log.Debug("Exception thrown in applyVesselUpdate(), catch 1, Exception: {0}", e.ToString()); }
+						try { killVessel(extant_vessel); } catch (Exception e) { Log.Debug("Exception thrown in applyVesselUpdate(), catch 1, Exception: {0}", e.ToString()); }
 					}
 					return;
 				}
@@ -1649,7 +1649,7 @@ namespace KMP
 						kickToTrackingStation();
 						return;
 					}
-					KMPClientMain.DebugLog("retrieving vessel: " + vessel_update.id.ToString());
+					Log.Debug("retrieving vessel: " + vessel_update.id.ToString());
 					if (!vessel_update.id.Equals(Guid.Empty))
 					{
 						Vessel extant_vessel = vessel.vesselRef;
@@ -1681,7 +1681,7 @@ namespace KMP
 								serverVessels_LastUpdateDistanceTime[vessel_update.id] = new KeyValuePair<double, double>(vessel_update.distance,Planetarium.GetUniversalTime() + 0.75f);
 								if (extant_vessel != null)
 								{
-									KMPClientMain.DebugLog("vessel found: " + extant_vessel.id);
+									Log.Debug("vessel found: " + extant_vessel.id);
 									if (extant_vessel.vesselType != VesselType.Flag) //Special treatment for flags
 									{
 										vessel.vesselRef = extant_vessel;
@@ -1706,7 +1706,7 @@ namespace KMP
 										}
 										if ((vessel_update.getProtoVesselNode() != null && (!KMPVessel.situationIsOrbital(vessel_update.situation) || ourDistance > 2500f || extant_vessel.altitude < 10000d)) || countMismatch)
 										{
-											KMPClientMain.DebugLog("updating from protovessel");
+											Log.Debug("updating from protovessel");
 											serverVessels_PartCounts[vessel_update.id] = 0;
 											if (protovessel != null)
 											{
@@ -1716,14 +1716,14 @@ namespace KMP
 					                            }
 												addRemoteVessel(protovessel, vessel_update.id, vessel, vessel_update, incomingDistance);
 												if (vessel_update.situation == Situation.FLYING) serverVessels_LoadDelay[vessel.id] = UnityEngine.Time.realtimeSinceStartup + 5f;
-											} else { KMPClientMain.DebugLog("Protovessel missing!"); }
+											} else { Log.Debug("Protovessel missing!"); }
 										}
 										else
 										{
-											KMPClientMain.DebugLog("no protovessel");
+											Log.Debug("no protovessel");
 											if (vessel.orbitValid)
 											{
-												KMPClientMain.DebugLog("updating from flight data, distance: " + ourDistance);
+												Log.Debug("updating from flight data, distance: " + ourDistance);
 												//Update orbit to our game's time if necessary
 												//bool throttled = serverVessels_ObtSyncDelay.ContainsKey(vessel_update.id) && serverVessels_ObtSyncDelay[vessel_update.id] > UnityEngine.Time.realtimeSinceStartup;
 												bool throttled = false;
@@ -1742,7 +1742,7 @@ namespace KMP
 												
 												if (FlightGlobals.ActiveVessel.mainBody == update_body && vessel_update.relTime == RelativeTime.PRESENT)
 												{
-													KMPClientMain.DebugLog("full update");
+													Log.Debug("full update");
 													if (serverVessels_InPresent.ContainsKey(vessel_update.id) ? !serverVessels_InPresent[vessel_update.id] : true)
 													{
 														serverVessels_InPresent[vessel_update.id] = true;
@@ -1755,7 +1755,7 @@ namespace KMP
 													//Update rotation
 													if (extant_vessel.loaded)
 													{
-														KMPClientMain.DebugLog("rotation set");
+														Log.Debug("rotation set");
 														
 														extant_vessel.transform.LookAt(extant_vessel.transform.position + extant_vessel.mainBody.transform.TransformDirection(new Vector3(vessel_update.rot[0],vessel_update.rot[1],vessel_update.rot[2])).normalized,vessel.worldDirection);
 														Quaternion rot = extant_vessel.transform.rotation;
@@ -1773,7 +1773,7 @@ namespace KMP
 													
 													if (!KMPVessel.situationIsOrbital(vessel_update.situation) || extant_vessel.altitude < 10000f || ourDistance > 2500f || vessel_update.id == FlightGlobals.ActiveVessel.id)
 													{
-														KMPClientMain.DebugLog ("velocity update");
+														Log.Debug ("velocity update");
 														//Update velocity
 														if (extant_vessel.loaded)
 														{
@@ -1799,7 +1799,7 @@ namespace KMP
 															if (extant_vessel.loaded && (vessel_update.situation == Situation.LANDED || vessel_update.situation == Situation.SPLASHED))
 															{
 																//Update surface position
-																KMPClientMain.DebugLog("surface position update");
+																Log.Debug("surface position update");
 																Vector3d newPos = update_body.GetWorldSurfacePosition(vessel_update.w_pos[1],vessel_update.w_pos[2],extant_vessel.altitude+0.001d);
 																if (extant_vessel.packed) extant_vessel.GoOffRails();
 																extant_vessel.distancePackThreshold = Math.Max(extant_vessel.distancePackThreshold,Vector3.Distance(vessel.worldPosition, FlightGlobals.ship_position) + 250f);
@@ -1815,7 +1815,7 @@ namespace KMP
 															         && (extant_vessel.altitude < 10000f || ourDistance > 2500f)) || vessel_update.id == FlightGlobals.ActiveVessel.id))
 															{
 																//Update 3D position
-																KMPClientMain.DebugLog("position update");
+																Log.Debug("position update");
 																if (extant_vessel.packed) extant_vessel.GoOffRails();
 																extant_vessel.distancePackThreshold = Math.Max(extant_vessel.distancePackThreshold,Vector3.Distance(vessel.worldPosition, FlightGlobals.ship_position) + 250f);
 																extant_vessel.SetPosition(vessel.worldPosition);
@@ -1845,7 +1845,7 @@ namespace KMP
 													else 
 													{
 														//Orbital rendezvous
-														KMPClientMain.DebugLog("orbital rendezvous");
+														Log.Debug("orbital rendezvous");
 														
 														//Update FlightCtrlState
 														extant_vessel.ctrlState.CopyFrom(vessel_update.flightCtrlState.getAsFlightCtrlState(0.6f));
@@ -1853,7 +1853,7 @@ namespace KMP
 												}
 												else if (FlightGlobals.ActiveVessel.mainBody == vessel.mainBody)
 												{
-													KMPClientMain.DebugLog("update from past/future");
+													Log.Debug("update from past/future");
 													
 													if (!serverVessels_InPresent.ContainsKey(vessel_update.id) || serverVessels_InPresent.ContainsKey(vessel_update.id) ? serverVessels_InPresent[vessel_update.id]: false)
 													{
@@ -1869,7 +1869,7 @@ namespace KMP
 												}
 											}
 										}
-										KMPClientMain.DebugLog("updated");
+										Log.Debug("updated");
 									}
 									else
 									{
@@ -1887,7 +1887,7 @@ namespace KMP
 									{
 										if (serverVessels_ProtoVessels.ContainsKey(vessel_update.id))
 										{
-											KMPClientMain.DebugLog("Adding new vessel: " + vessel_update.id);
+											Log.Debug("Adding new vessel: " + vessel_update.id);
 											ProtoVessel protovessel = new ProtoVessel(serverVessels_ProtoVessels[vessel_update.id], HighLogic.CurrentGame);
 											if (vessel.orbitValid && KMPVessel.situationIsOrbital(vessel_update.situation) && protovessel.vesselType != VesselType.Flag && protovessel.vesselType != VesselType.EVA)
 											{
@@ -1899,19 +1899,19 @@ namespace KMP
 										}
 										else 
 										{
-											KMPClientMain.DebugLog("New vessel, but no matching protovessel available");
+											Log.Debug("New vessel, but no matching protovessel available");
 										}
-									} catch (Exception e) { KMP.Log.Debug("Exception thrown in applyVesselUpdate(), catch 2, Exception: {0}", e.ToString()); KMPClientMain.DebugLog("Vessel add error: " + e.Message + "\n" + e.StackTrace); }
+									} catch (Exception e) { Log.Debug("Exception thrown in applyVesselUpdate(), catch 2, Exception: {0}", e.ToString()); Log.Debug("Vessel add error: " + e.Message + "\n" + e.StackTrace); }
 								}
 							}
 							else
 							{
-								KMPClientMain.DebugLog("Vessel update ignored: we are closer to target vessel or have recently updated from someone who was closer");
+								Log.Debug("Vessel update ignored: we are closer to target vessel or have recently updated from someone who was closer");
 							}
 //						}
 //						else
 //						{
-//							KMPClientMain.DebugLog("Vessel update ignored: target vessel on load delay list");
+//							Log.Debug("Vessel update ignored: target vessel on load delay list");
 //						}
 					}
 				}
@@ -1919,11 +1919,11 @@ namespace KMP
 				{
 					if (vessel_update.id == FlightGlobals.ActiveVessel.id)
 					{
-						KMPClientMain.DebugLog("Relative update: " + vessel_update.relativeTo);
+						Log.Debug("Relative update: " + vessel_update.relativeTo);
 						//This is our vessel!
 						if (vessel_update.getProtoVesselNode() != null)
 						{
-							KMPClientMain.DebugLog("Received updated protovessel for active vessel");
+							Log.Debug("Received updated protovessel for active vessel");
 							serverVessels_ProtoVessels[vessel_update.id] = vessel_update.getProtoVesselNode();
 							ProtoVessel protovessel = new ProtoVessel(serverVessels_ProtoVessels[vessel_update.id], HighLogic.CurrentGame);
 							addRemoteVessel(protovessel,vessel_update.id,vessel,vessel_update,0);
@@ -1935,7 +1935,7 @@ namespace KMP
 							docking = true;
 							syncing = true;
 							ScreenMessages.PostScreenMessage("Other player has control of newly docked vessel",2.5f,ScreenMessageStyle.UPPER_CENTER);
-							KMPClientMain.DebugLog("Received docking update");
+							Log.Debug("Received docking update");
 							serverVessels_PartCounts[FlightGlobals.ActiveVessel.id] = 0;
 							serverVessels_InUse[vessel_update.id] = true;
 							return;
@@ -1950,7 +1950,7 @@ namespace KMP
 							Vessel updateFrom = FlightGlobals.Vessels.Find (v => v.id == vessel_update.relativeTo);
 							if (updateFrom != null && !updateFrom.loaded)
 							{
-								KMPClientMain.DebugLog("Rendezvous update from unloaded vessel");
+								Log.Debug("Rendezvous update from unloaded vessel");
 								if (vessel_update.distance < INACTIVE_VESSEL_RANGE)
 								{
 									//We're not in normal secondary vessel range but other vessel is, send negotiating reply
@@ -1975,7 +1975,7 @@ namespace KMP
 							}
 							else if (updateFrom != null && updateFrom.loaded)
 							{
-								KMPClientMain.DebugLog("rendezvous positioning: " + updateFrom.id);
+								Log.Debug("rendezvous positioning: " + updateFrom.id);
 								
 								Vector3d updateFromPos = updateFrom.findWorldCenterOfMass();
 								Vector3d relPos = activeVesselPosition-updateFromPos;
@@ -2014,19 +2014,19 @@ namespace KMP
 						            }
 						            catch (NullReferenceException e)
 						            {
-										KMP.Log.Debug("Exception thrown in applyVesselUpdate(), catch 3, Exception: {0}", e.ToString());
+										Log.Debug("Exception thrown in applyVesselUpdate(), catch 3, Exception: {0}", e.ToString());
 						            }
 		
 									if (diffPos.sqrMagnitude < 1000000d && diffPos.sqrMagnitude > 0.05d)
 									{
-										KMPClientMain.DebugLog("Docking Krakensbane shift");
+										Log.Debug("Docking Krakensbane shift");
 										foreach (Vessel otherVessel in FlightGlobals.Vessels.Where(v => v.packed == false && v.id != FlightGlobals.ActiveVessel.id && v.id == updateFrom.id))
 				                			otherVessel.GoOnRails();
 										getKrakensbane().setOffset(diffPos);
 									}
 									else if (diffPos.sqrMagnitude >= 1000000d)
 									{
-										KMPClientMain.DebugLog("Clamped docking Krakensbane shift");
+										Log.Debug("Clamped docking Krakensbane shift");
 										diffPos.Normalize();
 										diffPos *= 1000d;
 										foreach (Vessel otherVessel in FlightGlobals.Vessels.Where(v => v.packed == false && v.id != FlightGlobals.ActiveVessel.id))
@@ -2038,13 +2038,13 @@ namespace KMP
 									
 									if (diffVel.sqrMagnitude > 0.0025d && diffVel.sqrMagnitude < 2500d)
 									{
-										KMPClientMain.DebugLog("Docking velocity update");
+										Log.Debug("Docking velocity update");
 										if (updateFrom.packed) updateFrom.GoOffRails();
 										updateFrom.ChangeWorldVelocity(-diffVel);
 									}
 									else if (diffVel.sqrMagnitude >= 2500d)
 									{
-										KMPClientMain.DebugLog("Damping large velocity differential");
+										Log.Debug("Damping large velocity differential");
 										diffVel = diffVel.normalized;
 										diffVel *= 50d;
 										if (updateFrom.packed) updateFrom.GoOffRails();
@@ -2053,12 +2053,12 @@ namespace KMP
 									
 									dockingRelVel[updateFrom.id] -= diffVel;
 									
-									KMPClientMain.DebugLog("had dist:" + relPos.magnitude + " got dist:" + updateRelPos.magnitude);
-									KMPClientMain.DebugLog("expected dist:" + expectedDist + " diffPos mag: " + diffPos.sqrMagnitude);
-									KMPClientMain.DebugLog("had relVel:" + relVel.magnitude + " got relVel:" + updateRelVel.magnitude + " diffVel mag:" + diffVel.sqrMagnitude);
-								} else KMPClientMain.DebugLog("Ignored docking position update: unexpected large pos/vel shift");
+									Log.Debug("had dist:" + relPos.magnitude + " got dist:" + updateRelPos.magnitude);
+									Log.Debug("expected dist:" + expectedDist + " diffPos mag: " + diffPos.sqrMagnitude);
+									Log.Debug("had relVel:" + relVel.magnitude + " got relVel:" + updateRelVel.magnitude + " diffVel mag:" + diffVel.sqrMagnitude);
+								} else Log.Debug("Ignored docking position update: unexpected large pos/vel shift");
 							}
-						} else KMPClientMain.DebugLog("Ignored docking position update: " + (FlightGlobals.ActiveVessel.altitude > 10000d) + " " + (vessel_update.relativeTo != Guid.Empty) + " " + (Math.Abs(Planetarium.GetUniversalTime() - vessel_update.tick) < 1d));
+						} else Log.Debug("Ignored docking position update: " + (FlightGlobals.ActiveVessel.altitude > 10000d) + " " + (vessel_update.relativeTo != Guid.Empty) + " " + (Math.Abs(Planetarium.GetUniversalTime() - vessel_update.tick) < 1d));
 					}
 				}
 			}
@@ -2066,7 +2066,7 @@ namespace KMP
 		
 		private ProtoVessel syncOrbit(KMPVessel kvessel, double fromTick, ProtoVessel protovessel, double LAN)
 		{
-			KMPClientMain.DebugLog("updating OrbitSnapshot");
+			Log.Debug("updating OrbitSnapshot");
 			double tick = Planetarium.GetUniversalTime();
 			
             //Update orbit
@@ -2103,11 +2103,11 @@ namespace KMP
 				double lastEndUT =  newOrbit.EndUT;
 				while (newOrbit.EndUT > 0 && newOrbit.EndUT < tick && newOrbit.EndUT > lastEndUT && newOrbit.nextPatch != null)
 				{
-					KMPClientMain.DebugLog("orbit EndUT < target: " + newOrbit.EndUT + " vs " + tick);
+					Log.Debug("orbit EndUT < target: " + newOrbit.EndUT + " vs " + tick);
 					lastEndUT =  newOrbit.EndUT;
 					newOrbit = newOrbit.nextPatch;
 					if (newOrbit.referenceBody == null) newOrbit.referenceBody = FlightGlobals.Bodies.Find(b => b.name == "Sun");
-					KMPClientMain.DebugLog("updated to next patch");
+					Log.Debug("updated to next patch");
 				}
 			}
 			
@@ -2116,13 +2116,13 @@ namespace KMP
 			
 			Planetarium.SetUniversalTime(tick);
 			protovessel.orbitSnapShot = new OrbitSnapshot(newOrbit);
-			KMPClientMain.DebugLog("OrbitSnapshot updated");
+			Log.Debug("OrbitSnapshot updated");
 			return protovessel;	
 		}
 		
 		private void syncExtantVesselOrbit(KMPVessel kvessel, double fromTick, Vessel extant_vessel, double LAN)
 		{
-			KMPClientMain.DebugLog("updating Orbit: " + extant_vessel.id);
+			Log.Debug("updating Orbit: " + extant_vessel.id);
 			
 			bool victimAvailable = true;
 			Vessel victim = FlightGlobals.ActiveVessel;
@@ -2144,7 +2144,7 @@ namespace KMP
 			if (victimAvailable)
 			{
 				double tick = Planetarium.GetUniversalTime();
-				KMPClientMain.DebugLog("current vel mag: " + extant_vessel.orbit.getOrbitalVelocityAtUT(tick).magnitude);
+				Log.Debug("current vel mag: " + extant_vessel.orbit.getOrbitalVelocityAtUT(tick).magnitude);
 				
 				extant_vessel.GoOnRails();
 				
@@ -2176,25 +2176,25 @@ namespace KMP
 				newOrbit = victim.patchedConicSolver.orbit;
 				
 				if (newOrbit.referenceBody == null) newOrbit.referenceBody = FlightGlobals.Bodies.Find(b => b.name == "Sun");
-//				KMPClientMain.DebugLog("aP:" + newOrbit.activePatch);
-//				KMPClientMain.DebugLog("eUT:" + newOrbit.EndUT);
-//				KMPClientMain.DebugLog("sUT:" + newOrbit.StartUT);
-//				KMPClientMain.DebugLog("gOA:" + newOrbit.getObtAtUT(tick));
-//				KMPClientMain.DebugLog("nPnull:" + (newOrbit.nextPatch == null));
-//				KMPClientMain.DebugLog("pPnull:" + (newOrbit.previousPatch == null));
-//				KMPClientMain.DebugLog("sI:" + newOrbit.sampleInterval);
-//				KMPClientMain.DebugLog("UTsoi:" + newOrbit.UTsoi);
-//				KMPClientMain.DebugLog("body:" + newOrbit.referenceBody.name);
+//				Log.Debug("aP:" + newOrbit.activePatch);
+//				Log.Debug("eUT:" + newOrbit.EndUT);
+//				Log.Debug("sUT:" + newOrbit.StartUT);
+//				Log.Debug("gOA:" + newOrbit.getObtAtUT(tick));
+//				Log.Debug("nPnull:" + (newOrbit.nextPatch == null));
+//				Log.Debug("pPnull:" + (newOrbit.previousPatch == null));
+//				Log.Debug("sI:" + newOrbit.sampleInterval);
+//				Log.Debug("UTsoi:" + newOrbit.UTsoi);
+//				Log.Debug("body:" + newOrbit.referenceBody.name);
 				if (newOrbit.EndUT > 0)
 				{
 					double lastEndUT =  newOrbit.EndUT;
 					while (newOrbit.EndUT > 0 && newOrbit.EndUT < tick && newOrbit.EndUT > lastEndUT && newOrbit.nextPatch != null)
 					{
-						KMPClientMain.DebugLog("orbit EndUT < target: " + newOrbit.EndUT + " vs " + tick);
+						Log.Debug("orbit EndUT < target: " + newOrbit.EndUT + " vs " + tick);
 						lastEndUT =  newOrbit.EndUT;
 						newOrbit = newOrbit.nextPatch;
 						if (newOrbit.referenceBody == null) newOrbit.referenceBody = FlightGlobals.Bodies.Find(b => b.name == "Sun");
-						KMPClientMain.DebugLog("updated to next patch");
+						Log.Debug("updated to next patch");
 					}
 				}
 				newOrbit.UpdateFromUT(tick);
@@ -2211,9 +2211,9 @@ namespace KMP
 	            extant_vessel.orbitDriver.vel = extant_vessel.orbit.vel;
 				
 				Planetarium.SetUniversalTime(tick);
-				KMPClientMain.DebugLog("new vel mag: " + extant_vessel.orbit.getOrbitalVelocityAtUT(tick).magnitude);
-				KMPClientMain.DebugLog("Orbit updated to target: " + tick);
-			} else { KMPClientMain.DebugLog("no victim available!"); }
+				Log.Debug("new vel mag: " + extant_vessel.orbit.getOrbitalVelocityAtUT(tick).magnitude);
+				Log.Debug("Orbit updated to target: " + tick);
+			} else { Log.Debug("no victim available!"); }
 		}
 		
 		private void addRemoteVessel(ProtoVessel protovessel, Guid vessel_id, KMPVessel kvessel = null, KMPVesselUpdate update = null, double distance = 501d)
@@ -2222,7 +2222,7 @@ namespace KMP
 			if (serverVessels_LoadDelay.ContainsKey(vessel_id) ? serverVessels_LoadDelay[vessel_id] < UnityEngine.Time.realtimeSinceStartup : false) return;
 			serverVessels_LoadDelay[vessel_id] = UnityEngine.Time.realtimeSinceStartup + 5f;
 			if (HighLogic.LoadedScene == GameScenes.TRACKSTATION) return;
-			KMPClientMain.DebugLog("addRemoteVessel");
+			Log.Debug("addRemoteVessel");
 			Vector3 newWorldPos = Vector3.zero, newOrbitVel = Vector3.zero;
 			bool setTarget = false, wasLoaded = false, wasActive = false;
 			Vessel oldVessel = null;
@@ -2252,19 +2252,19 @@ namespace KMP
 				
 				if (protovessel.vesselType != VesselType.EVA && serverVessels_Parts.ContainsKey(vessel_id))
 				{
-					KMPClientMain.DebugLog("killing known precursor vessels");
+					Log.Debug("killing known precursor vessels");
 					foreach (Part part in serverVessels_Parts[vessel_id])
 					{
-						try { if (part.vessel.id != oldVessel.id) killVessel(part.vessel); } catch (Exception e) {  KMP.Log.Debug("Exception thrown in addRemoteVessel(), catch 1, Exception: {0}", e.ToString()); }
+						try { if (part.vessel.id != oldVessel.id) killVessel(part.vessel); } catch (Exception e) {  Log.Debug("Exception thrown in addRemoteVessel(), catch 1, Exception: {0}", e.ToString()); }
 					}
 				}
-			} catch (Exception e) {  KMP.Log.Debug("Exception thrown in addRemoteVessel(), catch 2, Exception: {0}", e.ToString()); }
+			} catch (Exception e) {  Log.Debug("Exception thrown in addRemoteVessel(), catch 2, Exception: {0}", e.ToString()); }
 			try
 			{
 				if ((protovessel.vesselType != VesselType.Debris && protovessel.vesselType != VesselType.Unknown) && protovessel.situation == Vessel.Situations.SUB_ORBITAL && protovessel.altitude < 25d)
 				{
 					//Land flags, vessels and EVAs that are on sub-orbital trajectory
-					KMPClientMain.DebugLog("Placing sub-orbital protovessel on surface");
+					Log.Debug("Placing sub-orbital protovessel on surface");
 					protovessel.situation = Vessel.Situations.LANDED;
 					protovessel.landed = true;
 					if (protovessel.vesselType == VesselType.Flag) protovessel.height = -1;
@@ -2290,7 +2290,7 @@ namespace KMP
 
                 if (isInSafetyBubble(protovessel.position, body, protovessel.altitude)) //refuse to load anything too close to the KSC
 				{
-					KMPClientMain.DebugLog("Tried to load vessel too close to KSC");
+					Log.Debug("Tried to load vessel too close to KSC");
 					return;
 				}
 				
@@ -2301,7 +2301,7 @@ namespace KMP
 				
 				if (protovessel.GetVesselCrew().Count * 5 > applicants)
 				{
-					KMPClientMain.DebugLog("Adding crew applicants");
+					Log.Debug("Adding crew applicants");
 					for (int i = 0; i < (protovessel.GetVesselCrew().Count * 5);)
 					{
 						ProtoCrewMember protoCrew = CrewGenerator.RandomCrewMemberPrototype();
@@ -2318,7 +2318,7 @@ namespace KMP
 					{
 						if (wasActive)
 						{
-							KMPClientMain.DebugLog("Preparing active vessel for replacement");
+							Log.Debug("Preparing active vessel for replacement");
 							oldVessel.MakeInactive();
 							foreach (Part part in oldVessel.Parts)
 							{
@@ -2336,7 +2336,7 @@ namespace KMP
 						}
 						else
 						{
-							KMPClientMain.DebugLog("Killing extant vessel");
+							Log.Debug("Killing extant vessel");
 							killVessel(oldVessel);
 						}
 					}
@@ -2345,8 +2345,8 @@ namespace KMP
 			}
 			catch (Exception e)
 			{
-				KMP.Log.Debug("Exception thrown in addRemoteVessel(), catch 3, Exception: {0}", e.ToString());
-				KMPClientMain.DebugLog("Error adding remote vessel: " + e.Message + " " + e.StackTrace);
+				Log.Debug("Exception thrown in addRemoteVessel(), catch 3, Exception: {0}", e.ToString());
+				Log.Debug("Error adding remote vessel: " + e.Message + " " + e.StackTrace);
 			}
 		}
 		
@@ -2364,11 +2364,11 @@ namespace KMP
 	            }
 	            catch (NullReferenceException e)
 	            {
-                  KMP.Log.Debug("Exception thrown in loadProtovessel(), catch 1, Exception: {0}", e.ToString());
+                  Log.Debug("Exception thrown in loadProtovessel(), catch 1, Exception: {0}", e.ToString());
 	            }
 				if (!created_vessel.loaded) created_vessel.Load();
 				
-				KMPClientMain.DebugLog(created_vessel.id.ToString() + " initializing: ProtoParts=" + protovessel.protoPartSnapshots.Count+ ",Parts=" + created_vessel.Parts.Count + ",Sit=" + created_vessel.situation.ToString() + ",type=" + created_vessel.vesselType + ",alt=" + protovessel.altitude);
+				Log.Debug(created_vessel.id.ToString() + " initializing: ProtoParts=" + protovessel.protoPartSnapshots.Count+ ",Parts=" + created_vessel.Parts.Count + ",Sit=" + created_vessel.situation.ToString() + ",type=" + created_vessel.vesselType + ",alt=" + protovessel.altitude);
 				
 				vessels[vessel_id.ToString()].vessel.vesselRef = created_vessel;
 				serverVessels_PartCounts[vessel_id] = created_vessel.Parts.Count;
@@ -2391,18 +2391,18 @@ namespace KMP
 					}
 					if (update == null || (update != null && update.bodyName == FlightGlobals.ActiveVessel.mainBody.name))
 					{
-						KMPClientMain.DebugLog("update included");
+						Log.Debug("update included");
 						
 						if (update == null || (update.relTime == RelativeTime.PRESENT))
 						{	
 							if (newWorldPos != Vector3.zero)
 							{
-								KMPClientMain.DebugLog("repositioning");
+								Log.Debug("repositioning");
 								created_vessel.transform.position = newWorldPos;
 							}
 							if (newOrbitVel != Vector3.zero) 
 							{
-								KMPClientMain.DebugLog("updating velocity");
+								Log.Debug("updating velocity");
 								created_vessel.ChangeWorldVelocity((-1 * created_vessel.GetObtVelocity()) + (new Vector3(newOrbitVel.x,newOrbitVel.z,newOrbitVel.y))); //xzy?
 							}
 							StartCoroutine(restoreVesselState(created_vessel,newWorldPos,newOrbitVel));
@@ -2425,7 +2425,7 @@ namespace KMP
 				}
 				if (setTarget) StartCoroutine(setDockingTarget(created_vessel));
 				if (wasActive) StartCoroutine(setActiveVessel(created_vessel, oldVessel));
-				KMPClientMain.DebugLog(created_vessel.id.ToString() + " initialized");
+				Log.Debug(created_vessel.id.ToString() + " initialized");
 			}
 		}
 		
@@ -2449,7 +2449,7 @@ namespace KMP
 				{
 					KSP.IO.File.Delete<KMPManager>(filename);
 				}
-				catch (Exception e) { KMP.Log.Debug("Exception thrown in safeDelete(), catch 1, Exception: {0}", e.ToString()); }
+				catch (Exception e) { Log.Debug("Exception thrown in safeDelete(), catch 1, Exception: {0}", e.ToString()); }
 			}
 		}
 
@@ -2474,7 +2474,7 @@ namespace KMP
 //						id = (KMPCommon.ClientInteropMessageID)id_int;
 
 					interopInQueue.Enqueue(bytes);
-				} catch (Exception e) { KMP.Log.Debug("Exception thrown in acceptClientInterop(), catch 1, Exception: {0}", e.ToString()); }
+				} catch (Exception e) { Log.Debug("Exception thrown in acceptClientInterop(), catch 1, Exception: {0}", e.ToString()); }
 			}
 		}
 		
@@ -2533,7 +2533,7 @@ namespace KMP
 						}
 					}
 				}
-				catch (Exception e) { KMP.Log.Debug("Exception thrown in processClientInterop(), catch 1, Exception: {0}", e.ToString()); }
+				catch (Exception e) { Log.Debug("Exception thrown in processClientInterop(), catch 1, Exception: {0}", e.ToString()); }
 			}
 		}
 
@@ -2557,7 +2557,7 @@ namespace KMP
 					}
 					success = true;
 				}
-				catch (Exception e) { KMP.Log.Debug("Exception thrown in writePluginInterop(), catch 1, Exception: {0}", e.ToString()); }
+				catch (Exception e) { Log.Debug("Exception thrown in writePluginInterop(), catch 1, Exception: {0}", e.ToString()); }
 			}
 
 			return success;
@@ -2624,18 +2624,18 @@ namespace KMP
 						}
 						break;
 				}
-			} catch (Exception e) { KMP.Log.Debug("Exception thrown in handleInteropMessage(), catch 1, Exception: {0}", e.ToString()); KMPClientMain.DebugLog(e.Message); }
+			} catch (Exception e) { Log.Debug("Exception thrown in handleInteropMessage(), catch 1, Exception: {0}", e.ToString()); Log.Debug(e.Message); }
 		}
 		
 		private IEnumerator<WaitForEndOfFrame> applyScreenshotTexture(byte[] image_data)
 		{
 			yield return new WaitForEndOfFrame();
 			KMPScreenshotDisplay.texture = new Texture2D(4, 4, TextureFormat.RGB24, false, true);
-			KMPClientMain.DebugLog("applying screenshot");
+			Log.Debug("applying screenshot");
 			if (KMPScreenshotDisplay.texture.LoadImage(image_data))
 			{
 				KMPScreenshotDisplay.texture.Apply();
-				KMPClientMain.DebugLog("applied");
+				Log.Debug("applied");
 				//Make sure the screenshot texture does not exceed the size limits
 				if (KMPScreenshotDisplay.texture.width > KMPScreenshotDisplay.screenshotSettings.maxWidth
 					|| KMPScreenshotDisplay.texture.height > KMPScreenshotDisplay.screenshotSettings.maxHeight)
@@ -2646,7 +2646,7 @@ namespace KMP
 			}
 			else
 			{
-				KMPClientMain.DebugLog("image not loaded");
+				Log.Debug("image not loaded");
 				KMPScreenshotDisplay.texture = null;
 				KMPScreenshotDisplay.description = String.Empty;
 			}	
@@ -2706,7 +2706,7 @@ namespace KMP
 			}
 			catch (Exception e)
 			{
-        KMP.Log.Debug("Exception thrown in saveGlobalSettings(), catch 1, Exception: {0}", e.ToString());
+        Log.Debug("Exception thrown in saveGlobalSettings(), catch 1, Exception: {0}", e.ToString());
 				Debug.Log(e.Message);
 			}
 		}
@@ -2767,19 +2767,19 @@ namespace KMP
 			}
 			catch (KSP.IO.IOException e)
 			{
-        KMP.Log.Debug("Exception thrown in loadGlobalSettings(), catch 1, Exception: {0}", e.ToString());
+        Log.Debug("Exception thrown in loadGlobalSettings(), catch 1, Exception: {0}", e.ToString());
 				success = false;
 				Debug.Log(e.Message);
 			}
 			catch (System.IO.IOException e)
 			{
-        KMP.Log.Debug("Exception thrown in loadGlobalSettings(), catch 2, Exception: {0}", e.ToString());
+        Log.Debug("Exception thrown in loadGlobalSettings(), catch 2, Exception: {0}", e.ToString());
 				success = false;
 				Debug.Log(e.Message);
 			}
 			catch (System.IO.IsolatedStorage.IsolatedStorageException e)
 			{
-        KMP.Log.Debug("Exception thrown in loadGlobalSettings(), catch 3, Exception: {0}", e.ToString());
+        Log.Debug("Exception thrown in loadGlobalSettings(), catch 3, Exception: {0}", e.ToString());
 				success = false;
 				Debug.Log(e.Message);
 			}
@@ -2788,7 +2788,7 @@ namespace KMP
 				try
 				{
 					KSP.IO.File.Delete<KMPManager>(GLOBAL_SETTINGS_FILENAME);
-				} catch (Exception e) { KMP.Log.Debug("Exception thrown in loadGlobalSettings(), catch 4, Exception: {0}", e.ToString()); }
+				} catch (Exception e) { Log.Debug("Exception thrown in loadGlobalSettings(), catch 4, Exception: {0}", e.ToString()); }
 				KMPGlobalSettings.instance = new KMPGlobalSettings();
 			}
 		}
@@ -2808,7 +2808,7 @@ namespace KMP
             } 
             catch (Exception e)
             {
-                KMP.Log.Debug("Exception thrown in Awake(), catch 1, Exception: {0}", e.ToString());
+                Log.Debug("Exception thrown in Awake(), catch 1, Exception: {0}", e.ToString());
                 platform = PlatformID.Unix;
             }
 			Debug.Log("KMP loaded");
@@ -2817,19 +2817,19 @@ namespace KMP
 		private void Start()
 		  {
             if (ScaledSpace.Instance == null || ScaledSpace.Instance.scaledSpaceTransforms == null) { return; }
-            KMPClientMain.DebugLog("Clearing ScaledSpace transforms, count: " + ScaledSpace.Instance.scaledSpaceTransforms.Count);
+            Log.Debug("Clearing ScaledSpace transforms, count: " + ScaledSpace.Instance.scaledSpaceTransforms.Count);
             ScaledSpace.Instance.scaledSpaceTransforms.RemoveAll(t => t == null);
             if (HighLogic.LoadedScene == GameScenes.MAINMENU)
             {
                 ScaledSpace.Instance.scaledSpaceTransforms.RemoveAll(t => !FlightGlobals.Bodies.Exists(b => b.name == t.name));
             }
-            KMPClientMain.DebugLog("New count: " + ScaledSpace.Instance.scaledSpaceTransforms.Count);
+            Log.Debug("New count: " + ScaledSpace.Instance.scaledSpaceTransforms.Count);
         }
 		
 		private void OnPartCouple(GameEvents.FromToAction<Part,Part> data)
 		{
 			docking = true;
-			KMPClientMain.DebugLog("Dock event: " + data.to.vessel.id + " " + data.from.vessel.id);
+			Log.Debug("Dock event: " + data.to.vessel.id + " " + data.from.vessel.id);
 			//Destroy old vessels for other players
 			removeDockedVessel(data.from.vessel);
 			removeDockedVessel(data.to.vessel);
@@ -2862,7 +2862,7 @@ namespace KMP
 		private void OnPartUndock(Part data)
 		{
 			docking = true;
-			KMPClientMain.DebugLog("Undock event");
+			Log.Debug("Undock event");
 			if (data.vessel != null)
 			{
 				serverVessels_PartCounts[data.vessel.id] = 0;
@@ -2873,26 +2873,26 @@ namespace KMP
 		
 		private void OnCrewOnEva(GameEvents.FromToAction<Part,Part> data)
 		{
-			KMPClientMain.DebugLog("EVA event");
+			Log.Debug("EVA event");
 			if (data.from.vessel != null) sendVesselMessage(data.from.vessel);
 		}
 		
 		private void OnCrewBoardVessel(GameEvents.FromToAction<Part,Part> data)
 		{
-			KMPClientMain.DebugLog("End EVA event");
+			Log.Debug("End EVA event");
 			if (data.to.vessel != null) sendVesselMessage(data.to.vessel);
 			if (lastEVAVessel != null) sendRemoveVesselMessage(lastEVAVessel);
 		}
 		
 		private void OnVesselLoaded(Vessel data)
 		{
-			KMPClientMain.DebugLog("Vessel loaded: " + data.id);
+			Log.Debug("Vessel loaded: " + data.id);
 			//data.distancePackThreshold = Vector3.Distance(data.orbit.getPositionAtUT(Planetarium.GetUniversalTime()), FlightGlobals.ship_position) + 100f;
 		}
 		
 		private void OnVesselTerminated(ProtoVessel data)
 		{
-            KMPClientMain.DebugLog("Vessel termination: " + data.vesselID + " " + serverVessels_RemoteID.ContainsKey(data.vesselID) + " " + (HighLogic.LoadedScene == GameScenes.TRACKSTATION) + " " + (data.vesselType == VesselType.Debris || (serverVessels_IsMine.ContainsKey(data.vesselID) ? serverVessels_IsMine[data.vesselID] : true)));
+            Log.Debug("Vessel termination: " + data.vesselID + " " + serverVessels_RemoteID.ContainsKey(data.vesselID) + " " + (HighLogic.LoadedScene == GameScenes.TRACKSTATION) + " " + (data.vesselType == VesselType.Debris || (serverVessels_IsMine.ContainsKey(data.vesselID) ? serverVessels_IsMine[data.vesselID] : true)));
 			if (serverVessels_RemoteID.ContainsKey(data.vesselID) //"activeTermination" only if this is remote vessel
 			    && HighLogic.LoadedScene == GameScenes.TRACKSTATION //and at TrackStation
 			    && (data.vesselType == VesselType.Debris || (serverVessels_IsMine.ContainsKey(data.vesselID) ? serverVessels_IsMine[data.vesselID] : true))) //and is debris or owned vessel
@@ -2915,7 +2915,7 @@ namespace KMP
 			    			&& (data.vesselType == VesselType.Debris || (serverVessels_IsMine.ContainsKey(data.id) ? serverVessels_IsMine[data.id] : true))))) //and target is debris or owned vessel
 				{
 					activeTermination = false;
-					KMPClientMain.DebugLog("Vessel destroyed: " + data.id);
+					Log.Debug("Vessel destroyed: " + data.id);
 					sendRemoveVesselMessage(data);
 				}
 			}
@@ -2923,22 +2923,22 @@ namespace KMP
 			
 		private void OnTimeWarpRateChanged()
 		{
-			KMPClientMain.DebugLog("OnTimeWarpRateChanged");
+			Log.Debug("OnTimeWarpRateChanged");
 			if (TimeWarp.WarpMode == TimeWarp.Modes.LOW) TimeWarp.SetRate(0,true);
 			else
 			{
-				KMPClientMain.DebugLog("sending: " + TimeWarp.CurrentRate);
+				Log.Debug("sending: " + TimeWarp.CurrentRate);
 				byte[] update_bytes = BitConverter.GetBytes(TimeWarp.CurrentRate);
 				enqueuePluginInteropMessage(KMPCommon.PluginInteropMessageID.WARPING, update_bytes);
 				if (TimeWarp.CurrentRate <= 1) 
 				{
 					Invoke("setNotWarping",1f);
-					KMPClientMain.DebugLog("done warping");
+					Log.Debug("done warping");
 				}
 				else
 				{
 					warping = true;
-					KMPClientMain.DebugLog("warping");
+					Log.Debug("warping");
 				}
 			}
 		}
@@ -2954,7 +2954,7 @@ namespace KMP
 			{
 				//Enable debug log for sync
 				KMPClientMain.debugging = true;
-				KMPClientMain.DebugLog("Requesting initial sync");
+				Log.Debug("Requesting initial sync");
 				GameEvents.onFlightReady.Remove(this.OnFirstFlightReady);
 				GameEvents.onFlightReady.Add(this.OnFlightReady);
 				MapView.EnterMapView();
@@ -2971,9 +2971,9 @@ namespace KMP
 			//Ensure vessel uses only stock parts in lieu of proper mod support
 			if (!FlightGlobals.ActiveVessel.isEVA && !FlightGlobals.ActiveVessel.protoVessel.protoPartSnapshots.TrueForAll(pps => KMPClientMain.partList.Contains(pps.partName)))
 			{
-				KMPClientMain.DebugLog("Loaded vessel has prohibited parts!");
+				Log.Debug("Loaded vessel has prohibited parts!");
 				foreach (ProtoPartSnapshot pps in FlightGlobals.ActiveVessel.protoVessel.protoPartSnapshots)
-					KMPClientMain.DebugLog(pps.partName);
+					Log.Debug(pps.partName);
 				syncing = true;
 				GameEvents.onFlightReady.Add(this.OnFirstFlightReady);
 				GameEvents.onFlightReady.Remove(this.OnFlightReady);
@@ -3016,7 +3016,7 @@ namespace KMP
 
 		private void OnGameSceneLoadRequested(GameScenes data)
 		{
-			KMPClientMain.DebugLog("OnGameSceneLoadRequested");
+			Log.Debug("OnGameSceneLoadRequested");
 			if (gameRunning && (data == GameScenes.SPACECENTER || data == GameScenes.MAINMENU))
 			{
 				writePluginUpdate();
@@ -3147,7 +3147,7 @@ namespace KMP
                         }
                     }
                 }
-			} catch (Exception ex) { KMP.Log.Debug("Exception thrown in Update(), catch 1, Exception: {0}", ex.ToString()); KMPClientMain.DebugLog ("u err: " + ex.Message + " " + ex.StackTrace); }
+			} catch (Exception ex) { Log.Debug("Exception thrown in Update(), catch 1, Exception: {0}", ex.ToString()); Log.Debug ("u err: " + ex.Message + " " + ex.StackTrace); }
 		}
 
 		public void OnGUI()
@@ -3279,7 +3279,7 @@ namespace KMP
 					GameEvents.onVesselDestroy.Remove(this.OnVesselDestroy);
 				}
         catch (Exception e) {
-              KMP.Log.Debug("Exception thrown in drawGUI(), catch 1, Exception: {0}", e.ToString());
+              Log.Debug("Exception thrown in drawGUI(), catch 1, Exception: {0}", e.ToString());
         }
 				GUILayout.Window(
 					999996,
@@ -3395,7 +3395,7 @@ namespace KMP
 				GUILayout.EndVertical();
 			}
 			catch (Exception e) {
-          KMP.Log.Debug("Exception thrown in lockWindow(), catch 1, Exception: {0}", e.ToString());
+          Log.Debug("Exception thrown in lockWindow(), catch 1, Exception: {0}", e.ToString());
       }
 		}
 		
