@@ -1184,7 +1184,44 @@ namespace KMPServer
                         cl.tcpClient.Close();
                     }
                 }
+				
+				//Update the database
+                if (cl.currentVessel != Guid.Empty)
+                {
+                    try
+                    {
+                        DbCommand cmd = universeDB.CreateCommand();
+                        string sql = "UPDATE kmpVessel SET Active = 0 WHERE Guid = @guid";
+                        cmd.CommandText = sql;
+                        cmd.Parameters.AddWithValue("guid", cl.currentVessel);
+                        cmd.ExecuteNonQuery();
+                        cmd.Dispose();
+                    }
+                    catch { }
+                    sendVesselStatusUpdateToAll(cl, cl.currentVessel);
+                }
 
+                bool emptySubspace = true;
+
+                foreach (Client client in clients.ToList())
+                {
+                    if (cl.currentSubspaceID == client.currentSubspaceID && client.tcpClient.Connected && cl.playerID != client.playerID)
+                    {
+                        emptySubspace = false;
+                        break;
+                    }
+                }
+
+                if (emptySubspace)
+                {
+                    DbCommand cmd = universeDB.CreateCommand();
+                    string sql = "DELETE FROM kmpSubspace WHERE ID = @id AND LastTick < (SELECT MIN(s.LastTick) FROM kmpSubspace s INNER JOIN kmpVessel v ON v.Subspace = s.ID);";
+                    cmd.CommandText = sql;
+                    cmd.Parameters.AddWithValue("id", cl.currentSubspaceID.ToString("D"));
+                    cmd.ExecuteNonQuery();
+                    cmd.Dispose();
+                }
+				
                 //Only send the disconnect message if the client performed handshake successfully
                 if (cl.receivedHandshake)
                 {
@@ -1192,43 +1229,6 @@ namespace KMPServer
 
                     //Send the disconnect message to all other clients
                     sendServerMessageToAll(string.Format("User {0} has disconnected : {1}", cl.username, message));
-
-                    //Update the database
-                    if (cl.currentVessel != Guid.Empty)
-                    {
-                        try
-                        {
-                            DbCommand cmd = universeDB.CreateCommand();
-                            string sql = "UPDATE kmpVessel SET Active = 0 WHERE Guid = @guid";
-                            cmd.CommandText = sql;
-                            cmd.Parameters.AddWithValue("guid", cl.currentVessel);
-                            cmd.ExecuteNonQuery();
-                            cmd.Dispose();
-                        }
-                        catch { }
-                        sendVesselStatusUpdateToAll(cl, cl.currentVessel);
-                    }
-
-                    bool emptySubspace = true;
-
-                    foreach (Client client in clients.ToList())
-                    {
-                        if (cl.currentSubspaceID == client.currentSubspaceID && client.tcpClient.Connected && cl.playerID != client.playerID)
-                        {
-                            emptySubspace = false;
-                            break;
-                        }
-                    }
-
-                    if (emptySubspace)
-                    {
-                        DbCommand cmd = universeDB.CreateCommand();
-                        string sql = "DELETE FROM kmpSubspace WHERE ID = @id AND LastTick < (SELECT MIN(s.LastTick) FROM kmpSubspace s INNER JOIN kmpVessel v ON v.Subspace = s.ID);";
-                        cmd.CommandText = sql;
-                        cmd.Parameters.AddWithValue("id", cl.currentSubspaceID.ToString("D"));
-                        cmd.ExecuteNonQuery();
-                        cmd.Dispose();
-                    }
 
                     //backupDatabase();
                 }
@@ -3170,7 +3170,6 @@ namespace KMPServer
 
         public void backupDatabase()
         {
-			
             Log.Info("Backing up old disk DB...");
             try
             {
@@ -3189,8 +3188,6 @@ namespace KMPServer
                 Log.Error("Failed to backup DB:");
                 Log.Error(e.Message);
             }
-			
-
 
             try
             {
