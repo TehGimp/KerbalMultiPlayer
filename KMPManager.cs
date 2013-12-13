@@ -1040,17 +1040,19 @@ namespace KMP
 				}
 			}
 
-			if (vessel == FlightGlobals.ActiveVessel)
+			if (vessel.id == FlightGlobals.ActiveVessel.id)
 			{
 				update.state = State.ACTIVE;
-
 				//Set vessel details since it's the active vessel
 				update.detail = getVesselDetail(vessel);
 			}
 			else if (vessel.isCommandable)
 				update.state = State.INACTIVE;
 			else
+			{
+				serverVessels_InUse[vessel.id] = false;
 				update.state = State.DEAD;
+			}
 
 			update.timeScale = (float)Planetarium.TimeScale;
 			update.bodyName = vessel.mainBody.bodyName;
@@ -1621,7 +1623,7 @@ namespace KMP
 			if (!vessel_update.id.Equals(Guid.Empty) && !docking)
 			{
 				//Update vessel privacy locks
-				serverVessels_InUse[vessel_update.id] = vessel_update.state == State.ACTIVE;
+				serverVessels_InUse[vessel_update.id] = vessel_update.state == State.ACTIVE && !vessel_update.isMine;
 				serverVessels_IsPrivate[vessel_update.id] = vessel_update.isPrivate;
 				serverVessels_IsMine[vessel_update.id] = vessel_update.isMine;
 				KMPClientMain.DebugLog("status flags updated: " + (vessel_update.state == State.ACTIVE) + " " + vessel_update.isPrivate + " " + vessel_update.isMine);

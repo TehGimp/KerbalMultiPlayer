@@ -2832,7 +2832,7 @@ namespace KMPServer
 
         private void sendVesselStatusUpdateToAll(Client cl, Guid vessel)
         {
-            foreach (var client in clients.ToList().Where(c => c.isReady && c.activityLevel != Client.ActivityLevel.INACTIVE))
+            foreach (var client in clients.ToList().Where(c => c.isReady && c != cl && c.activityLevel != Client.ActivityLevel.INACTIVE))
             {
                 sendVesselStatusUpdate(client, vessel);
             }
