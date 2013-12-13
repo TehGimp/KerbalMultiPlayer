@@ -1282,11 +1282,11 @@ namespace KMPServer
             switch (cl.activityLevel)
             {
                 case Client.ActivityLevel.IN_GAME:
-                    if (flight_clients.Contains(cl)) flight_clients.Remove(cl);
+					HandleActivityUpdateInGame(cl);
                     break;
 
                 case Client.ActivityLevel.IN_FLIGHT:
-                    if (!flight_clients.Contains(cl)) flight_clients.Add(cl);
+                    HandleActivityUpdateInFlight(cl);
                     break;
             }
 
@@ -1684,6 +1684,7 @@ namespace KMPServer
 
         private void HandleActivityUpdateInGame(Client cl)
         {
+			if (flight_clients.Contains(cl)) flight_clients.Remove(cl);
             if (cl.activityLevel == Client.ActivityLevel.INACTIVE) sendServerSync(cl);
             if (cl.activityLevel == Client.ActivityLevel.IN_FLIGHT && cl.currentVessel != Guid.Empty)
             {
@@ -1704,6 +1705,7 @@ namespace KMPServer
 
         private void HandleActivityUpdateInFlight(Client cl)
         {
+			if (!flight_clients.Contains(cl)) flight_clients.Add(cl);
             cl.updateActivityLevel(Client.ActivityLevel.IN_FLIGHT);
         }
 
