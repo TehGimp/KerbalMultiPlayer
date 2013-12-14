@@ -2422,17 +2422,18 @@ namespace KMPServer
 		private void sendMotdMessage(Client cl, String message)
 		{
 			UnicodeEncoding encoder = new UnicodeEncoding();
-			cl.queueOutgoingMessage(KMPCommon.ServerMessageID.MOTD_MESSAGE, encoder.GetBytes(message));
+
+            foreach (var line in message.Split(new string[] { @"\n" }, StringSplitOptions.None))
+            {
+                cl.queueOutgoingMessage(KMPCommon.ServerMessageID.MOTD_MESSAGE, encoder.GetBytes(line));
+            }
 		}
 
 		private void sendMotdMessageToAll(String message, Client exclude = null)
 		{
-			UnicodeEncoding encoder = new UnicodeEncoding();
-			byte[] message_bytes = buildMessageArray(KMPCommon.ServerMessageID.MOTD_MESSAGE, encoder.GetBytes(message));
-
 			foreach (var client in clients.ToList().Where(cl => cl.isReady && cl != exclude))
 			{
-				client.queueOutgoingMessage(message_bytes);
+                sendMotdMessage(client, message);
 			}
 			Log.Debug("[MOTD] sent to all.");
 		}
