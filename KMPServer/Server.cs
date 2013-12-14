@@ -1714,19 +1714,19 @@ namespace KMPServer
 
         private void HandleShareCraftFile(Client cl, byte[] data, UnicodeEncoding encoder)
         {
-            if (!(data.Length > 5 && (data.Length - 5) <= KMPCommon.MAX_CRAFT_FILE_BYTES)) { return; }
+            if (!(data.Length > 8 && (data.Length - 8) <= KMPCommon.MAX_CRAFT_FILE_BYTES)) { return; }
 
             //Read craft name length
-            byte craft_type = data[0];
-            int craft_name_length = KMPCommon.intFromBytes(data, 1);
-            if (craft_name_length < data.Length - 5)
+            KMPCommon.CraftType craft_type = (KMPCommon.CraftType)KMPCommon.intFromBytes(data, 0);
+            int craft_name_length = KMPCommon.intFromBytes(data, 4);
+            if (craft_name_length < data.Length - 8)
             {
                 //Read craft name
-                String craft_name = encoder.GetString(data, 5, craft_name_length);
+                String craft_name = encoder.GetString(data, 8, craft_name_length);
 
                 //Read craft bytes
-                byte[] craft_bytes = new byte[data.Length - craft_name_length - 5];
-                Array.Copy(data, 5 + craft_name_length, craft_bytes, 0, craft_bytes.Length);
+                byte[] craft_bytes = new byte[data.Length - craft_name_length - 8];
+                Array.Copy(data, 8 + craft_name_length, craft_bytes, 0, craft_bytes.Length);
 
                 lock (cl.sharedCraftLock)
                 {
@@ -1743,12 +1743,15 @@ namespace KMPServer
 
                 switch (craft_type)
                 {
-                    case KMPCommon.CRAFT_TYPE_VAB:
+                    case KMPCommon.CraftType.VAB:
                         sb.Append(" (VAB)");
                         break;
 
-                    case KMPCommon.CRAFT_TYPE_SPH:
+                    case KMPCommon.CraftType.SPH:
                         sb.Append(" (SPH)");
+                        break;
+                    case KMPCommon.CraftType.SUBASSEMBLY:
+                        sb.Append(" (Subassembly)");
                         break;
                 }
 
@@ -2946,19 +2949,19 @@ namespace KMPServer
             }
         }
 
-        private void sendCraftFile(Client cl, String craft_name, byte[] data, byte type)
+        private void sendCraftFile(Client cl, String craft_name, byte[] data, KMPCommon.CraftType type)
         {
 
             UnicodeEncoding encoder = new UnicodeEncoding();
             byte[] name_bytes = encoder.GetBytes(craft_name);
 
-            byte[] bytes = new byte[5 + name_bytes.Length + data.Length];
+            byte[] bytes = new byte[8 + name_bytes.Length + data.Length];
 
             //Copy data
-            bytes[0] = type;
-            KMPCommon.intToBytes(name_bytes.Length).CopyTo(bytes, 1);
-            name_bytes.CopyTo(bytes, 5);
-            data.CopyTo(bytes, 5 + name_bytes.Length);
+            KMPCommon.intToBytes((int)type).CopyTo(bytes, 0);
+            KMPCommon.intToBytes(name_bytes.Length).CopyTo(bytes, 4);
+            name_bytes.CopyTo(bytes, 8);
+            data.CopyTo(bytes, 8 + name_bytes.Length);
 
             cl.queueOutgoingMessage(KMPCommon.ServerMessageID.CRAFT_FILE, bytes);
         }
