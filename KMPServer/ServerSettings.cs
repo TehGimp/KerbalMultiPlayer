@@ -316,7 +316,7 @@ namespace KMPServer
 				{
 					foreach (var u in Store.admins)
 					{
-						configWriter.WriteLine(u.ToLowerInvariant());
+						configWriter.WriteLine(u);
 					}
 				}
 			}
