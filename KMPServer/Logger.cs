@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -22,15 +22,23 @@ namespace KMPServer
             Error = 40,
         }
 
-        public static LogLevels MinLogLevel { get; set; }
-
-        private static void WriteLog(LogLevels level, string format, params object[] args)
+        public static void InitLogger()
         {
-
             if (!Directory.Exists(LogFolder))
                 Directory.CreateDirectory(LogFolder);
 
-            if (level < MinLogLevel) { return; }
+            var logs = new DirectoryInfo(LogFolder).GetFiles().OrderBy(s => s.LastWriteTime).ToList();
+            while (logs.Count() >= ServerMain.settings.maximumLogs)
+            {
+                var first = logs.First();
+                first.Delete();
+                logs.Remove(first);
+            }
+        }
+
+        private static void WriteLog(LogLevels level, string format, params object[] args)
+        {
+            if (level < ServerMain.settings.LogLevel) { return; }
 
             lock (Console.Out)
             {

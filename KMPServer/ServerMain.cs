@@ -16,9 +16,11 @@ namespace KMPServer
 
 		public static Server server = null;
 
+	    public static ServerSettings.ConfigStore settings;
+
 		static void Main(string[] args)
 		{
-			ServerSettings.ConfigStore settings = new ServerSettings.ConfigStore();
+			settings = new ServerSettings.ConfigStore();
 			ServerSettings.readFromFile(settings);
 			ServerSettings.loadWhitelist(settings);
 			ServerSettings.loadBans(settings);
@@ -46,8 +48,6 @@ namespace KMPServer
 
 			if (settingsChanged) { ServerSettings.writeToFile(settings); }
 
-			Log.MinLogLevel = settings.LogLevel;
-
             try
             {
                 Console.WindowHeight = (int)(Console.WindowHeight * settings.consoleScale);
@@ -56,6 +56,8 @@ namespace KMPServer
             catch
             {
             }//Fix for mono not needing window width stuff
+
+		    Log.InitLogger();
 
 		    Console.Title = "KMP Server " + KMPCommon.PROGRAM_VERSION;
 			Log.Info("KMP Server version {0}", KMPCommon.PROGRAM_VERSION);
@@ -252,7 +254,6 @@ namespace KMPServer
                                     ServerSettings.modifySetting(settings, parts[1], val);
                                     Log.Info("{0} changed to {1}", parts[1], val);
                                     ServerSettings.writeToFile(settings);
-                                    Log.MinLogLevel = settings.LogLevel;
                                 }
                                 catch
                                 {

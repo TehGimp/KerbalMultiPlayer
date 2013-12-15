@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -248,7 +248,7 @@ namespace KMP
 					}
 					catch (Exception e)
 					{
-					    KMP.Log.Debug("Exception thrown in InitKMPVesselUpdate(), catch 1, Exception: {0}", e.ToString());
+					    Log.Debug("Exception thrown in InitKMPVesselUpdate(), catch 1, Exception: {0}", e.ToString());
 						proto = null;
 					}
 					if (proto != null)
