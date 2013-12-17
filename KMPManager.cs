@@ -2349,9 +2349,15 @@ namespace KMP
 		private IEnumerator<WaitForFixedUpdate> loadProtovessel(Vessel oldVessel, Vector3 newWorldPos, Vector3 newOrbitVel, bool wasLoaded, bool wasActive, bool setTarget, ProtoVessel protovessel, Guid vessel_id, KMPVessel kvessel = null, KMPVesselUpdate update = null, double distance = 501d)
 		{
 			yield return new WaitForFixedUpdate();
-			Log.Debug("Killing/loading vessel");
-			if (oldVessel != null) killVessel(oldVessel);
+			if (oldVessel != null && !wasActive)
+			{
+				Log.Debug("Killing vessel");
+				try { oldVessel.Die(); } catch {}
+				try { FlightGlobals.Vessels.Remove(oldVessel); } catch {}
+				StartCoroutine(destroyVesselOnNextUpdate(oldVessel));
+			}
 			serverVessels_LoadDelay[vessel_id] = UnityEngine.Time.realtimeSinceStartup + 5f;
+			serverVessels_PartCounts[vessel_id] = protovessel.protoPartSnapshots.Count;
 			protovessel.Load(HighLogic.CurrentGame.flightState);
 			Vessel created_vessel = protovessel.vesselRef;
 			
@@ -2367,7 +2373,7 @@ namespace KMP
 	            }
 				if (!created_vessel.loaded) created_vessel.Load();
 				
-				Log.Debug(created_vessel.id.ToString() + " initializing: ProtoParts=" + protovessel.protoPartSnapshots.Count+ ",Parts=" + created_vessel.Parts.Count + ",Sit=" + created_vessel.situation.ToString() + ",type=" + created_vessel.vesselType + ",alt=" + protovessel.altitude);
+				Log.Debug(created_vessel.id.ToString() + " initializing: ProtoParts=" + protovessel.protoPartSnapshots.Count + ",Parts=" + created_vessel.Parts.Count + ",Sit=" + created_vessel.situation.ToString() + ",type=" + created_vessel.vesselType + ",alt=" + protovessel.altitude);
 				
 				vessels[vessel_id.ToString()].vessel.vesselRef = created_vessel;
 				serverVessels_PartCounts[vessel_id] = created_vessel.Parts.Count;
