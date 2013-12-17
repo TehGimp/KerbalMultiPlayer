@@ -1117,7 +1117,7 @@ namespace KMP
 							ModuleEngines engine = (ModuleEngines)module;
 							has_engines = true;
 
-							foreach (ModuleEngines.Propellant propellant in engine.propellants)
+							foreach (Propellant propellant in engine.propellants)
 							{
 								if (propellant.name == "ElectricCharge" || propellant.name == "IntakeAir")
 								{
@@ -2223,8 +2223,7 @@ namespace KMP
 			if (vessel_id == FlightGlobals.ActiveVessel.id && (serverVessels_InUse.ContainsKey(vessel_id) ? !serverVessels_InUse.ContainsKey(vessel_id) : false)) return;
 			if (serverVessels_LoadDelay.ContainsKey(vessel_id) ? serverVessels_LoadDelay[vessel_id] < UnityEngine.Time.realtimeSinceStartup : false) return;
 			serverVessels_LoadDelay[vessel_id] = UnityEngine.Time.realtimeSinceStartup + 5f;
-			if (HighLogic.LoadedScene == GameScenes.TRACKSTATION) return;
-			Log.Debug("addRemoteVessel");
+			Log.Debug("addRemoteVessel: " + vessel_id.ToString());
 			Vector3 newWorldPos = Vector3.zero, newOrbitVel = Vector3.zero;
 			bool setTarget = false, wasLoaded = false, wasActive = false;
 			Vessel oldVessel = null;
@@ -2355,6 +2354,7 @@ namespace KMP
 		private IEnumerator<WaitForFixedUpdate> loadProtovessel(Vessel oldVessel, Vector3 newWorldPos, Vector3 newOrbitVel, bool wasLoaded, bool wasActive, bool setTarget, ProtoVessel protovessel, Guid vessel_id, KMPVessel kvessel = null, KMPVesselUpdate update = null, double distance = 501d)
 		{
 			yield return new WaitForFixedUpdate();
+			serverVessels_LoadDelay[vessel_id] = UnityEngine.Time.realtimeSinceStartup + 5f;
 			protovessel.Load(HighLogic.CurrentGame.flightState);
 			Vessel created_vessel = protovessel.vesselRef;
 			
@@ -2954,8 +2954,6 @@ namespace KMP
 		{
 			if (syncing)
 			{
-				//Enable debug log for sync
-				KMPClientMain.debugging = true;
 				Log.Debug("Requesting initial sync");
 				GameEvents.onFlightReady.Remove(this.OnFirstFlightReady);
 				GameEvents.onFlightReady.Add(this.OnFlightReady);
@@ -3012,7 +3010,6 @@ namespace KMP
 				ScreenMessages.PostScreenMessage("Universe synchronized",1f,ScreenMessageStyle.UPPER_RIGHT);
 				StartCoroutine(returnToSpaceCenter());
 				//Disable debug logging once synced unless explicitly enabled
-				KMPClientMain.debugging = false;
 			}
 		}
 
@@ -3637,7 +3634,7 @@ namespace KMP
 					//Start MP game
 					KMPConnectionDisplay.windowEnabled = false;
 					gameRunning = true;
-					GameSettings.MAX_PHYSICS_DT_PER_FRAME = 1.0f;
+					GameSettings.PHYSICS_FRAME_DT_LIMIT = 1.0f;
 					HighLogic.SaveFolder = "KMP";
 					HighLogic.CurrentGame = GamePersistence.LoadGame("start",HighLogic.SaveFolder,false,true);
 					HighLogic.CurrentGame.Parameters.Flight.CanAutoSave = false;
@@ -4425,12 +4422,12 @@ namespace KMP
 
 			if (should_lock && !isEditorLocked && !EditorLogic.editorLocked)
 			{
-				EditorLogic.fetch.Lock(true, true, true);
+				EditorLogic.fetch.Lock(true, true, true,"KMP_lock");
 				isEditorLocked = true;
 			}
 			else if (!should_lock && isEditorLocked && EditorLogic.editorLocked)
 			{
-				EditorLogic.fetch.Unlock();
+				EditorLogic.fetch.Unlock("KMP_lock");
 				isEditorLocked = false;
 			}
 		}

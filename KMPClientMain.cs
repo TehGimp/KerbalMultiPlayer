@@ -172,7 +172,7 @@ namespace KMP
 
         public static KMPManager gameManager;
         public static long lastPing;
-        public static bool debugging = true;
+        public static bool debugging = false;
         public static bool cheatsEnabled = false;
 
         public static List<string> partList = new List<string>();
@@ -815,6 +815,8 @@ namespace KMP
                     {
                         handled = true;
                         debugging = !debugging;
+						if (debugging) Log.MinLogLevel = Log.LogLevels.Debug;
+						else Log.MinLogLevel = Log.LogLevels.Info;
                         enqueuePluginChatMessage("debug " + debugging);
                     }
 					else if(line_lower == "!clear")
