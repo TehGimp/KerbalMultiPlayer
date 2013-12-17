@@ -1760,13 +1760,13 @@ namespace KMP
 														Log.Debug("rotation set");
 														
 														extant_vessel.transform.LookAt(extant_vessel.transform.position + extant_vessel.mainBody.transform.TransformDirection(new Vector3(vessel_update.rot[0],vessel_update.rot[1],vessel_update.rot[2])).normalized,vessel.worldDirection);
-														Quaternion rot = extant_vessel.transform.rotation;
-														if (extant_vessel.altitude > 10000f)
-														{
-															extant_vessel.transform.up = vessel.worldDirection;
-															extant_vessel.transform.RotateAround(vessel.worldDirection,rot.Roll());
+														//Quaternion rot = extant_vessel.transform.rotation;
+//														if (extant_vessel.altitude > 10000f)
+//														{
+//															extant_vessel.transform.up = vessel.worldDirection;
+//															extant_vessel.transform.Rotate(rot.eulerAngles);
 															extant_vessel.SetRotation(extant_vessel.transform.rotation);
-														}
+//														}
 														extant_vessel.angularMomentum = Vector3.zero;
 //														extant_vessel.VesselSAS.LockHeading(extant_vessel.transform.rotation);
 //														extant_vessel.VesselSAS.currentRotation = rot;
@@ -2335,11 +2335,6 @@ namespace KMP
 							serverVessels_IsMine[oldVessel.id] = isMine;
 							FlightGlobals.SetActiveVessel(oldVessel);
 						}
-						else
-						{
-							Log.Debug("Killing extant vessel");
-							killVessel(oldVessel);
-						}
 					}
 					StartCoroutine(loadProtovessel(oldVessel, newWorldPos, newOrbitVel, wasLoaded, wasActive, setTarget, protovessel, vessel_id, kvessel, update, distance));
 				}
@@ -2354,6 +2349,8 @@ namespace KMP
 		private IEnumerator<WaitForFixedUpdate> loadProtovessel(Vessel oldVessel, Vector3 newWorldPos, Vector3 newOrbitVel, bool wasLoaded, bool wasActive, bool setTarget, ProtoVessel protovessel, Guid vessel_id, KMPVessel kvessel = null, KMPVesselUpdate update = null, double distance = 501d)
 		{
 			yield return new WaitForFixedUpdate();
+			Log.Debug("Killing/loading vessel");
+			if (oldVessel != null) killVessel(oldVessel);
 			serverVessels_LoadDelay[vessel_id] = UnityEngine.Time.realtimeSinceStartup + 5f;
 			protovessel.Load(HighLogic.CurrentGame.flightState);
 			Vessel created_vessel = protovessel.vesselRef;
