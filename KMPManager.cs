@@ -2977,6 +2977,8 @@ namespace KMP
 				enqueuePluginInteropMessage(KMPCommon.PluginInteropMessageID.WARPING, update_bytes);
 				if (TimeWarp.CurrentRate <= 1) 
 				{
+					syncing = true;
+					inGameSyncing = true;
 					Invoke("setNotWarping",1f);
 					Log.Debug("done warping");
 				}
@@ -3093,6 +3095,8 @@ namespace KMP
 			try
 			{
 				if (!gameRunning) return;
+				
+				if (PauseMenu.isOpen && syncing) PauseMenu.Close();
 				
 				if (FlightDriver.Pause) FlightDriver.SetPause(false);
 				if (KMPClientMain.cheatsEnabled == false) {
