@@ -1716,6 +1716,12 @@ namespace KMP
 												{
 													protovessel = syncOrbit(vessel, vessel_update.tick, protovessel, vessel_update.w_pos[0]);
 					                            }
+												if (protovessel == null)
+												{
+													Log.Debug("vessel collided with surface");
+													killVessel(extant_vessel);
+													return;
+												}
 												addRemoteVessel(protovessel, vessel_update.id, vessel, vessel_update, incomingDistance);
 												if (vessel_update.situation == Situation.FLYING) serverVessels_LoadDelay[vessel.id] = UnityEngine.Time.realtimeSinceStartup + 5f;
 											} else { Log.Debug("Protovessel missing!"); }
@@ -1737,7 +1743,13 @@ namespace KMP
 												    	(vessel_update.relTime == RelativeTime.PRESENT && (ourDistance > (INACTIVE_VESSEL_RANGE+500f))) || 
 						  								(vessel_update.relTime != RelativeTime.PRESENT && Math.Abs(tick-vessel_update.tick) > 1.5d && vessel_update.id != FlightGlobals.ActiveVessel.id))
 													{
-														syncExtantVesselOrbit(vessel,vessel_update.tick,extant_vessel,vessel_update.w_pos[0]);
+														if (!syncExtantVesselOrbit(vessel,vessel_update.tick,extant_vessel,vessel_update.w_pos[0]))
+														{
+															//Collision!
+															Log.Debug("vessel collided with surface");
+															killVessel(extant_vessel);
+															return;
+														}
 														serverVessels_ObtSyncDelay[vessel_update.id] = UnityEngine.Time.realtimeSinceStartup + 1f;
 													}
 												}
@@ -1891,10 +1903,15 @@ namespace KMP
 										{
 											Log.Debug("Adding new vessel: " + vessel_update.id);
 											ProtoVessel protovessel = new ProtoVessel(serverVessels_ProtoVessels[vessel_update.id], HighLogic.CurrentGame);
-											if (vessel.orbitValid && KMPVessel.situationIsOrbital(vessel_update.situation) && protovessel.vesselType != VesselType.Flag && protovessel.vesselType != VesselType.EVA)
+											if (vessel.orbitValid && KMPVessel.situationIsOrbital(vessel_update.situation) && protovessel.vesselType != VesselType.Flag)
 											{
 												protovessel = syncOrbit(vessel, vessel_update.tick, protovessel, vessel_update.w_pos[0]);
 				                            }
+											if (protovessel == null)
+											{
+												Log.Debug("Did not load vessel, has collided with surface");
+												return;
+											}
 											serverVessels_PartCounts[vessel_update.id] = 0;
 											addRemoteVessel(protovessel, vessel_update.id, vessel, vessel_update, incomingDistance);
 											HighLogic.CurrentGame.CrewRoster.ValidateAssignments(HighLogic.CurrentGame);
@@ -2069,6 +2086,7 @@ namespace KMP
 		private ProtoVessel syncOrbit(KMPVessel kvessel, double fromTick, ProtoVessel protovessel, double LAN)
 		{
 			Log.Debug("updating OrbitSnapshot");
+			bool killedForCollision = false;
 			double tick = Planetarium.GetUniversalTime();
 			
             //Update orbit
@@ -2100,11 +2118,16 @@ namespace KMP
 			
 			newOrbit = victim.patchedConicSolver.orbit;
 			if (newOrbit.referenceBody == null) newOrbit.referenceBody = FlightGlobals.Bodies.Find(b => b.name == "Sun");
+			
+			killedForCollision = checkOrbitForCollision(newOrbit,tick,fromTick);
+			
 			if (newOrbit.EndUT > 0)
 			{
 				double lastEndUT =  newOrbit.EndUT;
 				while (newOrbit.EndUT > 0 && newOrbit.EndUT < tick && newOrbit.EndUT > lastEndUT && newOrbit.nextPatch != null)
 				{
+					if (killedForCollision) break;
+					killedForCollision = checkOrbitForCollision(newOrbit,tick,lastEndUT);
 					Log.Debug("orbit EndUT < target: " + newOrbit.EndUT + " vs " + tick);
 					lastEndUT =  newOrbit.EndUT;
 					newOrbit = newOrbit.nextPatch;
@@ -2119,13 +2142,14 @@ namespace KMP
 			Planetarium.SetUniversalTime(tick);
 			protovessel.orbitSnapShot = new OrbitSnapshot(newOrbit);
 			Log.Debug("OrbitSnapshot updated");
-			return protovessel;	
+			if (killedForCollision) return null;
+			else return protovessel;	
 		}
 		
-		private void syncExtantVesselOrbit(KMPVessel kvessel, double fromTick, Vessel extant_vessel, double LAN)
+		private bool syncExtantVesselOrbit(KMPVessel kvessel, double fromTick, Vessel extant_vessel, double LAN)
 		{
 			Log.Debug("updating Orbit: " + extant_vessel.id);
-			
+			bool killedForCollision = false;
 			bool victimAvailable = true;
 			Vessel victim = FlightGlobals.ActiveVessel;
 			
@@ -2187,11 +2211,16 @@ namespace KMP
 //				Log.Debug("sI:" + newOrbit.sampleInterval);
 //				Log.Debug("UTsoi:" + newOrbit.UTsoi);
 //				Log.Debug("body:" + newOrbit.referenceBody.name);
+				
+				killedForCollision = checkOrbitForCollision(newOrbit,tick,fromTick);
+				
 				if (newOrbit.EndUT > 0)
 				{
 					double lastEndUT =  newOrbit.EndUT;
 					while (newOrbit.EndUT > 0 && newOrbit.EndUT < tick && newOrbit.EndUT > lastEndUT && newOrbit.nextPatch != null)
 					{
+						if (killedForCollision) break;
+						killedForCollision = checkOrbitForCollision(newOrbit,tick,lastEndUT);
 						Log.Debug("orbit EndUT < target: " + newOrbit.EndUT + " vs " + tick);
 						lastEndUT =  newOrbit.EndUT;
 						newOrbit = newOrbit.nextPatch;
@@ -2216,6 +2245,17 @@ namespace KMP
 				Log.Debug("new vel mag: " + extant_vessel.orbit.getOrbitalVelocityAtUT(tick).magnitude);
 				Log.Debug("Orbit updated to target: " + tick);
 			} else { Log.Debug("no victim available!"); }
+			
+			return !killedForCollision;
+		}
+		
+		private bool checkOrbitForCollision(Orbit orbit, double tick, double fromTick)
+		{
+			CelestialBody body = orbit.referenceBody;
+			bool boom = orbit.PeA < body.maxAtmosphereAltitude && orbit.timeToPe < (tick-fromTick);
+			if (boom) Log.Debug("Orbit collided with surface");
+			//else Log.Debug("Orbit does not collide with body: {0} {1} {2} {3} {4}",orbit.PeA,body.maxAtmosphereAltitude,orbit.timeToPe,tick,fromTick);
+			return boom;
 		}
 		
 		private void addRemoteVessel(ProtoVessel protovessel, Guid vessel_id, KMPVessel kvessel = null, KMPVesselUpdate update = null, double distance = 501d)
