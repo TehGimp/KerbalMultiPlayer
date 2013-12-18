@@ -2866,14 +2866,14 @@ namespace KMP
 		
 		private void OnPartUndock(Part data)
 		{
-			docking = true;
+			//docking = true;
 			Log.Debug("Undock event");
 			if (data.vessel != null)
 			{
 				serverVessels_PartCounts[data.vessel.id] = 0;
 				serverVessels_ProtoVessels.Remove(data.vessel.id);
 			}
-			Invoke("setFinishDocking",1f);
+			//Invoke("setFinishDocking",1f);
 		}
 		
 		private void OnCrewOnEva(GameEvents.FromToAction<Part,Part> data)
