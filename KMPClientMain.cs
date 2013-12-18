@@ -1707,6 +1707,31 @@ namespace KMP
                     partList.Add("flag");
                     changed = true;
                 }
+				if (!lines.Contains("mediumDishAntenna"))
+				{
+                    partList.Add("mediumDishAntenna");
+                    changed = true;
+                }	
+				if (!lines.Contains("GooExperiment"))
+				{
+                    partList.Add("GooExperiment");
+                    changed = true;
+                }
+			    if (!lines.Contains("science.module"))
+				{
+                    partList.Add("science.module");
+                    changed = true;
+                }
+				if (!lines.Contains("RAPIER"))
+				{
+                    partList.Add("RAPIER");
+                    changed = true;
+                }	                                          
+				if (!lines.Contains("Large.Crewed.Lab"))
+				{
+                    partList.Add("Large.Crewed.Lab");
+                    changed = true;
+                }
                 if (changed)
                 {
                     KSP.IO.TextWriter writer = KSP.IO.File.CreateText<KMPClientMain>(PART_LIST_FILENAME);
