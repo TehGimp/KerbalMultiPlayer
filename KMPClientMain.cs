@@ -1765,6 +1765,9 @@ namespace KMP
 
                 //0.22 parts
                 partList.Add("mediumDishAntenna"); partList.Add("GooExperiment"); partList.Add("science.module");
+				
+				//0.23 parts
+				partList.Add("RAPIER"); partList.Add("Large.Crewed.Lab");
 
                 //Write to disk
                 KSP.IO.TextWriter writer = KSP.IO.File.CreateText<KMPClientMain>(PART_LIST_FILENAME);
