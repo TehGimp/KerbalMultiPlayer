@@ -4415,23 +4415,24 @@ namespace KMP
 		//This code adapted from Kerbal Engineer Redux source
 		private void CheckEditorLock()
 		{
-			Vector2 mousePos = Input.mousePosition;
-			mousePos.y = Screen.height - mousePos.y;
-
-			bool should_lock = HighLogic.LoadedSceneIsEditor
-				&& shouldDrawGUI
-					&& (KMPInfoDisplay.infoWindowPos.Contains(mousePos)
-						|| (KMPScreenshotDisplay.windowEnabled && KMPScreenshotDisplay.windowPos.Contains(mousePos)));
-
-			if (should_lock && !isEditorLocked && !EditorLogic.editorLocked)
+			if (gameRunning && shouldDrawGUI && HighLogic.LoadedSceneIsEditor)
 			{
-				EditorLogic.fetch.Lock(true, true, true,"KMP_lock");
-				isEditorLocked = true;
-			}
-			else if (!should_lock && isEditorLocked && EditorLogic.editorLocked)
-			{
-				EditorLogic.fetch.Unlock("KMP_lock");
-				isEditorLocked = false;
+				Vector2 mousePos = Input.mousePosition;
+				mousePos.y = Screen.height - mousePos.y;
+	
+				bool should_lock = (KMPInfoDisplay.infoWindowPos.Contains(mousePos)
+					|| (KMPScreenshotDisplay.windowEnabled && KMPScreenshotDisplay.windowPos.Contains(mousePos)));
+				
+				if (should_lock && !isEditorLocked)
+				{
+					EditorLogic.fetch.Lock(true, true, true,"KMP_lock");
+					isEditorLocked = true;
+				}
+				else if (!should_lock && isEditorLocked)
+				{
+					EditorLogic.fetch.Unlock("KMP_lock");
+					isEditorLocked = false;
+				}
 			}
 		}
         
