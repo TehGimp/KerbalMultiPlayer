@@ -4,6 +4,10 @@ using System.Linq;
 using System.Text;
 using System.Globalization;
 
+using System.Security.Cryptography;
+using System.Runtime.Serialization.Formatters.Binary;
+//using System.IO AS OF 0.21 THIS HAS BEEN REENABLED, WE DON'T NEED TO USE KSP.IO ANYMORE
+
 using System.Net;
 using System.Net.Sockets;
 using System.Threading;
@@ -44,10 +48,10 @@ namespace KMP
 
         //public const String INTEROP_CLIENT_FILENAME = "interopclient.txt";
         //public const String INTEROP_PLUGIN_FILENAME = "interopplugin.txt";
-        public const String CLIENT_CONFIG_FILENAME = "KMPClientConfig.xml";
-        public const String CLIENT_TOKEN_FILENAME = "KMPPlayerToken.txt";
-        public const String PART_LIST_FILENAME = "KMPPartList.txt";
-        public const String CRAFT_FILE_EXTENSION = ".craft";
+        public const string CLIENT_CONFIG_FILENAME = "KMPClientConfig.xml";
+        public const string CLIENT_TOKEN_FILENAME = "KMPPlayerToken.txt";
+        public const string MOD_CONTROL_FILENAME = "KMPModControl.txt";
+        public const string CRAFT_FILE_EXTENSION = ".craft";
 
         public const int MAX_USERNAME_LENGTH = 16;
         public const int MAX_TEXT_MESSAGE_QUEUE = 128;
@@ -96,7 +100,18 @@ namespace KMP
         public static byte inactiveShipsPerUpdate = 0;
         public static ScreenshotSettings screenshotSettings = new ScreenshotSettings();
 		public static Dictionary<String, String[]> favorites = new Dictionary<String, String[]>();
-
+		
+		//ModChecking
+		public static bool modFileChecked = false;
+		public static List<string> partList = new List<string>();
+        public static Dictionary<string, string> md5List = new Dictionary<string, string>(); //path:md5
+        public static List<string> resourceList = new List<string>();
+        public static List<string> requiredModList = new List<string>();
+		public static string resourceControlMode = "blacklist";
+		public static string modMismatchError = "Mod Verification Failed - Reason Unknown";
+		public static string GAMEDATAPATH = new System.IO.DirectoryInfo(getKMPDirectory()).Parent.Parent.FullName;
+        public static byte[] kmpModControl_bytes;
+		
         //Connection
         public static int clientID;
         public static bool endSession;
@@ -175,7 +190,6 @@ namespace KMP
         public static bool debugging = false;
         public static bool cheatsEnabled = false;
 
-        public static List<string> partList = new List<string>();
 
 
         public static void InitMPClient(KMPManager manager)
@@ -259,9 +273,261 @@ namespace KMP
             favorites = newFavorites;
             writeConfigFile();
         }
+        
+        private static string doHashMD5(MD5 md5, byte[] tohash)
+        {
+        	byte[] hashed = md5.ComputeHash(tohash);
+
+            StringBuilder sBuilder = new StringBuilder();
+
+            // Loop through each byte of the hashed data  
+            // and format each one as a hexadecimal string. 
+            for (int i = 0; i < hashed.Length; i++)
+            {
+                sBuilder.Append(hashed[i].ToString("x2"));
+            }
+			
+            return sBuilder.ToString();
+        }
+        
+        private static void parseModFile(string modfilepath)
+        {
+        	System.IO.StreamReader reader = System.IO.File.OpenText(modfilepath);
+        	
+	        string resourcemode = "blacklist";
+	        List<string> allowedParts = new List<string>();
+	        Dictionary<string, string> hashes = new Dictionary<string, string>();
+	        List<string> resources = new List<string>();
+	        List<string> modList = new List<string>();
+	        string line;
+	        string[] splitline;
+	        string readmode = "parts";
+	        while (reader.Peek() != -1)
+	        {
+	        	
+	        	line = reader.ReadLine();
+	        	
+	        	try
+	        	{
+		        	if(line[0] != '#')//allows commented lines
+		        	{	
+		        		if(line[0] == '!')//changing readmode
+		        		{
+		        			if(line.Contains("partslist")){
+		        				readmode = "parts";
+		        			}
+		        			else if(line.Contains("md5")){
+		        				readmode = "md5";
+		        			}
+		        			else if(line.Contains("resource-blacklist")){ //allow all resources EXCEPT these in file
+		        				readmode = "resource";
+		        				resourcemode = "blacklist";
+		        			}
+		        			else if(line.Contains("resource-whitelist")){ //allow NO resources EXCEPT these in file
+		        				readmode = "resource";
+		        				resourcemode = "whitelist";
+		        			}
+		        			else if(line.Contains("required")){
+		        				readmode = "required";
+		        			}
+		        		}
+		        		else if(readmode == "parts")
+		        		{
+		        			allowedParts.Add(line);
+		        		}
+		        		else if(readmode == "md5")
+		        		{
+		        			splitline = line.Split('=');
+		        			hashes.Add(splitline[0], splitline[1]); //stores path:md5
+		        		}
+		        		else if(readmode == "resource"){
+		        			resources.Add(line);
+		        		}
+		        		else if(readmode == "required"){
+		        			modList.Add(line);
+		        		}
+		        	}
+		        }
+		        catch (Exception e)
+		        {
+		        	Log.Info(e.ToString());
+		        }
+	        }
+	        
+	        reader.Close();
+	        partList = allowedParts; //make all the vars global once we're done parsing
+	        md5List = hashes;
+	        resourceControlMode = resourcemode;
+	        resourceList = resources;
+	        requiredModList = modList;
+	        
+        }
+        
+        private static bool md5Check()
+        {
+        	string md5Hash;
+        	string hashPath;
+        	byte[] toHash;
+        	foreach (KeyValuePair<string, string> entry in md5List)
+        	{
+        		hashPath = System.IO.Path.Combine(GAMEDATAPATH, entry.Key);
+        		
+	        	MD5 md5 = MD5.Create();
+	        	
+	        	try
+	        	{
+	        		toHash = System.IO.File.ReadAllBytes(hashPath);
+	        	}
+	        	catch (System.IO.FileNotFoundException)
+	        	{
+	        		modMismatchError = "Required File Missing: " + System.IO.Path.GetFileName(hashPath);
+	        		return false;
+	        	}
+	        	catch (System.IO.DirectoryNotFoundException)
+	        	{
+	        		string dir = hashPath;
+	        		while(new System.IO.DirectoryInfo(dir).Parent.Name != "GameData")
+	        		{
+	        			dir = new System.IO.DirectoryInfo(dir).Parent.FullName;
+	        		}
+	        		modMismatchError = "Required Mod Missing or Incomplete: " + new System.IO.DirectoryInfo(dir).Name;
+	        		return false;
+	        	}
+	        	catch (System.IO.IsolatedStorage.IsolatedStorageException) //EXACTLY the same as directory not found, but thrown for the same reason (why?)
+	        	{
+	        		string dir = hashPath;
+	        		while(new System.IO.DirectoryInfo(dir).Parent.Name != "GameData")
+	        		{
+	        			dir = new System.IO.DirectoryInfo(dir).Parent.FullName;
+	        		}
+	        		modMismatchError = "Required Mod Missing or Incomplete: " + new System.IO.DirectoryInfo(dir).Name;
+	        		return false;
+	        	}
+	        	catch (Exception e)
+	        	{
+		        	Log.Info(e.ToString());
+		        	return false;
+	        	}
+	        	
+	        	md5Hash = doHashMD5(md5, toHash);
+	        	if (md5Hash != entry.Value.ToLower())
+	        	{
+	        		string failedFile = System.IO.Path.GetFileName(hashPath);
+	        		modMismatchError = "MD5 Checksum Mismatch: " + failedFile;
+	        		return false;
+	        	}
+	        }
+	        return true;
+	    }
+        
+        
+        private static bool resourceCheck()
+        {
+        	try
+        	{
+        		string[] ls = System.IO.Directory.GetFiles(GAMEDATAPATH, "*.*", System.IO.SearchOption.AllDirectories);
+	        	if(resourceControlMode == "blacklist")
+	        	{
+	        		foreach(string checkedResource in resourceList)
+	        		{
+	        			foreach(string resource in ls)
+	        			{
+	        				if(resource.Contains(checkedResource))
+	        				{
+	        					modMismatchError = "Resource Blacklisted: " + new System.IO.DirectoryInfo(resource).Name;
+	        					return false;
+	        				}
+	        			}
+	        		}
+	        	}
+	        	else if(resourceControlMode == "whitelist")
+	        	{
+	        		foreach(string resource in ls)
+	        		{
+	        			if(resource.Contains(".dll") && !((resource.Contains("KerbalMultiPlayer.dll") 
+	        			|| resource.Contains("ICSharpCode.SharpZipLib.dll")) && resource.Contains("KMP")))//is .dll the ONLY type we need to worry about? 
+	        			{
+	        				bool allowed = false;
+	        				foreach(string checkedResource in resourceList)
+	        				{
+	        					if(resource.Contains(checkedResource))
+	        					{
+									allowed = true;
+									break;
+	        					}
+	        				}
+	        				if(!allowed)
+	        				{
+	        					modMismatchError = "Resource Not On Whitelist: " + new System.IO.DirectoryInfo(resource).Name;
+	        					return false;
+	        				}
+	        			}
+	        		}
+	        	}
+	        	return true;
+	        }
+	        catch (Exception e)
+	        {
+	        	Log.Info(e.ToString());
+	        	return false;
+	        }
+        }
+        
+        private static bool requiredCheck()
+        {
+        	string[] ls = System.IO.Directory.GetDirectories(GAMEDATAPATH);
+        	bool found;
+        	foreach (string required in requiredModList)
+        	{
+        		found = false;
+        		
+	        	foreach (string resource in ls)
+	        	{
+	        		if (required == new System.IO.DirectoryInfo(resource).Name)
+	        		{
+	        			found = true;
+	        			break;
+	        		}
+	        	}
+	        	if (!found)
+	        	{
+	        		modMismatchError = "Missing Required Mod: " + required;
+	        		return false;
+	        	}
+	        }
+        	
+        	return true;
+        }
+        
+        private static bool modCheck(byte[] kmpModControl_bytes)
+        {	
+        	if (!modFileChecked)
+        	{
+        		modFileChecked = true;
+				string modFilePath = System.IO.Path.Combine(GAMEDATAPATH, "KMP/Plugins/PluginData/KerbalMultiPlayer/" + MOD_CONTROL_FILENAME);
+	        	System.IO.File.WriteAllBytes(modFilePath, kmpModControl_bytes);
+	        	
+				parseModFile(modFilePath);
+	        	
+	        	if (!md5Check() || !resourceCheck() || !requiredCheck())
+	        	{
+	        		return false;
+	        	}
+	        	else
+	        	{
+	        		return true;
+	        	}
+
+        	}
+        	else
+        	{
+        		return true;
+        	}
+        }
 
         public static void Connect()
         {
+        	modFileChecked = false;
             clearConnectionState();
             File.Delete<KMPClientMain>("debug");
             serverThread = new Thread(beginConnect);
@@ -533,7 +799,11 @@ namespace KMP
                         {
                             String server_version = encoder.GetString(data, 8, server_version_length);
                             clientID = KMPCommon.intFromBytes(data, 8 + server_version_length);
-							gameManager.gameMode = KMPCommon.intFromBytes(data, 12 + server_version_length);
+			    gameManager.gameMode = KMPCommon.intFromBytes(data, 12 + server_version_length);
+                            int kmpModControl_length = KMPCommon.intFromBytes(data, 16 + server_version_length);
+                            kmpModControl_bytes = new byte[kmpModControl_length];
+                            Array.Copy(data, 20 + server_version_length, kmpModControl_bytes, 0, kmpModControl_length);
+                                
 							
                             SetMessage("Handshake received. Server version: " + server_version);
                         }
@@ -548,12 +818,21 @@ namespace KMP
                     }
                     else
                     {
-                        sendHandshakeMessage(); //Reply to the handshake
-                        lock (udpTimestampLock)
+                        if (!modCheck(kmpModControl_bytes))
                         {
-                            lastUDPMessageSendTime = stopwatch.ElapsedMilliseconds;
+                            endSession = true;
+                            intentionalConnectionEnd = true;
+                            gameManager.disconnect(modMismatchError);
                         }
-                        handshakeCompleted = true;
+                        else
+                        {
+                            sendHandshakeMessage(); //Reply to the handshake
+                            lock (udpTimestampLock)
+                            {
+                                lastUDPMessageSendTime = stopwatch.ElapsedMilliseconds;
+                            }
+                            handshakeCompleted = true;
+                        }
                     }
 
                     break;
@@ -616,7 +895,7 @@ namespace KMP
                     break;
 
                 case KMPCommon.ServerMessageID.SERVER_SETTINGS:
-
+                	
                     lock (serverSettingsLock)
                     {
                         if (data != null && data.Length >= KMPCommon.SERVER_SETTINGS_LENGTH && handshakeCompleted)
@@ -643,6 +922,8 @@ namespace KMP
                                     lastClientDataChangeTime = stopwatch.ElapsedMilliseconds;
                                 }
                                 cheatsEnabled = Convert.ToBoolean(data[21]);
+                                //partList, requiredModList, md5List, resourceList and resourceControlMode 
+
                             }
 
                             receivedSettings = true;
@@ -1693,127 +1974,6 @@ namespace KMP
         }
 
 
-        //Reads the parts list file
-        private static void readPartsList()
-        {
-            try
-            {
-                //Get the part list if available
-                KSP.IO.TextReader reader = KSP.IO.File.OpenText<KMPClientMain>(PART_LIST_FILENAME);
-                List<string> lines = new List<string>();
-                while (!reader.EndOfStream)
-                {
-                    lines.Add(reader.ReadLine());
-                }
-                reader.Close();
-                partList = lines;
-
-                bool changed = false;
-                if (!lines.Contains("kerbalEVA"))
-                {
-                    partList.Add("kerbalEVA");
-                    changed = true;
-                }
-                if (!lines.Contains("flag"))
-                {
-                    partList.Add("flag");
-                    changed = true;
-                }
-				if (!lines.Contains("mediumDishAntenna"))
-				{
-                    partList.Add("mediumDishAntenna");
-                    changed = true;
-                }	
-				if (!lines.Contains("GooExperiment"))
-				{
-                    partList.Add("GooExperiment");
-                    changed = true;
-                }
-			    if (!lines.Contains("science.module"))
-				{
-                    partList.Add("science.module");
-                    changed = true;
-                }
-				if (!lines.Contains("RAPIER"))
-				{
-                    partList.Add("RAPIER");
-                    changed = true;
-                }	                                          
-				if (!lines.Contains("Large.Crewed.Lab"))
-				{
-                    partList.Add("Large.Crewed.Lab");
-                    changed = true;
-                }
-                if (changed)
-                {
-                    KSP.IO.TextWriter writer = KSP.IO.File.CreateText<KMPClientMain>(PART_LIST_FILENAME);
-                    foreach (string part in partList)
-                        writer.WriteLine(part);
-                    writer.Close();
-                }
-            }
-            catch (Exception e)
-            {
-                Log.Debug("Exception thrown in readPartsList(), catch 1, Exception: {0}", e.ToString());
-                //Generate the stock part list
-                partList = new List<string>();
-
-                //0.21 (& below) parts
-                partList.Add("StandardCtrlSrf"); partList.Add("CanardController"); partList.Add("noseCone"); partList.Add("AdvancedCanard"); partList.Add("airplaneTail");
-                partList.Add("deltaWing"); partList.Add("noseConeAdapter"); partList.Add("rocketNoseCone"); partList.Add("smallCtrlSrf"); partList.Add("standardNoseCone");
-                partList.Add("sweptWing"); partList.Add("tailfin"); partList.Add("wingConnector"); partList.Add("winglet"); partList.Add("R8winglet");
-                partList.Add("winglet3"); partList.Add("Mark1Cockpit"); partList.Add("Mark2Cockpit"); partList.Add("Mark1-2Pod"); partList.Add("advSasModule");
-                partList.Add("asasmodule1-2"); partList.Add("avionicsNoseCone"); partList.Add("crewCabin"); partList.Add("cupola"); partList.Add("landerCabinSmall");
-
-                partList.Add("mark3Cockpit"); partList.Add("mk1pod"); partList.Add("mk2LanderCabin"); partList.Add("probeCoreCube"); partList.Add("probeCoreHex");
-                partList.Add("probeCoreOcto"); partList.Add("probeCoreOcto2"); partList.Add("probeCoreSphere"); partList.Add("probeStackLarge"); partList.Add("probeStackSmall");
-                partList.Add("sasModule"); partList.Add("seatExternalCmd"); partList.Add("rtg"); partList.Add("batteryBank"); partList.Add("batteryBankLarge");
-                partList.Add("batteryBankMini"); partList.Add("batteryPack"); partList.Add("ksp.r.largeBatteryPack"); partList.Add("largeSolarPanel"); partList.Add("solarPanels1");
-                partList.Add("solarPanels2"); partList.Add("solarPanels3"); partList.Add("solarPanels4"); partList.Add("solarPanels5"); partList.Add("JetEngine");
-
-                partList.Add("engineLargeSkipper"); partList.Add("ionEngine"); partList.Add("liquidEngine"); partList.Add("liquidEngine1-2"); partList.Add("liquidEngine2");
-                partList.Add("liquidEngine2-2"); partList.Add("liquidEngine3"); partList.Add("liquidEngineMini"); partList.Add("microEngine"); partList.Add("nuclearEngine");
-                partList.Add("radialEngineMini"); partList.Add("radialLiquidEngine1-2"); partList.Add("sepMotor1"); partList.Add("smallRadialEngine"); partList.Add("solidBooster");
-                partList.Add("solidBooster1-1"); partList.Add("toroidalAerospike"); partList.Add("turboFanEngine"); partList.Add("MK1Fuselage"); partList.Add("Mk1FuselageStructural");
-                partList.Add("RCSFuelTank"); partList.Add("RCSTank1-2"); partList.Add("rcsTankMini"); partList.Add("rcsTankRadialLong"); partList.Add("fuelTank");
-
-                partList.Add("fuelTank1-2"); partList.Add("fuelTank2-2"); partList.Add("fuelTank3-2"); partList.Add("fuelTank4-2"); partList.Add("fuelTankSmall");
-                partList.Add("fuelTankSmallFlat"); partList.Add("fuelTank.long"); partList.Add("miniFuelTank"); partList.Add("mk2Fuselage"); partList.Add("mk2SpacePlaneAdapter");
-                partList.Add("mk3Fuselage"); partList.Add("mk3spacePlaneAdapter"); partList.Add("radialRCSTank"); partList.Add("toroidalFuelTank"); partList.Add("xenonTank");
-                partList.Add("xenonTankRadial"); partList.Add("adapterLargeSmallBi"); partList.Add("adapterLargeSmallQuad"); partList.Add("adapterLargeSmallTri"); partList.Add("adapterSmallMiniShort");
-                partList.Add("adapterSmallMiniTall"); partList.Add("nacelleBody"); partList.Add("radialEngineBody"); partList.Add("smallHardpoint"); partList.Add("stationHub");
-
-                partList.Add("structuralIBeam1"); partList.Add("structuralIBeam2"); partList.Add("structuralIBeam3"); partList.Add("structuralMiniNode"); partList.Add("structuralPanel1");
-                partList.Add("structuralPanel2"); partList.Add("structuralPylon"); partList.Add("structuralWing"); partList.Add("strutConnector"); partList.Add("strutCube");
-                partList.Add("strutOcto"); partList.Add("trussAdapter"); partList.Add("trussPiece1x"); partList.Add("trussPiece3x"); partList.Add("CircularIntake");
-                partList.Add("landingLeg1"); partList.Add("landingLeg1-2"); partList.Add("RCSBlock"); partList.Add("stackDecoupler"); partList.Add("airScoop");
-                partList.Add("commDish"); partList.Add("decoupler1-2"); partList.Add("dockingPort1"); partList.Add("dockingPort2"); partList.Add("dockingPort3");
-
-                partList.Add("dockingPortLarge"); partList.Add("dockingPortLateral"); partList.Add("fuelLine"); partList.Add("ladder1"); partList.Add("largeAdapter");
-                partList.Add("largeAdapter2"); partList.Add("launchClamp1"); partList.Add("linearRcs"); partList.Add("longAntenna"); partList.Add("miniLandingLeg");
-                partList.Add("parachuteDrogue"); partList.Add("parachuteLarge"); partList.Add("parachuteRadial"); partList.Add("parachuteSingle"); partList.Add("radialDecoupler");
-                partList.Add("radialDecoupler1-2"); partList.Add("radialDecoupler2"); partList.Add("ramAirIntake"); partList.Add("roverBody"); partList.Add("sensorAccelerometer");
-                partList.Add("sensorBarometer"); partList.Add("sensorGravimeter"); partList.Add("sensorThermometer"); partList.Add("spotLight1"); partList.Add("spotLight2");
-
-                partList.Add("stackBiCoupler"); partList.Add("stackDecouplerMini"); partList.Add("stackPoint1"); partList.Add("stackQuadCoupler"); partList.Add("stackSeparator");
-                partList.Add("stackSeparatorBig"); partList.Add("stackSeparatorMini"); partList.Add("stackTriCoupler"); partList.Add("telescopicLadder"); partList.Add("telescopicLadderBay");
-                partList.Add("SmallGearBay"); partList.Add("roverWheel1"); partList.Add("roverWheel2"); partList.Add("roverWheel3"); partList.Add("wheelMed"); partList.Add("flag");
-                partList.Add("kerbalEVA");
-
-                //0.22 parts
-                partList.Add("mediumDishAntenna"); partList.Add("GooExperiment"); partList.Add("science.module");
-				
-				//0.23 parts
-				partList.Add("RAPIER"); partList.Add("Large.Crewed.Lab");
-
-                //Write to disk
-                KSP.IO.TextWriter writer = KSP.IO.File.CreateText<KMPClientMain>(PART_LIST_FILENAME);
-                foreach (string part in partList)
-                    writer.WriteLine(part);
-                writer.Close();
-            }
-        }
-
         // Reads the player's token (GUID)
         private static void readTokenFile()
         {
@@ -1903,7 +2063,7 @@ namespace KMP
             }
 
             readTokenFile();
-            readPartsList();
+            //readPartsList(); now server sided
         }
 
         static void writeConfigFile()
