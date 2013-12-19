@@ -112,9 +112,11 @@ namespace KMP
 
 		private bool mappingGUIToggleKey = false;
 		private bool mappingScreenshotKey = false;
+		private bool mappingScreenshotToggleKey = false;
         private bool mappingChatKey = false;
         private bool mappingChatDXToggleKey = false;
 		private bool isGameHUDHidden = false;
+		
 
         PlatformID platform;
 		
@@ -2848,6 +2850,10 @@ namespace KMP
                     if (KMPGlobalSettings.instance.chatHideKey == KeyCode.None)
                         KMPGlobalSettings.instance.chatHideKey = KeyCode.F9;
 
+                    if (KMPGlobalSettings.instance.screenshotToggleKey == KeyCode.None)
+                        KMPGlobalSettings.instance.screenshotToggleKey = KeyCode.F10;
+
+
 					KMPScreenshotDisplay.windowPos.x = KMPGlobalSettings.instance.screenshotDisplayWindowX;
 					KMPScreenshotDisplay.windowPos.y = KMPGlobalSettings.instance.screenshotDisplayWindowY;
 
@@ -3215,6 +3221,9 @@ namespace KMP
 
                 if (Input.GetKeyDown(KMPGlobalSettings.instance.screenshotKey))
                     StartCoroutine(shareScreenshot());
+                    
+                if (Input.GetKeyDown(KMPGlobalSettings.instance.screenshotToggleKey) && isGameHUDHidden == false)
+		    KMPScreenshotDisplay.windowEnabled = !KMPScreenshotDisplay.windowEnabled;
 
                 if (Input.GetKeyDown(KMPGlobalSettings.instance.chatTalkKey))
                     KMPChatDX.showInput = true;
@@ -3251,6 +3260,19 @@ namespace KMP
                         {
                             KMPGlobalSettings.instance.screenshotKey = key;
                             mappingScreenshotKey = false;
+                        }
+                    }
+                }
+                
+                if (mappingScreenshotToggleKey)
+                {
+                    KeyCode key = KeyCode.F10;
+                    if (getAnyKeyDown(ref key))
+                    {
+                        if (key != KeyCode.Mouse0)
+                        {
+                            KMPGlobalSettings.instance.screenshotToggleKey = key;
+                            mappingScreenshotToggleKey = false;
                         }
                     }
                 }
@@ -3467,7 +3489,7 @@ namespace KMP
 					999998,
 					KMPScreenshotDisplay.windowPos,
 					screenshotWindow,
-					"KerbalMP Viewer",
+					"KerbalMP Viewer (" + KMPGlobalSettings.instance.screenshotToggleKey + ")",
 					KMPScreenshotDisplay.layoutOptions
 					);
 			}
@@ -3622,8 +3644,22 @@ namespace KMP
 				{
 					chatButtonStyle.normal.textColor = new Color(0.27f, 0.92f, 0.09f);
 				}
+				GUIStyle screenshotButtonStyle = new GUIStyle(GUI.skin.button);
+				int numScreenshotsWaiting = KMPClientMain.screenshotsWaiting.Count();
+				if (numScreenshotsWaiting > 3)
+				{
+					screenshotButtonStyle.normal.textColor = new Color(0.92f, 0.09f, 0.09f);
+				}
+				else if (numScreenshotsWaiting > 1)
+				{
+					screenshotButtonStyle.normal.textColor = new Color(0.92f, 0.60f, 0.09f);
+				}
+				else if (numScreenshotsWaiting > 0)
+				{
+					screenshotButtonStyle.normal.textColor = new Color(0.27f, 0.92f, 0.09f);
+				}
 				KMPGlobalSettings.instance.chatDXWindowEnabled = GUILayout.Toggle(KMPGlobalSettings.instance.chatDXWindowEnabled, "Chat ("+KMPGlobalSettings.instance.chatHideKey+")", chatButtonStyle);
-				KMPScreenshotDisplay.windowEnabled = GUILayout.Toggle(KMPScreenshotDisplay.windowEnabled, "Viewer", GUI.skin.button);
+				KMPScreenshotDisplay.windowEnabled = GUILayout.Toggle(KMPScreenshotDisplay.windowEnabled, "Viewer ("+KMPGlobalSettings.instance.screenshotToggleKey+")", screenshotButtonStyle);
 				if (GUILayout.Button("Share Screen ("+KMPGlobalSettings.instance.screenshotKey+")"))
 					StartCoroutine(shareScreenshot());
 				
@@ -3712,7 +3748,15 @@ namespace KMP
                         GUI.skin.button);
 
                     GUILayout.EndHorizontal();
+                    
+                    GUILayout.BeginHorizontal();
 
+                    mappingScreenshotToggleKey = GUILayout.Toggle(
+                        mappingScreenshotToggleKey,
+                        mappingScreenshotToggleKey ? "Press key" : "Screenshot Toggle: " + KMPGlobalSettings.instance.screenshotToggleKey,
+                        GUI.skin.button);
+
+                    GUILayout.EndHorizontal();
                     // Chat map & reset
                     GUILayout.Label("Reset Chat Window");
                     if (GUILayout.Button("Reset Chat"))
@@ -4018,7 +4062,6 @@ namespace KMP
 			//User list
 			KMPScreenshotDisplay.scrollPos = GUILayout.BeginScrollView(KMPScreenshotDisplay.scrollPos, user_list_options);
 			GUILayout.BeginVertical();
-
 			foreach (KeyValuePair<String, VesselStatusInfo> pair in playerStatus)
 			{
 				screenshotWatchButton(pair.Key);
@@ -4461,11 +4504,35 @@ namespace KMP
 
 		private void screenshotWatchButton(String name)
 		{
-			bool player_selected = GUILayout.Toggle(KMPScreenshotDisplay.watchPlayerName == name, name, GUI.skin.button);
+		
+		        GUIStyle playerScreenshotButtonStyle = new GUIStyle(GUI.skin.button);
+		        bool playerNameInScreenshotsWaiting = false;
+                        foreach (string playerName in KMPClientMain.screenshotsWaiting)
+                        {
+                            if (playerName == name) {
+                                playerNameInScreenshotsWaiting = true;
+                            }
+                        }
+                        if (playerNameInScreenshotsWaiting)
+                            playerScreenshotButtonStyle.normal.textColor = new Color(0.92f, 0.60f, 0.09f);
+                        else
+                            playerScreenshotButtonStyle.normal.textColor = new Color(0.92f, 0.92f, 0.92f);
+                        
+			bool player_selected = GUILayout.Toggle(KMPScreenshotDisplay.watchPlayerName == name, name, playerScreenshotButtonStyle);
 			if (player_selected != (KMPScreenshotDisplay.watchPlayerName == name))
 			{
 				if (KMPScreenshotDisplay.watchPlayerName != name)
+				{
 					KMPScreenshotDisplay.watchPlayerName = name; //Set watch player name
+                                        bool listPlayerNameInScreenshotsWaiting = false;
+                                        foreach (string listPlayer in KMPClientMain.screenshotsWaiting)
+                                        {
+                                            if (listPlayer == name)
+                                                listPlayerNameInScreenshotsWaiting = true;
+                                        }
+                                        if (listPlayerNameInScreenshotsWaiting)
+                                            KMPClientMain.screenshotsWaiting.Remove(name);
+				}	
 				else
 					KMPScreenshotDisplay.watchPlayerName = String.Empty;
 

@@ -125,6 +125,7 @@ namespace KMP
 
         public static byte[] queuedOutScreenshot;
         public static byte[] lastSharedScreenshot;
+        public static List<String> screenshotsWaiting = new List<String>();
 
         public static String currentGameTitle;
         public static String watchPlayerName;
@@ -262,6 +263,7 @@ namespace KMP
 
         public static void Connect()
         {
+            screenshotsWaiting.Clear();
             clearConnectionState();
             File.Delete<KMPClientMain>("debug");
             serverThread = new Thread(beginConnect);
@@ -580,6 +582,41 @@ namespace KMP
                         in_message.fromServer = (id == KMPCommon.ServerMessageID.SERVER_MESSAGE);
                         in_message.isMOTD = (id == KMPCommon.ServerMessageID.MOTD_MESSAGE);
                         in_message.message = encoder.GetString(data, 0, data.Length);
+                        if (in_message.message.Contains(" has shared a screenshot.")) {
+                            int screenshotSharePlayerNameIndex = in_message.message.IndexOf(" has shared a screenshot.");
+                            string screenshotSharePlayerName = in_message.message.Substring(0, screenshotSharePlayerNameIndex);
+                            if (screenshotSharePlayerName != username) {
+                                bool listPlayerNameInScreenshotsWaiting = false;
+                                foreach (string listPlayer in screenshotsWaiting)
+                                {
+                                    if (listPlayer == screenshotSharePlayerName) {
+                                        listPlayerNameInScreenshotsWaiting = true;
+                                    }
+                                }
+                                if (listPlayerNameInScreenshotsWaiting == false)
+                                {
+                                    screenshotsWaiting.Add(screenshotSharePlayerName);
+                                }
+                            }
+                        }
+
+                        if (in_message.message.Contains(" has disconnected : ")) {
+                            int quitPlayerNameIndex = in_message.message.IndexOf(" has disconnected : ");
+                            string quitPlayerName = in_message.message.Substring(0, quitPlayerNameIndex);
+                            if (quitPlayerName != username) {
+                                bool listPlayerNameInScreenshotsWaiting = false;
+                                foreach (string listPlayer in screenshotsWaiting)
+                                {
+                                    if (listPlayer == quitPlayerName) {
+                                        listPlayerNameInScreenshotsWaiting = true;
+                                    }
+                                }
+                                if (listPlayerNameInScreenshotsWaiting)
+                                {
+                                    screenshotsWaiting.Remove(quitPlayerName);
+                                }
+                            }
+                        }
 
                         //Queue the message
                         enqueueTextMessage(in_message);
