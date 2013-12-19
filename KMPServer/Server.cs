@@ -2154,7 +2154,7 @@ namespace KMPServer
 			{
 				sendSyncMessage(cl, tick);
 				cl.lastTick = tick;
-				sendScenarios(cl, tick);
+				sendScenarios(cl);
 			}
         }
 
@@ -2980,15 +2980,14 @@ namespace KMPServer
             cl.queueOutgoingMessage(KMPCommon.ServerMessageID.SERVER_SETTINGS, serverSettingBytes());
         }
 		
-		private void sendScenarios(Client cl, double tick)
+		private void sendScenarios(Client cl)
 		{
 			if (settings.gameMode == 1) //Career mode
 			{
 				DbCommand cmd = universeDB.CreateCommand();
-                string sql = "SELECT UpdateMessage FROM kmpScenarios WHERE PlayerID = @playerID AND Tick <= @tick;";
+                string sql = "SELECT UpdateMessage FROM kmpScenarios WHERE PlayerID = @playerID;";
                 cmd.CommandText = sql;
                 cmd.Parameters.AddWithValue("playerID", cl.playerID);
-				cmd.Parameters.AddWithValue("tick", tick.ToString("0.0").Replace(",", "."));
                 DbDataReader reader = cmd.ExecuteReader();
 	            try
 	            {

@@ -66,7 +66,7 @@ namespace KMP
 		public const float PLUGIN_DATA_WRITE_INTERVAL = 0.333f;
 		public const float GLOBAL_SETTINGS_SAVE_INTERVAL = 10.0f;
         public const double SAFETY_BUBBLE_CEILING = 35000d;
-		public const float SCENARIO_UPDATE_INTERVAL = 10f;
+		public const float SCENARIO_UPDATE_INTERVAL = 30.0f;
 
 		public const int INTEROP_MAX_QUEUE_SIZE = 64;
 		public const float INTEROP_WRITE_INTERVAL = 0.333f;
@@ -126,6 +126,8 @@ namespace KMP
 		private bool forceQuit = false;
 		private bool gameRunning = false;
 		private bool activeTermination = false;
+		
+		private bool deferredEditorPartListClear = false;
 		
 		//Vessel dictionaries
 		public Dictionary<Guid, Vessel.Situations> sentVessels_Situations = new Dictionary<Guid, Vessel.Situations>();
@@ -282,6 +284,12 @@ namespace KMP
 				if (warping) {
 					writeUpdates();
 					return;
+				}
+				
+				if (EditorPartList.Instance != null && deferredEditorPartListClear)
+				{
+					deferredEditorPartListClear = false;
+					EditorPartList.Instance.Refresh();
 				}
 				
 				if (!syncing && (UnityEngine.Time.realtimeSinceStartup-lastScenarioUpdateTime) >= SCENARIO_UPDATE_INTERVAL)
@@ -892,11 +900,11 @@ namespace KMP
 		{
 			Log.Debug("sendScenarios");
 			double tick = Planetarium.GetUniversalTime();
-			foreach (ScenarioModule module in GameObject.FindObjectsOfType(typeof(ScenarioModule)))
+			foreach (ProtoScenarioModule proto in HighLogic.CurrentGame.scenarios)
 			{
-				if (module != null && !String.IsNullOrEmpty(module.name))
+				if (proto != null && proto.moduleName != null && proto.moduleRef != null)
 				{
-					KMPScenarioUpdate update = new KMPScenarioUpdate(module, tick);
+					KMPScenarioUpdate update = new KMPScenarioUpdate(proto.moduleName, proto.moduleRef, tick);
 					byte[] update_bytes = KSP.IO.IOUtils.SerializeToBinary(update);
 					enqueuePluginInteropMessage(KMPCommon.PluginInteropMessageID.SCENARIO_UPDATE, update_bytes);
 				}
@@ -1535,11 +1543,17 @@ namespace KMP
 			if (obj is KMPScenarioUpdate)
 			{
 				KMPScenarioUpdate update = (KMPScenarioUpdate) obj;
-				foreach (ScenarioModule module in GameObject.FindObjectsOfType(typeof(ScenarioModule)))
+				foreach (ProtoScenarioModule proto in HighLogic.CurrentGame.scenarios)
 				{
-					if (module.name == update.name) module.Load(update.getScenarioNode());
+					if (proto != null && proto.moduleName == update.name && proto.moduleRef != null && update.getScenarioNode() != null)
+					{
+						Log.Debug("Loading scenario data: " + update.name);
+						proto.moduleRef.Load(update.getScenarioNode());
+						break;
+					}
 				}
-				EditorPartList.Instance.Refresh();
+				if (EditorPartList.Instance != null) EditorPartList.Instance.Refresh();
+				else deferredEditorPartListClear = true;
 			}
 		}
 		
