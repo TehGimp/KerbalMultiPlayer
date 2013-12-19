@@ -66,6 +66,7 @@ namespace KMP
 		public const float PLUGIN_DATA_WRITE_INTERVAL = 0.333f;
 		public const float GLOBAL_SETTINGS_SAVE_INTERVAL = 10.0f;
         public const double SAFETY_BUBBLE_CEILING = 35000d;
+		public const float SCENARIO_UPDATE_INTERVAL = 10f;
 
 		public const int INTEROP_MAX_QUEUE_SIZE = 64;
 		public const float INTEROP_WRITE_INTERVAL = 0.333f;
@@ -101,6 +102,7 @@ namespace KMP
 		private float lastInteropWriteTime = 0.0f;
 		private float lastKeyPressTime = 0.0f;
 		private float lastFullProtovesselUpdate = 0.0f;
+		private float lastScenarioUpdateTime = 0.0f;
 
 		private Queue<KMPVesselUpdate> vesselUpdateQueue = new Queue<KMPVesselUpdate>();
 		private Queue<KMPVesselUpdate> newVesselUpdateQueue = new Queue<KMPVesselUpdate>();
@@ -280,6 +282,12 @@ namespace KMP
 				if (warping) {
 					writeUpdates();
 					return;
+				}
+				
+				if (!syncing && (UnityEngine.Time.realtimeSinceStartup-lastScenarioUpdateTime) >= SCENARIO_UPDATE_INTERVAL)
+				{
+					lastScenarioUpdateTime = UnityEngine.Time.realtimeSinceStartup;
+					sendScenarios();
 				}
 				
 				//Update Tracking Station names for unavailable vessels
@@ -886,9 +894,12 @@ namespace KMP
 			double tick = Planetarium.GetUniversalTime();
 			foreach (ScenarioModule module in GameObject.FindObjectsOfType(typeof(ScenarioModule)))
 			{
-				KMPScenarioUpdate update = new KMPScenarioUpdate(module, tick);
-				byte[] update_bytes = KSP.IO.IOUtils.SerializeToBinary(update);
-				enqueuePluginInteropMessage(KMPCommon.PluginInteropMessageID.SCENARIO_UPDATE, update_bytes);
+				if (module != null && !String.IsNullOrEmpty(module.name))
+				{
+					KMPScenarioUpdate update = new KMPScenarioUpdate(module, tick);
+					byte[] update_bytes = KSP.IO.IOUtils.SerializeToBinary(update);
+					enqueuePluginInteropMessage(KMPCommon.PluginInteropMessageID.SCENARIO_UPDATE, update_bytes);
+				}
 			}
 		}
 		

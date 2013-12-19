@@ -1873,7 +1873,7 @@ namespace KMPServer
 					{
 						cmd = universeDB.CreateCommand();
                         sql = "UPDATE kmpScenarios SET Tick = @tick, UpdateMessage = @updateMessage WHERE ID = @id";
-                        cmd.Parameters.AddWithValue("id", (int) result);
+                        cmd.Parameters.AddWithValue("id", Convert.ToInt32(result));
                         cmd.Parameters.AddWithValue("tick", scenario_update.tick.ToString("0.0").Replace(",", "."));
                         cmd.Parameters.AddWithValue("updateMessage", data);
                         cmd.CommandText = sql;
