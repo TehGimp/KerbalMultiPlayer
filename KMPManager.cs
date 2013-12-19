@@ -3098,7 +3098,7 @@ namespace KMP
 				MapView.EnterMapView();
 				MapView.MapCamera.SetTarget("Kerbin");
 				StartCoroutine(sendSubspaceSyncRequest(-1,true));
-				Invoke("handleSyncTimeout",55f);
+				Invoke("handleSyncTimeout",300f);
 				docking = false;
 			}
 		}
