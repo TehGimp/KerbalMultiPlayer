@@ -2552,6 +2552,10 @@ namespace KMPServer
 			
             KMPCommon.intToBytes(kmpModControl.Length).CopyTo(data_bytes, 16 + version_bytes.Length);
             kmpModControl.CopyTo(data_bytes, 20 + version_bytes.Length);
+			
+			byte[] piracySetting = new byte[1];
+			piracySetting[0] = settings.allowPiracy ? (byte) 1 : (byte) 0;
+			piracySetting.CopyTo(data_bytes, 20 + version_bytes.Length + kmpModControl.Length);
 
             cl.queueOutgoingMessage(KMPCommon.ServerMessageID.HANDSHAKE, data_bytes);
         }

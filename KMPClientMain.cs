@@ -799,11 +799,11 @@ namespace KMP
                         {
                             String server_version = encoder.GetString(data, 8, server_version_length);
                             clientID = KMPCommon.intFromBytes(data, 8 + server_version_length);
-			    gameManager.gameMode = KMPCommon.intFromBytes(data, 12 + server_version_length);
+							gameManager.gameMode = KMPCommon.intFromBytes(data, 12 + server_version_length);
                             int kmpModControl_length = KMPCommon.intFromBytes(data, 16 + server_version_length);
                             kmpModControl_bytes = new byte[kmpModControl_length];
                             Array.Copy(data, 20 + server_version_length, kmpModControl_bytes, 0, kmpModControl_length);
-                                
+                            gameManager.gameArrr = Convert.ToBoolean(data[20 + server_version_length + kmpModControl_length]);
 							
                             SetMessage("Handshake received. Server version: " + server_version);
                         }

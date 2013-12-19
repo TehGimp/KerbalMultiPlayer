@@ -95,6 +95,7 @@ namespace KMP
 		public static object interopInQueueLock = new object();
 		
 		public int gameMode = 0; //0=Sandbox, 1=Career
+		public bool gameArrr = false; //Allow private vessels to be taken if other user can successfully dock manually
 		
 		private float lastGlobalSettingSaveTime = 0.0f;
 		private float lastPluginDataWriteTime = 0.0f;
@@ -378,6 +379,26 @@ namespace KMP
 						}
 					}
 				}
+				if (isInFlight && !docking && !gameArrr)
+				{
+					foreach (Vessel possible_target in FlightGlobals.FindNearestVesselWhere(FlightGlobals.ship_position,isNotMineAndNotPacked))
+					{
+						if (serverVessels_IsPrivate.ContainsKey(possible_target.id))
+						{
+							foreach (Part part in possible_target.Parts)
+							{
+								foreach (PartModule module in part.Modules)
+								{
+									if (module is ModuleDockingNode)
+									{
+										ModuleDockingNode dockingModule = (ModuleDockingNode) module;
+										dockingModule.isEnabled = !serverVessels_IsPrivate[possible_target.id];
+									}
+								}
+							}
+						}
+					}
+				}
 
 				//Update universe time
 				try
@@ -535,6 +556,11 @@ namespace KMP
 					}
 				}
 			} catch (Exception ex) { Log.Debug("Exception thrown in updateStep(), catch 4, Exception: {0}", ex.ToString()); Log.Debug("uS err: " + ex.Message + " " + ex.StackTrace); }
+		}
+		
+		private bool isNotMineAndNotPacked(Vessel vessel)
+		{
+			return !vessel.packed && (serverVessels_IsMine.ContainsKey(vessel.id) ? serverVessels_IsMine[vessel.id] : false);
 		}
 		
 		private void dockedKickToTrackingStation()
