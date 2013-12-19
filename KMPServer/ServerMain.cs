@@ -77,7 +77,11 @@ namespace KMPServer
 			foreach (var kvp in ServerSettings.GetCurrentValues(settings))
 			{
 				var tabs = (kvp.Key.Length > 11) ? "\t" : "\t\t";
-				if (kvp.Key == "gameMode") Log.Info("\nGame Mode\t\t: {0}", kvp.Value == "0" ? "Sandbox" : "Career");
+				if (kvp.Key == "gameMode")
+				{
+					Log.Info("");
+					Log.Info("Game Mode\t\t: {0}", kvp.Value == "0" ? "Sandbox" : "Career");
+				}
 				else Log.Info("{0}{2}: {1}", kvp.Key, kvp.Value, tabs);
 			}
 

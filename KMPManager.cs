@@ -838,7 +838,7 @@ namespace KMP
 								}
 								catch (Exception e)
 								{
-                  Log.Debug("Exception thrown in writeSecondaryUpdates(), catch 2, Exception: {0}", e.ToString());
+									Log.Debug("Exception thrown in writeSecondaryUpdates(), catch 2, Exception: {0}", e.ToString());
 									update = original_update;
 								}
 							}
@@ -857,7 +857,7 @@ namespace KMP
 		
 		private void sendRemoveVesselMessage(Vessel vessel, bool isDocking = false)
 		{
-			Log.Debug ("sendRemoveVesselMessage");
+			Log.Debug("sendRemoveVesselMessage");
 			KMPVesselUpdate update = getVesselUpdate(vessel);
 			update.situation = Situation.DESTROYED;
 			update.state = FlightGlobals.ActiveVessel.id == vessel.id ? State.ACTIVE : State.INACTIVE;
@@ -871,7 +871,7 @@ namespace KMP
 		{
 			if (isInFlight)
 			{
-				Log.Debug ("sendVesselMessage");
+				Log.Debug("sendVesselMessage");
 				KMPVesselUpdate update = getVesselUpdate(vessel, true);
 				update.state = FlightGlobals.ActiveVessel.id == vessel.id ? State.ACTIVE : State.INACTIVE;
 				update.isDockUpdate = isDocking;
@@ -882,6 +882,7 @@ namespace KMP
 		
 		private void sendScenarios()
 		{
+			Log.Debug("sendScenarios");
 			double tick = Planetarium.GetUniversalTime();
 			foreach (ScenarioModule module in GameObject.FindObjectsOfType(typeof(ScenarioModule)))
 			{
@@ -3157,7 +3158,7 @@ namespace KMP
 			{
 				if (!gameRunning) return;
 				
-				if (PauseMenu.isOpen && syncing) PauseMenu.Close();
+				try { if (PauseMenu.isOpen && syncing) PauseMenu.Close(); } catch { }
 				
 				if (FlightDriver.Pause) FlightDriver.SetPause(false);
 				if (KMPClientMain.cheatsEnabled == false) {

@@ -1848,6 +1848,7 @@ namespace KMPServer
 
                 if (scenario_update != null)
                 {
+					Log.Activity("Received scenario update from {0}", cl.username);
                     DbCommand cmd = universeDB.CreateCommand();
                     string sql = "SELECT ID FROM kmpScenarios WHERE PlayerID = @playerID AND Name = @name;";
                     cmd.CommandText = sql;
