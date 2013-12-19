@@ -1766,7 +1766,7 @@ namespace KMP
 											serverVessels_PartCounts[vessel_update.id] = 0;
 											if (protovessel != null)
 											{
-												if (vessel.orbitValid && KMPVessel.situationIsOrbital(vessel_update.situation) && protovessel.altitude > 10000f && protovessel.vesselType != VesselType.Flag && protovessel.vesselType != VesselType.EVA)
+												if (vessel.orbitValid && KMPVessel.situationIsOrbital(vessel_update.situation) && protovessel.altitude > 10000f && protovessel.vesselType != VesselType.Flag && protovessel.vesselType != VesselType.EVA && ourDistance > 2500f)
 												{
 													protovessel = syncOrbit(vessel, vessel_update.tick, protovessel, vessel_update.w_pos[0]);
 					                            }
