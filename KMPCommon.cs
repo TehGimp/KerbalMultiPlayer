@@ -18,7 +18,7 @@ public class KMPCommon
     }
 
 	public const Int32 FILE_FORMAT_VERSION = 10000;
-	public const Int32 NET_PROTOCOL_VERSION = 10008;
+	public const Int32 NET_PROTOCOL_VERSION = 10009;
 	public const int MSG_HEADER_LENGTH = 8;
     public const int MAX_MESSAGE_SIZE = 1024 * 1024; //Enough room for a max-size craft file
 	public const int MESSAGE_COMPRESSION_THRESHOLD = 4096;
@@ -67,6 +67,7 @@ public class KMPCommon
 		HANDSHAKE /*Username Length : Username : Version*/,
 		PRIMARY_PLUGIN_UPDATE /*data*/,
 		SECONDARY_PLUGIN_UPDATE /*data*/,
+		SCENARIO_UPDATE /*data*/,
 		TEXT_MESSAGE /*Message text*/,
 		SCREEN_WATCH_PLAYER /*Player name*/,
 		SCREENSHOT_SHARE /*Description Length : Description : data*/,
@@ -84,12 +85,13 @@ public class KMPCommon
 
 	public enum ServerMessageID
 	{
-		HANDSHAKE /*Protocol Version : Version String Length : Version String : ClientID*/,
+		HANDSHAKE /*Protocol Version : Version String Length : Version String : ClientID : Mode*/,
 		HANDSHAKE_REFUSAL /*Refusal message*/,
 		SERVER_MESSAGE /*Message text*/,
 		TEXT_MESSAGE /*Message text*/,
 		MOTD_MESSAGE /*Message text*/,
 		PLUGIN_UPDATE /*data*/,
+		SCENARIO_UPDATE /*data*/,
 		SERVER_SETTINGS /*UpdateInterval (4) : Screenshot Interval (4) : Screenshot Height (4) :  Bubble Size (8) : InactiveShips (1)*/,
 		SCREENSHOT_SHARE /*Description Length : Description : data*/,
 		KEEPALIVE,
@@ -108,7 +110,8 @@ public class KMPCommon
 		CLIENT_DATA /*Byte - Inactive Vessels Per Update : Screenshot Height : UpdateInterval : Player Name*/,
 		SCREENSHOT_RECEIVE /*Description Length : Description : data*/,
 		CHAT_RECEIVE /*Message*/,
-		PLUGIN_UPDATE /*data*/
+		PLUGIN_UPDATE /*data*/,
+		SCENARIO_UPDATE /*data*/
 	}
 
 	public enum PluginInteropMessageID
@@ -119,6 +122,7 @@ public class KMPCommon
 		CHAT_SEND /*Message*/,
 		PRIMARY_PLUGIN_UPDATE /*data*/,
 		SECONDARY_PLUGIN_UPDATE /*data*/,
+		SCENARIO_UPDATE /*data*/,
 		WARPING /*data*/,
 		SSYNC /*data*/
 	}

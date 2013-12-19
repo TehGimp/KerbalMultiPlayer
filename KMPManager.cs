@@ -93,6 +93,8 @@ namespace KMP
 		
 		public static object interopInQueueLock = new object();
 		
+		public int gameMode = 0; //0=Sandbox, 1=Career
+		
 		private float lastGlobalSettingSaveTime = 0.0f;
 		private float lastPluginDataWriteTime = 0.0f;
 		private float lastPluginUpdateWriteTime = 0.0f;
@@ -1504,7 +1506,19 @@ namespace KMP
 				}
 			}
 		}
-
+		
+		private void handleScenarioUpdate(object obj)
+		{
+			if (obj is KMPScenarioUpdate)
+			{
+				KMPScenarioUpdate update = (KMPScenarioUpdate) obj;
+				foreach (ScenarioModule module in GameObject.FindObjectsOfType(typeof(ScenarioModule)))
+				{
+					if (module.name == update.name) module.Load(update.getScenarioNode());
+				}
+			}
+		}
+		
 		private void handleVesselUpdate(KMPVesselUpdate vessel_update)
 		{
 			Log.Debug("handleVesselUpdate");
@@ -2649,6 +2663,14 @@ namespace KMP
 						}
 						break;
 	
+					case KMPCommon.ClientInteropMessageID.SCENARIO_UPDATE:
+						if (data != null)
+						{
+							//De-serialize and handle the update
+							handleScenarioUpdate(KSP.IO.IOUtils.DeserializeFromBinary(data));
+						}
+						break;
+					
 					case KMPCommon.ClientInteropMessageID.SCREENSHOT_RECEIVE:
 						if (data != null)
 						{

@@ -533,7 +533,8 @@ namespace KMP
                         {
                             String server_version = encoder.GetString(data, 8, server_version_length);
                             clientID = KMPCommon.intFromBytes(data, 8 + server_version_length);
-
+							gameManager.gameMode = KMPCommon.intFromBytes(data, 12 + server_version_length);
+							
                             SetMessage("Handshake received. Server version: " + server_version);
                         }
                     }
@@ -604,6 +605,13 @@ namespace KMP
 
                     if (data != null)
                         enqueueClientInteropMessage(KMPCommon.ClientInteropMessageID.PLUGIN_UPDATE, data);
+
+                    break;
+				
+				case KMPCommon.ServerMessageID.SCENARIO_UPDATE:
+
+                    if (data != null)
+                        enqueueClientInteropMessage(KMPCommon.ClientInteropMessageID.SCENARIO_UPDATE, data);
 
                     break;
 
@@ -1512,6 +1520,10 @@ namespace KMP
                 case KMPCommon.PluginInteropMessageID.SECONDARY_PLUGIN_UPDATE:
                     sendPluginUpdate(data, false);
                     break;
+				
+				case KMPCommon.PluginInteropMessageID.SCENARIO_UPDATE:
+                    sendScenarioUpdate(data);
+                    break;
 
                 case KMPCommon.PluginInteropMessageID.SCREENSHOT_SHARE:
                     if (data != null)
@@ -2150,7 +2162,18 @@ namespace KMP
                     sendMessageTCP(id, data);
             }
         }
-
+		
+		private static void sendScenarioUpdate(byte[] data)
+        {
+            if (data != null && data.Length > 0)
+            {
+                if (udpConnected && data.Length < 100)
+                    sendMessageUDP(KMPCommon.ClientMessageID.SCENARIO_UPDATE, data);
+                else
+                    sendMessageTCP(KMPCommon.ClientMessageID.SCENARIO_UPDATE, data);
+            }
+        }
+		
         private static void sendShareScreenshotMessage(byte[] data)
         {
             if (data != null && data.Length > 0)

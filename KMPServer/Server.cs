@@ -51,7 +51,7 @@ namespace KMPServer
         public const string DB_FILE_CONN = "Data Source=KMP_universe.db";
         public const string DB_FILE = "KMP_universe.db";
 
-        public const int UNIVERSE_VERSION = 3;
+        public const int UNIVERSE_VERSION = 4;
 
         public bool quit = false;
         public bool stop = false;
@@ -1500,6 +1500,9 @@ namespace KMPServer
 	                    case KMPCommon.ClientMessageID.SECONDARY_PLUGIN_UPDATE:
 	                        HandlePluginUpdate(cl, id, data);
 	                        break;
+						case KMPCommon.ClientMessageID.SCENARIO_UPDATE:
+	                        HandleScenarioUpdate(cl, id, data);
+	                        break;
 	                    case KMPCommon.ClientMessageID.TEXT_MESSAGE:
 	                        handleClientTextMessage(cl, encoder.GetString(data, 0, data.Length));
 	                        break;
@@ -1833,11 +1836,15 @@ namespace KMPServer
         {
             if (cl.isReady)
             {
-#if SEND_UPDATES_TO_SENDER
-                            sendPluginUpdateToAll(data, id == KMPCommon.ClientMessageID.SECONDARY_PLUGIN_UPDATE);
-#else
                 sendPluginUpdateToAll(data, id == KMPCommon.ClientMessageID.SECONDARY_PLUGIN_UPDATE, cl);
-#endif
+            }
+        }
+		
+		private void HandleScenarioUpdate(Client cl, KMPCommon.ClientMessageID id, byte[] data)
+        {
+            if (cl.isReady)
+            {
+				//TODO
             }
         }
 
@@ -2369,7 +2376,10 @@ namespace KMPServer
 
             //Write client ID
             KMPCommon.intToBytes(cl.clientIndex).CopyTo(data_bytes, 8 + version_bytes.Length);
-
+			
+			//Write gameMode
+            KMPCommon.intToBytes(settings.gameMode).CopyTo(data_bytes, 12 + version_bytes.Length);
+			
             cl.queueOutgoingMessage(KMPCommon.ServerMessageID.HANDSHAKE, data_bytes);
         }
 
@@ -3007,123 +3017,131 @@ namespace KMPServer
 	                    cmd.ExecuteNonQuery();
 					}
 					
-					//Upgrade old universe to version 3
-                    Log.Info("Upgrading universe database to current version...");
-					diskDB.BackupDatabase(universeDB, "main", "main", -1, null, 0);
-					
-					cmd = universeDB.CreateCommand();
-                    sql = "SELECT Guid FROM kmpPlayer;";
-                    cmd.CommandText = sql;
-                    cmd.Parameters.AddWithValue("uni_version", UNIVERSE_VERSION);
-                    DbDataReader reader = cmd.ExecuteReader();
-					while (reader.Read())
-		            {
-		                string old_guid = reader.GetString(0);
-						Guid guid = Guid.Empty;
-						try {
-							guid = new Guid(old_guid);
-						}
-						catch
-						{
-							//Already converted?
-							try 
-							{
-								guid = new Guid(System.Text.Encoding.ASCII.GetBytes(old_guid.Substring(0,16)));
+					if (version == 2)
+					{
+						//Upgrade old universe to version 3
+	                    Log.Info("Upgrading universe database...");
+						diskDB.BackupDatabase(universeDB, "main", "main", -1, null, 0);
+						
+						cmd = universeDB.CreateCommand();
+	                    sql = "SELECT Guid FROM kmpPlayer;";
+	                    cmd.CommandText = sql;
+	                    DbDataReader reader = cmd.ExecuteReader();
+						while (reader.Read())
+			            {
+			                string old_guid = reader.GetString(0);
+							Guid guid = Guid.Empty;
+							try {
+								guid = new Guid(old_guid);
 							}
 							catch
 							{
-								guid = Guid.Empty;	
+								//Already converted?
+								try 
+								{
+									guid = new Guid(System.Text.Encoding.ASCII.GetBytes(old_guid.Substring(0,16)));
+								}
+								catch
+								{
+									guid = Guid.Empty;	
+								}
 							}
-						}
-						DbCommand cmd2 = universeDB.CreateCommand();
-	                    string sql2 = "UPDATE kmpPlayer SET Guid = @guid WHERE Guid = @old_guid;";
-	                    cmd2.CommandText = sql2;
-	                    cmd2.Parameters.AddWithValue("guid", guid);
-						cmd2.Parameters.AddWithValue("old_guid", old_guid);
-	                    cmd2.ExecuteNonQuery();
-		            }
-					
-					cmd = universeDB.CreateCommand();
-                    sql = "SELECT Guid, GameGuid FROM kmpVessel;";
-                    cmd.CommandText = sql;
-                    cmd.Parameters.AddWithValue("uni_version", UNIVERSE_VERSION);
-                    reader = cmd.ExecuteReader();
-					while (reader.Read())
-		            {
-		                string old_guid = reader.GetString(0);
-						string old_guid2 = reader.GetString(1);
-						Guid guid = Guid.Empty;
-						Guid guid2 = Guid.Empty;
-						try {
-							guid = new Guid(old_guid);
-						}
-						catch
-						{
-							//Already converted?
-							try 
-							{
-								guid = new Guid(System.Text.Encoding.ASCII.GetBytes(old_guid.Substring(0,16)));
-							}
-							catch
-							{
-								guid = Guid.Empty;	
-							}
-						}
-						try {
-							guid2 = new Guid(old_guid2);
-						}
-						catch
-						{
-							//Already converted?
-							try 
-							{
-								guid = new Guid(System.Text.Encoding.ASCII.GetBytes(old_guid2.Substring(0,16)));
+							DbCommand cmd2 = universeDB.CreateCommand();
+		                    string sql2 = "UPDATE kmpPlayer SET Guid = @guid WHERE Guid = @old_guid;";
+		                    cmd2.CommandText = sql2;
+		                    cmd2.Parameters.AddWithValue("guid", guid);
+							cmd2.Parameters.AddWithValue("old_guid", old_guid);
+		                    cmd2.ExecuteNonQuery();
+			            }
+						
+						cmd = universeDB.CreateCommand();
+	                    sql = "SELECT Guid, GameGuid FROM kmpVessel;";
+	                    cmd.CommandText = sql;
+	                    reader = cmd.ExecuteReader();
+						while (reader.Read())
+			            {
+			                string old_guid = reader.GetString(0);
+							string old_guid2 = reader.GetString(1);
+							Guid guid = Guid.Empty;
+							Guid guid2 = Guid.Empty;
+							try {
+								guid = new Guid(old_guid);
 							}
 							catch
 							{
-								guid = Guid.Empty;	
+								//Already converted?
+								try 
+								{
+									guid = new Guid(System.Text.Encoding.ASCII.GetBytes(old_guid.Substring(0,16)));
+								}
+								catch
+								{
+									guid = Guid.Empty;	
+								}
 							}
-						}
-						DbCommand cmd2 = universeDB.CreateCommand();
-	                    string sql2 = "UPDATE kmpVessel SET Guid = @guid, GameGuid = @guid2 WHERE Guid = @old_guid;";
-	                    cmd2.CommandText = sql2;
-	                    cmd2.Parameters.AddWithValue("guid", guid);
-						cmd2.Parameters.AddWithValue("guid2", guid2);
-						cmd2.Parameters.AddWithValue("old_guid", old_guid);
-	                    cmd2.ExecuteNonQuery();
-		            }
-					
-					cmd = universeDB.CreateCommand();
-                    sql = "SELECT Guid FROM kmpVesselUpdate;";
-                    cmd.CommandText = sql;
-                    cmd.Parameters.AddWithValue("uni_version", UNIVERSE_VERSION);
-                    reader = cmd.ExecuteReader();
-					while (reader.Read())
-		            {
-		                string old_guid = reader.GetString(0);
-						Guid guid = Guid.Empty;
-						try {
-							guid = new Guid(old_guid);
-						}
-						catch
-						{
-							//Already converted?
-							try 
-							{
-								guid = new Guid(System.Text.Encoding.ASCII.GetBytes(old_guid.Substring(0,16)));
+							try {
+								guid2 = new Guid(old_guid2);
 							}
 							catch
 							{
-								guid = Guid.Empty;	
+								//Already converted?
+								try 
+								{
+									guid = new Guid(System.Text.Encoding.ASCII.GetBytes(old_guid2.Substring(0,16)));
+								}
+								catch
+								{
+									guid = Guid.Empty;	
+								}
 							}
-						}
-						DbCommand cmd2 = universeDB.CreateCommand();
-	                    string sql2 = "UPDATE kmpVesselUpdate SET Guid = @guid WHERE Guid = @old_guid;";
-	                    cmd2.CommandText = sql2;
-	                    cmd2.Parameters.AddWithValue("guid", guid);
-						cmd2.Parameters.AddWithValue("old_guid", old_guid);
-	                    cmd2.ExecuteNonQuery();
-		            }
+							DbCommand cmd2 = universeDB.CreateCommand();
+		                    string sql2 = "UPDATE kmpVessel SET Guid = @guid, GameGuid = @guid2 WHERE Guid = @old_guid;";
+		                    cmd2.CommandText = sql2;
+		                    cmd2.Parameters.AddWithValue("guid", guid);
+							cmd2.Parameters.AddWithValue("guid2", guid2);
+							cmd2.Parameters.AddWithValue("old_guid", old_guid);
+		                    cmd2.ExecuteNonQuery();
+			            }
+						
+						//Upgrade old universe to version 4
+						Log.Info("Upgrading universe database to current version...");
+	                    cmd = diskDB.CreateCommand();
+	                    sql = "CREATE TABLE kmpScenarios (PlayerID INTEGER, Name NVARCHAR(100), Tick DOUBLE, UpdateMessage BLOB);" +
+							"CREATE INDEX kmpScenariosIdxPlayerID on kmpScenarios(PlayerID);";
+	                    cmd.CommandText = sql;
+	                    cmd.ExecuteNonQuery();
+						
+						cmd = universeDB.CreateCommand();
+	                    sql = "SELECT Guid FROM kmpVesselUpdate;";
+	                    cmd.CommandText = sql;
+	                    reader = cmd.ExecuteReader();
+						while (reader.Read())
+			            {
+			                string old_guid = reader.GetString(0);
+							Guid guid = Guid.Empty;
+							try {
+								guid = new Guid(old_guid);
+							}
+							catch
+							{
+								//Already converted?
+								try 
+								{
+									guid = new Guid(System.Text.Encoding.ASCII.GetBytes(old_guid.Substring(0,16)));
+								}
+								catch
+								{
+									guid = Guid.Empty;	
+								}
+							}
+							DbCommand cmd2 = universeDB.CreateCommand();
+		                    string sql2 = "UPDATE kmpVesselUpdate SET Guid = @guid WHERE Guid = @old_guid;";
+		                    cmd2.CommandText = sql2;
+		                    cmd2.Parameters.AddWithValue("guid", guid);
+							cmd2.Parameters.AddWithValue("old_guid", old_guid);
+		                    cmd2.ExecuteNonQuery();
+			            }
+					}
 					
                     cmd = universeDB.CreateCommand();
                     sql = "UPDATE kmpInfo SET Version = @uni_version;";
@@ -3149,9 +3167,11 @@ namespace KMPServer
                         "CREATE TABLE kmpVessel (Guid CHAR(16), GameGuid CHAR(16), OwnerID INTEGER, Private BIT, Active BIT, ProtoVessel BLOB, Subspace INTEGER, Destroyed BIT);" +
                         "CREATE TABLE kmpVesselUpdate (ID INTEGER PRIMARY KEY AUTOINCREMENT, Guid CHAR(16), Subspace INTEGER, UpdateMessage BLOB);" +
                         "CREATE TABLE kmpVesselUpdateHistory (Guid CHAR(16), Subspace INTEGER, Tick DOUBLE, UpdateMessage BLOB);" +
+						"CREATE TABLE kmpScenarios (PlayerID INTEGER, Name NVARCHAR(100), Tick DOUBLE, UpdateMessage BLOB);" +
                         "CREATE INDEX kmpVesselIdxGuid on kmpVessel(Guid);" +
                         "CREATE INDEX kmpVesselUpdateIdxGuid on kmpVesselUpdate(guid);" +
-                        "CREATE INDEX kmpVesselUpdateHistoryIdxTick on kmpVesselUpdateHistory(Tick);";
+                        "CREATE INDEX kmpVesselUpdateHistoryIdxTick on kmpVesselUpdateHistory(Tick);" +
+						"CREATE INDEX kmpScenariosIdxPlayerID on kmpScenarios(PlayerID);";
                     cmd.CommandText = sql;
                     cmd.Parameters.AddWithValue("uni_version", UNIVERSE_VERSION);
                     cmd.ExecuteNonQuery();
