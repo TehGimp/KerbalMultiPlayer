@@ -95,6 +95,7 @@ namespace KMP
 		public static object interopInQueueLock = new object();
 		
 		public int gameMode = 0; //0=Sandbox, 1=Career
+		public bool gameCheatsEnabled = false; //Allow built-in KSP cheats
 		public bool gameArrr = false; //Allow private vessels to be taken if other user can successfully dock manually
 		
 		private float lastGlobalSettingSaveTime = 0.0f;
@@ -3218,7 +3219,7 @@ namespace KMP
 				try { if (PauseMenu.isOpen && syncing) PauseMenu.Close(); } catch { }
 				
 				if (FlightDriver.Pause) FlightDriver.SetPause(false);
-				if (KMPClientMain.cheatsEnabled == false) {
+				if (gameCheatsEnabled == false) {
 					if (CheatOptions.InfiniteFuel == true)
 						CheatOptions.InfiniteFuel = false;
 					if (CheatOptions.InfiniteEVAFuel == true)

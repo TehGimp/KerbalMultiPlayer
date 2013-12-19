@@ -2552,10 +2552,6 @@ namespace KMPServer
 			
             KMPCommon.intToBytes(kmpModControl.Length).CopyTo(data_bytes, 16 + version_bytes.Length);
             kmpModControl.CopyTo(data_bytes, 20 + version_bytes.Length);
-			
-			byte[] piracySetting = new byte[1];
-			piracySetting[0] = settings.allowPiracy ? (byte) 1 : (byte) 0;
-			piracySetting.CopyTo(data_bytes, 20 + version_bytes.Length + kmpModControl.Length);
 
             cl.queueOutgoingMessage(KMPCommon.ServerMessageID.HANDSHAKE, data_bytes);
         }
@@ -3179,6 +3175,7 @@ namespace KMPServer
 			BitConverter.GetBytes(settings.safetyBubbleRadius).CopyTo(bytes,12); //Safety bubble radius
             bytes[20] = inactiveShipsPerClient; //Inactive ships per client
             bytes[21] = Convert.ToByte(settings.cheatsEnabled);
+			bytes[22] = Convert.ToByte(settings.allowPiracy);
 
             return bytes;
         }
