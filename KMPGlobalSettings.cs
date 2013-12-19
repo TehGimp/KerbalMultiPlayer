@@ -44,6 +44,7 @@ namespace KMP
 		public KeyCode screenshotKey = KeyCode.F8;
         public KeyCode chatTalkKey = KeyCode.BackQuote;
         public KeyCode chatHideKey = KeyCode.F9;
+        public KeyCode screenshotToggleKey = KeyCode.F10;
 
 		[OptionalField(VersionAdded = 1)]
 		public bool smoothScreens = true;
