@@ -190,8 +190,6 @@ namespace KMP
         public static bool debugging = false;
         public static bool cheatsEnabled = false;
 
-        public static List<string> partList = new List<string>();
-
 
         public static void InitMPClient(KMPManager manager)
         {
