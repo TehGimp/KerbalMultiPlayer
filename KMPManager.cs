@@ -2978,6 +2978,7 @@ namespace KMP
 			{
 				serverVessels_PartCounts[data.vessel.id] = 0;
 				serverVessels_ProtoVessels.Remove(data.vessel.id);
+				sendVesselMessage(data.vessel,true);
 			}
 			//Invoke("setFinishDocking",1f);
 		}
