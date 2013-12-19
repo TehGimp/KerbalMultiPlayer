@@ -34,9 +34,6 @@ public class KMPCommon
 
 	public const String ADMIN_MARKER = "@";
 
-	public const byte CRAFT_TYPE_VAB = 0;
-	public const byte CRAFT_TYPE_SPH = 1;
-
 	public static string filteredFileName(string filename)
 	{
 		const String illegal = "\\/:*?\"<>|";
@@ -60,6 +57,13 @@ public class KMPCommon
 	public static Int32 intFromBytes(byte[] bytes, int offset = 0)
 	{
         return BitConverter.ToInt32(bytes, offset);
+	}
+	
+	public enum CraftType
+	{
+		VAB,
+		SPH,
+		SUBASSEMBLY
 	}
 
 	public enum ClientMessageID

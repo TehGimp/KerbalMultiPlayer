@@ -48,7 +48,7 @@ namespace KMPServer
 		public String watchPlayerName;
 		public byte[] sharedCraftFile;
 		public String sharedCraftName;
-		public byte sharedCraftType;
+		public KMPCommon.CraftType sharedCraftType;
 
 		public long connectionStartTime;
 		public long lastReceiveTime;
@@ -163,7 +163,7 @@ namespace KMPServer
 
 			sharedCraftFile = null;
 			sharedCraftName = String.Empty;
-			sharedCraftType = 0;
+			sharedCraftType = KMPCommon.CraftType.VAB;
 
 			lastUDPACKTime = 0;
 

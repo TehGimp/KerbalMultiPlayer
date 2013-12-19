@@ -978,19 +978,19 @@ namespace KMP
 
                 case KMPCommon.ServerMessageID.CRAFT_FILE:
 
-                    if (data != null && data.Length > 4)
+                    if (data != null && data.Length > 8)
                     {
                         //Read craft name length
-                        byte craft_type = data[0];
-                        int craft_name_length = KMPCommon.intFromBytes(data, 1);
-                        if (craft_name_length < data.Length - 5)
+                        KMPCommon.CraftType craft_type = (KMPCommon.CraftType)KMPCommon.intFromBytes(data, 0);
+                        int craft_name_length = KMPCommon.intFromBytes(data, 4);
+                        if (craft_name_length < data.Length - 8)
                         {
                             //Read craft name
-                            String craft_name = encoder.GetString(data, 5, craft_name_length);
+                            String craft_name = encoder.GetString(data, 8, craft_name_length);
 
                             //Read craft bytes
-                            byte[] craft_bytes = new byte[data.Length - craft_name_length - 5];
-                            Array.Copy(data, 5 + craft_name_length, craft_bytes, 0, craft_bytes.Length);
+                            byte[] craft_bytes = new byte[data.Length - craft_name_length - 8];
+                            Array.Copy(data, 8 + craft_name_length, craft_bytes, 0, craft_bytes.Length);
 
                             //Write the craft to a file
                             String filename = getCraftFilename(craft_name, craft_type);
@@ -1286,7 +1286,7 @@ namespace KMP
                         handled = true;
                         //Share a craft file
                         String craft_name = line.Substring(KMPCommon.SHARE_CRAFT_COMMAND.Length + 1);
-                        byte craft_type = 0;
+                        KMPCommon.CraftType craft_type = KMPCommon.CraftType.VAB;
                         String filename = findCraftFilename(craft_name, ref craft_type);
 
                         if (filename != null && filename.Length > 0)
@@ -1932,27 +1932,34 @@ namespace KMP
             }
         }
 
-        static String findCraftFilename(String craft_name, ref byte craft_type)
+        static String findCraftFilename(String craft_name, ref KMPCommon.CraftType craft_type)
         {
-            String vab_filename = getCraftFilename(craft_name, KMPCommon.CRAFT_TYPE_VAB);
+            String vab_filename = getCraftFilename(craft_name, KMPCommon.CraftType.VAB);
             if (vab_filename != null && System.IO.File.Exists(vab_filename))
             {
-                craft_type = KMPCommon.CRAFT_TYPE_VAB;
+                craft_type = KMPCommon.CraftType.VAB;
                 return vab_filename;
             }
 
-            String sph_filename = getCraftFilename(craft_name, KMPCommon.CRAFT_TYPE_SPH);
+            String sph_filename = getCraftFilename(craft_name, KMPCommon.CraftType.SPH);
             if (sph_filename != null && System.IO.File.Exists(sph_filename))
             {
-                craft_type = KMPCommon.CRAFT_TYPE_SPH;
+                craft_type = KMPCommon.CraftType.SPH;
                 return sph_filename;
             }
-
+            
+            String subassembly_filename = getCraftFilename(craft_name, KMPCommon.CraftType.SUBASSEMBLY);
+            if (subassembly_filename != null && System.IO.File.Exists(subassembly_filename))
+            {
+                craft_type = KMPCommon.CraftType.SUBASSEMBLY;
+                return subassembly_filename;
+            }
+            
             return null;
 
         }
 
-        static String getCraftFilename(String craft_name, byte craft_type)
+        static String getCraftFilename(String craft_name, KMPCommon.CraftType craft_type)
         {
             //Filter the craft name for illegal characters
             String filtered_craft_name = KMPCommon.filteredFileName(craft_name.Replace('.', '_'));
@@ -1962,11 +1969,15 @@ namespace KMP
 
             switch (craft_type)
             {
-                case KMPCommon.CRAFT_TYPE_VAB:
+                case KMPCommon.CraftType.VAB:
                     return "saves/" + currentGameTitle + "/Ships/VAB/" + filtered_craft_name + CRAFT_FILE_EXTENSION;
 
-                case KMPCommon.CRAFT_TYPE_SPH:
+                case KMPCommon.CraftType.SPH:
                     return "saves/" + currentGameTitle + "/Ships/SPH/" + filtered_craft_name + CRAFT_FILE_EXTENSION;
+                    
+                case KMPCommon.CraftType.SUBASSEMBLY:
+                    return "saves/" + currentGameTitle + "/Subassemblies/" + filtered_craft_name + CRAFT_FILE_EXTENSION;
+                                        
             }
 
             return null;
@@ -2356,21 +2367,21 @@ namespace KMP
             sendMessageTCP(KMPCommon.ClientMessageID.CONNECTION_END, message_bytes);
         }
 
-        private static void sendShareCraftMessage(String craft_name, byte[] data, byte type)
+        private static void sendShareCraftMessage(String craft_name, byte[] data, KMPCommon.CraftType type)
         {
             //Encode message
             byte[] name_bytes = encoder.GetBytes(craft_name);
 
-            byte[] bytes = new byte[5 + name_bytes.Length + data.Length];
+            byte[] bytes = new byte[8 + name_bytes.Length + data.Length];
 
             //Check size of data to make sure it's not too large
             if ((name_bytes.Length + data.Length) <= KMPCommon.MAX_CRAFT_FILE_BYTES)
             {
                 //Copy data
-                bytes[0] = type;
-                KMPCommon.intToBytes(name_bytes.Length).CopyTo(bytes, 1);
-                name_bytes.CopyTo(bytes, 5);
-                data.CopyTo(bytes, 5 + name_bytes.Length);
+                KMPCommon.intToBytes((int)type).CopyTo(bytes, 0);
+                KMPCommon.intToBytes(name_bytes.Length).CopyTo(bytes, 4);
+                name_bytes.CopyTo(bytes, 8);
+                data.CopyTo(bytes, 8 + name_bytes.Length);
 
                 sendMessageTCP(KMPCommon.ClientMessageID.SHARE_CRAFT_FILE, bytes);
             }
