@@ -58,20 +58,7 @@ namespace KMPServer
 			public string profanityWords = "fucker:kerper,faggot:kerpot,shit:kerp,fuck:guck,cunt:kump,piss:heph,fag:olp,dick:derp,cock:beet,asshole:hepderm,nigger:haggar";
 		    public float consoleScale = 1.0f;
 		    public int maximumLogs = 100;
-			
-			private int _gameMode = 0;
-			public int gameMode
-			{
-				get
-				{
-					return _gameMode;
-				}
-				set
-				{
-					if (value >= 0 && value <= 1) _gameMode = value;
-					else throw new ArgumentException("Invalid game mode specified");
-				}
-			}
+			public int gameMode = 0;
 
 			private IEnumerable<KeyValuePair<string, string>> _profanity = null;
 			public IEnumerable<KeyValuePair<string, string>> Profanity

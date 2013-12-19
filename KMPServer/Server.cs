@@ -1501,7 +1501,7 @@ namespace KMPServer
 	                        HandlePluginUpdate(cl, id, data);
 	                        break;
 						case KMPCommon.ClientMessageID.SCENARIO_UPDATE:
-	                        HandleScenarioUpdate(cl, id, data);
+	                        HandleScenarioUpdate(cl, data);
 	                        break;
 	                    case KMPCommon.ClientMessageID.TEXT_MESSAGE:
 	                        handleClientTextMessage(cl, encoder.GetString(data, 0, data.Length));
@@ -1840,11 +1840,46 @@ namespace KMPServer
             }
         }
 		
-		private void HandleScenarioUpdate(Client cl, KMPCommon.ClientMessageID id, byte[] data)
+		private void HandleScenarioUpdate(Client cl, byte[] data)
         {
             if (cl.isReady)
             {
-				//TODO
+				var scenario_update = ByteArrayToObject<KMPScenarioUpdate>(data);
+
+                if (scenario_update != null)
+                {
+                    DbCommand cmd = universeDB.CreateCommand();
+                    string sql = "SELECT ID FROM kmpScenarios WHERE PlayerID = @playerID AND Name = @name;";
+                    cmd.CommandText = sql;
+                    cmd.Parameters.AddWithValue("playerID", cl.playerID);
+					cmd.Parameters.AddWithValue("name", scenario_update.name);
+                    object result = cmd.ExecuteScalar();
+                    cmd.Dispose();
+                    if (result == null)
+                    {
+                        cmd = universeDB.CreateCommand();
+                        sql = "INSERT INTO kmpScenarios (PlayerID, Name, Tick, UpdateMessage)" +
+                            " VALUES (@playerID, @name, @tick, @updateMessage);";
+                        cmd.Parameters.AddWithValue("playerID", cl.playerID);
+                        cmd.Parameters.AddWithValue("name", scenario_update.name);
+                        cmd.Parameters.AddWithValue("tick", scenario_update.tick.ToString("0.0").Replace(",", "."));
+                        cmd.Parameters.AddWithValue("updateMessage", data);
+                        cmd.CommandText = sql;
+                        cmd.ExecuteNonQuery();
+                        cmd.Dispose();
+                    }
+					else
+					{
+						cmd = universeDB.CreateCommand();
+                        sql = "UPDATE kmpScenarios SET Tick = @tick, UpdateMessage = @updateMessage WHERE ID = @id";
+                        cmd.Parameters.AddWithValue("id", (int) result);
+                        cmd.Parameters.AddWithValue("tick", scenario_update.tick.ToString("0.0").Replace(",", "."));
+                        cmd.Parameters.AddWithValue("updateMessage", data);
+                        cmd.CommandText = sql;
+                        cmd.ExecuteNonQuery();
+                        cmd.Dispose();
+					}
+				}
             }
         }
 
@@ -2118,6 +2153,7 @@ namespace KMPServer
 			{
 				sendSyncMessage(cl, tick);
 				cl.lastTick = tick;
+				sendScenarios(cl, tick);
 			}
         }
 
@@ -2363,7 +2399,7 @@ namespace KMPServer
             UnicodeEncoding encoder = new UnicodeEncoding();
             byte[] version_bytes = encoder.GetBytes(KMPCommon.PROGRAM_VERSION);
 
-            byte[] data_bytes = new byte[version_bytes.Length + 12];
+            byte[] data_bytes = new byte[version_bytes.Length + 16];
 
             //Write net protocol version
             KMPCommon.intToBytes(KMPCommon.NET_PROTOCOL_VERSION).CopyTo(data_bytes, 0);
@@ -2942,14 +2978,39 @@ namespace KMPServer
         {
             cl.queueOutgoingMessage(KMPCommon.ServerMessageID.SERVER_SETTINGS, serverSettingBytes());
         }
-
+		
+		private void sendScenarios(Client cl, double tick)
+		{
+			if (settings.gameMode == 1) //Career mode
+			{
+				DbCommand cmd = universeDB.CreateCommand();
+                string sql = "SELECT UpdateMessage FROM kmpScenarios WHERE PlayerID = @playerID AND Tick <= @tick;";
+                cmd.CommandText = sql;
+                cmd.Parameters.AddWithValue("playerID", cl.playerID);
+				cmd.Parameters.AddWithValue("tick", tick.ToString("0.0").Replace(",", "."));
+                DbDataReader reader = cmd.ExecuteReader();
+	            try
+	            {
+	                while (reader.Read())
+	                {
+	                    byte[] data = GetDataReaderBytes(reader, 0);
+	                    sendScenarioMessage(cl, data);
+	                }
+	            }
+	            finally
+	            {
+	                reader.Close();
+	            }
+			}
+		}
+		
         private void sendSyncMessage(Client cl, double tick)
         {
             //Log.Info("Time sync for: " + cl.username);
             byte[] message_bytes = buildMessageArray(KMPCommon.ServerMessageID.SYNC, BitConverter.GetBytes(tick));
             cl.queueOutgoingMessage(message_bytes);
         }
-
+		
         private void sendSyncCompleteMessage(Client cl)
         {
             byte[] message_bytes = buildMessageArray(KMPCommon.ServerMessageID.SYNC_COMPLETE, null);
@@ -2959,6 +3020,12 @@ namespace KMPServer
         private void sendVesselMessage(Client cl, byte[] data)
         {
             byte[] message_bytes = buildMessageArray(KMPCommon.ServerMessageID.PLUGIN_UPDATE, data);
+            cl.queueOutgoingMessage(message_bytes);
+        }
+		
+		private void sendScenarioMessage(Client cl,  byte[] data)
+        {
+            byte[] message_bytes = buildMessageArray(KMPCommon.ServerMessageID.SCENARIO_UPDATE, data);
             cl.queueOutgoingMessage(message_bytes);
         }
 
@@ -3103,14 +3170,6 @@ namespace KMPServer
 		                    cmd2.ExecuteNonQuery();
 			            }
 						
-						//Upgrade old universe to version 4
-						Log.Info("Upgrading universe database to current version...");
-	                    cmd = diskDB.CreateCommand();
-	                    sql = "CREATE TABLE kmpScenarios (PlayerID INTEGER, Name NVARCHAR(100), Tick DOUBLE, UpdateMessage BLOB);" +
-							"CREATE INDEX kmpScenariosIdxPlayerID on kmpScenarios(PlayerID);";
-	                    cmd.CommandText = sql;
-	                    cmd.ExecuteNonQuery();
-						
 						cmd = universeDB.CreateCommand();
 	                    sql = "SELECT Guid FROM kmpVesselUpdate;";
 	                    cmd.CommandText = sql;
@@ -3141,7 +3200,19 @@ namespace KMPServer
 							cmd2.Parameters.AddWithValue("old_guid", old_guid);
 		                    cmd2.ExecuteNonQuery();
 			            }
+						
+						universeDB.BackupDatabase(diskDB, "main", "main", -1, null, 0);
 					}
+					
+					//Upgrade old universe to version 4
+					Log.Info("Upgrading universe database to current version...");
+                    cmd = diskDB.CreateCommand();
+                    sql = "CREATE TABLE kmpScenarios (ID INTEGER PRIMARY KEY AUTOINCREMENT, PlayerID INTEGER, Name NVARCHAR(100), Tick DOUBLE, UpdateMessage BLOB);" +
+						"CREATE INDEX kmpScenariosIdxPlayerID on kmpScenarios(PlayerID);";
+                    cmd.CommandText = sql;
+                    cmd.ExecuteNonQuery();
+					
+					diskDB.BackupDatabase(universeDB, "main", "main", -1, null, 0);
 					
                     cmd = universeDB.CreateCommand();
                     sql = "UPDATE kmpInfo SET Version = @uni_version;";
@@ -3167,7 +3238,7 @@ namespace KMPServer
                         "CREATE TABLE kmpVessel (Guid CHAR(16), GameGuid CHAR(16), OwnerID INTEGER, Private BIT, Active BIT, ProtoVessel BLOB, Subspace INTEGER, Destroyed BIT);" +
                         "CREATE TABLE kmpVesselUpdate (ID INTEGER PRIMARY KEY AUTOINCREMENT, Guid CHAR(16), Subspace INTEGER, UpdateMessage BLOB);" +
                         "CREATE TABLE kmpVesselUpdateHistory (Guid CHAR(16), Subspace INTEGER, Tick DOUBLE, UpdateMessage BLOB);" +
-						"CREATE TABLE kmpScenarios (PlayerID INTEGER, Name NVARCHAR(100), Tick DOUBLE, UpdateMessage BLOB);" +
+						"CREATE TABLE kmpScenarios (ID INTEGER PRIMARY KEY AUTOINCREMENT, PlayerID INTEGER, Name NVARCHAR(100), Tick DOUBLE, UpdateMessage BLOB);" +
                         "CREATE INDEX kmpVesselIdxGuid on kmpVessel(Guid);" +
                         "CREATE INDEX kmpVesselUpdateIdxGuid on kmpVesselUpdate(guid);" +
                         "CREATE INDEX kmpVesselUpdateHistoryIdxTick on kmpVesselUpdateHistory(Tick);" +

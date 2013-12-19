@@ -880,6 +880,17 @@ namespace KMP
 			}
 		}
 		
+		private void sendScenarios()
+		{
+			double tick = Planetarium.GetUniversalTime();
+			foreach (ScenarioModule module in GameObject.FindObjectsOfType(typeof(ScenarioModule)))
+			{
+				KMPScenarioUpdate update = new KMPScenarioUpdate(module, tick);
+				byte[] update_bytes = KSP.IO.IOUtils.SerializeToBinary(update);
+				enqueuePluginInteropMessage(KMPCommon.PluginInteropMessageID.SCENARIO_UPDATE, update_bytes);
+			}
+		}
+		
 		private KMPVesselUpdate getVesselUpdate(Vessel vessel, bool forceFullUpdate = false)
 		{
 			if (vessel == null || vessel.mainBody == null)
@@ -1516,6 +1527,7 @@ namespace KMP
 				{
 					if (module.name == update.name) module.Load(update.getScenarioNode());
 				}
+				EditorPartList.Instance.Refresh();
 			}
 		}
 		
@@ -2987,6 +2999,33 @@ namespace KMP
 				}
 			}
 		}
+		
+		private void OnProgressComplete(ProgressNode data)
+		{
+			sendScenarios();
+		}
+		
+		private void OnProgressReached(ProgressNode data)
+		{
+			sendScenarios();
+		}
+					
+		private void OnGUIRnDComplexDespawn()
+		{
+			sendScenarios();
+		}
+		
+		private void OnTechnologyResearched(GameEvents.HostTargetAction<RDTech,RDTech.OperationResult> data)
+		{
+			sendScenarios();
+		}
+		
+		private void OnVesselRecovered(ProtoVessel data)
+		{
+			Vessel vessel = FlightGlobals.Vessels.Find(v => v.id == data.vesselID);
+			sendRemoveVesselMessage(vessel,false);
+			sendScenarios();
+		}
 			
 		private void OnTimeWarpRateChanged()
 		{
@@ -3345,6 +3384,11 @@ namespace KMP
 					GameEvents.onVesselLoaded.Remove(this.OnVesselLoaded);
 					GameEvents.onVesselTerminated.Remove(this.OnVesselTerminated);
 					GameEvents.onVesselDestroy.Remove(this.OnVesselDestroy);
+					GameEvents.OnProgressComplete.Remove(this.OnProgressComplete);
+					GameEvents.OnProgressReached.Remove(this.OnProgressReached);
+					GameEvents.onGUIRnDComplexDespawn.Remove(this.OnGUIRnDComplexDespawn);
+					GameEvents.OnTechnologyResearched.Remove(this.OnTechnologyResearched);
+					GameEvents.onVesselRecovered.Remove(this.OnVesselRecovered);
 				}
         catch (Exception e) {
               Log.Debug("Exception thrown in drawGUI(), catch 1, Exception: {0}", e.ToString());
@@ -3716,10 +3760,25 @@ namespace KMP
 					HighLogic.CurrentGame.Title = "KMP";
 					HighLogic.CurrentGame.Description = "Kerbal Multi Player session";
 					HighLogic.CurrentGame.flagURL = "KMP/Flags/default";
+					
+					if (gameMode == 1) //Career mode
+						HighLogic.CurrentGame.Mode = Game.Modes.CAREER;
+					
 					GamePersistence.SaveGame("persistent",HighLogic.SaveFolder,SaveMode.OVERWRITE);
 					GameEvents.onFlightReady.Add(this.OnFirstFlightReady);
 					syncing = true;
+					
 					HighLogic.CurrentGame.Start();
+					
+					if (gameMode == 1)
+					{
+						var proto = HighLogic.CurrentGame.AddProtoScenarioModule(typeof(ResearchAndDevelopment), GameScenes.SPACECENTER, GameScenes.EDITOR, GameScenes.FLIGHT, GameScenes.TRACKSTATION, GameScenes.SPH);
+	                    proto.Load(ScenarioRunner.fetch);
+						proto = HighLogic.CurrentGame.AddProtoScenarioModule(typeof(ProgressTracking), GameScenes.SPACECENTER, GameScenes.FLIGHT, GameScenes.TRACKSTATION);
+	                    proto.Load(ScenarioRunner.fetch);
+						EditorPartList.Instance.Refresh();
+					}
+					
 					for (int i=0; i<50;)
 					{
 						ProtoCrewMember protoCrew = CrewGenerator.RandomCrewMemberPrototype();
@@ -3737,6 +3796,11 @@ namespace KMP
 					GameEvents.onVesselLoaded.Add(this.OnVesselLoaded);
 					GameEvents.onVesselTerminated.Add(this.OnVesselTerminated);
 					GameEvents.onVesselDestroy.Add(this.OnVesselDestroy);
+					GameEvents.OnProgressComplete.Add(this.OnProgressComplete);
+					GameEvents.OnProgressReached.Add(this.OnProgressReached);
+					GameEvents.onGUIRnDComplexDespawn.Add(this.OnGUIRnDComplexDespawn);
+					GameEvents.OnTechnologyResearched.Add(this.OnTechnologyResearched);
+					GameEvents.onVesselRecovered.Add(this.OnVesselRecovered);
 					writePluginData();
 					//Make sure user knows how to use new chat
 					KMPChatDX.enqueueChatLine("Press Chat key (" + (KMPGlobalSettings.instance.chatTalkKey == KeyCode.BackQuote ? "~" : KMPGlobalSettings.instance.chatTalkKey.ToString()) + ") to send a message");

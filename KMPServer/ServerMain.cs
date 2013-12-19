@@ -73,11 +73,12 @@ namespace KMPServer
 
 			Log.Info("Current Configuration:");
 			Log.Info("");
-
+			
 			foreach (var kvp in ServerSettings.GetCurrentValues(settings))
 			{
-				var tabs = (kvp.Key.Length > 12) ? "\t" : "\t\t";
-				Log.Info("{0}{2}: {1}", kvp.Key, kvp.Value, tabs);
+				var tabs = (kvp.Key.Length > 11) ? "\t" : "\t\t";
+				if (kvp.Key == "gameMode") Log.Info("\nGame Mode\t\t: {0}", kvp.Value == "0" ? "Sandbox" : "Career");
+				else Log.Info("{0}{2}: {1}", kvp.Key, kvp.Value, tabs);
 			}
 
 			Log.Info("");
@@ -85,6 +86,7 @@ namespace KMPServer
 			Log.Info("    /set help for information about each setting.");
 			Log.Info("/whitelist [add|del] [user] to update whitelist.");
             Log.Info("/admin [add|del] [user] to update admin list.");
+			Log.Info("/mode [sandbox|career] to set server game mode.");
 			Log.Info("/quit to exit, or /start to begin the server.");
 			Log.Info("");
 
@@ -204,6 +206,26 @@ namespace KMPServer
                         }
 
                         ServerSettings.saveAdmins(settings);
+                        break;
+					
+					case "/mode":
+                        if (parts.Length != 2)
+                        {
+                            Log.Info("Invalid usage. /mode [sandbox|career]");
+							break;
+                        }
+                        switch (parts[1].ToLowerInvariant())
+                        {
+                            case "sandbox":
+                                settings.gameMode = 0;
+                                Log.Info("Game mode set to sandbox");
+                                break;
+                            case "career":
+                                settings.gameMode = 1;
+                                Log.Info("Game mode set to career");
+                                break;
+                        }
+						ServerSettings.writeToFile(settings);
                         break;
 
 					case "/set":
