@@ -765,6 +765,7 @@ namespace KMP
                         enqueuePluginChatMessage("Closed connection with server", true);
                     else
                         enqueuePluginChatMessage("Lost connection with server", true);
+                        ScreenMessages.PostScreenMessage("Lost connection with server. Please return to the Main Menu to reconnect.",300f,ScreenMessageStyle.UPPER_CENTER);
 
                     return true;
                 }
