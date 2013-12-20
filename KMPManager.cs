@@ -386,7 +386,8 @@ namespace KMP
 				}
 				if (isInFlight && !docking && !gameArrr)
 				{
-					foreach (Vessel possible_target in FlightGlobals.FindNearestVesselWhere(FlightGlobals.ship_position,isNotMineAndNotPacked))
+					Func<Vessel, bool> validCheckDelegate = isNotMineAndNotPacked;
+					foreach (Vessel possible_target in FlightGlobals.FindNearestVesselWhere(FlightGlobals.ship_position,validCheckDelegate))
 					{
 						if (serverVessels_IsPrivate.ContainsKey(possible_target.id))
 						{
