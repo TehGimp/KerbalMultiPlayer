@@ -167,6 +167,7 @@ namespace KMP
 		private bool warping = false;
 		private bool syncing = false;
 		private bool docking = false;
+                private bool initialSync = false;
 		private float lastWarpRate = 1f;
 		private int chatMessagesWaiting = 0;
 		private Vessel lastEVAVessel = null;
@@ -3099,6 +3100,7 @@ namespace KMP
 				MapView.EnterMapView();
 				MapView.MapCamera.SetTarget("Kerbin");
 				StartCoroutine(sendSubspaceSyncRequest(-1,true));
+                                initialSync = true;
 				Invoke("handleSyncTimeout",300f);
 				docking = false;
 			}
@@ -3133,6 +3135,7 @@ namespace KMP
 		private void finishInGameSync()
 		{
 			syncing = false;
+			initialSync = false;
 			inGameSyncing = false;
 			showServerSync = false;
 		}
@@ -3190,7 +3193,7 @@ namespace KMP
 			{
 				if (!gameRunning) return;
 				
-				try { if (PauseMenu.isOpen && syncing) PauseMenu.Close(); } catch { }
+				try { if (PauseMenu.isOpen && syncing && !initialSync) PauseMenu.Close(); } catch { }
 				
 				if (FlightDriver.Pause) FlightDriver.SetPause(false);
 				if (KMPClientMain.cheatsEnabled == false) {
