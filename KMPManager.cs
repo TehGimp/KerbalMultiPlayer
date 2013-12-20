@@ -607,7 +607,9 @@ namespace KMP
 						{
 							try { if (!part.vessel.isEVA && part.vessel.id != FlightGlobals.ActiveVessel.id) killVessel(part.vessel); } catch (Exception e) { Log.Debug("Exception thrown in checkRemoteVesselIntegrity(), catch 1, Exception: {0}", e.ToString()); }
 						}
-						ProtoVessel protovessel = new ProtoVessel(serverVessels_ProtoVessels[vessel.id], HighLogic.CurrentGame);
+						ConfigNode protoNode = serverVessels_ProtoVessels[vessel.id];
+						checkProtoNodeCrew(protoNode);
+						ProtoVessel protovessel = new ProtoVessel(protoNode, HighLogic.CurrentGame);
 						addRemoteVessel(protovessel,vessel.id);
 						serverVessels_LoadDelay[vessel.id] = UnityEngine.Time.realtimeSinceStartup + 10f;
 					}
@@ -1753,7 +1755,9 @@ namespace KMP
 										ProtoVessel protovessel = null;
 										if (serverVessels_ProtoVessels.ContainsKey(vessel_update.id))
 										{
-											protovessel = new ProtoVessel(serverVessels_ProtoVessels[vessel_update.id], HighLogic.CurrentGame);
+											ConfigNode protoNode = serverVessels_ProtoVessels[vessel_update.id];
+											checkProtoNodeCrew(protoNode);
+											protovessel = new ProtoVessel(protoNode, HighLogic.CurrentGame);
 										}
 										if (serverVessels_PartCounts.ContainsKey(vessel_update.id))
 										{
@@ -1944,7 +1948,9 @@ namespace KMP
 										//Update flag if needed
 										if (vessel_update.getProtoVesselNode() != null)
 										{
-											ProtoVessel protovessel = new ProtoVessel(serverVessels_ProtoVessels[vessel_update.id], HighLogic.CurrentGame);
+											ConfigNode protoNode = serverVessels_ProtoVessels[vessel_update.id];
+											checkProtoNodeCrew(protoNode);
+											ProtoVessel protovessel = new ProtoVessel(protoNode, HighLogic.CurrentGame);
 											addRemoteVessel(protovessel,vessel_update.id,vessel,vessel_update);
 										}
 									}
@@ -1956,7 +1962,9 @@ namespace KMP
 										if (serverVessels_ProtoVessels.ContainsKey(vessel_update.id))
 										{
 											Log.Debug("Adding new vessel: " + vessel_update.id);
-											ProtoVessel protovessel = new ProtoVessel(serverVessels_ProtoVessels[vessel_update.id], HighLogic.CurrentGame);
+											ConfigNode protoNode = serverVessels_ProtoVessels[vessel_update.id];
+											checkProtoNodeCrew(protoNode);
+											ProtoVessel protovessel = new ProtoVessel(protoNode, HighLogic.CurrentGame);
 											if (vessel.orbitValid && KMPVessel.situationIsOrbital(vessel_update.situation) && protovessel.vesselType != VesselType.Flag)
 											{
 												protovessel = syncOrbit(vessel, vessel_update.tick, protovessel, vessel_update.w_pos[0]);
@@ -1998,7 +2006,9 @@ namespace KMP
 						{
 							Log.Debug("Received updated protovessel for active vessel");
 							serverVessels_ProtoVessels[vessel_update.id] = vessel_update.getProtoVesselNode();
-							ProtoVessel protovessel = new ProtoVessel(serverVessels_ProtoVessels[vessel_update.id], HighLogic.CurrentGame);
+							ConfigNode protoNode = serverVessels_ProtoVessels[vessel_update.id];
+							checkProtoNodeCrew(protoNode);
+							ProtoVessel protovessel = new ProtoVessel(protoNode, HighLogic.CurrentGame);
 							addRemoteVessel(protovessel,vessel_update.id,vessel,vessel_update,0);
 						}
 						
@@ -2135,6 +2145,36 @@ namespace KMP
 					}
 				}
 			}
+		}
+		
+		private void checkProtoNodeCrew(ConfigNode protoNode)
+		{
+			IEnumerator<ProtoCrewMember> crewEnum = HighLogic.CurrentGame.CrewRoster.GetEnumerator();
+			int applicants = 0;
+			while (crewEnum.MoveNext())
+				if (crewEnum.Current.rosterStatus == ProtoCrewMember.RosterStatus.AVAILABLE) applicants++;
+		
+			foreach (ConfigNode partNode in protoNode.GetNodes("PART"))
+			{
+				foreach (string crew in partNode.GetValues("crew"))
+				{
+					int crewValue = Convert.ToInt32(crew);
+					crewValue++;
+					if (crewValue > applicants)
+					{
+						Log.Debug("Adding crew applicants");
+						for (int i = 0; i < (crewValue-applicants);)
+						{
+							ProtoCrewMember protoCrew = CrewGenerator.RandomCrewMemberPrototype();
+							if (!HighLogic.CurrentGame.CrewRoster.ExistsInRoster(protoCrew.name))
+							{
+								HighLogic.CurrentGame.CrewRoster.AddCrewMember(protoCrew);
+								i++;
+							}
+						}
+					}
+				}
+			}	
 		}
 		
 		private ProtoVessel syncOrbit(KMPVessel kvessel, double fromTick, ProtoVessel protovessel, double LAN)
@@ -2389,24 +2429,6 @@ namespace KMP
 					return;
 				}
 				
-				IEnumerator<ProtoCrewMember> crewEnum = HighLogic.CurrentGame.CrewRoster.GetEnumerator();
-				int applicants = 0;
-				while (crewEnum.MoveNext())
-					if (crewEnum.Current.rosterStatus == ProtoCrewMember.RosterStatus.AVAILABLE) applicants++;
-				
-				if (protovessel.GetVesselCrew().Count * 5 > applicants)
-				{
-					Log.Debug("Adding crew applicants");
-					for (int i = 0; i < (protovessel.GetVesselCrew().Count * 5);)
-					{
-						ProtoCrewMember protoCrew = CrewGenerator.RandomCrewMemberPrototype();
-						if (!HighLogic.CurrentGame.CrewRoster.ExistsInRoster(protoCrew.name))
-						{
-							HighLogic.CurrentGame.CrewRoster.AddCrewMember(protoCrew);
-							i++;
-						}
-					}
-				}
 				if (vessels.ContainsKey(vessel_id.ToString()))
 				{
 					if (oldVessel != null)
