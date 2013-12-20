@@ -265,7 +265,11 @@ namespace KMP
 				if (HighLogic.LoadedScene == GameScenes.LOADING || !gameRunning)
 					return; //Don't do anything while the game is loading or not in KMP game
 				
-				if (syncing) ScreenMessages.PostScreenMessage("Synchronizing universe, please wait...",1f,ScreenMessageStyle.UPPER_CENTER);
+				if (syncing)
+				{
+					ScreenMessages.PostScreenMessage("Synchronizing universe, please wait...",1f,ScreenMessageStyle.UPPER_CENTER);
+					ScreenMessages.PostScreenMessage("Loaded vessels: " + FlightGlobals.Vessels.Count,0.04f,ScreenMessageStyle.UPPER_RIGHT);
+				}
 				
 				if (!isInFlight && HighLogic.LoadedScene == GameScenes.TRACKSTATION)
 				{
