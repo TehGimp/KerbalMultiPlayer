@@ -395,6 +395,10 @@ namespace KMP
 							{
 								foreach (PartModule module in part.Modules)
 								{
+									if (module is ModuleCommand)
+									{
+										module.isEnabled = false;
+									}
 									if (module is ModuleDockingNode)
 									{
 										ModuleDockingNode dockingModule = (ModuleDockingNode) module;
