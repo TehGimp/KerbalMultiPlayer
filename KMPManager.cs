@@ -3165,7 +3165,13 @@ namespace KMP
 		
 		private void handleSyncTimeout()
 		{
-			if (!forceQuit && syncing && gameRunning) Invoke("finishSync",5f);
+			if (!forceQuit && syncing && gameRunning) {
+				disconnect("Sync Timeout");
+				KMPClientMain.sendConnectionEndMessage("Sync Timeout");
+				KMPClientMain.endSession = true;
+				forceQuit = true;
+				KMPClientMain.SetMessage("Disconnected: Sync timeout");
+			}
 		}
 		
 		private void finishSync()
