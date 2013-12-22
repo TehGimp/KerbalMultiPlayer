@@ -3118,26 +3118,26 @@ namespace KMPServer
 		
 		private void sendScenarios(Client cl)
 		{
-			if (settings.gameMode == 1) //Career mode
-			{
-				DbCommand cmd = universeDB.CreateCommand();
-                string sql = "SELECT UpdateMessage FROM kmpScenarios WHERE PlayerID = @playerID;";
-                cmd.CommandText = sql;
-                cmd.Parameters.AddWithValue("playerID", cl.playerID);
-                DbDataReader reader = cmd.ExecuteReader();
-	            try
-	            {
-	                while (reader.Read())
-	                {
-	                    byte[] data = GetDataReaderBytes(reader, 0);
-	                    sendScenarioMessage(cl, data);
-	                }
-	            }
-	            finally
-	            {
-	                reader.Close();
-	            }
-			}
+			DbCommand cmd = universeDB.CreateCommand();
+            string sql = "SELECT UpdateMessage FROM kmpScenarios WHERE PlayerID = @playerID";
+			if (settings.gameMode != 1) //Only include career ScenarioModules if game server is set to career mode
+				sql+= " AND Name NOT IN ('ResearchAndDevelopment','ProgressTracking')";
+			sql += ";";
+            cmd.CommandText = sql;
+            cmd.Parameters.AddWithValue("playerID", cl.playerID);
+            DbDataReader reader = cmd.ExecuteReader();
+            try
+            {
+                while (reader.Read())
+                {
+                    byte[] data = GetDataReaderBytes(reader, 0);
+                    sendScenarioMessage(cl, data);
+                }
+            }
+            finally
+            {
+                reader.Close();
+            }
 		}
 		
         private void sendSyncMessage(Client cl, double tick)
