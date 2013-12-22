@@ -386,12 +386,9 @@ namespace KMP
 				}
 				if (isInFlight && !docking && !gameArrr)
 				{
-					Func<Vessel, bool> isNotMineAndNotPacked = delegate(Vessel vessel) {
-						 return !vessel.packed && (serverVessels_IsMine.ContainsKey(vessel.id) ? !serverVessels_IsMine[vessel.id] : false);
-					};
-					foreach (Vessel possible_target in FlightGlobals.FindNearestVesselWhere(FlightGlobals.ship_position,isNotMineAndNotPacked))
+					foreach (Vessel possible_target in FlightGlobals.fetch.vessels.ToList())
 					{
-						if (serverVessels_IsPrivate.ContainsKey(possible_target.id))
+						if (!possible_target.packed && serverVessels_IsPrivate.ContainsKey(possible_target.id) && serverVessels_IsMine.ContainsKey(possible_target.id) ? !serverVessels_IsMine[possible_target.id] : false)
 						{
 							foreach (Part part in possible_target.Parts)
 							{
@@ -399,7 +396,7 @@ namespace KMP
 								{
 									if (module is ModuleCommand)
 									{
-										module.isEnabled = false;
+										module.isEnabled = !serverVessels_IsPrivate[possible_target.id];
 									}
 									if (module is ModuleDockingNode)
 									{
