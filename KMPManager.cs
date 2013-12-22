@@ -2413,14 +2413,14 @@ namespace KMP
 						if (oldVessel.id == FlightGlobals.ActiveVessel.id)
 							wasActive = true;
 					}
-				}
-				
-				if (protovessel.vesselType != VesselType.EVA && serverVessels_Parts.ContainsKey(vessel_id))
-				{
-					Log.Debug("killing known precursor vessels");
-					foreach (Part part in serverVessels_Parts[vessel_id])
+					
+					if (protovessel.vesselType != VesselType.EVA && serverVessels_Parts.ContainsKey(vessel_id))
 					{
-						try { if (part.vessel.id != oldVessel.id) killVessel(part.vessel); } catch (Exception e) {  Log.Debug("Exception thrown in addRemoteVessel(), catch 1, Exception: {0}", e.ToString()); }
+						Log.Debug("killing known precursor vessels");
+						foreach (Part part in serverVessels_Parts[vessel_id])
+						{
+							try { if (part.vessel != null && part.vessel.id != oldVessel.id) killVessel(part.vessel); } catch (Exception e) {  Log.Debug("Exception thrown in addRemoteVessel(), catch 1, Exception: {0}", e.ToString()); }
+						}
 					}
 				}
 			} catch (Exception e) {  Log.Debug("Exception thrown in addRemoteVessel(), catch 2, Exception: {0}", e.ToString()); }
