@@ -386,8 +386,10 @@ namespace KMP
 				}
 				if (isInFlight && !docking && !gameArrr)
 				{
-					Func<Vessel, bool> validCheckDelegate = isNotMineAndNotPacked;
-					foreach (Vessel possible_target in FlightGlobals.FindNearestVesselWhere(FlightGlobals.ship_position,validCheckDelegate))
+					Func<Vessel, bool> isNotMineAndNotPacked = delegate(Vessel vessel) {
+						 return !vessel.packed && (serverVessels_IsMine.ContainsKey(vessel.id) ? !serverVessels_IsMine[vessel.id] : false);
+					};
+					foreach (Vessel possible_target in FlightGlobals.FindNearestVesselWhere(FlightGlobals.ship_position,isNotMineAndNotPacked))
 					{
 						if (serverVessels_IsPrivate.ContainsKey(possible_target.id))
 						{
@@ -566,11 +568,6 @@ namespace KMP
 					}
 				}
 			} catch (Exception ex) { Log.Debug("Exception thrown in updateStep(), catch 4, Exception: {0}", ex.ToString()); Log.Debug("uS err: " + ex.Message + " " + ex.StackTrace); }
-		}
-		
-		private bool isNotMineAndNotPacked(Vessel vessel)
-		{
-			return !vessel.packed && (serverVessels_IsMine.ContainsKey(vessel.id) ? serverVessels_IsMine[vessel.id] : false);
 		}
 		
 		private void dockedKickToTrackingStation()
