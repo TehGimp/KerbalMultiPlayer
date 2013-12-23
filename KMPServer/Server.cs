@@ -1733,7 +1733,7 @@ namespace KMPServer
 					
                     cl.currentSubspaceID = newSubspace;
 					cl.warping = false;
-                    sendSubspace(cl, false, false);
+                    sendSubspace(cl, true, false);
 					cl.lastTick = -1d;
                     Log.Activity("{0} set to new subspace {1}", cl.username, newSubspace);
                 }
