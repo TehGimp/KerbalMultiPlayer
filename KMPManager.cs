@@ -1045,6 +1045,7 @@ namespace KMP
 			
 			//Set privacy lock
 			if (serverVessels_IsPrivate.ContainsKey(vessel.id)) update.isPrivate = serverVessels_IsPrivate[vessel.id];
+			else update.isPrivate = false;
 
 			if (vessel.vesselName.Length <= MAX_VESSEL_NAME_LENGTH)
 				update.name = vessel.vesselName;
