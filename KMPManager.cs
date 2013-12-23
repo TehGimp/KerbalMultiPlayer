@@ -155,6 +155,8 @@ namespace KMP
 		
 		public Dictionary<Guid, float> newFlags = new Dictionary<Guid, float>();
 		
+		public Dictionary<uint, int> serverParts_CrewCapacity = new Dictionary<uint, int>();
+		
 		private Krakensbane krakensbane;
 		
 		public double lastTick = 0d;
@@ -386,22 +388,35 @@ namespace KMP
 				}
 				if (isInFlight && !docking && !gameArrr)
 				{
-					foreach (Vessel possible_target in FlightGlobals.fetch.vessels.ToList())
+					foreach (Vessel possible_target in FlightGlobals.Vessels.ToList())
 					{
-						if (!possible_target.packed && serverVessels_IsPrivate.ContainsKey(possible_target.id) && serverVessels_IsMine.ContainsKey(possible_target.id) ? !serverVessels_IsMine[possible_target.id] : false)
+						if (!possible_target.packed && serverVessels_IsPrivate.ContainsKey(possible_target.id) && serverVessels_IsMine.ContainsKey(possible_target.id))
 						{
 							foreach (Part part in possible_target.Parts)
 							{
+								bool enabled = !serverVessels_IsPrivate[possible_target.id] || serverVessels_IsMine[possible_target.id];
+								if (!enabled && !serverParts_CrewCapacity.ContainsKey(part.uid))
+								{
+									serverParts_CrewCapacity[part.uid] = part.CrewCapacity;
+								}
+								if (!enabled)
+								{
+									part.CrewCapacity = 0;	
+								}
+								else if (serverParts_CrewCapacity.ContainsKey(part.uid))
+								{
+									part.CrewCapacity = serverParts_CrewCapacity[part.uid];
+									serverParts_CrewCapacity.Remove(part.uid);
+								}
 								foreach (PartModule module in part.Modules)
 								{
-									if (module is ModuleCommand)
-									{
-										module.isEnabled = !serverVessels_IsPrivate[possible_target.id];
-									}
 									if (module is ModuleDockingNode)
 									{
-										ModuleDockingNode dockingModule = (ModuleDockingNode) module;
-										dockingModule.isEnabled = !serverVessels_IsPrivate[possible_target.id];
+										ModuleDockingNode dmodule = (ModuleDockingNode) module;
+										Log.Info ("1: {0}",dmodule.captureRange);
+										float absCaptureRange = Math.Abs(dmodule.captureRange);
+										dmodule.captureRange = (enabled ? 1 : -1) * absCaptureRange;
+										module.isEnabled = enabled;
 									}
 								}
 							}
@@ -959,7 +974,25 @@ namespace KMP
             //Log.Debug("ParCountsContains: " + serverVessels_PartCounts.ContainsKey(vessel.id));
             //Log.Debug("TimeDelta: " + ((UnityEngine.Time.realtimeSinceStartup - lastFullProtovesselUpdate) < FULL_PROTOVESSEL_UPDATE_TIMEOUT));
             //Log.Debug("Throttle: " + (FlightGlobals.ActiveVessel.ctrlState.mainThrottle == 0f));
-
+			
+			//Ensure privacy protections don't affect server's version of vessel
+			foreach (Part part in vessel.Parts)
+			{
+				if ((serverParts_CrewCapacity.ContainsKey(part.uid) ? serverParts_CrewCapacity[part.uid] : 0) != 0)
+				{
+					part.CrewCapacity = serverParts_CrewCapacity[part.uid];
+				}
+				foreach (PartModule module in part.Modules)
+				{
+					if (module is ModuleDockingNode)
+					{
+						ModuleDockingNode dmodule = (ModuleDockingNode) module;
+						float absCaptureRange = Math.Abs(dmodule.captureRange);
+						dmodule.captureRange = absCaptureRange;
+					}
+				}
+			}
+			
 			//Check for new/forced update
 			if (!forceFullUpdate //not a forced update
 			    && !docking //not in the middle of a docking event
