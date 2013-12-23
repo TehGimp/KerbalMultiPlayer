@@ -3565,13 +3565,13 @@ namespace KMP
 						KMPInfoDisplay.layoutOptions
 						);
 					
-					if (isInFlight && !syncing && !KMPInfoDisplay.infoDisplayMinimized)
+					if (isInFlight && !KMPInfoDisplay.infoDisplayMinimized)
 					{
 						GUILayout.Window(
 							999995,
 							KMPVesselLockDisplay.windowPos,
 							lockWindow,
-							"Lock",
+							syncing ? "Bailout" : "Lock",
 							KMPVesselLockDisplay.layoutOptions
 							);
 					}
@@ -3620,46 +3620,63 @@ namespace KMP
 		{
 			try
 			{
-				bool wasLocked;
-				if (!serverVessels_IsPrivate.ContainsKey(FlightGlobals.ActiveVessel.id) || !serverVessels_IsMine.ContainsKey(FlightGlobals.ActiveVessel.id))
-				{
-					//Must be ours
-					serverVessels_IsPrivate[FlightGlobals.ActiveVessel.id] = false;
-					serverVessels_IsMine[FlightGlobals.ActiveVessel.id] = true;
-					sendVesselMessage(FlightGlobals.ActiveVessel);
-					wasLocked = false;
-				}
-				else
-				{
-					//Get locked status
-					wasLocked = serverVessels_IsPrivate[FlightGlobals.ActiveVessel.id];
-				}
-				if (!wasLocked && (serverVessels_InUse.ContainsKey(FlightGlobals.ActiveVessel.id) ? !serverVessels_InUse[FlightGlobals.ActiveVessel.id] : true))
-				{
-					//Unlocked unoccupied vessel is now ours
-					serverVessels_IsMine[FlightGlobals.ActiveVessel.id] = true;
-				}
 				GUILayout.BeginVertical();
 				GUIStyle lockButtonStyle = new GUIStyle(GUI.skin.button);
 				lockButtonStyle.fontSize = 10;
-				if (!serverVessels_IsMine[FlightGlobals.ActiveVessel.id]) GUI.enabled = false;
-				bool locked =
-					GUILayout.Toggle(wasLocked,
-					wasLocked ? "Private" : "Public",
-					lockButtonStyle);
-				if (!serverVessels_IsMine[FlightGlobals.ActiveVessel.id]) GUI.enabled = true;
-				if (serverVessels_IsMine[FlightGlobals.ActiveVessel.id] && wasLocked != locked)
+				
+				if (!syncing)
 				{
-					serverVessels_IsPrivate[FlightGlobals.ActiveVessel.id] = locked;
-					if (locked) ScreenMessages.PostScreenMessage("Your vessel is now marked Private",5,ScreenMessageStyle.UPPER_CENTER);
-					else ScreenMessages.PostScreenMessage("Your vessel is now marked Public",5,ScreenMessageStyle.UPPER_CENTER);
-					sendVesselMessage(FlightGlobals.ActiveVessel);
+					bool wasLocked;
+					if (!serverVessels_IsPrivate.ContainsKey(FlightGlobals.ActiveVessel.id) || !serverVessels_IsMine.ContainsKey(FlightGlobals.ActiveVessel.id))
+					{
+						//Must be ours
+						serverVessels_IsPrivate[FlightGlobals.ActiveVessel.id] = false;
+						serverVessels_IsMine[FlightGlobals.ActiveVessel.id] = true;
+						sendVesselMessage(FlightGlobals.ActiveVessel);
+						wasLocked = false;
+					}
+					else
+					{
+						//Get locked status
+						wasLocked = serverVessels_IsPrivate[FlightGlobals.ActiveVessel.id];
+					}
+					if (!wasLocked && (serverVessels_InUse.ContainsKey(FlightGlobals.ActiveVessel.id) ? !serverVessels_InUse[FlightGlobals.ActiveVessel.id] : true))
+					{
+						//Unlocked unoccupied vessel is now ours
+						serverVessels_IsMine[FlightGlobals.ActiveVessel.id] = true;
+					}
+					if (!serverVessels_IsMine[FlightGlobals.ActiveVessel.id]) GUI.enabled = false;
+					bool locked =
+						GUILayout.Toggle(wasLocked,
+						wasLocked ? "Private" : "Public",
+						lockButtonStyle);
+					if (!serverVessels_IsMine[FlightGlobals.ActiveVessel.id]) GUI.enabled = true;
+					if (serverVessels_IsMine[FlightGlobals.ActiveVessel.id] && wasLocked != locked)
+					{
+						serverVessels_IsPrivate[FlightGlobals.ActiveVessel.id] = locked;
+						if (locked) ScreenMessages.PostScreenMessage("Your vessel is now marked Private",5,ScreenMessageStyle.UPPER_CENTER);
+						else ScreenMessages.PostScreenMessage("Your vessel is now marked Public",5,ScreenMessageStyle.UPPER_CENTER);
+						sendVesselMessage(FlightGlobals.ActiveVessel);
+					}
+				}
+				else
+				{
+					//Offer bailout
+					bool quit = GUILayout.Button("Quit",lockButtonStyle);
+					if (quit)
+					{
+						KMPClientMain.sendConnectionEndMessage("Requested quit during sync");
+						KMPClientMain.endSession = true;
+						forceQuit = true;
+					}
 				}
 				GUILayout.EndVertical();
 			}
-			catch (Exception e) {
-          Log.Debug("Exception thrown in lockWindow(), catch 1, Exception: {0}", e.ToString());
-      }
+			
+			catch (Exception e)
+			{
+				Log.Debug("Exception thrown in lockWindow(), catch 1, Exception: {0}", e.ToString());
+			}
 		}
 		
 		private void infoDisplayWindow(int windowID)
