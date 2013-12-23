@@ -416,7 +416,7 @@ namespace KMP
 										Log.Info ("1: {0}",dmodule.captureRange);
 										float absCaptureRange = Math.Abs(dmodule.captureRange);
 										dmodule.captureRange = (enabled ? 1 : -1) * absCaptureRange;
-										module.isEnabled = enabled;
+										dmodule.isEnabled = enabled;
 									}
 								}
 							}
@@ -989,6 +989,7 @@ namespace KMP
 						ModuleDockingNode dmodule = (ModuleDockingNode) module;
 						float absCaptureRange = Math.Abs(dmodule.captureRange);
 						dmodule.captureRange = absCaptureRange;
+						dmodule.isEnabled = true;
 					}
 				}
 			}
