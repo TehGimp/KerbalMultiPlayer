@@ -306,45 +306,48 @@ namespace KMP
 	        	
 	        	try
 	        	{
-		        	if(line[0] != '#')//allows commented lines
-		        	{	
-		        		if(line[0] == '!')//changing readmode
-		        		{
-		        			if(line.Contains("partslist")){
-		        				readmode = "parts";
-		        			}
-		        			else if(line.Contains("md5")){
-		        				readmode = "md5";
-		        			}
-		        			else if(line.Contains("resource-blacklist")){ //allow all resources EXCEPT these in file
-		        				readmode = "resource";
-		        				resourcemode = "blacklist";
-		        			}
-		        			else if(line.Contains("resource-whitelist")){ //allow NO resources EXCEPT these in file
-		        				readmode = "resource";
-		        				resourcemode = "whitelist";
-		        			}
-		        			else if(line.Contains("required")){
-		        				readmode = "required";
-		        			}
-		        		}
-		        		else if(readmode == "parts")
-		        		{
-		        			allowedParts.Add(line);
-		        		}
-		        		else if(readmode == "md5")
-		        		{
-		        			splitline = line.Split('=');
-		        			hashes.Add(splitline[0], splitline[1]); //stores path:md5
-		        		}
-		        		else if(readmode == "resource"){
-		        			resources.Add(line);
-		        		}
-		        		else if(readmode == "required"){
-		        			modList.Add(line);
-		        		}
-		        	}
-		        }
+				if(! String.IsNullOrEmpty(line))
+				{
+					if(line[0] != '#')//allows commented lines
+					{
+						if(line[0] == '!')//changing readmode
+						{
+							if(line.Contains("partslist")){
+								readmode = "parts";
+							}
+							else if(line.Contains("md5")){
+								readmode = "md5";
+							}
+							else if(line.Contains("resource-blacklist")){ //allow all resources EXCEPT these in file
+								readmode = "resource";
+								resourcemode = "blacklist";
+							}
+							else if(line.Contains("resource-whitelist")){ //allow NO resources EXCEPT these in file
+								readmode = "resource";
+								resourcemode = "whitelist";
+							}
+							else if(line.Contains("required")){
+								readmode = "required";
+							}
+						}
+						else if(readmode == "parts")
+						{
+							allowedParts.Add(line);
+						}
+						else if(readmode == "md5")
+						{
+							splitline = line.Split('=');
+							hashes.Add(splitline[0], splitline[1]); //stores path:md5
+						}
+						else if(readmode == "resource"){
+							resources.Add(line);
+						}
+						else if(readmode == "required"){
+							modList.Add(line);
+						}
+					}
+				}
+			}
 		        catch (Exception e)
 		        {
 		        	Log.Info(e.ToString());
