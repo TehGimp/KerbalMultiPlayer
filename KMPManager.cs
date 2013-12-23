@@ -3784,20 +3784,22 @@ namespace KMP
 					StartCoroutine(shareScreenshot());
 				
 				GUIStyle syncButtonStyle = new GUIStyle(GUI.skin.button);
+				string tooltip = showServerSync ? "Sync to the future" : "Already fully synced";
 				if (showServerSync && isInFlight && FlightGlobals.ActiveVessel.ctrlState.mainThrottle == 0f && !isObserving)
 				{
 					syncButtonStyle.normal.textColor = new Color(0.28f, 0.86f, 0.94f);
 					syncButtonStyle.hover.textColor = new Color(0.48f, 0.96f, 0.96f);
-					if (GUILayout.Button("Sync",syncButtonStyle))
+					if (GUILayout.Button(new GUIContent("Sync", tooltip),syncButtonStyle))
 						StartCoroutine(sendSubspaceSyncRequest());
 				}
 				else
 				{
 					syncButtonStyle.normal.textColor = new Color(0.5f,0.5f,0.5f);
 					GUI.enabled = false;
-					GUILayout.Button("Sync",syncButtonStyle);
+					GUILayout.Button(new GUIContent("Sync", tooltip),syncButtonStyle);
 					GUI.enabled = true;
 				}
+				GUI.Label(new Rect(showServerSync ? 205 : 190,298,200,10),GUI.tooltip);
 				GUILayout.EndHorizontal();
 
 				if (KMPInfoDisplay.infoDisplayOptions)
