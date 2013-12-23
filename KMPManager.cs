@@ -390,37 +390,7 @@ namespace KMP
 				{
 					foreach (Vessel possible_target in FlightGlobals.Vessels.ToList())
 					{
-						if (!possible_target.packed && serverVessels_IsPrivate.ContainsKey(possible_target.id) && serverVessels_IsMine.ContainsKey(possible_target.id))
-						{
-							foreach (Part part in possible_target.Parts)
-							{
-								bool enabled = !serverVessels_IsPrivate[possible_target.id] || serverVessels_IsMine[possible_target.id];
-								if (!enabled && !serverParts_CrewCapacity.ContainsKey(part.uid))
-								{
-									serverParts_CrewCapacity[part.uid] = part.CrewCapacity;
-								}
-								if (!enabled)
-								{
-									part.CrewCapacity = 0;	
-								}
-								else if (serverParts_CrewCapacity.ContainsKey(part.uid))
-								{
-									part.CrewCapacity = serverParts_CrewCapacity[part.uid];
-									serverParts_CrewCapacity.Remove(part.uid);
-								}
-								foreach (PartModule module in part.Modules)
-								{
-									if (module is ModuleDockingNode)
-									{
-										ModuleDockingNode dmodule = (ModuleDockingNode) module;
-										Log.Info ("1: {0}",dmodule.captureRange);
-										float absCaptureRange = Math.Abs(dmodule.captureRange);
-										dmodule.captureRange = (enabled ? 1 : -1) * absCaptureRange;
-										dmodule.isEnabled = enabled;
-									}
-								}
-							}
-						}
+						checkVesselPrivacy(possible_target);
 					}
 				}
 
@@ -580,6 +550,41 @@ namespace KMP
 					}
 				}
 			} catch (Exception ex) { Log.Debug("Exception thrown in updateStep(), catch 4, Exception: {0}", ex.ToString()); Log.Debug("uS err: " + ex.Message + " " + ex.StackTrace); }
+		}
+		
+		private void checkVesselPrivacy(Vessel vessel)
+		{
+			if (!vessel.packed && serverVessels_IsPrivate.ContainsKey(vessel.id) && serverVessels_IsMine.ContainsKey(vessel.id))
+			{
+				foreach (Part part in vessel.Parts)
+				{
+					bool enabled = !serverVessels_IsPrivate[vessel.id] || serverVessels_IsMine[vessel.id];
+					if (!enabled && !serverParts_CrewCapacity.ContainsKey(part.uid))
+					{
+						serverParts_CrewCapacity[part.uid] = part.CrewCapacity;
+					}
+					if (!enabled)
+					{
+						part.CrewCapacity = 0;	
+					}
+					else if (serverParts_CrewCapacity.ContainsKey(part.uid))
+					{
+						part.CrewCapacity = serverParts_CrewCapacity[part.uid];
+						serverParts_CrewCapacity.Remove(part.uid);
+					}
+					foreach (PartModule module in part.Modules)
+					{
+						if (module is ModuleDockingNode)
+						{
+							ModuleDockingNode dmodule = (ModuleDockingNode) module;
+							Log.Info ("1: {0}",dmodule.captureRange);
+							float absCaptureRange = Math.Abs(dmodule.captureRange);
+							dmodule.captureRange = (enabled ? 1 : -1) * absCaptureRange;
+							dmodule.isEnabled = enabled;
+						}
+					}
+				}
+			}	
 		}
 		
 		private void dockedKickToTrackingStation()
@@ -1157,7 +1162,10 @@ namespace KMP
 
 			update.timeScale = (float)Planetarium.TimeScale;
 			update.bodyName = vessel.mainBody.bodyName;
-
+			
+			//Reset vessel privacy locks in case they were changed
+			checkVesselPrivacy(vessel);
+			
 			return update;
 
 		}
