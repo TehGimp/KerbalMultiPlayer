@@ -3175,6 +3175,7 @@ namespace KMPServer
 			BitConverter.GetBytes(settings.safetyBubbleRadius).CopyTo(bytes,12); //Safety bubble radius
             bytes[20] = inactiveShipsPerClient; //Inactive ships per client
             bytes[21] = Convert.ToByte(settings.cheatsEnabled);
+			bytes[22] = Convert.ToByte(settings.allowPiracy);
 
             return bytes;
         }
