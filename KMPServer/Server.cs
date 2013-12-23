@@ -1454,7 +1454,7 @@ namespace KMPServer
                         Array.Copy(received, index, data, 0, data.Length);
                     }
 
-                    Client client = clients.Where(c => c.isReady && c.clientIndex == sender_index).FirstOrDefault();
+                    Client client = clients.ToList().Where(c => c.isReady && c.clientIndex == sender_index).FirstOrDefault();
                     if (client != null)
                     {
                         if ((currentMillisecond - client.lastUDPACKTime) > UDP_ACK_THROTTLE)
