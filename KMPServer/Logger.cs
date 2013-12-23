@@ -9,7 +9,7 @@ namespace KMPServer
     public static class Log
     {
         private static string LogFolder = "logs";
-        private static string LogFilename =  Path.Combine(LogFolder, "kmpserver " + DateTime.Now.ToString("dd-MM-yyyy HH-mm-ss") + ".log");
+        private static string LogFilename =  Path.Combine(LogFolder, "kmpserver " + DateTime.Now.ToString("yyyy-MM-dd HH-mm-ss") + ".log");
         
         public enum LogLevels : int
         {
