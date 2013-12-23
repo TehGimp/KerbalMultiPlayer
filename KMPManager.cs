@@ -95,6 +95,8 @@ namespace KMP
 		public static object interopInQueueLock = new object();
 		
 		public int gameMode = 0; //0=Sandbox, 1=Career
+		public bool gameCheatsEnabled = false; //Allow built-in KSP cheats
+		public bool gameArrr = false; //Allow private vessels to be taken if other user can successfully dock manually
 		
 		private float lastGlobalSettingSaveTime = 0.0f;
 		private float lastPluginDataWriteTime = 0.0f;
@@ -152,6 +154,8 @@ namespace KMP
 		public Dictionary<Guid, KeyValuePair<double,double>> serverVessels_RendezvousSmoothVel = new Dictionary<Guid, KeyValuePair<double,double>>();
 		
 		public Dictionary<Guid, float> newFlags = new Dictionary<Guid, float>();
+		
+		public Dictionary<uint, int> serverParts_CrewCapacity = new Dictionary<uint, int>();
 		
 		private Krakensbane krakensbane;
 		
@@ -382,6 +386,13 @@ namespace KMP
 						}
 					}
 				}
+				if (isInFlight && !docking && !gameArrr)
+				{
+					foreach (Vessel possible_target in FlightGlobals.Vessels.ToList())
+					{
+						checkVesselPrivacy(possible_target);
+					}
+				}
 
 				//Update universe time
 				try
@@ -539,6 +550,41 @@ namespace KMP
 					}
 				}
 			} catch (Exception ex) { Log.Debug("Exception thrown in updateStep(), catch 4, Exception: {0}", ex.ToString()); Log.Debug("uS err: " + ex.Message + " " + ex.StackTrace); }
+		}
+		
+		private void checkVesselPrivacy(Vessel vessel)
+		{
+			if (!vessel.packed && serverVessels_IsPrivate.ContainsKey(vessel.id) && serverVessels_IsMine.ContainsKey(vessel.id))
+			{
+				foreach (Part part in vessel.Parts)
+				{
+					bool enabled = !serverVessels_IsPrivate[vessel.id] || serverVessels_IsMine[vessel.id];
+					if (!enabled && !serverParts_CrewCapacity.ContainsKey(part.uid))
+					{
+						serverParts_CrewCapacity[part.uid] = part.CrewCapacity;
+					}
+					if (!enabled)
+					{
+						part.CrewCapacity = 0;	
+					}
+					else if (serverParts_CrewCapacity.ContainsKey(part.uid))
+					{
+						part.CrewCapacity = serverParts_CrewCapacity[part.uid];
+						serverParts_CrewCapacity.Remove(part.uid);
+					}
+					foreach (PartModule module in part.Modules)
+					{
+						if (module is ModuleDockingNode)
+						{
+							ModuleDockingNode dmodule = (ModuleDockingNode) module;
+							Log.Info ("1: {0}",dmodule.captureRange);
+							float absCaptureRange = Math.Abs(dmodule.captureRange);
+							dmodule.captureRange = (enabled ? 1 : -1) * absCaptureRange;
+							dmodule.isEnabled = enabled;
+						}
+					}
+				}
+			}	
 		}
 		
 		private void dockedKickToTrackingStation()
@@ -933,7 +979,26 @@ namespace KMP
             //Log.Debug("ParCountsContains: " + serverVessels_PartCounts.ContainsKey(vessel.id));
             //Log.Debug("TimeDelta: " + ((UnityEngine.Time.realtimeSinceStartup - lastFullProtovesselUpdate) < FULL_PROTOVESSEL_UPDATE_TIMEOUT));
             //Log.Debug("Throttle: " + (FlightGlobals.ActiveVessel.ctrlState.mainThrottle == 0f));
-
+			
+			//Ensure privacy protections don't affect server's version of vessel
+			foreach (Part part in vessel.Parts)
+			{
+				if ((serverParts_CrewCapacity.ContainsKey(part.uid) ? serverParts_CrewCapacity[part.uid] : 0) != 0)
+				{
+					part.CrewCapacity = serverParts_CrewCapacity[part.uid];
+				}
+				foreach (PartModule module in part.Modules)
+				{
+					if (module is ModuleDockingNode)
+					{
+						ModuleDockingNode dmodule = (ModuleDockingNode) module;
+						float absCaptureRange = Math.Abs(dmodule.captureRange);
+						dmodule.captureRange = absCaptureRange;
+						dmodule.isEnabled = true;
+					}
+				}
+			}
+			
 			//Check for new/forced update
 			if (!forceFullUpdate //not a forced update
 			    && !docking //not in the middle of a docking event
@@ -1097,7 +1162,10 @@ namespace KMP
 
 			update.timeScale = (float)Planetarium.TimeScale;
 			update.bodyName = vessel.mainBody.bodyName;
-
+			
+			//Reset vessel privacy locks in case they were changed
+			checkVesselPrivacy(vessel);
+			
 			return update;
 
 		}
@@ -2387,14 +2455,14 @@ namespace KMP
 						if (oldVessel.id == FlightGlobals.ActiveVessel.id)
 							wasActive = true;
 					}
-				}
-				
-				if (protovessel.vesselType != VesselType.EVA && serverVessels_Parts.ContainsKey(vessel_id))
-				{
-					Log.Debug("killing known precursor vessels");
-					foreach (Part part in serverVessels_Parts[vessel_id])
+					
+					if (protovessel.vesselType != VesselType.EVA && serverVessels_Parts.ContainsKey(vessel_id))
 					{
-						try { if (part.vessel.id != oldVessel.id) killVessel(part.vessel); } catch (Exception e) {  Log.Debug("Exception thrown in addRemoteVessel(), catch 1, Exception: {0}", e.ToString()); }
+						Log.Debug("killing known precursor vessels");
+						foreach (Part part in serverVessels_Parts[vessel_id])
+						{
+							try { if (part.vessel != null && part.vessel.id != oldVessel.id) killVessel(part.vessel); } catch (Exception e) {  Log.Debug("Exception thrown in addRemoteVessel(), catch 1, Exception: {0}", e.ToString()); }
+						}
 					}
 				}
 			} catch (Exception e) {  Log.Debug("Exception thrown in addRemoteVessel(), catch 2, Exception: {0}", e.ToString()); }
@@ -3227,7 +3295,7 @@ namespace KMP
 				try { if (PauseMenu.isOpen && syncing) PauseMenu.Close(); } catch { }
 				
 				if (FlightDriver.Pause) FlightDriver.SetPause(false);
-				if (KMPClientMain.cheatsEnabled == false) {
+				if (gameCheatsEnabled == false) {
 					if (CheatOptions.InfiniteFuel == true)
 						CheatOptions.InfiniteFuel = false;
 					if (CheatOptions.InfiniteEVAFuel == true)
