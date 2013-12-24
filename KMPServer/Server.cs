@@ -3383,9 +3383,9 @@ namespace KMPServer
                         "CREATE TABLE kmpSubspace (ID INTEGER PRIMARY KEY {0}, LastTick DOUBLE);" +
                         "CREATE TABLE kmpPlayer (ID INTEGER PRIMARY KEY {0}, Name NVARCHAR(100), Guid CHAR({1}));" +
                         "CREATE TABLE kmpVessel (Guid CHAR({1}), GameGuid CHAR({1}), OwnerID INTEGER, Private BIT, Active BIT, ProtoVessel {2}, Subspace INTEGER, Destroyed BIT);" +
-                        "CREATE TABLE kmpVesselUpdate (ID INTEGER PRIMARY KEY {0}, Guid CHAR({1}), Subspace INTEGER, UpdateMessage BLOB);" +
-                        "CREATE TABLE kmpVesselUpdateHistory (Guid CHAR({1}), Subspace INTEGER, Tick DOUBLE, UpdateMessage BLOB);" +
-						"CREATE TABLE kmpScenarios (ID INTEGER PRIMARY KEY {0}, PlayerID INTEGER, Name NVARCHAR(100), Tick DOUBLE, UpdateMessage BLOB);" +
+                        "CREATE TABLE kmpVesselUpdate (ID INTEGER PRIMARY KEY {0}, Guid CHAR({1}), Subspace INTEGER, UpdateMessage {2});" +
+                        "CREATE TABLE kmpVesselUpdateHistory (Guid CHAR({1}), Subspace INTEGER, Tick DOUBLE, UpdateMessage {2});" +
+						"CREATE TABLE kmpScenarios (ID INTEGER PRIMARY KEY {0}, PlayerID INTEGER, Name NVARCHAR(100), Tick DOUBLE, UpdateMessage {2});" +
                         "CREATE INDEX kmpVesselIdxGuid on kmpVessel(Guid);" +
                         "CREATE INDEX kmpVesselUpdateIdxGuid on kmpVesselUpdate(guid);" +
                         "CREATE INDEX kmpVesselUpdateHistoryIdxTick on kmpVesselUpdateHistory(Tick);" +
