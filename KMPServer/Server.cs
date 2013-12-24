@@ -3486,9 +3486,9 @@ namespace KMPServer
             string sql = "DELETE FROM kmpSubspace WHERE LastTick < (SELECT MIN(s.LastTick) FROM (SELECT * FROM kmpSubspace) s" +
                 " INNER JOIN kmpVessel v ON v.Subspace = s.ID);" +
                 " DELETE FROM kmpVesselUpdateHistory;" +
-                " DELETE FROM kmpVesselUpdate WHERE ID IN (SELECT ID FROM kmpVesselUpdate vu" +
+                " DELETE FROM kmpVesselUpdate WHERE ID IN (SELECT ID FROM (SELECT * FROM kmpVesselUpdate) vu" +
                 " WHERE Subspace != (SELECT ID FROM kmpSubspace WHERE LastTick = (SELECT MAX(LastTick)" +
-                " FROM kmpSubspace WHERE ID IN (SELECT Subspace FROM kmpVesselUpdate WHERE Guid = vu.Guid))));";
+                " FROM kmpSubspace WHERE ID IN (SELECT Subspace FROM (SELECT * FROM kmpVesselUpdate) WHERE Guid = vu.Guid))));";
             cmd.CommandText = sql;
             cmd.ExecuteNonQuery();
             if (!settings.useMySQL) diskDB.Close();
@@ -3533,9 +3533,9 @@ namespace KMPServer
 	                string sql = "DELETE FROM kmpSubspace WHERE LastTick < (SELECT MIN(s.LastTick) FROM (SELECT * FROM kmpSubspace) s" +
 	                    " INNER JOIN kmpVessel v ON v.Subspace = s.ID);" +
 	                    " DELETE FROM kmpVesselUpdateHistory;" +
-	                    " DELETE FROM kmpVesselUpdate WHERE ID IN (SELECT ID FROM kmpVesselUpdate vu" +
+	                    " DELETE FROM kmpVesselUpdate WHERE ID IN (SELECT ID FROM (SELECT * FROM kmpVesselUpdate) vu" +
 	                    " WHERE Subspace != (SELECT ID FROM kmpSubspace WHERE LastTick = (SELECT MAX(LastTick) FROM kmpSubspace" +
-	                    " WHERE ID IN (SELECT Subspace FROM kmpVesselUpdate WHERE Guid = vu.Guid))));";
+	                    " WHERE ID IN (SELECT Subspace FROM (SELECT * FROM kmpVesselUpdate) WHERE Guid = vu.Guid))));";
 	                cmd.CommandText = sql;
 	                cmd.ExecuteNonQuery();
 				}
@@ -3585,27 +3585,14 @@ namespace KMPServer
 
         static byte[] GetDataReaderBytes(DbDataReader reader, int column)
         {
-//            const int CHUNK_SIZE = 2 * 1024;
-//            byte[] buffer = new byte[CHUNK_SIZE];
-//            long bytesRead;
-//            long fieldOffset = 0;
-//            using (MemoryStream stream = new MemoryStream())
-//            {
-//                while ((bytesRead = reader.GetBytes(column, fieldOffset, buffer, 0, buffer.Length)) > 0)
-//                {
-//                    stream.Write(buffer, 0, (int)bytesRead);
-//                    fieldOffset +=  bytesRead;
-//                }
-//                return stream.ToArray();
-//            }
-			int length = (int) reader.GetBytes(column, 0, null, 0, 0);
-			byte[] buffer = new byte[length+1];
+			int length = (int) reader.GetBytes(column, 0, null, 0, 0); //MySQL is apparently fussy about requesting too many bytes, so use exact length
+			byte[] buffer = new byte[length];
 			int fieldOffset = 0;
 			using (MemoryStream stream = new MemoryStream())
 			{
 				while (fieldOffset < length)
 				{
-				    int bytesRead = (int) reader.GetBytes(column, (long) fieldOffset, buffer, 0, length - fieldOffset + 1);
+				    int bytesRead = (int) reader.GetBytes(column, (long) fieldOffset, buffer, 0, length - fieldOffset);
 				    fieldOffset += bytesRead;
 					stream.Write(buffer, 0, bytesRead);
 				}
