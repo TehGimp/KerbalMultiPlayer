@@ -152,6 +152,7 @@ namespace KMP
 		
 		public Dictionary<Guid, KeyValuePair<double,double>> serverVessels_RendezvousSmoothPos = new Dictionary<Guid, KeyValuePair<double,double>>();
 		public Dictionary<Guid, KeyValuePair<double,double>> serverVessels_RendezvousSmoothVel = new Dictionary<Guid, KeyValuePair<double,double>>();
+		public Dictionary<Guid,bool> serverVessels_AllowRendezvousOrbitUpdate = new Dictionary<Guid, bool>();
 		
 		public Dictionary<Guid, float> newFlags = new Dictionary<Guid, float>();
 		
@@ -1994,8 +1995,9 @@ namespace KMP
 															Log.Debug("orbital rendezvous");
 															
 															//Keep body-relative orbit intact
-//															if (!extant_vessel.packed)
+//															if (!extant_vessel.packed && (serverVessels_AllowRendezvousOrbitUpdate.ContainsKey(extant_vessel.id) ? serverVessels_AllowRendezvousOrbitUpdate[extant_vessel.id] : false ))
 //															{
+//																serverVessels_AllowRendezvousOrbitUpdate.Remove(extant_vessel.id);
 //																Vector3d relPos = vessel.worldPosition - extant_vessel.GetWorldPos3D();
 //																Vector3d relObtVel = new Vector3d(vessel_update.o_vel[0],vessel_update.o_vel[1],vessel_update.o_vel[2])-extant_vessel.obt_velocity;
 //																if (relPos.sqrMagnitude > 1000000d || relObtVel.sqrMagnitude > 100000000d)
@@ -2013,7 +2015,7 @@ namespace KMP
 //															}
 														
 															//Update FlightCtrlState
-															extant_vessel.ctrlState.CopyFrom(vessel_update.flightCtrlState.getAsFlightCtrlState(0.6f));
+															extant_vessel.ctrlState.CopyFrom(vessel_update.flightCtrlState.getAsFlightCtrlState(0.85f));
 														}
 													}
 												}
@@ -2165,20 +2167,27 @@ namespace KMP
 								Vector3d updateRelVel = updateFrom.mainBody.transform.TransformDirection(new Vector3d(vessel_update.o_vel[0],vessel_update.o_vel[1],vessel_update.o_vel[2]));
 								Vector3d diffPos = updateRelPos - relPos;
 								Vector3d diffVel = updateRelVel - relVel;
-								diffPos *= 0.45d;
-								diffVel *= 0.45d;
+								diffPos *= 0.49d;
+								diffVel *= 0.49d;
 								Vector3d newPos = updateFromPos-diffPos;
 								
 								bool applyUpdate = true;
 								double curTick = Planetarium.GetUniversalTime();
 								if (vessel_update.distance <= INACTIVE_VESSEL_RANGE) //If distance >= INACTIVE_VESSEL_RANGE then the other player didn't have us loaded--don't ignore even a large correction in this case
 								{
-									if (serverVessels_RendezvousSmoothPos.ContainsKey(updateFrom.id) ? (diffPos.sqrMagnitude > (serverVessels_RendezvousSmoothPos[updateFrom.id].Key * 100d) && diffPos.sqrMagnitude > 1d && serverVessels_RendezvousSmoothPos[updateFrom.id].Value > (curTick-7.5d)): false)
+									bool smoothPosCheck = (serverVessels_RendezvousSmoothPos.ContainsKey(updateFrom.id) ? (diffPos.sqrMagnitude > (serverVessels_RendezvousSmoothPos[updateFrom.id].Key * 100d) && diffPos.sqrMagnitude > 1d && serverVessels_RendezvousSmoothPos[updateFrom.id].Value > (curTick-7.5d)): false);
+									if ((serverVessels_RendezvousSmoothPos.ContainsKey(updateFrom.id) ? serverVessels_RendezvousSmoothPos[updateFrom.id].Value > (curTick-0.2d) : false) || smoothPosCheck)
+									{
 										applyUpdate = false;
+										//if (smoothPosCheck) serverVessels_AllowRendezvousOrbitUpdate[updateFrom.id] = true;
+									}
 									if (serverVessels_RendezvousSmoothVel.ContainsKey(updateFrom.id) ? (diffVel.sqrMagnitude > (serverVessels_RendezvousSmoothVel[updateFrom.id].Key * 100d) && diffVel.sqrMagnitude > 1d && serverVessels_RendezvousSmoothVel[updateFrom.id].Value > (curTick-7.5d)): false)
+									{
+										//serverVessels_AllowRendezvousOrbitUpdate[updateFrom.id] = true;
 										applyUpdate = false;
+									}
 								}
-								
+
 								double expectedDist = Vector3d.Distance(newPos, activeVesselPosition);
 								if (applyUpdate)
 								{
