@@ -1342,7 +1342,7 @@ namespace KMPServer
                 if (emptySubspace)
                 {
                     DbCommand cmd = universeDB.CreateCommand();
-                    string sql = "DELETE FROM kmpSubspace WHERE ID = @id AND LastTick < (SELECT MIN(s.LastTick) FROM kmpSubspace s INNER JOIN kmpVessel v ON v.Subspace = s.ID);";
+                    string sql = "DELETE FROM kmpSubspace WHERE ID = @id AND LastTick < (SELECT MIN(s.LastTick) FROM (SELECT * FROM kmpSubspace) s INNER JOIN kmpVessel v ON v.Subspace = s.ID);";
                     cmd.CommandText = sql;
                     cmd.Parameters.AddWithValue("id", cl.currentSubspaceID.ToString("D"));
                     cmd.ExecuteNonQuery();
@@ -2724,7 +2724,7 @@ namespace KMPServer
                                         cmd = universeDB.CreateCommand();
                                         //Clean up database entries
                                         sql = "DELETE FROM kmpSubspace WHERE ID = @curSubspace AND LastTick < (SELECT MIN(s.LastTick)" +
-                                            " FROM kmpSubspace s INNER JOIN kmpVessel v ON v.Subspace = s.ID);";
+                                            " FROM (SELECT * FROM kmpSubspace) s INNER JOIN kmpVessel v ON v.Subspace = s.ID);";
                                         cmd.CommandText = sql;
                                         cmd.Parameters.AddWithValue("curSubspace", cl.currentSubspaceID.ToString("D"));
                                         cmd.ExecuteNonQuery();
@@ -2807,7 +2807,7 @@ namespace KMPServer
                                         cmd = universeDB.CreateCommand();
                                         //Clean up database entries
                                         sql = "DELETE FROM kmpSubspace WHERE ID = @curSubspace AND LastTick < (SELECT MIN(s.LastTick)" +
-                                            " FROM kmpSubspace s INNER JOIN kmpVessel v ON v.Subspace = s.ID);";
+                                            " FROM (SELECT * FROM kmpSubspace) s INNER JOIN kmpVessel v ON v.Subspace = s.ID);";
                                         cmd.CommandText = sql;
                                         cmd.Parameters.AddWithValue("curSubspace", cl.currentSubspaceID.ToString("D"));
                                         cmd.ExecuteNonQuery();
@@ -3185,7 +3185,7 @@ namespace KMPServer
         public void startDatabase()
         {
 			if (settings.useMySQL)
-            	universeDB = new MySqlConnection(settings.connectionStringMySQL);
+            	universeDB = new MySqlConnection(settings.mySQLConnString);
 			else
 				universeDB = new SQLiteConnection("Data Source=:memory:");
             universeDB.Open();
@@ -3195,12 +3195,16 @@ namespace KMPServer
             	diskDB = universeDB;
 			else
 				diskDB = new SQLiteConnection(DB_FILE_CONN);
-            diskDB.Open();
+			string sql = "";
+            if (!settings.useMySQL)
+			{
+				diskDB.Open();
 
-            DbCommand init_cmd = universeDB.CreateCommand();
-            string sql = "PRAGMA auto_vacuum = 1;"; //"FULL" auto_vacuum
-            init_cmd.CommandText = sql;
-            init_cmd.ExecuteNonQuery();
+	            DbCommand init_cmd = universeDB.CreateCommand();
+	            sql = "PRAGMA auto_vacuum = 1;"; //"FULL" auto_vacuum
+	            init_cmd.CommandText = sql;
+	            init_cmd.ExecuteNonQuery();
+			}
 
             Int32 version = 0;
             try
@@ -3351,8 +3355,8 @@ namespace KMPServer
 					//Upgrade old universe to version 4
 					Log.Info("Upgrading universe database to current version...");
                     cmd = diskDB.CreateCommand();
-                    sql = "CREATE TABLE kmpScenarios (ID INTEGER PRIMARY KEY AUTOINCREMENT, PlayerID INTEGER, Name NVARCHAR(100), Tick DOUBLE, UpdateMessage BLOB);" +
-						"CREATE INDEX kmpScenariosIdxPlayerID on kmpScenarios(PlayerID);";
+                    sql = String.Format("CREATE TABLE kmpScenarios (ID INTEGER PRIMARY KEY {0}, PlayerID INTEGER, Name NVARCHAR(100), Tick DOUBLE, UpdateMessage BLOB);" +
+						"CREATE INDEX kmpScenariosIdxPlayerID on kmpScenarios(PlayerID);",settings.useMySQL ? "AUTO_INCREMENT" : "AUTOINCREMENT");
                     cmd.CommandText = sql;
                     cmd.ExecuteNonQuery();
 					
@@ -3370,23 +3374,27 @@ namespace KMPServer
                     Log.Info("Creating new universe...");
                     try
                     {
-                        File.Delete("KMP_universe.db");
+                        if (!settings.useMySQL) File.Delete("KMP_universe.db");
                     }
                     catch { }
                     DbCommand cmd = universeDB.CreateCommand();
-                    sql = "CREATE TABLE kmpInfo (Version INTEGER);" +
-                        "INSERT INTO kmpInfo (Version) VALUES (@uni_version);" +
-                        "CREATE TABLE kmpSubspace (ID INTEGER PRIMARY KEY AUTOINCREMENT, LastTick DOUBLE);" +
-                        "INSERT INTO kmpSubspace (LastTick) VALUES (100);" +
-                        "CREATE TABLE kmpPlayer (ID INTEGER PRIMARY KEY AUTOINCREMENT, Name NVARCHAR(100), Guid CHAR(16));" +
-                        "CREATE TABLE kmpVessel (Guid CHAR(16), GameGuid CHAR(16), OwnerID INTEGER, Private BIT, Active BIT, ProtoVessel BLOB, Subspace INTEGER, Destroyed BIT);" +
-                        "CREATE TABLE kmpVesselUpdate (ID INTEGER PRIMARY KEY AUTOINCREMENT, Guid CHAR(16), Subspace INTEGER, UpdateMessage BLOB);" +
-                        "CREATE TABLE kmpVesselUpdateHistory (Guid CHAR(16), Subspace INTEGER, Tick DOUBLE, UpdateMessage BLOB);" +
-						"CREATE TABLE kmpScenarios (ID INTEGER PRIMARY KEY AUTOINCREMENT, PlayerID INTEGER, Name NVARCHAR(100), Tick DOUBLE, UpdateMessage BLOB);" +
+                    sql = String.Format("CREATE TABLE kmpInfo (Version INTEGER);" +
+                        "CREATE TABLE kmpSubspace (ID INTEGER PRIMARY KEY {0}, LastTick DOUBLE);" +
+                        "CREATE TABLE kmpPlayer (ID INTEGER PRIMARY KEY {0}, Name NVARCHAR(100), Guid CHAR({1}));" +
+                        "CREATE TABLE kmpVessel (Guid CHAR({1}), GameGuid CHAR({1}), OwnerID INTEGER, Private BIT, Active BIT, ProtoVessel BLOB, Subspace INTEGER, Destroyed BIT);" +
+                        "CREATE TABLE kmpVesselUpdate (ID INTEGER PRIMARY KEY {0}, Guid CHAR({1}), Subspace INTEGER, UpdateMessage BLOB);" +
+                        "CREATE TABLE kmpVesselUpdateHistory (Guid CHAR({1}), Subspace INTEGER, Tick DOUBLE, UpdateMessage BLOB);" +
+						"CREATE TABLE kmpScenarios (ID INTEGER PRIMARY KEY {0}, PlayerID INTEGER, Name NVARCHAR(100), Tick DOUBLE, UpdateMessage BLOB);" +
                         "CREATE INDEX kmpVesselIdxGuid on kmpVessel(Guid);" +
                         "CREATE INDEX kmpVesselUpdateIdxGuid on kmpVesselUpdate(guid);" +
                         "CREATE INDEX kmpVesselUpdateHistoryIdxTick on kmpVesselUpdateHistory(Tick);" +
-						"CREATE INDEX kmpScenariosIdxPlayerID on kmpScenarios(PlayerID);";
+						"CREATE INDEX kmpScenariosIdxPlayerID on kmpScenarios(PlayerID);",settings.useMySQL ? "AUTO_INCREMENT" : "AUTOINCREMENT",settings.useMySQL ? 36 : 16);
+                    cmd.CommandText = sql;
+                    cmd.ExecuteNonQuery();
+					
+					cmd = universeDB.CreateCommand();
+                    sql = "INSERT INTO kmpInfo (Version) VALUES (@uni_version);" +
+                        "INSERT INTO kmpSubspace (LastTick) VALUES (100);";
                     cmd.CommandText = sql;
                     cmd.Parameters.AddWithValue("uni_version", UNIVERSE_VERSION);
                     cmd.ExecuteNonQuery();
@@ -3396,67 +3404,81 @@ namespace KMPServer
                     Log.Info("Loading universe...");
                     diskDB.BackupDatabase(universeDB);
                 }
-                diskDB.Close();
+                if (!settings.useMySQL) diskDB.Close();
             }
-
-            DbCommand cmd3 = universeDB.CreateCommand();
-            sql = "VACUUM; UPDATE kmpVessel SET Active = 0;";
-            cmd3.CommandText = sql;
-            cmd3.ExecuteNonQuery();
+			
+			if (!settings.useMySQL)
+			{
+	            DbCommand cmd3 = universeDB.CreateCommand();
+	            sql = "VACUUM;";
+	            cmd3.CommandText = sql;
+	            cmd3.ExecuteNonQuery();
+			}
+			
+			DbCommand cmd4 = universeDB.CreateCommand();
+            sql = "UPDATE kmpVessel SET Active = 0;";
+            cmd4.CommandText = sql;
+            cmd4.ExecuteNonQuery();
             Log.Info("Universe OK.");
         }
 
         public void backupDatabase()
         {
-            Log.Info("Backing up old disk DB...");
-            try
-            {
-				if (!File.Exists(DB_FILE))
-					throw new IOException();
-
-                File.Copy(DB_FILE, DB_FILE + ".bak", true);
-                Log.Debug("Successfully backup up database.");
-            }
-			catch (IOException)
+			if (!settings.useMySQL)
 			{
-				Log.Error("Database does not exist.  Recreating.");
+	            Log.Info("Backing up old disk DB...");
+	            try
+	            {
+					if (!File.Exists(DB_FILE))
+						throw new IOException();
+	
+	                File.Copy(DB_FILE, DB_FILE + ".bak", true);
+	                Log.Debug("Successfully backup up database.");
+	            }
+				catch (IOException)
+				{
+					Log.Error("Database does not exist.  Recreating.");
+				}
+	            catch (Exception e)
+	            {
+	                Log.Error("Failed to backup DB: {0}",e.Message);
+	            }
+	
+	            try
+	            {
+					if (uncleanedBackups > settings.maxDirtyBackups) cleanDatabase();
+					else uncleanedBackups++;
+	                saveDatabaseToDisk();
+	                Log.Info("Universe saved to disk.");
+	            }
+	            catch(Exception e)
+	            {
+	                Log.Error("Failed to save database: {0} {1}", e.Message,e.StackTrace);
+	
+	                Log.Info("Saving secondary copy of last backup.");
+	                File.Copy(DB_FILE + ".bak", DB_FILE + ".before_failure.bak", true);
+	
+	                Log.Info("Press any key to quit - ensure database is valid or reset database before restarting server.");
+	                Console.ReadKey();
+	                Environment.Exit(0);
+	            }
 			}
-            catch (Exception e)
-            {
-                Log.Error("Failed to backup DB: {0}",e.Message);
-            }
-
-            try
-            {
-				if (uncleanedBackups > settings.maxDirtyBackups) cleanDatabase();
-				else uncleanedBackups++;
-                saveDatabaseToDisk();
-                Log.Info("Universe saved to disk.");
-            }
-            catch(Exception e)
-            {
-                Log.Error("Failed to save database: {0} {1}", e.Message,e.StackTrace);
-
-                Log.Info("Saving secondary copy of last backup.");
-                File.Copy(DB_FILE + ".bak", DB_FILE + ".before_failure.bak", true);
-
-                Log.Info("Press any key to quit - ensure database is valid or reset database before restarting server.");
-                Console.ReadKey();
-                Environment.Exit(0);
-            }
         }
 
         public void saveDatabaseToDisk()
         {
 			DbConnection diskDB;
 			if (settings.useMySQL)
-            	diskDB = new MySqlConnection(DB_FILE_CONN);
+            	diskDB = universeDB;
 			else
 				diskDB = new SQLiteConnection(DB_FILE_CONN);
-            diskDB.Open();
-            universeDB.BackupDatabase(diskDB);
+            if (!settings.useMySQL)
+			{
+				diskDB.Open();
+            	universeDB.BackupDatabase(diskDB);
+			}
             DbCommand cmd = diskDB.CreateCommand();
-            string sql = "DELETE FROM kmpSubspace WHERE LastTick < (SELECT MIN(s.LastTick) FROM kmpSubspace s" +
+            string sql = "DELETE FROM kmpSubspace WHERE LastTick < (SELECT MIN(s.LastTick) FROM (SELECT * FROM kmpSubspace) s" +
                 " INNER JOIN kmpVessel v ON v.Subspace = s.ID);" +
                 " DELETE FROM kmpVesselUpdateHistory;" +
                 " DELETE FROM kmpVesselUpdate WHERE ID IN (SELECT ID FROM kmpVesselUpdate vu" +
@@ -3464,7 +3486,7 @@ namespace KMPServer
                 " FROM kmpSubspace WHERE ID IN (SELECT Subspace FROM kmpVesselUpdate WHERE Guid = vu.Guid))));";
             cmd.CommandText = sql;
             cmd.ExecuteNonQuery();
-            diskDB.Close();
+            if (!settings.useMySQL) diskDB.Close();
         }
 
         public void cleanDatabase()
@@ -3492,7 +3514,7 @@ namespace KMPServer
 					
 					//Clear anything before that
 					DbCommand cmd2 = universeDB.CreateCommand();
-	                string sql2 = "DELETE FROM kmpSubspace WHERE LastTick < @minTick AND LastTick < (SELECT MIN(s.LastTick) FROM kmpSubspace s" +
+	                string sql2 = "DELETE FROM kmpSubspace WHERE LastTick < @minTick AND LastTick < (SELECT MIN(s.LastTick) FROM (SELECT * FROM kmpSubspace) s" +
 	                    " INNER JOIN kmpVessel v ON v.Subspace = s.ID);" +
 	                    " DELETE FROM kmpVesselUpdateHistory WHERE Tick < @minTick;";
 					cmd2.Parameters.AddWithValue("minTick", earliestClearTick);
@@ -3503,7 +3525,7 @@ namespace KMPServer
 				{
 					//Clear all but the latest subspace
 	                DbCommand cmd = universeDB.CreateCommand();
-	                string sql = "DELETE FROM kmpSubspace WHERE LastTick < (SELECT MIN(s.LastTick) FROM kmpSubspace s" +
+	                string sql = "DELETE FROM kmpSubspace WHERE LastTick < (SELECT MIN(s.LastTick) FROM (SELECT * FROM kmpSubspace) s" +
 	                    " INNER JOIN kmpVessel v ON v.Subspace = s.ID);" +
 	                    " DELETE FROM kmpVesselUpdateHistory;" +
 	                    " DELETE FROM kmpVesselUpdate WHERE ID IN (SELECT ID FROM kmpVesselUpdate vu" +
@@ -3513,12 +3535,15 @@ namespace KMPServer
 	                cmd.ExecuteNonQuery();
 				}
 				
-				lock (databaseVacuumLock)
+				if (!settings.useMySQL)
 				{
-	                DbCommand cmd = universeDB.CreateCommand();
-	                string sql = "VACUUM;";
-	                cmd.CommandText = sql;
-	                cmd.ExecuteNonQuery();
+					lock (databaseVacuumLock)
+					{
+		                DbCommand cmd = universeDB.CreateCommand();
+		                string sql = "VACUUM;";
+		                cmd.CommandText = sql;
+		                cmd.ExecuteNonQuery();
+					}
 				}
 
                 Log.Info("Optimized in-memory universe database.");
@@ -3555,19 +3580,32 @@ namespace KMPServer
 
         static byte[] GetDataReaderBytes(DbDataReader reader, int column)
         {
-            const int CHUNK_SIZE = 2 * 1024;
-            byte[] buffer = new byte[CHUNK_SIZE];
-            long bytesRead;
-            long fieldOffset = 0;
-            using (MemoryStream stream = new MemoryStream())
-            {
-                while ((bytesRead = reader.GetBytes(column, fieldOffset, buffer, 0, buffer.Length)) > 0)
-                {
-                    stream.Write(buffer, 0, (int)bytesRead);
-                    fieldOffset += bytesRead;
-                }
-                return stream.ToArray();
-            }
+//            const int CHUNK_SIZE = 2 * 1024;
+//            byte[] buffer = new byte[CHUNK_SIZE];
+//            long bytesRead;
+//            long fieldOffset = 0;
+//            using (MemoryStream stream = new MemoryStream())
+//            {
+//                while ((bytesRead = reader.GetBytes(column, fieldOffset, buffer, 0, buffer.Length)) > 0)
+//                {
+//                    stream.Write(buffer, 0, (int)bytesRead);
+//                    fieldOffset +=  bytesRead;
+//                }
+//                return stream.ToArray();
+//            }
+			int length = (int)reader.GetBytes(column, 0, null, 0, 0);
+			byte[] buffer = new byte[length];
+			int index = 0;
+			using (MemoryStream stream = new MemoryStream())
+			{
+				while (index < length)
+				{
+				    int bytesRead = (int) reader.GetBytes(column, index, buffer, index, length - index);
+					stream.Write(buffer, 0, (int)bytesRead);
+				    index += bytesRead;
+				}
+				return stream.ToArray();
+			}
         }
 
         private byte[] ObjectToByteArray(Object obj)
