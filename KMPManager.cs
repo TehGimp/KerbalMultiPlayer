@@ -577,7 +577,6 @@ namespace KMP
 						if (module is ModuleDockingNode)
 						{
 							ModuleDockingNode dmodule = (ModuleDockingNode) module;
-							Log.Info ("1: {0}",dmodule.captureRange);
 							float absCaptureRange = Math.Abs(dmodule.captureRange);
 							dmodule.captureRange = (enabled ? 1 : -1) * absCaptureRange;
 							dmodule.isEnabled = enabled;
@@ -1755,7 +1754,7 @@ namespace KMP
 				serverVessels_InUse[vessel_update.id] = vessel_update.state == State.ACTIVE && !vessel_update.isMine && !vessel_update.isSyncOnlyUpdate;
 				serverVessels_IsPrivate[vessel_update.id] = vessel_update.isPrivate;
 				serverVessels_IsMine[vessel_update.id] = vessel_update.isMine;
-				Log.Debug("status flags updated: " + (vessel_update.state == State.ACTIVE) + " " + vessel_update.isPrivate + " " + vessel_update.isMine);
+				Log.Debug("status flags updated: " + (vessel_update.state == State.ACTIVE) + " " + vessel_update.isSyncOnlyUpdate + " " + vessel_update.isPrivate + " " + vessel_update.isMine);
 				if (vessel_update.situation == Situation.DESTROYED && vessel_update.id != FlightGlobals.ActiveVessel.id)
 				{
 					Log.Debug("Vessel reported destroyed, killing vessel");
@@ -2085,7 +2084,7 @@ namespace KMP
 							addRemoteVessel(protovessel,vessel_update.id,vessel,vessel_update,0);
 						}
 						
-						if (vessel_update.isDockUpdate && vessel_update.relTime == RelativeTime.PRESENT)
+						if (vessel_update.isDockUpdate && vessel_update.relTime == RelativeTime.PRESENT && !vessel_update.isSyncOnlyUpdate)
 						{
 							//Someone docked with us and has control
 							docking = true;
@@ -2515,13 +2514,10 @@ namespace KMP
 								part.Rigidbody.detectCollisions = false;
 								part.explosionPotential = 0;
 							}
-							bool inUse = serverVessels_InUse[oldVessel.id];
-							bool isPrivate = serverVessels_IsPrivate[oldVessel.id];
-							bool isMine = serverVessels_IsMine[oldVessel.id];
 							oldVessel.id = Guid.Empty;
-							serverVessels_InUse[oldVessel.id] = inUse;
-							serverVessels_IsPrivate[oldVessel.id] = isPrivate;
-							serverVessels_IsMine[oldVessel.id] = isMine;
+							serverVessels_InUse[oldVessel.id] = false;
+							serverVessels_IsPrivate[oldVessel.id] = false;
+							serverVessels_IsMine[oldVessel.id] = true;
 							FlightGlobals.SetActiveVessel(oldVessel);
 						}
 					}
@@ -3163,9 +3159,6 @@ namespace KMP
 			if (TimeWarp.WarpMode == TimeWarp.Modes.LOW) TimeWarp.SetRate(0,true);
 			else
 			{
-				Log.Debug("sending: " + TimeWarp.CurrentRate);
-				byte[] update_bytes = BitConverter.GetBytes(TimeWarp.CurrentRate);
-				enqueuePluginInteropMessage(KMPCommon.PluginInteropMessageID.WARPING, update_bytes);
 				if (TimeWarp.CurrentRate <= 1) 
 				{
 					syncing = true;
@@ -3175,9 +3168,13 @@ namespace KMP
 				}
 				else
 				{
+					if (!warping) writePrimaryUpdate(); //Ensure server catches any vessel switch before warp
 					warping = true;
 					Log.Debug("warping");
 				}
+				Log.Debug("sending: " + TimeWarp.CurrentRate);
+				byte[] update_bytes = BitConverter.GetBytes(TimeWarp.CurrentRate);
+				enqueuePluginInteropMessage(KMPCommon.PluginInteropMessageID.WARPING, update_bytes);
 			}
 		}
 		
@@ -3520,7 +3517,6 @@ namespace KMP
                     KMPChatDX.layoutOptions
                     );
             }
-
 			
 			if (KMPConnectionDisplay.windowEnabled)
 			{
