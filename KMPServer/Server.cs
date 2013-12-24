@@ -1714,7 +1714,8 @@ namespace KMPServer
                     cmd.ExecuteNonQuery();
                     cmd.Dispose();
                     cmd = universeDB.CreateCommand();
-                    sql = "SELECT last_insert_rowid();";
+                    if (!settings.useMySQL) sql = "SELECT last_insert_rowid();";
+					else sql = "SELECT LAST_INSERT_ID();";
                     cmd.CommandText = sql;
                     DbDataReader reader = cmd.ExecuteReader();
                     int newSubspace = -1;
@@ -3381,14 +3382,18 @@ namespace KMPServer
                     sql = String.Format("CREATE TABLE kmpInfo (Version INTEGER);" +
                         "CREATE TABLE kmpSubspace (ID INTEGER PRIMARY KEY {0}, LastTick DOUBLE);" +
                         "CREATE TABLE kmpPlayer (ID INTEGER PRIMARY KEY {0}, Name NVARCHAR(100), Guid CHAR({1}));" +
-                        "CREATE TABLE kmpVessel (Guid CHAR({1}), GameGuid CHAR({1}), OwnerID INTEGER, Private BIT, Active BIT, ProtoVessel BLOB, Subspace INTEGER, Destroyed BIT);" +
+                        "CREATE TABLE kmpVessel (Guid CHAR({1}), GameGuid CHAR({1}), OwnerID INTEGER, Private BIT, Active BIT, ProtoVessel {2}, Subspace INTEGER, Destroyed BIT);" +
                         "CREATE TABLE kmpVesselUpdate (ID INTEGER PRIMARY KEY {0}, Guid CHAR({1}), Subspace INTEGER, UpdateMessage BLOB);" +
                         "CREATE TABLE kmpVesselUpdateHistory (Guid CHAR({1}), Subspace INTEGER, Tick DOUBLE, UpdateMessage BLOB);" +
 						"CREATE TABLE kmpScenarios (ID INTEGER PRIMARY KEY {0}, PlayerID INTEGER, Name NVARCHAR(100), Tick DOUBLE, UpdateMessage BLOB);" +
                         "CREATE INDEX kmpVesselIdxGuid on kmpVessel(Guid);" +
                         "CREATE INDEX kmpVesselUpdateIdxGuid on kmpVesselUpdate(guid);" +
                         "CREATE INDEX kmpVesselUpdateHistoryIdxTick on kmpVesselUpdateHistory(Tick);" +
-						"CREATE INDEX kmpScenariosIdxPlayerID on kmpScenarios(PlayerID);",settings.useMySQL ? "AUTO_INCREMENT" : "AUTOINCREMENT",settings.useMySQL ? 36 : 16);
+						"CREATE INDEX kmpScenariosIdxPlayerID on kmpScenarios(PlayerID);",
+					                    settings.useMySQL ? "AUTO_INCREMENT" : "AUTOINCREMENT",
+					                    settings.useMySQL ? 36 : 16,
+					                    settings.useMySQL ? "MEDIUMBLOB" : "BLOB"
+					                    );
                     cmd.CommandText = sql;
                     cmd.ExecuteNonQuery();
 					
@@ -3593,16 +3598,16 @@ namespace KMPServer
 //                }
 //                return stream.ToArray();
 //            }
-			int length = (int)reader.GetBytes(column, 0, null, 0, 0);
-			byte[] buffer = new byte[length];
-			int index = 0;
+			int length = (int) reader.GetBytes(column, 0, null, 0, 0);
+			byte[] buffer = new byte[length+1];
+			int fieldOffset = 0;
 			using (MemoryStream stream = new MemoryStream())
 			{
-				while (index < length)
+				while (fieldOffset < length)
 				{
-				    int bytesRead = (int) reader.GetBytes(column, index, buffer, index, length - index);
-					stream.Write(buffer, 0, (int)bytesRead);
-				    index += bytesRead;
+				    int bytesRead = (int) reader.GetBytes(column, (long) fieldOffset, buffer, 0, length - fieldOffset + 1);
+				    fieldOffset += bytesRead;
+					stream.Write(buffer, 0, bytesRead);
 				}
 				return stream.ToArray();
 			}
