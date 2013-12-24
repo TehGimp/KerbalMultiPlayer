@@ -1,4 +1,4 @@
-﻿//using MySql.Data.MySqlClient;
+﻿using MySql.Data.MySqlClient;
 using System;
 using System.Collections.Generic;
 using System.Data.Common;
@@ -19,14 +19,35 @@ namespace KMPServer
                 return asSqlLite.AddWithValue(parameterName, value);
             }
 
-//            var asMySQL = cmd as MySqlParameterCollection;
-//
-//            if (asMySQL != null)
-//            {
-//                return asMySQL.AddWithValue(parameterName, value);
-//            }
+            var asMySQL = cmd as MySqlParameterCollection;
+
+            if (asMySQL != null)
+            {
+                return asMySQL.AddWithValue(parameterName, value);
+            }
 
             throw new ArgumentException("Parameter Collection must be with SQLite or MySql");
+        }
+		
+		public static void BackupDatabase(this DbConnection conn, DbConnection backupConn)
+        {
+            var asSqlLite = conn as SQLiteConnection;
+
+            if (asSqlLite != null)
+            {
+                asSqlLite.BackupDatabase(backupConn as SQLiteConnection, "main", "main", -1, null, 0);
+				return;
+            }
+
+            var asMySQL = conn as MySqlConnection;
+
+            if (asMySQL != null)
+            {
+                //Do nothing, MySQL DB is entirely handled by MySQL server
+				return;
+            }
+
+            throw new ArgumentException("Connection must be with SQLite or MySql");
         }
     }
 }

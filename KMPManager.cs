@@ -3333,6 +3333,12 @@ namespace KMP
 		{
 			try
 			{
+				if (forceQuit)
+				{
+					forceQuit = false;
+					gameRunning = false;
+					HighLogic.LoadScene(GameScenes.MAINMENU);
+				}
 				if (!gameRunning) return;
 				
 				try { if (PauseMenu.isOpen && syncing) PauseMenu.Close(); } catch { }
@@ -3460,13 +3466,6 @@ namespace KMP
 
 		public void drawGUI()
 		{
-			if (forceQuit)
-			{
-				forceQuit = false;
-				gameRunning = false;
-				HighLogic.LoadScene(GameScenes.MAINMENU);
-			}
-			
 			//Init info display options
 			if (KMPInfoDisplay.layoutOptions == null)
 				KMPInfoDisplay.layoutOptions = new GUILayoutOption[6];
