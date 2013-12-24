@@ -76,6 +76,16 @@ namespace KMP
 
 		public const double PRIVATE_VESSEL_MIN_TARGET_DISTANCE = 500d;
 		
+		//Rendezvous smoothing
+		public const double SMOOTH_RENDEZ_UPDATE_MAX_DIFFPOS_SQRMAG_INCREASE_SCALE = 25d;
+		public const double SMOOTH_RENDEZ_UPDATE_MAX_DIFFVEL_SQRMAG_INCREASE_SCALE = 25d;
+		public const double SMOOTH_RENDEZ_UPDATE_EXPIRE = 7.5d;
+		public const double SMOOTH_RENDEZ_UPDATE_MIN_DELAY = 0.20d;
+		public const int ALLOW_RENDEZ_OBT_UPDATE_LIMIT = 20;
+		public const double RENDEZ_OBT_UPDATE_RELPOS_MIN_SQRMAG = 10000d;
+		public const double RENDEZ_OBT_UPDATE_RELVEL_MIN_SQRMAG = 10000d;
+		public const double RENDEZ_OBT_UPDATE_SCALE_FACTOR = 0.45d;
+		
 		public const ControlTypes BLOCK_ALL_CONTROLS = ControlTypes.ALL_SHIP_CONTROLS | ControlTypes.ACTIONS_ALL | ControlTypes.EVA_INPUT | ControlTypes.TIMEWARP | ControlTypes.MISC | ControlTypes.GROUPS_ALL | ControlTypes.CUSTOM_ACTION_GROUPS;
 		
 		public UnicodeEncoding encoder = new UnicodeEncoding();
@@ -152,7 +162,7 @@ namespace KMP
 		
 		public Dictionary<Guid, KeyValuePair<double,double>> serverVessels_RendezvousSmoothPos = new Dictionary<Guid, KeyValuePair<double,double>>();
 		public Dictionary<Guid, KeyValuePair<double,double>> serverVessels_RendezvousSmoothVel = new Dictionary<Guid, KeyValuePair<double,double>>();
-		public Dictionary<Guid,bool> serverVessels_AllowRendezvousOrbitUpdate = new Dictionary<Guid, bool>();
+		public Dictionary<Guid, int> serverVessels_SkippedRendezvousUpdates = new Dictionary<Guid, int>();
 		
 		public Dictionary<Guid, float> newFlags = new Dictionary<Guid, float>();
 		
@@ -886,7 +896,7 @@ namespace KMP
 							update.state = State.INACTIVE;
 							if (enumerator.Current.Value.loaded
 							    && (serverVessels_InUse.ContainsKey(enumerator.Current.Value.id) ? serverVessels_InUse[enumerator.Current.Value.id] : false)
-							    && FlightGlobals.ActiveVessel.altitude > 10000
+							    && FlightGlobals.ActiveVessel.altitude > 10000d
 							    //&& (serverVessels_LoadDelay.ContainsKey(enumerator.Current.Value.id) ? (serverVessels_LoadDelay[enumerator.Current.Value.id] < UnityEngine.Time.realtimeSinceStartup) : true)
 							    )
 							{
@@ -1995,24 +2005,24 @@ namespace KMP
 															Log.Debug("orbital rendezvous");
 															
 															//Keep body-relative orbit intact
-//															if (!extant_vessel.packed && (serverVessels_AllowRendezvousOrbitUpdate.ContainsKey(extant_vessel.id) ? serverVessels_AllowRendezvousOrbitUpdate[extant_vessel.id] : false ))
-//															{
-//																serverVessels_AllowRendezvousOrbitUpdate.Remove(extant_vessel.id);
-//																Vector3d relPos = vessel.worldPosition - extant_vessel.GetWorldPos3D();
-//																Vector3d relObtVel = new Vector3d(vessel_update.o_vel[0],vessel_update.o_vel[1],vessel_update.o_vel[2])-extant_vessel.obt_velocity;
-//																if (relPos.sqrMagnitude > 1000000d || relObtVel.sqrMagnitude > 100000000d)
-//																{
-//																	Log.Debug("syncing relative orbit for mismatch");	
-//																	relPos /= 2;
-//																	relObtVel /= 2;
-//																
-//																	extant_vessel.SetPosition(extant_vessel.GetWorldPos3D() + relPos);	
-//																	FlightGlobals.ActiveVessel.SetPosition(FlightGlobals.ship_position + relPos);
-//																
-//																	FlightGlobals.ActiveVessel.ChangeWorldVelocity(relObtVel);
-//																	extant_vessel.ChangeWorldVelocity(relObtVel);
-//																}
-//															}
+															if (!extant_vessel.packed && (serverVessels_SkippedRendezvousUpdates.ContainsKey(extant_vessel.id) ? serverVessels_SkippedRendezvousUpdates[extant_vessel.id] > ALLOW_RENDEZ_OBT_UPDATE_LIMIT : false ))
+															{
+																serverVessels_SkippedRendezvousUpdates[extant_vessel.id] = -1;
+																Vector3d relPos = vessel.worldPosition - extant_vessel.GetWorldPos3D();
+																Vector3d relObtVel = new Vector3d(vessel_update.o_vel[0],vessel_update.o_vel[1],vessel_update.o_vel[2])-extant_vessel.obt_velocity;
+																if (relPos.sqrMagnitude > RENDEZ_OBT_UPDATE_RELPOS_MIN_SQRMAG || relObtVel.sqrMagnitude > RENDEZ_OBT_UPDATE_RELVEL_MIN_SQRMAG)
+																{
+																	Log.Debug("syncing relative orbit for mismatch");	
+																	relPos *= RENDEZ_OBT_UPDATE_SCALE_FACTOR;
+																	relObtVel *= RENDEZ_OBT_UPDATE_SCALE_FACTOR;
+																
+																	extant_vessel.SetPosition(extant_vessel.GetWorldPos3D() + relPos);	
+																	FlightGlobals.ActiveVessel.SetPosition(FlightGlobals.ship_position + relPos);
+																
+																	FlightGlobals.ActiveVessel.ChangeWorldVelocity(relObtVel);
+																	extant_vessel.ChangeWorldVelocity(relObtVel);
+																}
+															}
 														
 															//Update FlightCtrlState
 															extant_vessel.ctrlState.CopyFrom(vessel_update.flightCtrlState.getAsFlightCtrlState(0.85f));
@@ -2171,19 +2181,22 @@ namespace KMP
 								diffVel *= 0.49d;
 								Vector3d newPos = updateFromPos-diffPos;
 								
+								if (!serverVessels_SkippedRendezvousUpdates.ContainsKey(updateFrom.id)) serverVessels_SkippedRendezvousUpdates[updateFrom.id] = 0;
+								
 								bool applyUpdate = true;
 								double curTick = Planetarium.GetUniversalTime();
-								if (vessel_update.distance <= INACTIVE_VESSEL_RANGE) //If distance >= INACTIVE_VESSEL_RANGE then the other player didn't have us loaded--don't ignore even a large correction in this case
+								if (vessel_update.distance <= INACTIVE_VESSEL_RANGE && serverVessels_SkippedRendezvousUpdates[updateFrom.id] != -1) //If distance >= INACTIVE_VESSEL_RANGE then the other player didn't have us loaded--don't ignore even a large correction in this case
 								{
-									bool smoothPosCheck = (serverVessels_RendezvousSmoothPos.ContainsKey(updateFrom.id) ? (diffPos.sqrMagnitude > (serverVessels_RendezvousSmoothPos[updateFrom.id].Key * 100d) && diffPos.sqrMagnitude > 1d && serverVessels_RendezvousSmoothPos[updateFrom.id].Value > (curTick-7.5d)): false);
-									if ((serverVessels_RendezvousSmoothPos.ContainsKey(updateFrom.id) ? serverVessels_RendezvousSmoothPos[updateFrom.id].Value > (curTick-0.2d) : false) || smoothPosCheck)
+									bool smoothPosCheck = (serverVessels_RendezvousSmoothPos.ContainsKey(updateFrom.id) ? (diffPos.sqrMagnitude > (serverVessels_RendezvousSmoothPos[updateFrom.id].Key * SMOOTH_RENDEZ_UPDATE_MAX_DIFFPOS_SQRMAG_INCREASE_SCALE) && diffPos.sqrMagnitude > 1d && serverVessels_RendezvousSmoothPos[updateFrom.id].Value > (curTick-SMOOTH_RENDEZ_UPDATE_EXPIRE)): false);
+									if ((serverVessels_RendezvousSmoothPos.ContainsKey(updateFrom.id) ? serverVessels_RendezvousSmoothPos[updateFrom.id].Value > (curTick-SMOOTH_RENDEZ_UPDATE_MIN_DELAY) : false) || smoothPosCheck)
 									{
 										applyUpdate = false;
-										//if (smoothPosCheck) serverVessels_AllowRendezvousOrbitUpdate[updateFrom.id] = true;
+										if (smoothPosCheck)
+											serverVessels_SkippedRendezvousUpdates[updateFrom.id]++;
 									}
-									if (serverVessels_RendezvousSmoothVel.ContainsKey(updateFrom.id) ? (diffVel.sqrMagnitude > (serverVessels_RendezvousSmoothVel[updateFrom.id].Key * 100d) && diffVel.sqrMagnitude > 1d && serverVessels_RendezvousSmoothVel[updateFrom.id].Value > (curTick-7.5d)): false)
+									if (serverVessels_RendezvousSmoothVel.ContainsKey(updateFrom.id) ? (diffVel.sqrMagnitude > (serverVessels_RendezvousSmoothVel[updateFrom.id].Key * SMOOTH_RENDEZ_UPDATE_MAX_DIFFVEL_SQRMAG_INCREASE_SCALE) && diffVel.sqrMagnitude > 1d && serverVessels_RendezvousSmoothVel[updateFrom.id].Value > (curTick-SMOOTH_RENDEZ_UPDATE_EXPIRE)): false)
 									{
-										//serverVessels_AllowRendezvousOrbitUpdate[updateFrom.id] = true;
+										serverVessels_SkippedRendezvousUpdates[updateFrom.id]++;
 										applyUpdate = false;
 									}
 								}
@@ -2193,7 +2206,7 @@ namespace KMP
 								{
 									serverVessels_RendezvousSmoothPos[updateFrom.id] = new KeyValuePair<double, double>(diffPos.sqrMagnitude,curTick);
 									serverVessels_RendezvousSmoothVel[updateFrom.id] = new KeyValuePair<double, double>(diffVel.sqrMagnitude,curTick);
-									
+									serverVessels_SkippedRendezvousUpdates[updateFrom.id] = 0;
 									try
 						            {
 						                OrbitPhysicsManager.HoldVesselUnpack(1);
