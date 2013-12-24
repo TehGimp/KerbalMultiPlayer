@@ -1807,7 +1807,7 @@ namespace KMPServer
                     cmd.CommandText = sql;
                     cmd.ExecuteNonQuery();
                     cmd.Dispose();
-                    sendHistoricalVesselUpdates(cl.currentSubspaceID, incomingTick, lastSubspaceTick);
+                    if (lastSubspaceTick > 100d) sendHistoricalVesselUpdates(cl.currentSubspaceID, incomingTick, lastSubspaceTick);
                 }
             }
         }
