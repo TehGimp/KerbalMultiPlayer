@@ -39,6 +39,8 @@ namespace KMPServer
 			public bool autoHost = false;
 			public bool saveScreenshots = true;
 			public bool hostIPv6 = false;
+			public bool useMySQL = false;
+			public string connectionStringMySQL = "";
 			public int backupInterval = 5;
 			public int maxDirtyBackups = 36;
 			public float updatesPerSecond = 60;

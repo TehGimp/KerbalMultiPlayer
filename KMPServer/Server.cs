@@ -16,7 +16,7 @@ using System.Collections;
 
 using System.Data;
 using System.Data.SQLite;
-//using Mono.Data.Sqlite;
+using MySql.Data.MySqlClient;
 
 using KMP;
 using System.Data.Common;
@@ -90,7 +90,7 @@ namespace KMPServer
 
         public Stopwatch stopwatch = new Stopwatch();
 
-        public static SQLiteConnection universeDB;
+        public static DbConnection universeDB;
 
         private bool backedUpSinceEmpty = false;
         private Dictionary<Guid, long> recentlyDestroyed = new Dictionary<Guid, long>();
@@ -2263,7 +2263,7 @@ namespace KMPServer
 
         private void sendSubspaceSync(Client cl, bool sendSync = true)
         {
-            SQLiteCommand cmd = universeDB.CreateCommand();
+            DbCommand cmd = universeDB.CreateCommand();
             string sql = "SELECT LastTick FROM kmpSubspace WHERE ID = @curSubspaceID;";
             cmd.CommandText = sql;
             cmd.Parameters.AddWithValue("curSubspaceID", cl.currentSubspaceID.ToString("D"));
@@ -3184,10 +3184,17 @@ namespace KMPServer
 
         public void startDatabase()
         {
-            universeDB = new SQLiteConnection("Data Source=:memory:");
+			if (settings.useMySQL)
+            	universeDB = new MySqlConnection(settings.connectionStringMySQL);
+			else
+				universeDB = new SQLiteConnection("Data Source=:memory:");
             universeDB.Open();
-
-            SQLiteConnection diskDB = new SQLiteConnection(DB_FILE_CONN);
+			
+			DbConnection diskDB;
+            if (settings.useMySQL)
+            	diskDB = universeDB;
+			else
+				diskDB = new SQLiteConnection(DB_FILE_CONN);
             diskDB.Open();
 
             DbCommand init_cmd = universeDB.CreateCommand();
@@ -3225,7 +3232,7 @@ namespace KMPServer
 					{
 						//Upgrade old universe to version 3
 	                    Log.Info("Upgrading universe database...");
-						diskDB.BackupDatabase(universeDB, "main", "main", -1, null, 0);
+						diskDB.BackupDatabase(universeDB);
 						
 						cmd = universeDB.CreateCommand();
 	                    sql = "SELECT Guid FROM kmpPlayer;";
@@ -3338,7 +3345,7 @@ namespace KMPServer
 		                    cmd2.ExecuteNonQuery();
 			            }
 						
-						universeDB.BackupDatabase(diskDB, "main", "main", -1, null, 0);
+						universeDB.BackupDatabase(diskDB);
 					}
 					
 					//Upgrade old universe to version 4
@@ -3349,7 +3356,7 @@ namespace KMPServer
                     cmd.CommandText = sql;
                     cmd.ExecuteNonQuery();
 					
-					diskDB.BackupDatabase(universeDB, "main", "main", -1, null, 0);
+					diskDB.BackupDatabase(universeDB);
 					
                     cmd = universeDB.CreateCommand();
                     sql = "UPDATE kmpInfo SET Version = @uni_version;";
@@ -3387,7 +3394,7 @@ namespace KMPServer
                 else
                 {
                     Log.Info("Loading universe...");
-                    diskDB.BackupDatabase(universeDB, "main", "main", -1, null, 0);
+                    diskDB.BackupDatabase(universeDB);
                 }
                 diskDB.Close();
             }
@@ -3416,8 +3423,7 @@ namespace KMPServer
 			}
             catch (Exception e)
             {
-                Log.Error("Failed to backup DB:");
-                Log.Error(e.Message);
+                Log.Error("Failed to backup DB: {0}",e.Message);
             }
 
             try
@@ -3429,10 +3435,7 @@ namespace KMPServer
             }
             catch(Exception e)
             {
-                Log.Error("Failed to save database:");
-                Log.Error(e.Message);
-                Log.Error(e.ToString());
-                Log.Error(e.StackTrace);
+                Log.Error("Failed to save database: {0} {1}", e.Message,e.StackTrace);
 
                 Log.Info("Saving secondary copy of last backup.");
                 File.Copy(DB_FILE + ".bak", DB_FILE + ".before_failure.bak", true);
@@ -3445,13 +3448,13 @@ namespace KMPServer
 
         public void saveDatabaseToDisk()
         {
-            var asSqlite = universeDB as SQLiteConnection;
-
-            if (asSqlite == null) { return; }
-
-            SQLiteConnection diskDB = new SQLiteConnection(DB_FILE_CONN);
+			DbConnection diskDB;
+			if (settings.useMySQL)
+            	diskDB = new MySqlConnection(DB_FILE_CONN);
+			else
+				diskDB = new SQLiteConnection(DB_FILE_CONN);
             diskDB.Open();
-            asSqlite.BackupDatabase(diskDB, "main", "main", -1, null, 0);
+            universeDB.BackupDatabase(diskDB);
             DbCommand cmd = diskDB.CreateCommand();
             string sql = "DELETE FROM kmpSubspace WHERE LastTick < (SELECT MIN(s.LastTick) FROM kmpSubspace s" +
                 " INNER JOIN kmpVessel v ON v.Subspace = s.ID);" +
