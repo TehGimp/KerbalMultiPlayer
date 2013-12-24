@@ -181,6 +181,7 @@ namespace KMP
         public static Thread interopThread;
         public static Thread chatThread;
         public static Thread connectionThread;
+        public static bool connectionThreadRunning = false;
 
         public static Stopwatch stopwatch;
         public static Stopwatch pingStopwatch = new Stopwatch();
@@ -738,6 +739,7 @@ namespace KMP
 
                     //Create a thread to handle disconnection
                     connectionThread = new Thread(new ThreadStart(handleConnection));
+                    connectionThreadRunning = true;
                     connectionThread.Start();
 
                     beginAsyncRead();
@@ -1079,13 +1081,12 @@ namespace KMP
                 //Abort all threads
                 Log.Debug("Aborting chat thread...");
                 safeAbort(chatThread, true);
-                Log.Debug("Aborting connection thread...");
-                safeAbort(connectionThread, true);
                 Log.Debug("Aborting interop thread...");
                 safeAbort(interopThread, true);
                 Log.Debug("Aborting client thread...");
                 safeAbort(serverThread, true);
-
+                Log.Debug("Aborting connection thread...");
+                connectionThreadRunning = false;
 
                 Log.Debug("Closing connections...");
                 //Close the socket if it's still open
@@ -1458,7 +1459,7 @@ namespace KMP
         {
             try
             {
-                while (true)
+                while (connectionThreadRunning)
                 {
                     if (pingStopwatch.IsRunning && pingStopwatch.ElapsedMilliseconds > PING_TIMEOUT_DELAY)
                     {
@@ -1520,6 +1521,7 @@ namespace KMP
                     Thread.Sleep(SLEEP_TIME);
                 }
 
+                Log.Debug("Aborted connection thread...");
             }
             catch (ThreadAbortException e)
             {

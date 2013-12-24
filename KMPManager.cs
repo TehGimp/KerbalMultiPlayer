@@ -137,6 +137,7 @@ namespace KMP
 		private string newPort = "2076";
 		private string newFamiliar = "Server";
 		
+		private bool blockConnections = false;
 		private bool forceQuit = false;
 		private bool gameRunning = false;
 		private bool activeTermination = false;
@@ -684,6 +685,7 @@ namespace KMP
 		
 		public void disconnect(string message = "")
 		{
+			blockConnections = true;
 			if (HighLogic.LoadedSceneIsFlight || HighLogic.LoadedSceneIsEditor)
 			{
 				ScreenMessages.PostScreenMessage("You have been disconnected. Please return to the Main Menu to reconnect.",300f,ScreenMessageStyle.UPPER_CENTER);
@@ -3333,12 +3335,6 @@ namespace KMP
 		{
 			try
 			{
-				if (forceQuit)
-				{
-					forceQuit = false;
-					gameRunning = false;
-					HighLogic.LoadScene(GameScenes.MAINMENU);
-				}
 				if (!gameRunning) return;
 				
 				try { if (PauseMenu.isOpen && syncing) PauseMenu.Close(); } catch { }
@@ -3466,6 +3462,18 @@ namespace KMP
 
 		public void drawGUI()
 		{
+			if (blockConnections && !KMPClientMain.connectionThreadRunning)
+				blockConnections = false;
+
+			if (forceQuit)
+			{
+				Debug.Log("Force quit");
+				forceQuit = false;
+				gameRunning = false;
+				if (HighLogic.LoadedScene != GameScenes.MAINMENU)
+					HighLogic.LoadScene(GameScenes.MAINMENU);
+			}
+			
 			//Init info display options
 			if (KMPInfoDisplay.layoutOptions == null)
 				KMPInfoDisplay.layoutOptions = new GUILayoutOption[6];
@@ -3951,7 +3959,7 @@ namespace KMP
 				KMPClientMain.verifyShipsDirectory();
 				isVerified = true;
 			}
-			if (KMPClientMain.handshakeCompleted && KMPClientMain.tcpSocket != null)
+			if (KMPClientMain.handshakeCompleted && KMPClientMain.tcpSocket != null && !blockConnections)
 			{
 				if (KMPClientMain.tcpSocket.Connected && !gameRunning)
 				{
