@@ -3194,13 +3194,19 @@ namespace KMPServer
             if (settings.useMySQL)
             	diskDB = universeDB;
 			else
+			{
 				diskDB = new SQLiteConnection(DB_FILE_CONN);
             diskDB.Open();
+            }
 
             DbCommand init_cmd = universeDB.CreateCommand();
-            string sql = "PRAGMA auto_vacuum = 1;"; //"FULL" auto_vacuum
-            init_cmd.CommandText = sql;
-            init_cmd.ExecuteNonQuery();
+            string sql = "";
+            if (!settings.useMySQL)
+            {
+                sql = "PRAGMA auto_vacuum = 1;"; //"FULL" auto_vacuum
+                init_cmd.CommandText = sql;
+                init_cmd.ExecuteNonQuery();
+            }
 
             Int32 version = 0;
             try
@@ -3450,7 +3456,7 @@ namespace KMPServer
         {
 			DbConnection diskDB;
 			if (settings.useMySQL)
-            	diskDB = new MySqlConnection(DB_FILE_CONN);
+            	diskDB = new MySqlConnection(settings.connectionStringMySQL);
 			else
 				diskDB = new SQLiteConnection(DB_FILE_CONN);
             diskDB.Open();
