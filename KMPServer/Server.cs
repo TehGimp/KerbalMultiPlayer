@@ -3392,7 +3392,7 @@ namespace KMPServer
 						"CREATE INDEX kmpScenariosIdxPlayerID on kmpScenarios(PlayerID);",
 					                    settings.useMySQL ? "AUTO_INCREMENT" : "AUTOINCREMENT",
 					                    settings.useMySQL ? 36 : 16,
-					                    settings.useMySQL ? "MEDIUMBLOB" : "BLOB"
+					                    settings.useMySQL ? "LONGBLOB" : "BLOB"
 					                    );
                     cmd.CommandText = sql;
                     cmd.ExecuteNonQuery();
