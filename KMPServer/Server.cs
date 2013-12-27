@@ -3535,7 +3535,7 @@ namespace KMPServer
 	                    " DELETE FROM kmpVesselUpdateHistory;" +
 	                    " DELETE FROM kmpVesselUpdate WHERE ID IN (SELECT ID FROM (SELECT * FROM kmpVesselUpdate) vu" +
 	                    " WHERE Subspace != (SELECT ID FROM kmpSubspace WHERE LastTick = (SELECT MAX(LastTick) FROM kmpSubspace" +
-	                    " WHERE ID IN (SELECT Subspace FROM (SELECT * FROM kmpVesselUpdate) WHERE Guid = vu.Guid))));";
+	                    " WHERE ID IN (SELECT Subspace FROM (SELECT * FROM kmpVesselUpdate) vu2 WHERE vu2.Guid = vu.Guid))));";
 	                cmd.CommandText = sql;
 	                cmd.ExecuteNonQuery();
 				}
