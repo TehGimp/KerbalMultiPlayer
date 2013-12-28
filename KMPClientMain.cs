@@ -1036,15 +1036,24 @@ namespace KMP
                     }
                     break;
 
-                case KMPCommon.ServerMessageID.SYNC:
-                    if (data != null) gameManager.targetTick = BitConverter.ToDouble(data, 0) + Convert.ToDouble(lastPing);
-
+				case KMPCommon.ServerMessageID.SYNC:
+					if (data != null) {
+						gameManager.targetTick = BitConverter.ToDouble (data, 0) + Convert.ToDouble (lastPing);
+						gameManager.skewTargetTick = BitConverter.ToDouble (data, 0);
+						gameManager.skewServerTime = BitConverter.ToInt64 (data, 8);
+						gameManager.skewSubspaceSpeed = BitConverter.ToSingle (data, 16);
+						gameManager.lastSubspaceLockChange = UnityEngine.Time.realtimeSinceStartup;
+						Log.Debug ("Client time locked to server:" + gameManager.skewTargetTick + " server time: " + gameManager.skewServerTime + " frequency " + gameManager.skewSubspaceSpeed + "x.");
+					}
                     break;
                 case KMPCommon.ServerMessageID.SYNC_COMPLETE:
                     gameManager.HandleSyncCompleted();
                     break;
                 case KMPCommon.ServerMessageID.SPLIT_MESSAGE:
 		    handleSplitMessage(data);
+                    break;
+                case KMPCommon.ServerMessageID.SYNC_TIME:
+                    gameManager.HandleSyncTimeCompleted(data);
                     break;
             }
         }
@@ -1736,6 +1745,9 @@ namespace KMP
                 case KMPCommon.PluginInteropMessageID.SSYNC:
                     queueOutgoingMessage(KMPCommon.ClientMessageID.SSYNC, data);
                     break;
+				case KMPCommon.PluginInteropMessageID.SYNC_TIME:
+					queueOutgoingMessage(KMPCommon.ClientMessageID.SYNC_TIME, null);
+					break;
             }
         }
 
@@ -2326,6 +2338,7 @@ namespace KMP
 				case KMPCommon.ClientMessageID.KEEPALIVE:
 				case KMPCommon.ClientMessageID.UDP_PROBE:
 				case KMPCommon.ClientMessageID.PING:
+				case KMPCommon.ClientMessageID.SYNC_TIME:
 					queuedOutMessagesHighPriority.Enqueue (message_bytes);
 					break;
 				default:
@@ -2361,6 +2374,7 @@ namespace KMP
 							}
 						}
 						isClientSendingData = true;
+						syncTimeRewrite(ref next_message);
 						tcpClient.GetStream().BeginWrite(next_message, 0, next_message.Length, new AsyncCallback(asyncTCPSend), next_message);
 					}
 				}
@@ -2380,6 +2394,16 @@ namespace KMP
 				Log.Debug("Exception thrown in sendOutgoingMessages(), catch 3, Exception: {0}", e.ToString());
 			}
 		
+		}
+
+		private static void syncTimeRewrite(ref byte[] next_message) {
+			//SYNC_TIME Rewriting
+			int next_message_id = BitConverter.ToInt32(next_message, 0);
+			if (next_message_id == (int)KMPCommon.ClientMessageID.SYNC_TIME) {
+				byte[] time_sync_rewrite = new byte[8];
+				BitConverter.GetBytes(DateTime.UtcNow.Ticks).CopyTo(time_sync_rewrite, 0);
+				next_message = buildMessageByteArray(KMPCommon.ClientMessageID.SYNC_TIME, time_sync_rewrite);
+			}
 		}
 
 		private static void asyncTCPSend(IAsyncResult result)
@@ -2404,15 +2428,21 @@ namespace KMP
 
         private static void sendUDPProbeMessage(bool forceUDP)
         {
-            byte[] time = null;
-            if (gameManager.lastTick > 0d) time = BitConverter.GetBytes(gameManager.lastTick);
+			byte[] timeData = new byte[12];
+			if (gameManager.lastTick > 0) BitConverter.GetBytes(gameManager.lastTick).CopyTo(timeData, 0);
+			if (gameManager.listClientTimeWarp.Count > 0) {
+				BitConverter.GetBytes (gameManager.listClientTimeWarp.Average ()).CopyTo (timeData, 8);
+			} else {
+				BitConverter.GetBytes (1f).CopyTo (timeData, 8);
+			}
+
             if (udpConnected || forceUDP)//Always try UDP periodically
             {
-                queueOutgoingUDPMessage(KMPCommon.ClientMessageID.UDP_PROBE, time);
+                queueOutgoingUDPMessage(KMPCommon.ClientMessageID.UDP_PROBE, timeData);
             }
-			else
-			{
-				queueOutgoingMessage(KMPCommon.ClientMessageID.UDP_PROBE, time);
+            else
+            {
+                queueOutgoingMessage(KMPCommon.ClientMessageID.UDP_PROBE, timeData);
             }
             lastUDPProbeTime = stopwatch.ElapsedMilliseconds;
         }
