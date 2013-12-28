@@ -68,10 +68,12 @@ namespace KMPServer
 		public object screenshotLock = new object();
 		public object watchPlayerNameLock = new object();
 		public object sharedCraftLock = new object();
+		public object sendOutgoingMessagesLock = new object();
 
 		private byte[] receiveBuffer = new byte[8192];
 		private int receiveIndex = 0;
 		private int receiveHandleIndex = 0;
+		private bool isClientSendingData = false;
 
 		private byte[] currentMessageHeader = new byte[KMPCommon.MSG_HEADER_LENGTH];
 		private int currentMessageHeaderIndex;
@@ -80,6 +82,7 @@ namespace KMPServer
 
 		public KMPCommon.ClientMessageID currentMessageID;
 
+		public ConcurrentQueue<byte[]> queuedOutMessagesHighPriority;
 		public ConcurrentQueue<byte[]> queuedOutMessages;
 		
 		public string disconnectMessage = "";
@@ -167,6 +170,7 @@ namespace KMPServer
 
 			lastUDPACKTime = 0;
 
+			queuedOutMessagesHighPriority = new ConcurrentQueue<byte[]>();
 			queuedOutMessages = new ConcurrentQueue<byte[]>();
 
 			lock (activityLevelLock)
@@ -393,6 +397,10 @@ namespace KMPServer
                 if (tcpClient.Connected)
                 {
                     tcpClient.GetStream().EndWrite(result);
+					isClientSendingData = false;
+					if (queuedOutMessagesHighPriority.Count > 0 || queuedOutMessages.Count > 0) {
+						sendOutgoingMessages();
+					}
                 }
                 else
                 {
@@ -426,63 +434,21 @@ namespace KMPServer
 
 			try
 			{
-				if (queuedOutMessages.Count > 0)
-				{
-					//Check the size of the next message
-					byte[] next_message = null;
-					int send_buffer_index = 0;
-					byte[] send_buffer = new byte[SEND_BUFFER_SIZE];
-					
-					while (queuedOutMessages.Count > 0)
+				lock (sendOutgoingMessagesLock) {
+					if ((queuedOutMessages.Count > 0 || queuedOutMessagesHighPriority.Count > 0) && !isClientSendingData)
 					{
-						queuedOutMessages.TryPeek(out next_message);
-						if (send_buffer_index == 0 && next_message.Length >= send_buffer.Length)
-						{
-							//If the next message is too large for the send buffer, just send it
+						//Check the size of the next message
+						byte[] next_message = null;
+						if (queuedOutMessagesHighPriority.Count > 0) {
+							queuedOutMessagesHighPriority.TryDequeue(out next_message);
+						} else {
 							queuedOutMessages.TryDequeue(out next_message);
-
-							tcpClient.GetStream().BeginWrite(
-								next_message,
-								0,
-								next_message.Length,
-								asyncSend,
-								next_message);
 						}
-						else if (next_message.Length <= (send_buffer.Length - send_buffer_index))
-						{
-							//If the next message is small enough, copy it to the send buffer
-							queuedOutMessages.TryDequeue(out next_message);
-
-							next_message.CopyTo(send_buffer, send_buffer_index);
-							send_buffer_index += next_message.Length;
-						}
-						else
-						{
-							//If the next message is too big, send the send buffer
-							tcpClient.GetStream().BeginWrite(
-								send_buffer,
-								0,
-								send_buffer_index,
-								asyncSend,
-								next_message);
-
-							send_buffer_index = 0;
-							send_buffer = new byte[SEND_BUFFER_SIZE];
-						}
+						isClientSendingData = true;
+						tcpClient.GetStream().BeginWrite(next_message, 0, next_message.Length, asyncSend, next_message);
 					}
-
-                    //Send the send buffer
-                    if (send_buffer_index > 0)
-                    {
-                        tcpClient.GetStream().BeginWrite(
-                            send_buffer,
-                            0,
-                            send_buffer_index,
-                            asyncSend,
-                            next_message);
-                    }
-                }
-            }
+				}
+			}
             // Socket closed or not connected.
             catch (System.InvalidOperationException)
             {
@@ -508,7 +474,25 @@ namespace KMPServer
 
 		public void queueOutgoingMessage(byte[] message_bytes)
 		{
-			queuedOutMessages.Enqueue(message_bytes);
+			//Figure out if this is a high or low priority message
+			int sortMessageId = KMPCommon.intFromBytes(message_bytes, 0);
+			switch (sortMessageId) {
+						case (int)KMPCommon.ServerMessageID.HANDSHAKE:
+						case (int)KMPCommon.ServerMessageID.HANDSHAKE_REFUSAL:
+						case (int)KMPCommon.ServerMessageID.SERVER_MESSAGE:
+						case (int)KMPCommon.ServerMessageID.TEXT_MESSAGE:
+						case (int)KMPCommon.ServerMessageID.MOTD_MESSAGE:
+						case (int)KMPCommon.ServerMessageID.SERVER_SETTINGS:
+						case (int)KMPCommon.ServerMessageID.KEEPALIVE:
+						case (int)KMPCommon.ServerMessageID.CONNECTION_END:
+						case (int)KMPCommon.ServerMessageID.UDP_ACKNOWLEDGE:
+						case (int)KMPCommon.ServerMessageID.PING_REPLY:
+								queuedOutMessagesHighPriority.Enqueue(message_bytes);
+								break;
+						default:
+								queuedOutMessages.Enqueue(message_bytes);
+								break;
+			}
 		}
 
 		internal void startReceivingMessages()
