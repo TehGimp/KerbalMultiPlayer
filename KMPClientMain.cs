@@ -124,6 +124,7 @@ namespace KMP
         public static bool udpConnected;
         public static long lastUDPMessageSendTime;
         public static long lastUDPAckReceiveTime;
+        public static long lastUDPProbeTime;
 
         public static bool receivedSettings;
 
@@ -1508,14 +1509,16 @@ namespace KMP
                         }
 
                         //Send a probe message to try to establish a udp connection
-                        if ((stopwatch.ElapsedMilliseconds - last_udp_send) > UDP_TIMEOUT_DELAY)
-                        {
-                            sendUDPProbeMessage(true);
-                            Log.Debug("PROBE");
+                        if ((stopwatch.ElapsedMilliseconds - lastUDPProbeTime) > UDP_PROBE_DELAY) {
+                            if ((stopwatch.ElapsedMilliseconds - last_udp_send) > UDP_TIMEOUT_DELAY)
+                            {
+                                sendUDPProbeMessage(true);
+                            }
+                            else
+                            {
+                                sendUDPProbeMessage(false);
+                            }
                         }
-                        else if ((stopwatch.ElapsedMilliseconds - last_udp_send) > UDP_PROBE_DELAY)
-                            sendUDPProbeMessage(false);
-
                     }
 
                     Thread.Sleep(SLEEP_TIME);
@@ -1636,7 +1639,7 @@ namespace KMP
             {
                 try
                 {
-                    while (interopInQueue.Count > 0)
+                    while (interopInQueue.Count > 0 && tcpSocket.Connected)
                     {
                         byte[] bytes;
                         bytes = interopInQueue.Dequeue();
@@ -2476,8 +2479,13 @@ namespace KMP
             byte[] time = null;
             if (gameManager.lastTick > 0d) time = BitConverter.GetBytes(gameManager.lastTick);
             if (udpConnected || forceUDP)//Always try UDP periodically
+            {
                 sendMessageUDP(KMPCommon.ClientMessageID.UDP_PROBE, time);
-            else sendMessageTCP(KMPCommon.ClientMessageID.UDP_PROBE, time);
+            }
+            else {
+                sendMessageTCP(KMPCommon.ClientMessageID.UDP_PROBE, time);
+            }
+            lastUDPProbeTime = stopwatch.ElapsedMilliseconds;
         }
 
         private static void sendMessageUDP(KMPCommon.ClientMessageID id, byte[] data)

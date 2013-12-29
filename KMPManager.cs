@@ -3714,7 +3714,9 @@ namespace KMP
 					bool quit = GUILayout.Button("Quit",lockButtonStyle);
 					if (quit)
 					{
-						KMPClientMain.sendConnectionEndMessage("Requested quit during sync");
+						if (KMPClientMain.tcpSocket.Connected) {
+							KMPClientMain.sendConnectionEndMessage("Requested quit during sync");
+						}
 						KMPClientMain.endSession = true;
 						forceQuit = true;
 					}
