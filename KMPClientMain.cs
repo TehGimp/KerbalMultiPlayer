@@ -158,6 +158,10 @@ namespace KMP
         private static int receiveIndex = 0;
         private static int receiveHandleIndex = 0;
 
+        //Split message
+        private static int splitMessageReceiveIndex = 0;
+        private static byte[] splitMessageData;
+
         //Threading
 
         public static object tcpSendLock = new object();
@@ -523,8 +527,10 @@ namespace KMP
 
         public static void Connect()
         {
+            splitMessageData = null;
+            splitMessageReceiveIndex = 0;
             screenshotsWaiting.Clear();
-        	modFileChecked = false;
+            modFileChecked = false;
             clearConnectionState();
             File.Delete<KMPClientMain>("debug");
             serverThread = new Thread(beginConnect);
@@ -1062,8 +1068,36 @@ namespace KMP
                 case KMPCommon.ServerMessageID.SYNC_COMPLETE:
                     gameManager.HandleSyncCompleted();
                     break;
+                case KMPCommon.ServerMessageID.SPLIT_MESSAGE:
+		    handleSplitMessage(data);
+                    break;
             }
         }
+
+		public static void handleSplitMessage(byte[] data) {
+			if (splitMessageReceiveIndex == 0) {
+				//New split message
+				int split_message_length = KMPCommon.intFromBytes (data, 4);
+				splitMessageData = new byte[8 + split_message_length];
+				data.CopyTo (splitMessageData, 0);
+				splitMessageReceiveIndex = data.Length;
+			} else {
+				//Continued split message
+				data.CopyTo (splitMessageData, splitMessageReceiveIndex);
+				splitMessageReceiveIndex = splitMessageReceiveIndex + data.Length;
+			}
+				//Check if we have filled the byte array, if so, handle the message.
+			if (splitMessageReceiveIndex == splitMessageData.Length) {
+				//Parse the message and feed it into handleMessage
+				int joined_message_id = KMPCommon.intFromBytes (splitMessageData, 0);
+				int joined_message_length = KMPCommon.intFromBytes (splitMessageData, 4);
+				byte[] joined_message_data = new byte[joined_message_length];
+				Array.Copy (splitMessageData, 8, joined_message_data, 0, joined_message_length);
+				byte[] joined_message_data_decompressed = KMPCommon.Decompress(joined_message_data);
+				handleMessage ((KMPCommon.ServerMessageID)joined_message_id, joined_message_data_decompressed);
+				splitMessageReceiveIndex = 0;
+			}
+		}
 
         public static void clearConnectionState()
         {
