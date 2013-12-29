@@ -1462,6 +1462,7 @@ namespace KMPServer
                             //Acknowledge the client's message with a TCP message
                             client.queueOutgoingMessage(KMPCommon.ServerMessageID.UDP_ACKNOWLEDGE, null);
                             client.lastUDPACKTime = currentMillisecond;
+                            client.updateReceiveTimestamp();
                         }
 
                         //Handle the message
