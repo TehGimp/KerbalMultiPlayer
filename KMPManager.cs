@@ -3585,7 +3585,7 @@ namespace KMP
 					);
 			}
 			
-			if (!KMPConnectionDisplay.windowEnabled && KMPClientMain.handshakeCompleted && KMPClientMain.tcpSocket != null)
+			if (!KMPConnectionDisplay.windowEnabled && KMPClientMain.handshakeCompleted && KMPClientMain.tcpClient != null)
 			{
 				if(KMPInfoDisplay.infoDisplayActive && isGameHUDHidden == false)
 				{
@@ -3697,7 +3697,7 @@ namespace KMP
 					bool quit = GUILayout.Button("Quit",lockButtonStyle);
 					if (quit)
 					{
-						if (KMPClientMain.tcpSocket.Connected) {
+						if (KMPClientMain.tcpClient.Connected) {
 							KMPClientMain.sendConnectionEndMessage("Requested quit during sync");
 						}
 						KMPClientMain.endSession = true;
@@ -3944,9 +3944,9 @@ namespace KMP
 				KMPClientMain.verifyShipsDirectory();
 				isVerified = true;
 			}
-			if (KMPClientMain.handshakeCompleted && KMPClientMain.tcpSocket != null && !blockConnections)
+			if (KMPClientMain.handshakeCompleted && KMPClientMain.tcpClient != null && !blockConnections)
 			{
-				if (KMPClientMain.tcpSocket.Connected && !gameRunning)
+				if (KMPClientMain.tcpClient.Connected && !gameRunning)
 				{
 					//Clear dictionaries
 					sentVessels_Situations.Clear();

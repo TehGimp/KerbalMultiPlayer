@@ -113,7 +113,7 @@ namespace KMP
         public static bool endSession;
         public static bool intentionalConnectionEnd;
         public static bool handshakeCompleted;
-        public static Socket tcpSocket;
+        public static TcpClient tcpClient;
         public static long lastTCPMessageSendTime;
         public static bool quitHelperMessageShow;
         public static int reconnectAttempts;
@@ -158,12 +158,18 @@ namespace KMP
         private static int receiveIndex = 0;
         private static int receiveHandleIndex = 0;
 
+		private static Queue<byte[]> queuedOutMessagesHighPriority;
+		private static Queue<byte[]> queuedOutMessagesSplit;
+		private static Queue<byte[]> queuedOutMessages;
+		private static bool isClientSendingData;
+
         //Split message
         private static int splitMessageReceiveIndex = 0;
         private static byte[] splitMessageData;
 
         //Threading
 
+		public static object sendOutgoingMessagesLock = new object();
         public static object tcpSendLock = new object();
         public static object serverSettingsLock = new object();
         public static object screenshotOutLock = new object();
@@ -641,7 +647,7 @@ namespace KMP
                             if (ipv6_tcpClient.Client.Connected) {
                                 ipv6_connected = true;
                                 address = ipv6_address;
-                                tcpSocket = ipv6_tcpClient.Client;
+                                tcpClient = ipv6_tcpClient;
                             } else {
                                 ipv6_tcpClient = null;
                                 ipv6_endpoint = null;
@@ -667,7 +673,7 @@ namespace KMP
             {
                 //Connects IPv4 Hostnames, And IPv6/IPv4 IP's.
                 if (ipv6_connected == false) {
-                    TcpClient tcpClient = new TcpClient(address.AddressFamily);
+                    tcpClient = new TcpClient(address.AddressFamily);
                     tcpClient.NoDelay = true;
                     IPEndPoint endpoint = new IPEndPoint(address, port);
                     if (address.AddressFamily == AddressFamily.InterNetworkV6) {
@@ -676,10 +682,9 @@ namespace KMP
                         SetMessage("Connecting to IPv4: " + address + ":" + port);
                     }
                     tcpClient.Connect(endpoint);
-                    tcpSocket = tcpClient.Client;
                 }
                 //tcpSocket.SetSocketOption(SocketOptionLevel.Tcp, SocketOptionName.KeepAlive, true);
-                if (tcpSocket.Connected)
+                if (tcpClient.Connected)
                 {
                     SetMessage("TCP connection established");
                     clientID = -1;
@@ -693,6 +698,10 @@ namespace KMP
                     interopInQueue = new Queue<byte[]>();
 
                     receivedMessageQueue = new Queue<ServerMessage>();
+
+					queuedOutMessages = new Queue<byte[]>();
+					queuedOutMessagesSplit = new Queue<byte[]>();
+					queuedOutMessagesHighPriority = new Queue<byte[]>();
 
                     threadException = null;
 
@@ -743,7 +752,7 @@ namespace KMP
 
                     SetMessage("Connected to server! Handshaking...");
 
-                    while (!endSession && !intentionalConnectionEnd && tcpSocket.Connected)
+                    while (!endSession && !intentionalConnectionEnd && tcpClient.Connected)
                     {
                         //Check for exceptions thrown by threads
                         lock (threadExceptionLock)
@@ -775,10 +784,10 @@ namespace KMP
             {
                 Log.Debug("Exception thrown in connectionLoop(), catch 4, Exception: {0}", e.ToString());
                 SetMessage("Disconnected");
-                if (tcpSocket != null)
-                   tcpSocket.Close();
+                if (tcpClient != null)
+                   tcpClient.Close();
 
-                tcpSocket = null;
+                tcpClient = null;
             }
 
             return false;
@@ -1115,9 +1124,9 @@ namespace KMP
 
                 Log.Debug("Closing connections...");
                 //Close the socket if it's still open
-                if (tcpSocket != null)
-                    tcpSocket.Close();
-                tcpSocket = null;
+                if (tcpClient != null)
+                    tcpClient.Close();
+                tcpClient = null;
 
                 if (udpSocket != null)
                     udpSocket.Close();
@@ -1159,7 +1168,7 @@ namespace KMP
                         handled = true;
                         if (!pingStopwatch.IsRunning)
                         {
-                            sendMessageTCP(KMPCommon.ClientMessageID.PING, null);
+                            queueOutgoingMessage(KMPCommon.ClientMessageID.PING, null);
                             pingStopwatch.Start();
                         }
                     }
@@ -1488,7 +1497,7 @@ namespace KMP
 
                     //Send a keep-alive message to prevent timeout
                     if (stopwatch.ElapsedMilliseconds - lastTCPMessageSendTime >= KEEPALIVE_DELAY)
-                        sendMessageTCP(KMPCommon.ClientMessageID.KEEPALIVE, null);
+                        queueOutgoingMessage(KMPCommon.ClientMessageID.KEEPALIVE, null);
 
                     //Handle received messages
                     while (receivedMessageQueue.Count > 0)
@@ -1538,6 +1547,7 @@ namespace KMP
                         }
                     }
 
+					sendOutgoingMessages();
                     Thread.Sleep(SLEEP_TIME);
                 }
 
@@ -1626,7 +1636,7 @@ namespace KMP
 			{
 				try
 				{
-					while (interopInQueue.Count > 0)
+				while (interopInQueue.Count > 0 && tcpClient.Connected)
 					{
 						byte[] bytes;
 						bytes = interopInQueue.Dequeue();
@@ -1716,9 +1726,9 @@ namespace KMP
 
                         //Send the activity status to the server
                         if (in_flight)
-                            sendMessageTCP(KMPCommon.ClientMessageID.ACTIVITY_UPDATE_IN_FLIGHT, null);
+                            queueOutgoingMessage(KMPCommon.ClientMessageID.ACTIVITY_UPDATE_IN_FLIGHT, null);
                         else
-                            sendMessageTCP(KMPCommon.ClientMessageID.ACTIVITY_UPDATE_IN_GAME, null);
+                            queueOutgoingMessage(KMPCommon.ClientMessageID.ACTIVITY_UPDATE_IN_GAME, null);
                     }
 
                     if (watchPlayerName != new_watch_player_name)
@@ -1755,10 +1765,10 @@ namespace KMP
 
                     break;
                 case KMPCommon.PluginInteropMessageID.WARPING:
-                    sendMessageTCP(KMPCommon.ClientMessageID.WARPING, data);
+                    queueOutgoingMessage(KMPCommon.ClientMessageID.WARPING, data);
                     break;
                 case KMPCommon.PluginInteropMessageID.SSYNC:
-                    sendMessageTCP(KMPCommon.ClientMessageID.SSYNC, data);
+                    queueOutgoingMessage(KMPCommon.ClientMessageID.SSYNC, data);
                     break;
             }
         }
@@ -2055,7 +2065,7 @@ namespace KMP
         {
             try
             {
-                if (tcpSocket != null)
+                if (tcpClient != null)
                 {
                     currentMessageHeaderIndex = 0;
                     currentMessageDataIndex = 0;
@@ -2063,9 +2073,8 @@ namespace KMP
                     receiveHandleIndex = 0;
 
                     StateObject state = new StateObject();
-                    state.workSocket = tcpSocket;
-                    tcpSocket.BeginReceive(state.buffer, 0, StateObject.BufferSize, 0,
-                        new AsyncCallback(ReceiveCallback), state);
+                    state.workClient = tcpClient;
+                    tcpClient.GetStream().BeginRead(state.buffer, 0, StateObject.BufferSize, new AsyncCallback(ReceiveCallback), state);
                 }
             }
             catch (KSP.IO.IOException e)
@@ -2090,9 +2099,9 @@ namespace KMP
                 // Retrieve the state object and the client socket 
                 // from the asynchronous state object.
                 StateObject state = (StateObject)ar.AsyncState;
-                Socket client = state.workSocket;
+                TcpClient client = state.workClient;
                 // Read data from the remote device.
-                int bytesRead = client.EndReceive(ar);
+                int bytesRead = client.GetStream().EndRead(ar);
                 if (bytesRead > 0)
                 {
                     // There might be more data, so store the data received so far.
@@ -2105,8 +2114,7 @@ namespace KMP
                         receiveIndex += bytesRead;
                         handleReceive();
                         //  Get the rest of the data.
-                        client.BeginReceive(state.buffer, 0, StateObject.BufferSize, 0,
-                            new AsyncCallback(ReceiveCallback), state);
+                        client.GetStream().BeginRead(state.buffer, 0, StateObject.BufferSize, new AsyncCallback(ReceiveCallback), state);
                     }
                 }
                 else
@@ -2242,14 +2250,14 @@ namespace KMP
             KMPCommon.intToBytes(guid_bytes.Length).CopyTo(message_data, 4 + username_bytes.Length);
             guid_bytes.CopyTo(message_data, 4 + username_bytes.Length + 4);
             version_bytes.CopyTo(message_data, 4 + username_bytes.Length + 4 + guid_bytes.Length);
-            sendMessageTCP(KMPCommon.ClientMessageID.HANDSHAKE, message_data);
+            queueOutgoingMessage(KMPCommon.ClientMessageID.HANDSHAKE, message_data);
         }
 
         internal static void sendTextMessage(String message)
         {
             //Encode message
             byte[] message_bytes = encoder.GetBytes(message);
-            sendMessageTCP(KMPCommon.ClientMessageID.TEXT_MESSAGE, message_bytes);
+            queueOutgoingMessage(KMPCommon.ClientMessageID.TEXT_MESSAGE, message_bytes);
         }
 
         private static void sendPluginUpdate(byte[] data, bool primary)
@@ -2262,7 +2270,7 @@ namespace KMP
                 if (udpConnected && data.Length < 100)
                     sendMessageUDP(id, data);
                 else
-                    sendMessageTCP(id, data);
+                    queueOutgoingMessage(id, data);
             }
         }
 		
@@ -2273,14 +2281,14 @@ namespace KMP
                 if (udpConnected && data.Length < 100)
                     sendMessageUDP(KMPCommon.ClientMessageID.SCENARIO_UPDATE, data);
                 else
-                    sendMessageTCP(KMPCommon.ClientMessageID.SCENARIO_UPDATE, data);
+                    queueOutgoingMessage(KMPCommon.ClientMessageID.SCENARIO_UPDATE, data);
             }
         }
 		
         private static void sendShareScreenshotMessage(byte[] data)
         {
             if (data != null && data.Length > 0)
-                sendMessageTCP(KMPCommon.ClientMessageID.SCREENSHOT_SHARE, data);
+                queueOutgoingMessage(KMPCommon.ClientMessageID.SCREENSHOT_SHARE, data);
         }
 
         private static void sendScreenshotWatchPlayerMessage(String name)
@@ -2288,7 +2296,7 @@ namespace KMP
             //Encode name
             byte[] bytes = encoder.GetBytes(name);
 
-            sendMessageTCP(KMPCommon.ClientMessageID.SCREEN_WATCH_PLAYER, bytes);
+            queueOutgoingMessage(KMPCommon.ClientMessageID.SCREEN_WATCH_PLAYER, bytes);
         }
 
         internal static void sendConnectionEndMessage(String message)
@@ -2296,7 +2304,7 @@ namespace KMP
             //Encode message
             byte[] message_bytes = encoder.GetBytes(message);
 
-            sendMessageTCP(KMPCommon.ClientMessageID.CONNECTION_END, message_bytes);
+            queueOutgoingMessage(KMPCommon.ClientMessageID.CONNECTION_END, message_bytes);
         }
 
         private static void sendShareCraftMessage(String craft_name, byte[] data, KMPCommon.CraftType type)
@@ -2315,7 +2323,7 @@ namespace KMP
                 name_bytes.CopyTo(bytes, 8);
                 data.CopyTo(bytes, 8 + name_bytes.Length);
 
-                sendMessageTCP(KMPCommon.ClientMessageID.SHARE_CRAFT_FILE, bytes);
+                queueOutgoingMessage(KMPCommon.ClientMessageID.SHARE_CRAFT_FILE, bytes);
             }
             else
                 enqueueTextMessage("Craft file is too large to send.", false, true);
@@ -2323,46 +2331,98 @@ namespace KMP
 
         }
 
-        private static void sendMessageTCP(KMPCommon.ClientMessageID id, byte[] data)
-        {
-            lock (tcpSendLock)
-            {
-                byte[] message_bytes = buildMessageByteArray(id, data);
-                int send_bytes_actually_sent = 0;
-                while (send_bytes_actually_sent < message_bytes.Length)
-                {
-                    try
-                    {
-                        //Send message
-                        send_bytes_actually_sent += tcpSocket.Send(message_bytes, send_bytes_actually_sent, message_bytes.Length - send_bytes_actually_sent, SocketFlags.None);
-                    //					Just do a blocking send
-                    //					tcpSocket.BeginSend(message_bytes, 0, message_bytes.Length, SocketFlags.None,
-                    //      					new AsyncCallback(SendCallback), tcpSocket); 
-                    }
-                    catch (System.InvalidOperationException e) {
-                        Log.Debug("Exception thrown in sendMessageTCP(), catch 1, Exception: {0}", e.ToString());
-                    }
-                    catch (KSP.IO.IOException e) {
-                        Log.Debug("Exception thrown in sendMessageTCP(), catch 2, Exception: {0}", e.ToString());
-                    }
+		private static void splitOutgoingMessage(ref byte[] next_message)
+		{
+			//Only split messages bigger than SEND_BUFFER.
+			if (next_message.Length > KMPCommon.SPLIT_MESSAGE_SIZE) {
+				int split_index = 0;
+				while (split_index < next_message.Length) {
+					int bytes_to_read = Math.Min (next_message.Length - split_index, KMPCommon.SPLIT_MESSAGE_SIZE);
+					byte[] split_message_bytes = new byte[bytes_to_read];
+					Array.Copy (next_message, split_index, split_message_bytes, 0, bytes_to_read);
+					byte[] split_message = buildMessageByteArray (KMPCommon.ClientMessageID.SPLIT_MESSAGE, split_message_bytes);
+					queuedOutMessagesSplit.Enqueue(split_message);
+					split_index = split_index + bytes_to_read;
+				}
+				//Return the first split message if we just split.
+				Log.Debug("Split message into "  + queuedOutMessagesSplit.Count.ToString());
+				next_message = queuedOutMessagesSplit.Dequeue ();
+			}
+		}
 
-                }
-            }
-            lastTCPMessageSendTime = stopwatch.ElapsedMilliseconds;
-        }
+		private static void queueOutgoingMessage (KMPCommon.ClientMessageID id, byte[] data)
+		{
+			//Figure out if this is a high or low priority message
+			byte[] message_bytes = buildMessageByteArray(id, data);
+			switch (id) {
+				case KMPCommon.ClientMessageID.HANDSHAKE:
+				case KMPCommon.ClientMessageID.TEXT_MESSAGE:
+				case KMPCommon.ClientMessageID.KEEPALIVE:
+				case KMPCommon.ClientMessageID.UDP_PROBE:
+				case KMPCommon.ClientMessageID.PING:
+					queuedOutMessagesHighPriority.Enqueue (message_bytes);
+					break;
+				default:
+					queuedOutMessages.Enqueue (message_bytes);
+					break;
+			}
+		}
 
-        //		private static void SendCallback(IAsyncResult ar) {
-        //		    try {
-        //		        // Retrieve the socket from the state object.
-        //		        Socket client = (Socket) ar.AsyncState;
-        //		
-        //		        // Complete sending the data to the remote device.
-        //		        client.EndSend(ar);
-        //		
-        //		    } catch (Exception e) {
-        //		        passExceptionToMain(e);
-        //		    }
-        //		}
+		private static void sendOutgoingMessages() {
+			try
+			{
+				lock (sendOutgoingMessagesLock) {
+					if ((queuedOutMessagesHighPriority.Count > 0 || queuedOutMessagesSplit.Count > 0 || queuedOutMessages.Count > 0) && !isClientSendingData)
+					{
+						//Send high priority first, then any split messages (chopped up low priority messages), and then the normal queue.
+						//Large low priorty messages get chopped up into a split message just before send.
+						byte[] next_message = null;
+						if (queuedOutMessagesHighPriority.Count > 0) {
+							next_message = queuedOutMessagesHighPriority.Dequeue();
+						} else {
+							if (queuedOutMessagesSplit.Count > 0) {
+								next_message = queuedOutMessagesSplit.Dequeue();
+							} else {
+								next_message = queuedOutMessages.Dequeue();
+								splitOutgoingMessage(ref next_message);
+							}
+						}
+						isClientSendingData = true;
+						tcpClient.GetStream().BeginWrite(next_message, 0, next_message.Length, new AsyncCallback(asyncTCPSend), next_message);
+					}
+				}
+			}
+			// Socket closed or not connected.
+			catch (System.InvalidOperationException)
+			{
+			}
+			// Raised by BeginWrite, can mean socket is down.
+			catch (System.IO.IOException)
+			{
+			}
+			catch (System.NullReferenceException) { }
+		
+		}
+
+		private static void asyncTCPSend(IAsyncResult result)
+		{
+			try
+			{
+				if (tcpClient.Connected)
+				{
+					tcpClient.GetStream().EndWrite(result);
+					isClientSendingData = false;
+					if (queuedOutMessagesHighPriority.Count > 0 || queuedOutMessagesSplit.Count > 0 || queuedOutMessages.Count > 0) {
+						sendOutgoingMessages();
+					}
+				}
+			}
+			catch (Exception e)
+			{
+				Log.Debug("Exception thrown in asyncTCPSend(), catch 1, Exception: {0}", e.ToString());
+				gameManager.disconnect ("Disconnected: Send Error");
+			}
+		}
 
         private static void sendUDPProbeMessage(bool forceUDP)
         {
@@ -2373,7 +2433,7 @@ namespace KMP
                 sendMessageUDP(KMPCommon.ClientMessageID.UDP_PROBE, time);
             }
             else {
-                sendMessageTCP(KMPCommon.ClientMessageID.UDP_PROBE, time);
+                queueOutgoingMessage(KMPCommon.ClientMessageID.UDP_PROBE, time);
             }
             lastUDPProbeTime = stopwatch.ElapsedMilliseconds;
         }
@@ -2494,7 +2554,7 @@ namespace KMP
     public class StateObject
     {
         // Client socket.
-        public Socket workSocket = null;
+        public TcpClient workClient = null;
         // Size of receive buffer.
         public const int BufferSize = 8192;
         // Receive buffer.
