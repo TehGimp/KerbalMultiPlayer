@@ -436,15 +436,9 @@ namespace KMPServer
 
             try
             {
-                if (settings.hostIPv6 == true) {
-                    udpClient = new UdpClient(settings.port, AddressFamily.InterNetworkV6);
-                    udpClient.BeginReceive(asyncUDPReceive, null);
-                    //udpClient.Client.AllowNatTraversal(1);
-                } else {
-                    udpClient = new UdpClient(settings.port, AddressFamily.InterNetwork);
-                    udpClient.BeginReceive(asyncUDPReceive, null);
-                }
-                
+            	udpClient = new UdpClient((IPEndPoint)tcpListener.LocalEndpoint);
+                udpClient.BeginReceive(asyncUDPReceive, null);
+                //udpClient.Client.AllowNatTraversal(1);
             }
             catch
             {
