@@ -68,7 +68,6 @@ namespace KMPServer
 			if (settings.autoHost)
 			{
 				startServer(settings);
-				return;
 			}
 
 			Log.Info("Current Configuration:");
@@ -134,6 +133,8 @@ namespace KMPServer
 			while (running)
 			{
 				var line = Console.ReadLine();
+
+                Log.Info("Command Input: {0}",line);
 
 				var parts = line.Split(' ');
 
