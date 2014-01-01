@@ -68,7 +68,6 @@ namespace KMPServer
 			if (settings.autoHost)
 			{
 				startServer(settings);
-				return;
 			}
 
 			Log.Info("Current Configuration:");
