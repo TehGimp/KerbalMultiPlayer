@@ -117,7 +117,7 @@ namespace KMP
         public static long lastTCPMessageSendTime;
         public static bool quitHelperMessageShow;
         public static int reconnectAttempts;
-        public static Socket udpSocket;
+        public static UdpClient udpClient;
         public static bool udpConnected;
         public static long lastUDPMessageSendTime;
         public static long lastUDPAckReceiveTime;
@@ -163,6 +163,9 @@ namespace KMP
 		private static Queue<byte[]> queuedOutMessages;
 		private static bool isClientSendingData;
 
+		private static Queue<byte[]> queuedOutUDPMessages;
+		private static bool isClientSendingUDPData;
+
         //Split message
         private static int splitMessageReceiveIndex = 0;
         private static byte[] splitMessageData;
@@ -170,7 +173,7 @@ namespace KMP
         //Threading
 
 		public static object sendOutgoingMessagesLock = new object();
-        public static object tcpSendLock = new object();
+		public static object sendOutgoingUDPMessagesLock = new object();
         public static object serverSettingsLock = new object();
         public static object screenshotOutLock = new object();
         public static object threadExceptionLock = new object();
@@ -533,10 +536,6 @@ namespace KMP
 
         public static void Connect()
         {
-            splitMessageData = null;
-            splitMessageReceiveIndex = 0;
-            screenshotsWaiting.Clear();
-            modFileChecked = false;
             clearConnectionState();
             File.Delete<KMPClientMain>("debug");
             serverThread = new Thread(beginConnect);
@@ -693,6 +692,14 @@ namespace KMP
                     handshakeCompleted = false;
                     receivedSettings = false;
 
+					splitMessageData = null;
+					splitMessageReceiveIndex = 0;
+					screenshotsWaiting.Clear();
+					modFileChecked = false;
+
+					isClientSendingData = false;
+					isClientSendingUDPData = false;
+
                     pluginUpdateInQueue = new Queue<byte[]>();
                     textMessageQueue = new Queue<InTextMessage>();
                     interopInQueue = new Queue<byte[]>();
@@ -702,6 +709,7 @@ namespace KMP
 					queuedOutMessages = new Queue<byte[]>();
 					queuedOutMessagesSplit = new Queue<byte[]>();
 					queuedOutMessagesHighPriority = new Queue<byte[]>();
+					queuedOutUDPMessages = new Queue<byte[]>();
 
                     threadException = null;
 
@@ -719,16 +727,16 @@ namespace KMP
                     try
                     {
                         IPEndPoint endpoint = new IPEndPoint(address, port);
-                        udpSocket = new Socket(endpoint.AddressFamily, SocketType.Dgram, ProtocolType.Udp);
-                        udpSocket.Connect(endpoint);
+                        udpClient = new UdpClient(endpoint.AddressFamily);
+                        udpClient.Connect(endpoint);
                     }
                     catch (Exception e)
                     {
                         Log.Debug("Exception thrown in connectionLoop(), catch 3, Exception: {0}", e.ToString());
-                        if (udpSocket != null)
-                            udpSocket.Close();
+                        if (udpClient != null)
+                            udpClient.Close();
 
-                        udpSocket = null;
+                        udpClient = null;
                     }
 
                     udpConnected = false;
@@ -1128,9 +1136,9 @@ namespace KMP
                     tcpClient.Close();
                 tcpClient = null;
 
-                if (udpSocket != null)
-                    udpSocket.Close();
-                udpSocket = null;
+                if (udpClient != null)
+                    udpClient.Close();
+                udpClient = null;
             }
             catch (ThreadAbortException e) {
                 Log.Debug("Exception thrown in clearConnectionState(), catch 1, Exception: {0}", e.ToString());
@@ -1507,7 +1515,7 @@ namespace KMP
                         handleMessage(message.id, message.data);
                     }
 
-                    if (udpSocket != null && handshakeCompleted)
+                    if (udpClient != null && handshakeCompleted)
                     {
 
                         //Update the status of the udp connection
@@ -1546,8 +1554,8 @@ namespace KMP
                             }
                         }
                     }
-
 					sendOutgoingMessages();
+					sendOutgoingUDPMessages();
                     Thread.Sleep(SLEEP_TIME);
                 }
 
@@ -2268,7 +2276,7 @@ namespace KMP
                     = primary ? KMPCommon.ClientMessageID.PRIMARY_PLUGIN_UPDATE : KMPCommon.ClientMessageID.SECONDARY_PLUGIN_UPDATE;
 
                 if (udpConnected && data.Length < 100)
-                    sendMessageUDP(id, data);
+					queueOutgoingUDPMessage(id, data);
                 else
                     queueOutgoingMessage(id, data);
             }
@@ -2279,7 +2287,7 @@ namespace KMP
             if (data != null && data.Length > 0)
             {
                 if (udpConnected && data.Length < 100)
-                    sendMessageUDP(KMPCommon.ClientMessageID.SCENARIO_UPDATE, data);
+					queueOutgoingUDPMessage(KMPCommon.ClientMessageID.SCENARIO_UPDATE, data);
                 else
                     queueOutgoingMessage(KMPCommon.ClientMessageID.SCENARIO_UPDATE, data);
             }
@@ -2368,6 +2376,13 @@ namespace KMP
 			}
 		}
 
+		private static void queueOutgoingUDPMessage (KMPCommon.ClientMessageID id, byte[] data)
+		{
+			byte[] message_bytes = buildMessageByteArray(id, data, KMPCommon.intToBytes(clientID));
+			queuedOutUDPMessages.Enqueue (message_bytes);
+
+		}
+
 		private static void sendOutgoingMessages() {
 			try
 			{
@@ -2393,14 +2408,19 @@ namespace KMP
 				}
 			}
 			// Socket closed or not connected.
-			catch (System.InvalidOperationException)
+			catch (System.InvalidOperationException e)
 			{
+				Log.Debug("Exception thrown in sendOutgoingMessages(), catch 1, Exception: {0}", e.ToString());
 			}
 			// Raised by BeginWrite, can mean socket is down.
-			catch (System.IO.IOException)
+			catch (System.IO.IOException e)
 			{
+				Log.Debug("Exception thrown in sendOutgoingMessages(), catch 2, Exception: {0}", e.ToString());
 			}
-			catch (System.NullReferenceException) { }
+			catch (System.NullReferenceException e)
+			{
+				Log.Debug("Exception thrown in sendOutgoingMessages(), catch 3, Exception: {0}", e.ToString());
+			}
 		
 		}
 
@@ -2430,34 +2450,62 @@ namespace KMP
             if (gameManager.lastTick > 0d) time = BitConverter.GetBytes(gameManager.lastTick);
             if (udpConnected || forceUDP)//Always try UDP periodically
             {
-                sendMessageUDP(KMPCommon.ClientMessageID.UDP_PROBE, time);
+                queueOutgoingUDPMessage(KMPCommon.ClientMessageID.UDP_PROBE, time);
             }
-            else {
-                queueOutgoingMessage(KMPCommon.ClientMessageID.UDP_PROBE, time);
+			else
+			{
+				queueOutgoingMessage(KMPCommon.ClientMessageID.UDP_PROBE, time);
             }
             lastUDPProbeTime = stopwatch.ElapsedMilliseconds;
         }
 
-        private static void sendMessageUDP(KMPCommon.ClientMessageID id, byte[] data)
-        {
-            if (udpSocket != null)
-            {
-                //Send the packet
-                try
-                {
-                    udpSocket.Send(buildMessageByteArray(id, data, KMPCommon.intToBytes(clientID)));
-                }
-                catch (Exception e) {
-                    Log.Debug("Exception thrown in sendMessageUDP(), catch 1, Exception: {0}", e.ToString());
-                }
+		private static void sendOutgoingUDPMessages() {
+			try
+			{
+				lock (sendOutgoingUDPMessagesLock) {
+					if (queuedOutUDPMessages.Count > 0 && !isClientSendingUDPData)
+					{
+						byte[] next_message = null;
+						next_message = queuedOutUDPMessages.Dequeue();
+						isClientSendingUDPData = true;
+						udpClient.BeginSend(next_message, next_message.Length, new AsyncCallback(asyncUDPSend), next_message);
+					}
+				}
+			}
+			// Socket closed or not connected.
+			catch (System.InvalidOperationException e)
+			{
+				Log.Debug("Exception thrown in sendOutgoingUDPMessages(), catch 1, Exception: {0}", e.ToString());
+			}
+			// Raised by BeginWrite, can mean socket is down.
+			catch (System.IO.IOException e)
+			{
+				Log.Debug("Exception thrown in sendOutgoingUDPMessages(), catch 2, Exception: {0}", e.ToString());
+			}
+			catch (System.NullReferenceException e)
+			{
+				Log.Debug("Exception thrown in sendOutgoingUDPMessages(), catch 3, Exception: {0}", e.ToString());
+			}
 
-                lock (udpTimestampLock)
-                {
-                    lastUDPMessageSendTime = stopwatch.ElapsedMilliseconds;
-                }
+		}
 
-            }
-        }
+		private static void asyncUDPSend(IAsyncResult result)
+		{
+			try
+			{
+				udpClient.EndSend(result);
+				lastUDPMessageSendTime = stopwatch.ElapsedMilliseconds;
+				isClientSendingUDPData = false;
+				if (queuedOutUDPMessages.Count > 0) {
+					sendOutgoingUDPMessages();
+				}
+			}
+			catch (Exception e)
+			{
+				Log.Debug("Exception thrown in asyncTCPSend(), catch 1, Exception: {0}", e.ToString());
+				gameManager.disconnect ("Disconnected: Send Error");
+			}
+		}
 
         private static byte[] buildMessageByteArray(KMPCommon.ClientMessageID id, byte[] data, byte[] prefix = null)
         {
