@@ -134,6 +134,8 @@ namespace KMPServer
 			{
 				var line = Console.ReadLine();
 
+                Log.Info("Command Input: {0}",line);
+
 				var parts = line.Split(' ');
 
 				switch (parts[0].ToLowerInvariant())

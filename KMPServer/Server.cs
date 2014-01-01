@@ -530,6 +530,7 @@ namespace KMPServer
 
 		private void processCommand (String input)
 		{
+            Log.Info("Command Input: {0}",input);
 			try
 			{
 				String cleanInput = input.ToLower().Trim();
