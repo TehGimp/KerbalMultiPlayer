@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Reflection;
 using System.IO;
-using System.IO.Compression;
+using ICSharpCode.SharpZipLib.GZip;
 
 public class KMPCommon
 {
@@ -142,7 +142,7 @@ public class KMPCommon
 		if (data == null) return null;
 		byte[] compressedData = null;
         MemoryStream ms = null;
-        GZipStream gzip = null;
+        GZipOutputStream gzip = null;
 		try
         {
 			ms = new MemoryStream();
@@ -166,7 +166,7 @@ public class KMPCommon
 	            {
 					writer.Write(true);
 	                writer.Write(size);
-	                gzip = new GZipStream(ms, CompressionMode.Compress);
+	                gzip = new GZipOutputStream(ms);
 	                gzip.Write(data, 0, data.Length);
 	                gzip.Close();
 	                compressedData = ms.ToArray();
@@ -192,7 +192,7 @@ public class KMPCommon
 		if (data == null) return null;
 		byte[] decompressedData = null;
         MemoryStream ms = null;
-        GZipStream gzip = null;
+        GZipInputStream gzip = null;
         try
 		{
 			ms = new MemoryStream(data,false);
@@ -208,7 +208,7 @@ public class KMPCommon
 				{
 					//Decompress
 	                Int32 size = reader.ReadInt32();
-	                gzip = new GZipStream(ms, CompressionMode.Decompress);
+	                gzip = new GZipInputStream(ms);
 	                decompressedData = new byte[size];
 	                gzip.Read(decompressedData, 0, decompressedData.Length);
 	                gzip.Close();
