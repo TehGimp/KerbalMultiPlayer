@@ -1632,14 +1632,21 @@ namespace KMP
 			if (obj is KMPScenarioUpdate)
 			{
 				KMPScenarioUpdate update = (KMPScenarioUpdate) obj;
+				bool loaded = false;
 				foreach (ProtoScenarioModule proto in HighLogic.CurrentGame.scenarios)
 				{
 					if (proto != null && proto.moduleName == update.name && proto.moduleRef != null && update.getScenarioNode() != null)
 					{
 						Log.Debug("Loading scenario data: " + update.name);
 						proto.moduleRef.Load(update.getScenarioNode());
+						loaded = true;
 						break;
 					}
+				}
+				if (!loaded)
+				{
+					ProtoScenarioModule newScenario = new ProtoScenarioModule(update.getScenarioNode());
+					HighLogic.CurrentGame.scenarios.Add(newScenario);
 				}
 				if (EditorPartList.Instance != null) EditorPartList.Instance.Refresh();
 				else deferredEditorPartListClear = true;

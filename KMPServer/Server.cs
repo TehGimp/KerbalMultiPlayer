@@ -2325,10 +2325,10 @@ namespace KMPServer
                 if (sendTimeSync) sendSubspaceSync(cl);
                 Log.Activity("Sending all vessels in current subspace for " + cl.username);
 				var universeDB = KMPServer.Server.universeDB;
-			if (settings.useMySQL) {
-				universeDB = new MySqlConnection(settings.mySQLConnString);
-				universeDB.Open();
-			}
+				if (settings.useMySQL) {
+					universeDB = new MySqlConnection(settings.mySQLConnString);
+					universeDB.Open();
+				}
                 DbCommand cmd = universeDB.CreateCommand();
                 string sql = "SELECT  vu.UpdateMessage, v.ProtoVessel, v.Private, v.OwnerID" +
                     " FROM kmpVesselUpdate vu" +
@@ -2367,6 +2367,7 @@ namespace KMPServer
                 }
 				if (settings.useMySQL) universeDB.Close();
                 sendSyncCompleteMessage(cl);
+				if (sendTimeSync) sendScenarios(cl);	
             }
         }
 
@@ -2399,7 +2400,6 @@ namespace KMPServer
 			{
 				sendSyncMessage(cl, tick);
 				cl.lastTick = tick;
-				sendScenarios(cl);
 			}
         }
 
@@ -3282,6 +3282,7 @@ namespace KMPServer
                 while (reader.Read())
                 {
                     byte[] data = GetDataReaderBytes(reader, 0);
+					Log.Activity("Sending scenario update to player {0}", cl.username);
                     sendScenarioMessage(cl, data);
                 }
             }
