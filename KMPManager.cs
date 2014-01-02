@@ -4831,8 +4831,9 @@ namespace KMP
 					EditorLogic.fetch.Lock(true, true, true,"KMP_lock");
 					isEditorLocked = true;
 				}
-				else if (!should_lock && isEditorLocked)
+				else if (!should_lock)
 				{
+					if (!isEditorLocked) EditorLogic.fetch.Lock(true, true, true,"KMP_lock");
 					EditorLogic.fetch.Unlock("KMP_lock");
 					isEditorLocked = false;
 				}
