@@ -23,6 +23,7 @@ mcs \
 -r:Assembly-CSharp-firstpass.dll \
 -r:UnityEngine.dll \
 -r:System.Data.SQLite.dll \
+-r:MySql.Data.dll \
 -r:KerbalMultiPlayer.dll \
 KMPServer/Properties/AssemblyInfo.cs \
 "KMPServer/Service References/ServerList/Reference.cs" \
