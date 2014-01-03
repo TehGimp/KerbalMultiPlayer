@@ -1481,6 +1481,16 @@ namespace KMP
 			StartCoroutine(killVesselOnNextUpdate(oldVessel));
 		}
 		
+		private IEnumerator<WaitForFixedUpdate> setNewVesselNotInPresent(Vessel vessel)
+		{
+			yield return new WaitForFixedUpdate();
+			serverVessels_InPresent[vessel.id] = false;
+			foreach (Part part in vessel.Parts)
+			{
+				setPartOpacity(part,0.3f);
+			}
+		}
+		
 		private IEnumerator<WaitForFixedUpdate> restoreVesselState(Vessel vessel, Vector3 newWorldPos, Vector3 newOrbitVel)
 		{
 			yield return new WaitForFixedUpdate();
@@ -1920,7 +1930,7 @@ namespace KMP
 														serverVessels_InPresent[vessel_update.id] = true;
 														foreach (Part part in extant_vessel.Parts)
 														{
-															part.setOpacity(1f);
+															setPartOpacity(part,1f);
 														}
 													}
 													
@@ -2055,7 +2065,7 @@ namespace KMP
 														serverVessels_InPresent[vessel_update.id] = false;
 														foreach (Part part in extant_vessel.Parts)
 														{
-															part.setOpacity(0.3f);
+															setPartOpacity(part,0.3f);
 														}
 													}
 													
@@ -2477,6 +2487,18 @@ namespace KMP
 			return !killedForCollision;
 		}
 		
+		private void setPartOpacity(Part part, float opacity)
+		{
+			try
+			{
+				if (part.vessel != null)
+				{
+					part.setOpacity(opacity);
+				}
+			}
+			catch (Exception e) { Log.Debug("Exception thrown in setPartOpacity(), Exception: {0}", e.ToString()); }
+		}
+		
 		private bool checkOrbitForCollision(Orbit orbit, double tick, double fromTick)
 		{
 			CelestialBody body = orbit.referenceBody;
@@ -2667,11 +2689,7 @@ namespace KMP
 						}
 						else
 						{
-							serverVessels_InPresent[update.id] = false;
-							foreach (Part part in created_vessel.Parts)
-							{
-								part.setOpacity(0.3f);
-							}
+							StartCoroutine(setNewVesselNotInPresent(created_vessel));
 						}
 					}
 				}
