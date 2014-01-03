@@ -479,7 +479,10 @@ namespace KMP
 					else 
 					{
 						//Clear locks
-						InputLockManager.ClearControlLocks();
+						if (!KMPChatDX.showInput)
+						{
+							InputLockManager.ClearControlLocks();
+						}
 						unlockCrewGUI();
 					}
 					checkRemoteVesselIntegrity();
@@ -3385,7 +3388,11 @@ namespace KMP
 		    KMPScreenshotDisplay.windowEnabled = !KMPScreenshotDisplay.windowEnabled;
 
                 if (Input.GetKeyDown(KMPGlobalSettings.instance.chatTalkKey))
+                {
                     KMPChatDX.showInput = true;
+                    //DISABLE SHIP CONTROL
+                    InputLockManager.SetControlLock(ControlTypes.All,"KMP_ChatActive");
+                }
 
                 if (Input.GetKeyDown(KMPGlobalSettings.instance.chatHideKey) && isGameHUDHidden == false)
                 {
@@ -4452,6 +4459,8 @@ namespace KMP
                     enqueueChatOutMessage(KMPChatDX.chatEntryString);
                     KMPChatDX.chatEntryString = String.Empty;
                     KMPChatDX.showInput = false;
+                    //ENABLE SHIP CONTROL
+                    if (InputLockManager.GetControlLock("KMP_ChatActive") == (ControlTypes.All)) InputLockManager.RemoveControlLock("KMP_ChatActive");
                 }
 
                 if (GUI.GetNameOfFocusedControl() != "inputField")
