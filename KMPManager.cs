@@ -142,7 +142,7 @@ namespace KMP
 		private bool gameRunning = false;
 		private bool activeTermination = false;
 		
-		private bool deferredEditorPartListClear = false;
+		private bool clearEditorPartList = false;
 		
 		//Vessel dictionaries
 		public Dictionary<Guid, Vessel.Situations> sentVessels_Situations = new Dictionary<Guid, Vessel.Situations>();
@@ -308,16 +308,15 @@ namespace KMP
 					return;
 				}
 				
-				if (EditorPartList.Instance != null && deferredEditorPartListClear)
+				if (EditorPartList.Instance != null && clearEditorPartList)
 				{
-					deferredEditorPartListClear = false;
+					clearEditorPartList = false;
 					EditorPartList.Instance.Refresh();
 				}
 				
 				if (syncing) lastScenarioUpdateTime = UnityEngine.Time.realtimeSinceStartup;
 				else if ((UnityEngine.Time.realtimeSinceStartup-lastScenarioUpdateTime) >= SCENARIO_UPDATE_INTERVAL)
 				{
-					lastScenarioUpdateTime = UnityEngine.Time.realtimeSinceStartup;
 					sendScenarios();
 				}
 				
@@ -944,6 +943,7 @@ namespace KMP
 		private void sendRemoveVesselMessage(Vessel vessel, bool isDocking = false)
 		{
 			Log.Debug("sendRemoveVesselMessage");
+			if (vessel == null) return;
 			KMPVesselUpdate update = getVesselUpdate(vessel);
 			update.situation = Situation.DESTROYED;
 			update.state = FlightGlobals.ActiveVessel.id == vessel.id ? State.ACTIVE : State.INACTIVE;
@@ -971,6 +971,7 @@ namespace KMP
 			Log.Debug("sendScenarios");
 			if (!syncing)
 			{
+				lastScenarioUpdateTime = UnityEngine.Time.realtimeSinceStartup;
 				double tick = Planetarium.GetUniversalTime();
 				foreach (ProtoScenarioModule proto in HighLogic.CurrentGame.scenarios)
 				{
@@ -1644,7 +1645,7 @@ namespace KMP
 				{
 					if (proto != null && proto.moduleName == update.name && proto.moduleRef != null && update.getScenarioNode() != null)
 					{
-						Log.Debug("Loading scenario data: " + update.name);
+						Log.Debug("Loading scenario data for existing module: " + update.name);
 						proto.moduleRef.Load(update.getScenarioNode());
 						loaded = true;
 						break;
@@ -1652,11 +1653,11 @@ namespace KMP
 				}
 				if (!loaded)
 				{
+					Log.Debug("Loading new scenario module data: " + update.name);
 					ProtoScenarioModule newScenario = new ProtoScenarioModule(update.getScenarioNode());
-					HighLogic.CurrentGame.scenarios.Add(newScenario);
+					newScenario.Load(ScenarioRunner.fetch);
 				}
-				if (EditorPartList.Instance != null) EditorPartList.Instance.Refresh();
-				else deferredEditorPartListClear = true;
+				clearEditorPartList = true;
 			}
 		}
 		
@@ -4037,7 +4038,7 @@ namespace KMP
 	                    proto.Load(ScenarioRunner.fetch);
 						proto = HighLogic.CurrentGame.AddProtoScenarioModule(typeof(ProgressTracking), GameScenes.SPACECENTER, GameScenes.FLIGHT, GameScenes.TRACKSTATION);
 	                    proto.Load(ScenarioRunner.fetch);
-						EditorPartList.Instance.Refresh();
+						clearEditorPartList = true;
 					}
 					
 					for (int i=0; i<50;)
