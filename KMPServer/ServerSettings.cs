@@ -58,7 +58,7 @@ namespace KMPServer
 			public String serverInfo = String.Empty;
 			public String serverMotd = String.Empty;
 			public String serverRules = String.Empty;
-			public double safetyBubbleRadius = 20000d;
+			public double safetyBubbleRadius = 2000d;
 			public bool cheatsEnabled = true;
 			public bool allowPiracy = false;
 			public int gameMode = 0;

@@ -191,7 +191,7 @@ namespace KMP
 
 		private bool configRead = false;
 
-		public double safetyBubbleRadius = 20000d;
+		public double safetyBubbleRadius = 2000d;
 		private bool isVerified = false;
 		
 		public bool globalUIToggle
