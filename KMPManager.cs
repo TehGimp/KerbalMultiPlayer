@@ -1656,7 +1656,17 @@ namespace KMP
 					if (proto != null && proto.moduleName == update.name && proto.moduleRef != null && update.getScenarioNode() != null)
 					{
 						Log.Debug("Loading scenario data for existing module: " + update.name);
+						if (update.name == "ResearchAndDevelopment")
+						{
+							ResearchAndDevelopment rd = (ResearchAndDevelopment) proto.moduleRef;
+							Log.Debug("pre-R&D: {0}", rd.Science);
+						}
 						proto.moduleRef.Load(update.getScenarioNode());
+						if (update.name == "ResearchAndDevelopment")
+						{
+							ResearchAndDevelopment rd = (ResearchAndDevelopment) proto.moduleRef;
+							Log.Debug("post-R&D: {0}", rd.Science);
+						}
 						loaded = true;
 						break;
 					}
