@@ -314,7 +314,8 @@ namespace KMP
 					EditorPartList.Instance.Refresh();
 				}
 				
-				if (!syncing && (UnityEngine.Time.realtimeSinceStartup-lastScenarioUpdateTime) >= SCENARIO_UPDATE_INTERVAL)
+				if (syncing) lastScenarioUpdateTime = UnityEngine.Time.realtimeSinceStartup;
+				else if ((UnityEngine.Time.realtimeSinceStartup-lastScenarioUpdateTime) >= SCENARIO_UPDATE_INTERVAL)
 				{
 					lastScenarioUpdateTime = UnityEngine.Time.realtimeSinceStartup;
 					sendScenarios();
@@ -965,14 +966,17 @@ namespace KMP
 		private void sendScenarios()
 		{
 			Log.Debug("sendScenarios");
-			double tick = Planetarium.GetUniversalTime();
-			foreach (ProtoScenarioModule proto in HighLogic.CurrentGame.scenarios)
+			if (!syncing)
 			{
-				if (proto != null && proto.moduleName != null && proto.moduleRef != null)
+				double tick = Planetarium.GetUniversalTime();
+				foreach (ProtoScenarioModule proto in HighLogic.CurrentGame.scenarios)
 				{
-					KMPScenarioUpdate update = new KMPScenarioUpdate(proto.moduleName, proto.moduleRef, tick);
-					byte[] update_bytes = KSP.IO.IOUtils.SerializeToBinary(update);
-					enqueuePluginInteropMessage(KMPCommon.PluginInteropMessageID.SCENARIO_UPDATE, update_bytes);
+					if (proto != null && proto.moduleName != null && proto.moduleRef != null)
+					{
+						KMPScenarioUpdate update = new KMPScenarioUpdate(proto.moduleName, proto.moduleRef, tick);
+						byte[] update_bytes = KSP.IO.IOUtils.SerializeToBinary(update);
+						enqueuePluginInteropMessage(KMPCommon.PluginInteropMessageID.SCENARIO_UPDATE, update_bytes);
+					}
 				}
 			}
 		}

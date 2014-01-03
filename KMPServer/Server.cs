@@ -2366,8 +2366,8 @@ namespace KMPServer
                     reader.Close();
                 }
 				if (settings.useMySQL) universeDB.Close();
+				if (sendTimeSync) sendScenarios(cl);
                 sendSyncCompleteMessage(cl);
-				if (sendTimeSync) sendScenarios(cl);	
             }
         }
 
