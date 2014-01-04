@@ -99,7 +99,6 @@ namespace KMP
 		public RenderingManager renderManager;
 		public PlanetariumCamera planetariumCam;
 
-		public Queue<byte[]> interopOutQueue = new Queue<byte[]>();
 		public Queue<byte[]> interopInQueue = new Queue<byte[]>();
 		
 		public static object interopInQueueLock = new object();
@@ -636,13 +635,6 @@ namespace KMP
 			{
 				writePluginData();
 				lastPluginDataWriteTime = UnityEngine.Time.realtimeSinceStartup;
-			}
-
-			//Write interop
-			if ((UnityEngine.Time.realtimeSinceStartup - lastInteropWriteTime) > INTEROP_WRITE_INTERVAL)
-			{
-				if (writePluginInterop())
-					lastInteropWriteTime = UnityEngine.Time.realtimeSinceStartup;
 			}
 
 			//Save global settings periodically
@@ -2768,79 +2760,30 @@ namespace KMP
 					{
 						byte[] bytes;
 						bytes = interopInQueue.Dequeue();
-						if (bytes != null && bytes.Length > 4)
+
+						//Read the message id
+						int id_int = KMPCommon.intFromBytes(bytes, 0);
+		
+						KMPCommon.ClientInteropMessageID id = KMPCommon.ClientInteropMessageID.NULL;
+						if (id_int >= 0 && id_int < Enum.GetValues(typeof(KMPCommon.ClientInteropMessageID)).Length)
+							id = (KMPCommon.ClientInteropMessageID)id_int;
+		
+						//Read the length of the message data
+						int data_length = KMPCommon.intFromBytes(bytes, 4);
+		
+						if (data_length <= 0)
+							handleInteropMessage(id, null);
+						else
 						{
-							//Read the file-format version
-							int file_version = KMPCommon.intFromBytes(bytes, 0);
-			
-							if (file_version != KMPCommon.FILE_FORMAT_VERSION)
-							{
-								//Incompatible client version
-								Debug.LogError("KMP Client incompatible with plugin");
-								return;
-							}
-			
-							//Parse the messages
-							int index = 4;
-							while (index < bytes.Length - KMPCommon.INTEROP_MSG_HEADER_LENGTH)
-							{
-								//Read the message id
-								int id_int = KMPCommon.intFromBytes(bytes, index);
-			
-								KMPCommon.ClientInteropMessageID id = KMPCommon.ClientInteropMessageID.NULL;
-								if (id_int >= 0 && id_int < Enum.GetValues(typeof(KMPCommon.ClientInteropMessageID)).Length)
-									id = (KMPCommon.ClientInteropMessageID)id_int;
-			
-								//Read the length of the message data
-								int data_length = KMPCommon.intFromBytes(bytes, index + 4);
-			
-								index += KMPCommon.INTEROP_MSG_HEADER_LENGTH;
-			
-								if (data_length <= 0)
-									handleInteropMessage(id, null);
-								else if (data_length <= (bytes.Length - index))
-								{
-									//Copy the message data
-									byte[] data = new byte[data_length];
-									Array.Copy(bytes, index, data, 0, data.Length);
-			
-									handleInteropMessage(id, data);
-								}
-			
-								if (data_length > 0)
-									index += data_length;
-							}
+							//Copy the message data
+							byte[] data = new byte[data_length];
+							Array.Copy(bytes, 8, data, 0, data.Length);
+							handleInteropMessage(id, data);
 						}
 					}
 				}
 				catch (Exception e) { Log.Debug("Exception thrown in processClientInterop(), catch 1, Exception: {0}", e.ToString()); }
 			}
-		}
-
-		private bool writePluginInterop()
-		{
-			bool success = false;
-
-			if (interopOutQueue.Count > 0 )
-			{
-				try
-				{
-					while (interopOutQueue.Count > 0)
-					{
-						byte[] message;
-						message = interopOutQueue.Dequeue();
-						KSP.IO.MemoryStream ms = new KSP.IO.MemoryStream();
-					    ms.Write(KMPCommon.intToBytes(KMPCommon.FILE_FORMAT_VERSION), 0, 4);
-						ms.Write(message,0,message.Length);
-
-						KMPClientMain.acceptPluginInterop(ms.ToArray());
-					}
-					success = true;
-				}
-				catch (Exception e) { Log.Debug("Exception thrown in writePluginInterop(), catch 1, Exception: {0}", e.ToString()); }
-			}
-
-			return success;
 		}
 
 		private void handleInteropMessage(KMPCommon.ClientInteropMessageID id, byte[] data)
@@ -2953,11 +2896,7 @@ namespace KMP
 			if (data != null)
 				data.CopyTo(message_bytes, KMPCommon.INTEROP_MSG_HEADER_LENGTH);
 
-			interopOutQueue.Enqueue(message_bytes);
-			
-			//Enforce max queue size
-			while (interopOutQueue.Count > INTEROP_MAX_QUEUE_SIZE)
-				interopOutQueue.Dequeue();
+			KMPClientMain.acceptPluginInterop (message_bytes);
 		}
 
 		//Settings

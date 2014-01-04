@@ -129,9 +129,6 @@ namespace KMP
         public static bool receivedSettings;
 
         //Plugin Interop
-
-        public static Queue<byte[]> interopOutQueue;
-        public static long lastInteropWriteTime;
         public static Queue<byte[]> interopInQueue;
 
         public static Queue<byte[]> pluginUpdateInQueue;
@@ -690,10 +687,6 @@ namespace KMP
 
                     pluginUpdateInQueue = new Queue<byte[]>();
                     textMessageQueue = new Queue<InTextMessage>();
-                    lock (interopOutQueueLock)
-                    {
-                        interopOutQueue = new Queue<byte[]>();
-                    }
                     interopInQueue = new Queue<byte[]>();
 
                     receivedMessageQueue = new Queue<ServerMessage>();
@@ -1376,13 +1369,6 @@ namespace KMP
                     if (handshakeCompleted)
                         processPluginInterop();
 
-                    if (stopwatch.ElapsedMilliseconds - lastInteropWriteTime >= INTEROP_WRITE_INTERVAL)
-                    {
-                        if (writePluginInterop())
-                        {
-                            lastInteropWriteTime = stopwatch.ElapsedMilliseconds;
-                        }
-                    }
 
                     //Throttle the rate at which you can share screenshots
                     if (stopwatch.ElapsedMilliseconds - lastScreenshotShareTime > screenshotInterval)
@@ -1603,99 +1589,44 @@ namespace KMP
 
         //Plugin Interop
 
-        static bool writePluginInterop()
-        {
-            bool success = false;
-            lock (interopOutQueueLock)
-            {
-                if (interopOutQueue.Count > 0)
-                {
-                    try
-                    {
-                        while (interopOutQueue.Count > 0)
-                        {
-                            byte[] message;
-                            message = interopOutQueue.Dequeue();
-                            KSP.IO.MemoryStream ms = new KSP.IO.MemoryStream();
-                            ms.Write(KMPCommon.intToBytes(KMPCommon.FILE_FORMAT_VERSION), 0, 4);
-                            ms.Write(message, 0, message.Length);
-                            gameManager.acceptClientInterop(ms.ToArray());
-                        }
-                        success = true;
-                    }
-                    catch (Exception e)
-                    {
-                        Log.Debug("Exception thrown in writePluginInterop(), catch 1, Exception: {0}", e.ToString());
-                    }
-                }
-            }
-            return success;
-        }
-
-
         static void processPluginInterop()
         {
-            if (interopInQueue.Count > 0)
-            {
-                try
-                {
-                    while (interopInQueue.Count > 0 && tcpSocket.Connected)
-                    {
-                        byte[] bytes;
-                        bytes = interopInQueue.Dequeue();
-                        if (bytes != null && bytes.Length > 0)
-                        {
-                            //Read the file-format version
-                            int file_version = KMPCommon.intFromBytes(bytes, 0);
+			if (interopInQueue.Count > 0 )
+			{
+				try
+				{
+					while (interopInQueue.Count > 0)
+					{
+						byte[] bytes;
+						bytes = interopInQueue.Dequeue();
 
-                            if (file_version != KMPCommon.FILE_FORMAT_VERSION)
-                            {
-                                //Incompatible client version
-                                Log.Debug("KMP Client incompatible with plugin");
-                                return;
-                            }
+						//Read the message id
+						int id_int = KMPCommon.intFromBytes(bytes, 0);
 
-                            //Parse the messages
-                            int index = 4;
-                            while (index < bytes.Length - KMPCommon.INTEROP_MSG_HEADER_LENGTH)
-                            {
-                                //Read the message id
-                                int id_int = KMPCommon.intFromBytes(bytes, index);
+						KMPCommon.PluginInteropMessageID id = KMPCommon.PluginInteropMessageID.NULL;
+						if (id_int >= 0 && id_int < Enum.GetValues(typeof(KMPCommon.PluginInteropMessageID)).Length)
+							id = (KMPCommon.PluginInteropMessageID)id_int;
 
-                                KMPCommon.PluginInteropMessageID id = KMPCommon.PluginInteropMessageID.NULL;
-                                if (id_int >= 0 && id_int < Enum.GetValues(typeof(KMPCommon.PluginInteropMessageID)).Length)
-                                    id = (KMPCommon.PluginInteropMessageID)id_int;
+						//Read the length of the message data
+						int data_length = KMPCommon.intFromBytes(bytes, 4);
 
-                                //Read the length of the message data
-                                int data_length = KMPCommon.intFromBytes(bytes, index + 4);
-
-                                index += KMPCommon.INTEROP_MSG_HEADER_LENGTH;
-
-                                if (data_length <= 0)
-                                    handleInteropMessage(id, null);
-                                else if (data_length <= (bytes.Length - index))
-                                {
-
-                                    //Copy the message data
-                                    byte[] data = new byte[data_length];
-                                    Array.Copy(bytes, index, data, 0, data.Length);
-
-                                    handleInteropMessage(id, data);
-                                }
-
-                                if (data_length > 0)
-                                    index += data_length;
-                            }
-                        }
-                    }
-                }
-                catch (Exception e) {
-                    Log.Debug("Exception thrown in processPluginInterop(), catch 1, Exception: {0}", e.ToString());
-                }
-            }
+						if (data_length <= 0)
+							handleInteropMessage(id, null);
+						else
+						{
+							//Copy the message data
+							byte[] data = new byte[data_length];
+							Array.Copy(bytes, 8, data, 0, data.Length);
+							handleInteropMessage(id, data);
+						}
+					}
+				}
+				catch (Exception e) { Log.Debug("Exception thrown in processPluginInterop(), catch 1, Exception: {0}", e.ToString()); }
+			}
         }
         public static void acceptPluginInterop(byte[] bytes)
         {
+
             try
             {
                 interopInQueue.Enqueue(bytes);
@@ -1704,72 +1635,6 @@ namespace KMP
                 Log.Debug("Exception thrown in acceptPluginInterop(), catch 1, Exception: {0}", e.ToString());
             }
         }
-
-        //		static void readPluginInterop()
-        //		{
-        //
-        //			byte[] bytes = null;
-        //
-        //			if (KSP.IO.File.Exists<KMPClientMain>(INTEROP_PLUGIN_FILENAME))
-        //			{
-        //
-        //				try
-        //				{
-        //					bytes = KSP.IO.File.ReadAllBytes<KMPClientMain>(INTEROP_PLUGIN_FILENAME);
-        //					KSP.IO.File.Delete<KMPClientMain>(INTEROP_PLUGIN_FILENAME);
-        //				}
-        //				catch (KSP.IO.IOException)
-        //				{
-        //				}
-        //
-        //			}
-        //
-        //			if (bytes != null && bytes.Length > 0)
-        //			{
-        //				//Read the file-format version
-        //				int file_version = KMPCommon.intFromBytes(bytes, 0);
-        //
-        //				if (file_version != KMPCommon.FILE_FORMAT_VERSION)
-        //				{
-        //					//Incompatible client version
-        //					Log.Debug("KMP Client incompatible with plugin");
-        //					return;
-        //				}
-        //
-        //				//Parse the messages
-        //				int index = 4;
-        //				while (index < bytes.Length - KMPCommon.INTEROP_MSG_HEADER_LENGTH)
-        //				{
-        //					//Read the message id
-        //					int id_int = KMPCommon.intFromBytes(bytes, index);
-        //
-        //					KMPCommon.PluginInteropMessageID id = KMPCommon.PluginInteropMessageID.NULL;
-        //					if (id_int >= 0 && id_int < Enum.GetValues(typeof(KMPCommon.PluginInteropMessageID)).Length)
-        //						id = (KMPCommon.PluginInteropMessageID)id_int;
-        //
-        //					//Read the length of the message data
-        //					int data_length = KMPCommon.intFromBytes(bytes, index+4);
-        //
-        //					index += KMPCommon.INTEROP_MSG_HEADER_LENGTH;
-        //
-        //					if (data_length <= 0)
-        //						handleInteropMessage(id, null);
-        //					else if (data_length <= (bytes.Length - index))
-        //					{
-        //						
-        //						//Copy the message data
-        //						byte[] data = new byte[data_length];
-        //						Array.Copy(bytes, index, data, 0, data.Length);
-        //
-        //						handleInteropMessage(id, data);
-        //					}
-        //
-        //					if (data_length > 0)
-        //						index += data_length;
-        //				}
-        //			}
-        //
-        //		}
 
         static void handleInteropMessage(KMPCommon.PluginInteropMessageID id, byte[] data)
         {
@@ -1882,13 +1747,7 @@ namespace KMP
 
             lock (interopOutQueueLock)
             {
-                interopOutQueue.Enqueue(message_bytes);
-
-                //Enforce max queue size
-                while (interopOutQueue.Count > INTEROP_MAX_QUEUE_SIZE)
-                {
-                    interopOutQueue.Dequeue();
-                }
+				gameManager.acceptClientInterop (message_bytes);
             }
         }
 
