@@ -1306,7 +1306,14 @@ namespace KMPServer
                 {
                     foreach (var client in clients.ToList().Where(c => c.isValid))
                     {
-                        client.sendOutgoingMessages();
+                        try
+						{
+							client.sendOutgoingMessages();
+						}
+						catch (NullReferenceException e)
+						{
+							Log.Debug ("Caught NRE in sendOutgoingMessages: {0}" + e.StackTrace);	
+						}
                     }
 
                     Thread.Sleep(SLEEP_TIME);
