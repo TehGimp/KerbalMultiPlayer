@@ -1661,7 +1661,10 @@ namespace KMP
 							ResearchAndDevelopment rd = (ResearchAndDevelopment) proto.moduleRef;
 							Log.Debug("pre-R&D: {0}", rd.Science);
 						}
-						proto.moduleRef.Load(update.getScenarioNode());
+						try
+						{
+							proto.moduleRef.Load(update.getScenarioNode());
+						} catch { KMPClientMain.sendConnectionEndMessage("Error in handling scenario data. Please restart your client."); }
 						if (update.name == "ResearchAndDevelopment")
 						{
 							ResearchAndDevelopment rd = (ResearchAndDevelopment) proto.moduleRef;
