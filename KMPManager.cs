@@ -67,10 +67,6 @@ namespace KMP
 		public const float GLOBAL_SETTINGS_SAVE_INTERVAL = 10.0f;
         public const double SAFETY_BUBBLE_CEILING = 35000d;
 		public const float SCENARIO_UPDATE_INTERVAL = 30.0f;
-
-		public const int INTEROP_MAX_QUEUE_SIZE = 64;
-		public const float INTEROP_WRITE_INTERVAL = 0.333f;
-		public const float INTEROP_WRITE_TIMEOUT = 6.0f;
 		
 		public const float FULL_PROTOVESSEL_UPDATE_TIMEOUT = 45f;
 
@@ -110,7 +106,6 @@ namespace KMP
 		private float lastGlobalSettingSaveTime = 0.0f;
 		private float lastPluginDataWriteTime = 0.0f;
 		private float lastPluginUpdateWriteTime = 0.0f;
-		private float lastInteropWriteTime = 0.0f;
 		private float lastKeyPressTime = 0.0f;
 		private float lastFullProtovesselUpdate = 0.0f;
 		private float lastScenarioUpdateTime = 0.0f;
@@ -624,8 +619,7 @@ namespace KMP
 		
 		private void writeUpdates()
 		{
-			if ((UnityEngine.Time.realtimeSinceStartup - lastPluginUpdateWriteTime) > updateInterval
-				&& (Time.realtimeSinceStartup - lastInteropWriteTime) < INTEROP_WRITE_TIMEOUT)
+			if ((UnityEngine.Time.realtimeSinceStartup - lastPluginUpdateWriteTime) > updateInterval)
 			{
 				writePluginUpdate();
 				lastPluginUpdateWriteTime = UnityEngine.Time.realtimeSinceStartup;

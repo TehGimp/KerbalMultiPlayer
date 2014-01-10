@@ -63,9 +63,6 @@ namespace KMP
         public const int MAX_RECONNECT_ATTEMPTS = 0;
         public const long PING_TIMEOUT_DELAY = 10000;
 
-        public const int INTEROP_WRITE_INTERVAL = 333;
-        public const int INTEROP_MAX_QUEUE_SIZE = 64;
-
         public const int MAX_QUEUED_CHAT_LINES = 8;
         public const int DEFAULT_PORT = 2076;
 
