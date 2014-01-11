@@ -551,6 +551,7 @@ namespace KMPServer
                     case "/dekessler": dekesslerServerCommand(parts); break;
                     case "/countships": countShipsServerCommand(); break;
                     case "/listships": listShipsServerCommand(); break;
+                    case "/lockship": lockShipServerCommand(parts); break;
 					case "/deleteship": deleteShipServerCommand(parts); break;
 					case "/reloadmodfile": reloadModFileServerCommand(); break;
 					case "/say": sayServerCommand(rawParts); break;
@@ -667,6 +668,57 @@ namespace KMPServer
         private void listShipsServerCommand()
         {
             countShipsServerCommand(true);
+        }
+
+        private void lockShipServerCommand(string[] parts)
+        {
+            String[] args = parts[1].Split(' ');
+            if (args.Length == 2)
+            {
+                try
+                {
+                    Guid vesselGuid = new Guid(args[0]);
+                    bool lockShip = Boolean.Parse(args[1].ToLower());
+
+                    var universeDB = KMPServer.Server.universeDB;
+                    if (settings.useMySQL)
+                    {
+                        universeDB = new MySqlConnection(settings.mySQLConnString);
+                        universeDB.Open();
+                    }
+                    DbCommand cmd = universeDB.CreateCommand();
+
+                    String sql = "UPDATE kmpVessel" +
+                                " SET Private = @private" +
+                                " WHERE Guid = @guid";
+
+                    cmd.Parameters.AddWithValue("private", lockShip);
+                    cmd.Parameters.AddWithValue("guid", vesselGuid.ToByteArray());                    
+                    cmd.CommandText = sql;
+                    
+                    int rows = -1;
+                    if (cmd.CommandText != null) rows = cmd.ExecuteNonQuery();
+                    if (settings.useMySQL) universeDB.Close();
+
+                    if (rows != -1 && rows <= 1)
+                    {
+                        if (lockShip)
+                            Log.Info("Vessel {0} is now private.", args[0]);
+                        else
+                            Log.Info("Vessel {0} is now public.", args[0]);
+                    }
+                    else
+                        Log.Info("Vessel {0} not found.", args[0]);
+                }
+                catch (FormatException)
+                {
+                    Log.Error("Supplied tokens are invalid. Use /listships to double check your ID.");
+                }
+            }
+            else
+            {
+                Log.Info("Could not parse lock ship command. Format is \"/lockship <vesselID> <true/false>\"");
+            }
         }
         
         private void deleteShipServerCommand(string[] parts)
@@ -3840,6 +3892,7 @@ namespace KMPServer
             Log.Info("/clearclients - Attempt to clear 'ghosted' clients");
 			Log.Info("/countships - Lists number of ships in universe.");
 			Log.Info("/listships - List all ships in universe along with their ID");
+            Log.Info("/lockship [ID] [true/false] - Set ship as private or public.");
 			Log.Info("/deleteship [ID] - Removes ship from universe."); 
             Log.Info("/dekessler <mins> - Remove debris that has not been updated for at least <mins> minutes (in-game time) (If no <mins> value is specified, debris that is older than 30 minutes will be cleared)");
             Log.Info("/save - Backup universe");
