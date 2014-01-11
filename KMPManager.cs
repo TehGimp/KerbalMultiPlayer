@@ -1631,6 +1631,108 @@ namespace KMP
 			}
 		}
 		
+		/// <summary>
+		/// Determines if a scenario module with the specified name exists already. Only checks the name.
+		/// This is used to determine when the scenarios list was not cleared properly (creating a new game does not seem to clear the list - it only sets the modules'
+		/// moduleRefs to null, which caused failure to sync on career servers, by creating another two modules and then attempting to write data into all four,
+		/// and might have caused career mode on non-career servers if you weren't restarting KSP after exiting career servers).
+		/// </summary>
+		/// <param name="modName">The module name, such as "ResearchAndDevelopment"</param>
+		/// <returns></returns>
+		private bool HasModule(string modName)
+		{
+			Game g = HighLogic.CurrentGame;
+			bool retval = false;
+
+			if (g == null)
+			{
+				Log.Warning("HasModule called when there is no current game.");
+			}
+			else if (g.scenarios.Count > 0)
+			{
+				for (int i = 0; i < g.scenarios.Count; i++)
+				{
+					ProtoScenarioModule proto = g.scenarios[i];
+					if (proto != null)
+					{
+						if (proto.moduleName.CompareTo(modName) == 0)
+						{
+							retval = true;
+						}
+					}
+					else
+					{
+						Log.Warning("Null protoScenario found by HasModule!");
+					}
+				}
+			}
+			return retval;
+		}
+		
+		/// <summary>
+		/// Log current game science, and log some debug information.
+		/// Logs the science amount, or -1 if there is no current game, or no scenarios, or no R&D proto scenario module.
+		/// This was used for debugging to figure out what and where things were going wrong with connecting after disconnecting (#578, #579).
+		/// </summary>
+		private void LogScience()
+		{
+			Game g = HighLogic.CurrentGame;
+			if (g == null)
+			{
+				Log.Debug("No current game.");
+				return;
+			}
+			Log.Debug("Game status=" + g.Status + " modes=" + g.Mode + " IsResumable=" + g.IsResumable() + " startScene=" + g.startScene+" NumScenarios="+g.scenarios.Count);
+			float science = -1;
+			if (g.scenarios.Count > 0)
+			{
+				for (int i = 0; i < g.scenarios.Count; i++)
+				{
+					ProtoScenarioModule proto = g.scenarios[i];
+					if (proto != null)
+					{
+						Log.Debug("g.scenarios[" + i + "].moduleName=" + g.scenarios[i].moduleName + ", and moduleRef=" + (g.scenarios[i].moduleRef != null ? g.scenarios[i].moduleRef.ClassName : "null"));
+						if (proto.moduleRef != null && proto.moduleRef is ResearchAndDevelopment)
+						{
+							ResearchAndDevelopment rd = (ResearchAndDevelopment)proto.moduleRef;
+							if (science > -1)
+							{
+								//This was happening later on when there were four "scenarios" and the ones with null moduleRefs had somehow been replaced by actual moduleRefs.
+								//Upon trying to handle another science update when there were two valid R&D moduleRefs in scenarios,
+								//KSP/KMP exploded causing the desync which triggered the disconnect and message to restart KSP (the bug symptoms).
+								//The root cause, of course, was that scenarios was never cleared properly. That is fixed now.
+								Log.Error("More than one ResearchAndDevelopment scenario module in the game! Science was already " + science + ", now we've found another which says it is " + rd.Science + "!");
+							}
+							science = rd.Science;
+						}
+						else if (proto.moduleName.CompareTo("ResearchAndDevelopment") == 0)
+						{
+							//This was happening - after disconnecting from a career mode server, then making a new game to connect again, 
+							//there would already be two "scenarios" - both with null moduleRefs - 
+							//BEFORE we had tried to add two for career mode.
+							Log.Error("ProtoScenarioModule claims to be a ResearchAndDevelopment but contains no such thing! moduleRef is " + (proto.moduleRef != null ? proto.moduleRef.ClassName : "null"));
+						}
+					}
+					else
+					{
+						Log.Debug("Null protoScenario!");
+					}
+				}
+			}
+			else
+			{
+				Log.Debug("No scenarios.");
+			}
+			if (science > -1)
+			{
+				Log.Debug("Science = " + science);
+			}
+			else if (g.scenarios.Count > 0)
+			{
+				Log.Debug("No ResearchAndDevelopment scenario modules.");
+			}
+		}
+		
 		private void handleScenarioUpdate(object obj)
 		{
 			if (obj is KMPScenarioUpdate)
@@ -1650,7 +1752,7 @@ namespace KMP
 						try
 						{
 							proto.moduleRef.Load(update.getScenarioNode());
-						} catch { KMPClientMain.sendConnectionEndMessage("Error in handling scenario data. Please restart your client."); }
+						} catch (Exception e) { KMPClientMain.sendConnectionEndMessage("Error in handling scenario data. Please restart your client. "); Log.Debug(e.ToString());  }
 						if (update.name == "ResearchAndDevelopment")
 						{
 							ResearchAndDevelopment rd = (ResearchAndDevelopment) proto.moduleRef;
@@ -3450,7 +3552,7 @@ namespace KMP
 
 			if (forceQuit)
 			{
-				Debug.Log("Force quit");
+				Log.Debug("Force quit");
 				forceQuit = false;
 				gameRunning = false;
 				if (HighLogic.LoadedScene != GameScenes.MAINMENU)
@@ -3995,6 +4097,16 @@ namespace KMP
 					syncing = true;
 					
 					HighLogic.CurrentGame.Start();
+					
+					if (HasModule("ResearchAndDevelopment"))
+					{
+						Log.Debug("Erasing scenario modules");
+						HighLogic.CurrentGame.scenarios.Clear();
+						//This is done because scenarios is not cleared properly even when a new game is started, and it was causing bugs in KMP.
+						//Instead of clearing scenarios, KSP appears to set the moduleRefs of each module to null, which is what was causing KMP bugs #578, 
+						//and could be the cause of #579 (but closing KSP after disconnecting from a server, before connecting again, prevented it from happening, 
+						//at least for #578).
+					}
 					
 					if (gameMode == 1)
 					{
