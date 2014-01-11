@@ -38,6 +38,8 @@ namespace KMP
 
         //Constants
 
+        private const string COMPILE_KEY = "testkeypasssword";
+
         public const String USERNAME_LABEL = "username";
         public const String IP_LABEL = "hostname";
 		public const String PORT_LABEL = "port";
@@ -47,6 +49,7 @@ namespace KMP
 
         //public const String INTEROP_CLIENT_FILENAME = "interopclient.txt";
         //public const String INTEROP_PLUGIN_FILENAME = "interopplugin.txt";
+        public const string PLUGIN_DATA_DIRECTORY = "KMP/Plugins/PluginData/KerbalMultiPlayer";
         public const string CLIENT_CONFIG_FILENAME = "KMPClientConfig.xml";
         public const string CLIENT_TOKEN_FILENAME = "KMPPlayerToken.txt";
         public const string MOD_CONTROL_FILENAME = "KMPModControl.txt";
@@ -100,12 +103,12 @@ namespace KMP
 		//ModChecking
 		public static bool modFileChecked = false;
 		public static List<string> partList = new List<string>();
-        public static Dictionary<string, string> md5List = new Dictionary<string, string>(); //path:md5
+        public static Dictionary<string, SHAMod> shaList = new Dictionary<string, SHAMod>();
         public static List<string> resourceList = new List<string>();
         public static List<string> requiredModList = new List<string>();
-		public static string resourceControlMode = "blacklist";
+		public static string resourceControlMode = "whitelist";
 		public static string modMismatchError = "Mod Verification Failed - Reason Unknown";
-		public static string GAMEDATAPATH = new System.IO.DirectoryInfo(getKMPDirectory()).Parent.Parent.FullName;
+        public static string GAMEDATAPATH = new System.IO.DirectoryInfo(getKMPDirectory()).Parent.Parent.FullName;
         public static byte[] kmpModControl_bytes;
 		
         //Connection
@@ -267,152 +270,218 @@ namespace KMP
             writeConfigFile();
         }
         
-        private static string doHashMD5(MD5 md5, byte[] tohash)
+        private static void parseModFile(string ModFileContent)
         {
-        	byte[] hashed = md5.ComputeHash(tohash);
-
-            StringBuilder sBuilder = new StringBuilder();
-
-            // Loop through each byte of the hashed data  
-            // and format each one as a hexadecimal string. 
-            for (int i = 0; i < hashed.Length; i++)
-            {
-                sBuilder.Append(hashed[i].ToString("x2"));
-            }
-			
-            return sBuilder.ToString();
-        }
-        
-        private static void parseModFile(string modfilepath)
-        {
-        	System.IO.StreamReader reader = System.IO.File.OpenText(modfilepath);
+            System.IO.StringReader reader = new System.IO.StringReader(ModFileContent);
         	
-	        string resourcemode = "blacklist";
+	        string resourcemode = "whitelist";
 	        List<string> allowedParts = new List<string>();
-	        Dictionary<string, string> hashes = new Dictionary<string, string>();
+            Dictionary<string, SHAMod> hashes = new Dictionary<string, SHAMod>();
 	        List<string> resources = new List<string>();
 	        List<string> modList = new List<string>();
 	        string line;
 	        string[] splitline;
-	        string readmode = "parts";
-	        while (reader.Peek() != -1)
+	        string readmode = "";
+	        while (true)
 	        {
-	        	
 	        	line = reader.ReadLine();
-	        	
+                if (line == null)
+                {
+                    break;
+                }
 	        	try
 	        	{
-				if(! String.IsNullOrEmpty(line))
-				{
-					if(line[0] != '#')//allows commented lines
-					{
-						if(line[0] == '!')//changing readmode
-						{
-							if(line.Contains("partslist")){
-								readmode = "parts";
-							}
-							else if(line.Contains("md5")){
-								readmode = "md5";
-							}
-							else if(line.Contains("resource-blacklist")){ //allow all resources EXCEPT these in file
-								readmode = "resource";
-								resourcemode = "blacklist";
-							}
-							else if(line.Contains("resource-whitelist")){ //allow NO resources EXCEPT these in file
-								readmode = "resource";
-								resourcemode = "whitelist";
-							}
-							else if(line.Contains("required")){
-								readmode = "required";
-							}
-						}
-						else if(readmode == "parts")
-						{
-							allowedParts.Add(line);
-						}
-						else if(readmode == "md5")
-						{
-							splitline = line.Split('=');
-							hashes.Add(splitline[0], splitline[1]); //stores path:md5
-						}
-						else if(readmode == "resource"){
-							resources.Add(line);
-						}
-						else if(readmode == "required"){
-							modList.Add(line);
-						}
-					}
-				}
-			}
+				    if(!String.IsNullOrEmpty(line))
+				    {
+					    if(line[0] != '#')//allows commented lines
+					    {
+						    if(line[0] == '!')//changing readmode
+						    {
+							    if(line.Contains("partslist")){
+								    readmode = "parts";
+							    }
+							    else if(line.Contains("sha-required")){
+                                    readmode = "sha-required";
+							    }
+                                else if (line.Contains("sha-optional"))
+                                {
+                                    readmode = "sha-optional";
+                                }
+							    else if(line.Contains("resource-blacklist")){ //allow all resources EXCEPT these in file
+								    readmode = "resource";
+								    resourcemode = "blacklist";
+							    }
+							    else if(line.Contains("resource-whitelist")){ //allow NO resources EXCEPT these in file
+								    readmode = "resource";
+								    resourcemode = "whitelist";
+							    }
+							    else if(line.Contains("required")){
+								    readmode = "required";
+							    }
+						    }
+						    else if(readmode == "parts")
+						    {
+							    allowedParts.Add(line);
+						    }
+                            else if (readmode == "sha-required")
+						    {
+							    splitline = line.Split('=');
+                                hashes.Add(splitline[0], new SHAMod { sha = splitline[1], required = true });
+						    }
+                            else if (readmode == "sha-optional")
+                            {
+                                splitline = line.Split('=');
+                                hashes.Add(splitline[0], new SHAMod { sha = splitline[1], required = false });
+                            }
+						    else if(readmode == "resource"){
+							    resources.Add(line);
+						    }
+						    else if(readmode == "required"){
+							    modList.Add(line);
+						    }
+					    }
+				    }
+			    }
 		        catch (Exception e)
 		        {
-		        	Log.Info(e.ToString());
+		            Log.Info(e.ToString());
 		        }
 	        }
 	        
 	        reader.Close();
 	        partList = allowedParts; //make all the vars global once we're done parsing
-	        md5List = hashes;
+            shaList = hashes;
 	        resourceControlMode = resourcemode;
 	        resourceList = resources;
 	        requiredModList = modList;
-	        
         }
         
-        private static bool md5Check()
+        private static bool SHACheck()
         {
-        	string md5Hash;
-        	string hashPath;
-        	byte[] toHash;
-        	foreach (KeyValuePair<string, string> entry in md5List)
-        	{
-        		hashPath = System.IO.Path.Combine(GAMEDATAPATH, entry.Key);
-        		
-	        	MD5 md5 = MD5.Create();
-	        	
-	        	try
-	        	{
-	        		toHash = System.IO.File.ReadAllBytes(hashPath);
-	        	}
-	        	catch (System.IO.FileNotFoundException)
-	        	{
-	        		modMismatchError = "Required File Missing: " + System.IO.Path.GetFileName(hashPath);
-	        		return false;
-	        	}
-	        	catch (System.IO.DirectoryNotFoundException)
-	        	{
-	        		string dir = hashPath;
-	        		while(new System.IO.DirectoryInfo(dir).Parent.Name != "GameData")
-	        		{
-	        			dir = new System.IO.DirectoryInfo(dir).Parent.FullName;
-	        		}
-	        		modMismatchError = "Required Mod Missing or Incomplete: " + new System.IO.DirectoryInfo(dir).Name;
-	        		return false;
-	        	}
-	        	catch (System.IO.IsolatedStorage.IsolatedStorageException) //EXACTLY the same as directory not found, but thrown for the same reason (why?)
-	        	{
-	        		string dir = hashPath;
-	        		while(new System.IO.DirectoryInfo(dir).Parent.Name != "GameData")
-	        		{
-	        			dir = new System.IO.DirectoryInfo(dir).Parent.FullName;
-	        		}
-	        		modMismatchError = "Required Mod Missing or Incomplete: " + new System.IO.DirectoryInfo(dir).Name;
-	        		return false;
-	        	}
-	        	catch (Exception e)
-	        	{
-		        	Log.Info(e.ToString());
-		        	return false;
-	        	}
-	        	
-	        	md5Hash = doHashMD5(md5, toHash);
-	        	if (md5Hash != entry.Value.ToLower())
-	        	{
-	        		string failedFile = System.IO.Path.GetFileName(hashPath);
-	        		modMismatchError = "MD5 Checksum Mismatch: " + failedFile;
-	        		return false;
-	        	}
-	        }
+        	//string hashPath;
+            //string localName;
+            //System.IO.FileStream stream;
+            char[] replaceChars = {'\\', '/'};
+            try
+            {
+                foreach (KeyValuePair<string, SHAMod> entry in shaList)
+                {
+                    LoadedFileInfo FileInfo = null;
+                    if (resourceControlMode == "whitelist")
+                    {
+                        if (resourceList.Contains(entry.Key)) // don't check anything that has been specifically whitelisted
+                        {
+                            Log.Debug("SHA hash checking skipped due to whitelisting: " + entry.Key);
+                            continue;
+                        }
+                    }
+                    else if (entry.Key.StartsWith(PLUGIN_DATA_DIRECTORY) && (entry.Key.EndsWith(".txt") || entry.Key.EndsWith(".xml"))) // if using a blacklist, ignore any files in the KMP PluginData folder that are supposed to be there
+                    {
+                        Log.Debug("SHA hash checking skipped due to being a KMP file that changes: " + entry.Key);
+                        continue;
+                    }
+                    try
+                    {
+                        FileInfo = KMPManager.LoadedModfiles.SingleOrDefault(x => x.ModPath == entry.Key);
+                    }
+                    catch (InvalidOperationException)
+                    {
+                        modMismatchError = "Multiple of same file defined in different directories: " + entry.Key;
+                        return false;
+                    }
+                    if (FileInfo == null)
+                    {
+                        if (entry.Value.required) // the file doesn't exist, so refuse connection if it's a required mod
+                        {
+                            modMismatchError = "Required File Missing: " + entry.Key;
+                            return false;
+                        }
+                        else // if it's just an optional mod, continue because it's ok if it's missing
+                        {
+                            continue;
+                        }
+                    }
+                    else if (String.Compare(FileInfo.SHA256, entry.Value.sha, true) != 0) // if the mod file exists, then it MUST match the SHA from the server
+                    {
+                        modMismatchError = "SHA Checksum Mismatch: " + FileInfo.LoadedPath;
+                        return false;
+                    }
+
+                    /*
+
+                    hashPath = String.Join(System.IO.Path.DirectorySeparatorChar.ToString(), System.IO.Path.Combine(GAMEDATAPATH, entry.Key).Split(replaceChars));// make hashpath proper for current platform
+                    localName = String.Join(System.IO.Path.DirectorySeparatorChar.ToString(), entry.Key.Split(replaceChars));
+                    try
+                    {
+                        stream = System.IO.File.OpenRead(hashPath);
+                    }
+                    catch (System.IO.FileNotFoundException)
+                    {
+                        if (entry.Value.required) // only throw the error if it's a required mod file and it's missing
+                        {
+                            modMismatchError = "Required File Missing: " + localName;
+                            return false;
+                        }
+                        else // don't throw an error if it's an optional mod and client doesn't have it installed
+                        {
+                            continue;
+                        }
+                    }
+                    catch (System.IO.DirectoryNotFoundException)
+                    {
+                        if (entry.Value.required) // only throw the error if it's a required mod file and it's missing
+                        {
+                            string dir = hashPath;
+                            while (new System.IO.DirectoryInfo(dir).Parent.Name != "GameData")
+                            {
+                                dir = new System.IO.DirectoryInfo(dir).Parent.FullName;
+                            }
+                            modMismatchError = String.Format("Required Mod Missing or Incomplete: {0} ({1})", new System.IO.DirectoryInfo(dir).Name, localName);
+                            return false;
+                        }
+                        else // don't throw an error if it's an optional mod and client doesn't have it installed
+                        {
+                            continue;
+                        }
+                    }
+                    catch (System.IO.IsolatedStorage.IsolatedStorageException) //EXACTLY the same as directory not found, but thrown for the same reason (why?)
+                    {
+                        if (entry.Value.required) // only throw the error if it's a required mod file and it's missing
+                        {
+                            string dir = hashPath;
+                            while (new System.IO.DirectoryInfo(dir).Parent.Name != "GameData")
+                            {
+                                dir = new System.IO.DirectoryInfo(dir).Parent.FullName;
+                            }
+                            modMismatchError = String.Format("Required Mod Missing or Incomplete: {0} ({1})", new System.IO.DirectoryInfo(dir).Name, localName);
+                            return false;
+                        }
+                        else // don't throw an error if it's an optional mod and client doesn't have it installed
+                        {
+                            continue;
+                        }
+                    }
+                    catch (Exception e)
+                    {
+                        Log.Info(e.ToString());
+                        return false;
+                    }
+                    SHA256Managed sha = new SHA256Managed();
+                    byte[] hash = sha.ComputeHash(stream);
+                    string shaHash = BitConverter.ToString(hash).Replace("-", String.Empty);
+                    if (shaHash.ToLower() != entry.Value.sha.ToLower())
+                    {
+                        modMismatchError = "SHA Checksum Mismatch: " + localName;
+                        return false;
+                    }
+                     * */
+                }
+            }
+            catch (Exception e)
+            {
+                modMismatchError = e.Message;
+                return false;
+            }
 	        return true;
 	    }
         
@@ -421,16 +490,23 @@ namespace KMP
         {
         	try
         	{
-        		string[] ls = System.IO.Directory.GetFiles(GAMEDATAPATH, "*.*", System.IO.SearchOption.AllDirectories);
 	        	if(resourceControlMode == "blacklist")
 	        	{
 	        		foreach(string checkedResource in resourceList)
 	        		{
-	        			foreach(string resource in ls)
-	        			{
-	        				if(resource.Contains(checkedResource))
+                        foreach (LoadedFileInfo file in KMPManager.LoadedModfiles)
+                        {
+                            /*string resource = file.ModPath;//.Substring(GAMEDATAPATH.Length + 1); // get path relative to GameData directory
+                            if (!resource.StartsWith(GAMEDATAPATH))
+                            {
+                                modMismatchError = "You may not join servers when you have mods loaded from outside your GameData directory (perhaps in the depricated Parts or Plugins directories?)";
+                                return false;
+                            }
+                            resource = resource.Substring(GAMEDATAPATH.Length + 1); // get path relative to GameData directory
+                            */
+	        				if(file.ModPath.Contains(checkedResource))
 	        				{
-	        					modMismatchError = "Resource Blacklisted: " + new System.IO.DirectoryInfo(resource).Name;
+                                modMismatchError = "File blacklisted: " + file.LoadedPath;
 	        					return false;
 	        				}
 	        			}
@@ -438,61 +514,38 @@ namespace KMP
 	        	}
 	        	else if(resourceControlMode == "whitelist")
 	        	{
-	        		foreach(string resource in ls)
-	        		{
-	        			if(resource.Contains(".dll") && !((resource.Contains("KerbalMultiPlayer.dll") 
-	        			|| resource.Contains("ICSharpCode.SharpZipLib.dll")) && resource.Contains("KMP")))//is .dll the ONLY type we need to worry about? 
-	        			{
-	        				bool allowed = false;
-	        				foreach(string checkedResource in resourceList)
-	        				{
-	        					if(resource.Contains(checkedResource))
-	        					{
-									allowed = true;
-									break;
-	        					}
-	        				}
-	        				if(!allowed)
-	        				{
-	        					modMismatchError = "Resource Not On Whitelist: " + new System.IO.DirectoryInfo(resource).Name;
+                    foreach (LoadedFileInfo file in KMPManager.LoadedModfiles)
+                    {
+                        /*if (!resource.StartsWith(GAMEDATAPATH))
+                        {
+                            modMismatchError = "You may not join servers when you have mods loaded from outside your GameData directory (perhaps in the depricated Parts or Plugins directories?)";
+                            return false;
+                        }
+                        resource = resource.Substring(GAMEDATAPATH.Length + 1); // get path relative to GameData directory
+                        string resourcePath = resource.Substring(0, Math.Min(resource.Length, PLUGIN_DATA_DIRECTORY.Length)); // get the substring that is of equal length to the KMP plugin directory (to make sure that we're only skipping files in KMP PluginData directory, which are the only ones that should be different from the server)
+                        
+                        if (!resource.Contains(PLUGIN_DATA_DIRECTORY) && !resource.Contains(PLUGIN_DATA_DIRECTORY.Replace('/', '\\')) && !resourceList.Contains(resource.Replace('\\', '/'))){ //check all files other than those in the KMP PluginData directory, also make sure it wasn't explicitly added to the whitelist
+                            if(!shaList.ContainsKey(resource.Replace('\\', '/'))){ // check and see if it was added to the SHA section (which would have been done automatically using /modgen), but first make sure it's in Unix style
+                                modMismatchError = "File not allowed on this server: " + resource;
 	        					return false;
-	        				}
-	        			}
+                            }
+                        }
+                        */
+
+                        if (!resourceList.Contains(file.ModPath) && !shaList.ContainsKey(file.ModPath)) // check if the resource is a) whitelisted, or b) listed in the optional or required SHA sections. If not, the file is not allowed to be loaded.
+                        {
+                            modMismatchError = "File not allowed on this server: " + file.LoadedPath;
+                            return false;
+                        }
 	        		}
 	        	}
 	        	return true;
 	        }
 	        catch (Exception e)
 	        {
-	        	Log.Info(e.ToString());
+	        	Log.Debug(e.ToString());
 	        	return false;
 	        }
-        }
-        
-        private static bool requiredCheck()
-        {
-        	string[] ls = System.IO.Directory.GetDirectories(GAMEDATAPATH);
-        	bool found;
-        	foreach (string required in requiredModList)
-        	{
-        		found = false;
-        		
-	        	foreach (string resource in ls)
-	        	{
-	        		if (required == new System.IO.DirectoryInfo(resource).Name)
-	        		{
-	        			found = true;
-	        			break;
-	        		}
-	        	}
-	        	if (!found)
-	        	{
-	        		modMismatchError = "Missing Required Mod: " + required;
-	        		return false;
-	        	}
-	        }
-        	
-        	return true;
         }
         
         private static bool modCheck(byte[] kmpModControl_bytes)
@@ -503,9 +556,9 @@ namespace KMP
 				string modFilePath = System.IO.Path.Combine(GAMEDATAPATH, "KMP/Plugins/PluginData/KerbalMultiPlayer/" + MOD_CONTROL_FILENAME);
 	        	System.IO.File.WriteAllBytes(modFilePath, kmpModControl_bytes);
 	        	
-				parseModFile(modFilePath);
+				parseModFile(System.Text.Encoding.UTF8.GetString(kmpModControl_bytes));
 	        	
-	        	if (!md5Check() || !resourceCheck() || !requiredCheck())
+	        	if (!resourceCheck() || !SHACheck())
 	        	{
 	        		return false;
 	        	}
@@ -952,7 +1005,7 @@ namespace KMP
                                 }
                                 gameManager.gameCheatsEnabled = Convert.ToBoolean(data[21]);
 								gameManager.gameArrr = Convert.ToBoolean(data[22]);
-                                //partList, requiredModList, md5List, resourceList and resourceControlMode 
+                                //partList, requiredModList, shaList, resourceList and resourceControlMode 
 
                             }
 
@@ -2467,5 +2520,11 @@ namespace KMP
         public byte[] buffer = new byte[BufferSize];
         // Received data string.
         public byte[] data = new byte[BufferSize];
+    }
+
+    public class SHAMod
+    {
+        public string sha { get; set; }
+        public bool required { get; set; }
     }
 }

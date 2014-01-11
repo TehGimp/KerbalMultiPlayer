@@ -350,7 +350,7 @@ namespace KMP
 
 				if (!orbitValid)
 				{
-					//Debug.Log("Orbit invalid: " + vesselName);
+                    //Log.Debug("Orbit invalid: " + vesselName);
 					//Spoof some values so the game doesn't freak out
 					localPosition = new Vector3(1000.0f, 1000.0f, 1000.0f);
 					translationFromBody = localPosition;
