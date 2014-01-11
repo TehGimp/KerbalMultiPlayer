@@ -3195,7 +3195,7 @@ namespace KMP
                 platform = PlatformID.Unix;
             }
             LoadedModfiles = new List<LoadedFileInfo>();
-            /*try
+            try
             {
                 List<UrlDir.UrlFile> files = GameDatabase.Instance.root.AllFiles.ToList();
                 files.AddRange(GameDatabase.Instance.root.AllConfigFiles);
@@ -3219,7 +3219,7 @@ namespace KMP
             catch (Exception e)
             {
                 Log.Debug("Exception thrown in Awake(), catch 1, Exception: {0}", e.ToString());
-            }*/
+            }
 			Debug.Log("KMP loaded");
 		}
 		
