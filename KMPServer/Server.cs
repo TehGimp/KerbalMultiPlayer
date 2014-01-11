@@ -653,7 +653,7 @@ namespace KMPServer
             {
                 KMPVesselUpdate vessel_update = (KMPVesselUpdate)ByteArrayToObject(GetDataReaderBytes(reader, 0));
                 if (bList)
-                    Log.Info("Name {0}\tID: {1}", vessel_update.name, vessel_update.kmpID);
+                    Log.Info("Name: {0}\tID: {1}", vessel_update.name, vessel_update.kmpID);
                 count++;
             }
 			reader.Dispose();
@@ -1456,7 +1456,7 @@ namespace KMPServer
 				universeDB.Open();
 			}
                     DbCommand cmd = universeDB.CreateCommand();
-                    string sql = "DELETE FROM kmpSubspace WHERE ID = @id AND LastTick < (SELECT MIN(s.LastTick) FROM (SELECT * FROM kmpSubspace) s INNER JOIN kmpVessel v ON v.Subspace = s.ID);";
+                    string sql = "DELETE FROM kmpSubspace WHERE ID = @id AND LastTick < (SELECT Tick FROM (SELECT MIN(s.LastTick) Tick FROM kmpSubspace s INNER JOIN kmpVessel v ON v.Subspace = s.ID) a);";
                     cmd.CommandText = sql;
                     cmd.Parameters.AddWithValue("id", cl.currentSubspaceID.ToString("D"));
                     cmd.ExecuteNonQuery();
@@ -2908,8 +2908,7 @@ namespace KMPServer
                                     {
                                         cmd = universeDB.CreateCommand();
                                         //Clean up database entries
-                                        sql = "DELETE FROM kmpSubspace WHERE ID = @curSubspace AND LastTick < (SELECT MIN(s.LastTick)" +
-                                            " FROM (SELECT * FROM kmpSubspace) s INNER JOIN kmpVessel v ON v.Subspace = s.ID);";
+                                        sql = "DELETE FROM kmpSubspace WHERE ID = @curSubspace AND LastTick < (SELECT Tick FROM (SELECT MIN(s.LastTick) Tick FROM kmpSubspace s INNER JOIN kmpVessel v ON v.Subspace = s.ID) a);";
                                         cmd.CommandText = sql;
                                         cmd.Parameters.AddWithValue("curSubspace", cl.currentSubspaceID.ToString("D"));
                                         cmd.ExecuteNonQuery();
@@ -2991,8 +2990,7 @@ namespace KMPServer
                                     {
                                         cmd = universeDB.CreateCommand();
                                         //Clean up database entries
-                                        sql = "DELETE FROM kmpSubspace WHERE ID = @curSubspace AND LastTick < (SELECT MIN(s.LastTick)" +
-                                            " FROM (SELECT * FROM kmpSubspace) s INNER JOIN kmpVessel v ON v.Subspace = s.ID);";
+                                        sql = "DELETE FROM kmpSubspace WHERE ID = @curSubspace AND LastTick < (SELECT Tick FROM (SELECT MIN(s.LastTick) Tick FROM kmpSubspace s INNER JOIN kmpVessel v ON v.Subspace = s.ID) a);";
                                         cmd.CommandText = sql;
                                         cmd.Parameters.AddWithValue("curSubspace", cl.currentSubspaceID.ToString("D"));
                                         cmd.ExecuteNonQuery();
@@ -3697,12 +3695,11 @@ namespace KMPServer
             	universeDB.BackupDatabase(diskDB);
 			}
             DbCommand cmd = diskDB.CreateCommand();
-            string sql = "DELETE FROM kmpSubspace WHERE LastTick < (SELECT MIN(s.LastTick) FROM (SELECT * FROM kmpSubspace) s" +
-                " INNER JOIN kmpVessel v ON v.Subspace = s.ID);" +
+            string sql = "DELETE FROM kmpSubspace WHERE LastTick < (SELECT Tick FROM (SELECT MIN(s.LastTick) Tick FROM kmpSubspace s INNER JOIN kmpVessel v ON v.Subspace = s.ID) a);" +
                 " DELETE FROM kmpVesselUpdateHistory;" +
-                " DELETE FROM kmpVesselUpdate WHERE ID IN (SELECT ID FROM (SELECT * FROM kmpVesselUpdate) vu" +
+                " DELETE FROM kmpVesselUpdate WHERE ID IN (SELECT ID FROM kmpVesselUpdate vu" +
                 " WHERE Subspace != (SELECT ID FROM kmpSubspace WHERE LastTick = (SELECT MAX(LastTick)" +
-                " FROM kmpSubspace WHERE ID IN (SELECT Subspace FROM (SELECT * FROM kmpVesselUpdate) WHERE Guid = vu.Guid))));";
+                " FROM kmpSubspace WHERE ID IN (SELECT Subspace FROM kmpVesselUpdate WHERE Guid = vu.Guid))));";
             cmd.CommandText = sql;
             cmd.ExecuteNonQuery();
             diskDB.Close();
@@ -3738,8 +3735,8 @@ namespace KMPServer
 					
 					//Clear anything before that
 					DbCommand cmd2 = universeDB.CreateCommand();
-	                string sql2 = "DELETE FROM kmpSubspace WHERE LastTick < @minTick AND LastTick < (SELECT MIN(s.LastTick) FROM (SELECT * FROM kmpSubspace) s" +
-	                    " INNER JOIN kmpVessel v ON v.Subspace = s.ID);" +
+	                string sql2 = "DELETE FROM kmpSubspace WHERE LastTick < @minTick AND LastTick < (SELECT Tick FROM (SELECT MIN(s.LastTick) Tick FROM kmpSubspace s" +
+	                    " INNER JOIN kmpVessel v ON v.Subspace = s.ID) a);" +
 	                    " DELETE FROM kmpVesselUpdateHistory WHERE Tick < @minTick;";
 					cmd2.Parameters.AddWithValue("minTick", earliestClearTick);
 	                cmd2.CommandText = sql2;
@@ -3749,12 +3746,12 @@ namespace KMPServer
 				{
 					//Clear all but the latest subspace
 	                DbCommand cmd = universeDB.CreateCommand();
-	                string sql = "DELETE FROM kmpSubspace WHERE LastTick < (SELECT MIN(s.LastTick) FROM (SELECT * FROM kmpSubspace) s" +
-	                    " INNER JOIN kmpVessel v ON v.Subspace = s.ID);" +
+	                string sql = "DELETE FROM kmpSubspace WHERE LastTick < (SELECT Tick FROM (SELECT MIN(s.LastTick) Tick FROM kmpSubspace s" +
+	                    " INNER JOIN kmpVessel v ON v.Subspace = s.ID) a);" +
 	                    " DELETE FROM kmpVesselUpdateHistory;" +
-	                    " DELETE FROM kmpVesselUpdate WHERE ID IN (SELECT ID FROM (SELECT * FROM kmpVesselUpdate) vu" +
+	                    " DELETE FROM kmpVesselUpdate WHERE ID IN (SELECT ID FROM (SELECT ID FROM kmpVesselUpdate vu" +
 	                    " WHERE Subspace != (SELECT ID FROM kmpSubspace WHERE LastTick = (SELECT MAX(LastTick) FROM kmpSubspace" +
-	                    " WHERE ID IN (SELECT Subspace FROM (SELECT * FROM kmpVesselUpdate) vu2 WHERE vu2.Guid = vu.Guid))));";
+	                    " WHERE ID IN (SELECT Subspace FROM kmpVesselUpdate vu2 WHERE vu2.Guid = vu.Guid)))) a);";
 	                cmd.CommandText = sql;
 	                cmd.ExecuteNonQuery();
 				}

@@ -1046,6 +1046,8 @@ namespace KMP
                 if (!vessel.packed) serverVessels_PartCounts[vessel.id] = vessel.Parts.Count;
 			}
 			
+			if (isInSafetyBubble(vessel.GetWorldPos3D(),vessel.mainBody,vessel.altitude)) update.clearProtoVessel();
+			
 			//Track vessel situation
 			sentVessels_Situations[vessel.id] = vessel.situation;
 			
