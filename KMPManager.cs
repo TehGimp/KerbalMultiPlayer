@@ -4858,8 +4858,8 @@ namespace KMP
 			//Assume Kerbin if body isn't supplied for some reason
 			if (body == null) body = FlightGlobals.Bodies.Find(b => b.name == "Kerbin");
 			
-			//If KSC out of range, syncing, not at Kerbin, or past ceiling we're definitely clear
-			if (syncing || body.name != "Kerbin" || altitude > SAFETY_BUBBLE_CEILING)
+			//If not at Kerbin or past ceiling we're definitely clear
+			if (body.name != "Kerbin" || altitude > SAFETY_BUBBLE_CEILING)
 				return false;
 			
 			//Cylindrical safety bubble -- project vessel position to a plane positioned at KSC with normal pointed away from surface
