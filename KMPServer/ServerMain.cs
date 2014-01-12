@@ -20,6 +20,13 @@ namespace KMPServer
 
 		static void Main(string[] args)
 		{
+            if (!System.IO.Directory.Exists(Server.REQUIRED_MODS_PATH))
+            {
+                System.IO.Directory.CreateDirectory(Server.REQUIRED_MODS_PATH);
+            }
+            if(!System.IO.Directory.Exists(Server.OPTIONAL_MODS_PATH)){
+                System.IO.Directory.CreateDirectory(Server.OPTIONAL_MODS_PATH);
+            }
 			settings = new ServerSettings.ConfigStore();
 			ServerSettings.readFromFile(settings);
 			ServerSettings.loadWhitelist(settings);
