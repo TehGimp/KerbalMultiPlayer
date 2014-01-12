@@ -334,7 +334,16 @@ namespace KMPServer
             string[] ls_required = null;
             if (autoAdd) // auto-add optional mod list
             {
-                ls_required = System.IO.Directory.GetFiles(REQUIRED_MODS_PATH, "*.*", System.IO.SearchOption.AllDirectories);
+                try
+                {
+                    ls_required = System.IO.Directory.GetFiles(REQUIRED_MODS_PATH, "*.*", System.IO.SearchOption.AllDirectories);
+                }
+                catch (DirectoryNotFoundException)
+                {
+                    Log.Info("Required mods directory not found, creating...");
+                    System.IO.Directory.CreateDirectory(REQUIRED_MODS_PATH);
+                    ls_required = new string[0];
+                }
                 foreach(string file in ls_required){
                     filestring += file.Substring(OPTIONAL_MODS_PATH.Length+1).Replace("\\", "/") + "="; // cut off first part of path so it starts from GameData directory, make unix-safe
                     using (FileStream stream = File.OpenRead(file))
@@ -353,7 +362,16 @@ namespace KMPServer
             string[] ls_optional = null;
             if (autoAdd) // auto-add optional mod list
             {
-                ls_optional = System.IO.Directory.GetFiles(OPTIONAL_MODS_PATH, "*.*", System.IO.SearchOption.AllDirectories);
+                try
+                {
+                    ls_optional = System.IO.Directory.GetFiles(OPTIONAL_MODS_PATH, "*.*", System.IO.SearchOption.AllDirectories);
+                }
+                catch (DirectoryNotFoundException)
+                {
+                    Log.Info("Optional mods directory not found, creating...");
+                    System.IO.Directory.CreateDirectory(OPTIONAL_MODS_PATH);
+                    ls_optional = new string[0];
+                }
                 foreach (string file in ls_optional)
                 {
                     filestring += file.Substring(OPTIONAL_MODS_PATH.Length + 1).Replace("\\", "/") + "=";
