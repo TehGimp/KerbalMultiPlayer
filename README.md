@@ -98,7 +98,7 @@ effectively just watching a recording of events that have "already happened" pla
 
 Vessel Privacy
 --------------
-By default and vessel you launch will be in a "Public" status, which means that other players can
+By default a vessel you launch will be in a "Public" status, which means that other players can
 take control of it if you leave and they may freely dock with your ship as well. To keep a vessel
 to yourself, use the "Lock" window on the right-side of the screen to set the vessel to "Private"
 status. You can't take control of another vessel owned by another player that has marked it
@@ -128,13 +128,17 @@ original username and token or contact a server admin for assistance.
 
 Mods
 ----
-Most mods are not supported by KMP, although some information-only mods may work OK. If all the
-players that use a server can agree on a common set of mod parts to install, a server admin may
-assist you with enabling mod parts. Never attempt to use mod parts on a server that hasn't
-expressly enabled them--even though KMP will attempt to stop you from doing so, if you were to
-successfully launch a vessel that includes parts that other players don't have, those players may
-encounter significant issues.
 
-By default only the stock parts are whitelisted in "KSP_DIR/GameData/KMP/Plugins/PluginData/KerbalMultiPlayer/KMPPartList.txt".
-If you are playing on a server where mods are allowed, they should provide a KMPPartList.txt along with a list of mods to install.
-If you are a server operator, you will need to change the "_" (underscore) in part names to a "." (dot).
+KMP allows server-side mod control (although many mods that change parts of the universe, like Kethane, still do not work). Add mods to your server at your own risk. The old (prior to v0.1.5.0) system, which uses the KMPModControl.txt file on the client's installation, is no longer in effect. Instead, server admins configure their servers' KMPModControl.txt file to their specifications, and clients that do not meet the mod requirements will not be allowed to connect.
+
+The simplest way for an admin to configure mods is to use the "Mods/Optional" and "Mods/Required" directories in their KMP Server directory. Simply copy any mods that you would like to use to the respective directories: mods that you place in the "Mods/Required" directory will be mandatory for the client to have in order to connect, and mods that you place in the "Mods/Optional" directory will be allowed, but not necessary. Mods that include parts (e.g. KWRocketry) or that change persistent data about the universe (e.g. RealSolarSystem) should be placed in "Required", in order to maintain synchronization with other players. Mods that only affect the client (e.g. EditorExtensions) can be placed in "Optional", so clients can use them if they want to.
+
+Once you've configured your mods in the "Required" and "Optional" directories as you see fit, run the server program and use the "/modgen" command. This will automatically create a KMPModControl.txt file that matches the file structure you created in the Mods directories. By default, the client can only connect if:
+- they have ALL the files in the "Required" directory, and they match the ones on the server (using a SHA256 hash check) or they cannot connect
+- if they have a file that's in the "Optional" directory, it must match the one on the server (also using SHA256) or they cannot connect
+- if they have a file that's in neither the "Required" nor "Optional" directories, they are not allowed to connect
+
+Example:
+I would like to use KWRocketry parts on my server, and I'm OK with my clients using EditorExtensions but I don't want to force them to. I download the KWRocketry mod, and I place the directory that would normally go in KSP's "GameData" directory into "Mods/Required". I then download the EditorExtensions mod, and I place the directory that would normally go in KSP's "GameData" directory into "Mods/Optional". Finally, I start the server and use the "/modgen" command. I will now have a running server that will force clients to have KWRocketry, let them have EditorExtensions if they want, and not allow them to have any other mods.
+
+Other configuration options are available as well. If you would like to manually configure your KMPModControl.txt file, start the server once (with nothing in the "Mods/Required" or "Mods/Optional" directories) and it will auto-generate a basic file. Read the comments to understand exactly how each section works. You will probably only need this option if you want to run a "blacklist" server instead of a "whitelist" server, where any file is allowed except the ones specifically listed. Blacklist servers make it very easy for one client with different mods to mess up the whole system though, so be careful with this.

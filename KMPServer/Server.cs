@@ -54,10 +54,6 @@ namespace KMPServer
         public const string MOD_CONTROL_FILE = "KMPModControl.txt";
         public const string REQUIRED_MODS_PATH = "Mods/Required";
         public const string OPTIONAL_MODS_PATH = "Mods/Optional";
-        public const string PLUGIN_DATA_DIRECTORY = "KMP/Plugins/PluginData/KerbalMultiPlayer";
-        public const string CLIENT_CONFIG_FILENAME = "KMPClientConfig.xml";
-        public const string CLIENT_TOKEN_FILENAME = "KMPPlayerToken.txt";
-        public const string GLOBAL_SETTINGS_FILENAME = "globalsettings.txt";
         
         public static byte[] kmpModControl;
 
@@ -347,7 +343,7 @@ namespace KMPServer
             filestring += "\n\n!sha-optional\n"+
                 "#Formatting for this section is the same as the 'sha-required' section\n\n";
 
-            Log.Info("Beginning SHA256 hash of required mod files...");
+            Log.Info("Beginning SHA256 hash of optional mod files...");
             string[] ls_optional = null;
             if (autoAdd) // auto-add optional mod list
             {
@@ -409,7 +405,7 @@ namespace KMPServer
                 {
                     Log.Info("No existing mod control file found");
                 }
-                string[] requiredWhitelist = {  PLUGIN_DATA_DIRECTORY + "/" + CLIENT_CONFIG_FILENAME + "\n",
+                /*string[] requiredWhitelist = {  PLUGIN_DATA_DIRECTORY + "/" + CLIENT_CONFIG_FILENAME + "\n",
                                                 PLUGIN_DATA_DIRECTORY + "/" + CLIENT_TOKEN_FILENAME + "\n",
                                                 PLUGIN_DATA_DIRECTORY + "/" + GLOBAL_SETTINGS_FILENAME + "\n",
                                                 PLUGIN_DATA_DIRECTORY + "/" + MOD_CONTROL_FILE + "\n"
@@ -419,7 +415,7 @@ namespace KMPServer
                     if(!resourcelist.Contains(item)){
                         resourcelist += item;
                     }
-                }
+                }*/
                 filestring += "\n\n!resource-whitelist\n" +
                     resourcelistDescription +
                     resourcelist;

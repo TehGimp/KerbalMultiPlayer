@@ -3096,7 +3096,6 @@ namespace KMP
 			try
 			{
 				//Deserialize global settings from file
-				//byte[] bytes = KSP.IO.File.ReadAllBytes<KMPManager>(GLOBAL_SETTINGS_FILENAME); //Apparently KSP.IO.File.ReadAllBytes is broken
 				String sPath = System.IO.Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location);
 				sPath += "/PluginData/KerbalMultiPlayer/";
 				byte[] bytes = System.IO.File.ReadAllBytes(sPath + GLOBAL_SETTINGS_FILENAME);
@@ -3197,23 +3196,42 @@ namespace KMP
             LoadedModfiles = new List<LoadedFileInfo>();
             try
             {
-                List<UrlDir.UrlFile> files = GameDatabase.Instance.root.AllFiles.ToList();
-                files.AddRange(GameDatabase.Instance.root.AllConfigFiles);
+                List<UrlDir.UrlFile> files = GameDatabase.Instance.root.AllFiles.ToList(); // add all plugin files
+                files.AddRange(GameDatabase.Instance.root.AllConfigFiles); // add all config files
+                List<string> filenames = files.ConvertAll(x => x.fullPath);
+                List<string> ls = System.IO.Directory.GetFiles(KSPUtil.ApplicationRootPath + "GameData", "*.*", System.IO.SearchOption.AllDirectories).ToList(); // add files that weren't immediately loaded (e.g. files that plugins use later)
+                filenames.AddRange(ls);
+                filenames = filenames.ConvertAll(x => new System.IO.DirectoryInfo(x).FullName);
+                filenames = filenames.Distinct(StringComparer.CurrentCultureIgnoreCase).ToList();
                 List<ModFileStream> FileStreams = new List<ModFileStream>();
-                foreach (UrlDir.UrlFile file in files)
+                foreach (string file in filenames)
                 {
-                    ModFileStream Entry = new ModFileStream();
-                    Entry.File = new LoadedFileInfo(file.fullPath);
-                    Entry.Stream = new System.IO.FileStream(file.fullPath, System.IO.FileMode.Open);
-                    Entry.Stream.Lock(0, 0); // lock the file until after it's hashed, so the user can't modify it in the meantime
-                    FileStreams.Add(Entry);
+                    try
+                    {
+                        ModFileStream Entry = new ModFileStream();
+                        Entry.File = new LoadedFileInfo(file);
+                        Entry.Stream = new System.IO.FileStream(file, System.IO.FileMode.Open);
+                        Entry.Stream.Lock(0, 0); // lock the file until after it's hashed, so the user can't modify it in the meantime
+                        FileStreams.Add(Entry);
+                    }
+                    catch (Exception e)
+                    {
+                        Log.Debug("Error in part hashing, 1st section: {0}", e.Message);
+                    }
                 }
                 foreach (ModFileStream FileStream in FileStreams)
                 {
-                    FileStream.File.ComputeSHA(FileStream.Stream);
-                    LoadedModfiles.Add(FileStream.File); // add all data about this file to the mod file list
-                    FileStream.Stream.Unlock(0, 0); // unlock the file once it's no longer needed
-                    Log.Debug("Added and hashed: " + FileStream.File.ModPath + "=" + FileStream.File.SHA256);
+                    try
+                    {
+                        FileStream.File.ComputeSHA(FileStream.Stream);
+                        LoadedModfiles.Add(FileStream.File); // add all data about this file to the mod file list
+                        FileStream.Stream.Unlock(0, 0); // unlock the file once it's no longer needed
+                        Log.Debug("Added and hashed: " + FileStream.File.ModPath + "=" + FileStream.File.SHA256);
+                    }
+                    catch (Exception e)
+                    {
+                        Log.Debug("Error in part hashing, 2nd section: {0}", e.Message);
+                    }
                 }
             }
             catch (Exception e)

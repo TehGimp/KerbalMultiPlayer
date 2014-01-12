@@ -38,8 +38,6 @@ namespace KMP
 
         //Constants
 
-        private const string COMPILE_KEY = "testkeypasssword";
-
         public const String USERNAME_LABEL = "username";
         public const String IP_LABEL = "hostname";
 		public const String PORT_LABEL = "port";
@@ -68,8 +66,6 @@ namespace KMP
 
         public const int MAX_QUEUED_CHAT_LINES = 8;
         public const int DEFAULT_PORT = 2076;
-
-        //public const String PLUGIN_DIRECTORY = "PluginData/kerbalmultiplayer/";
 
         public static UnicodeEncoding encoder = new UnicodeEncoding();
 
@@ -358,9 +354,6 @@ namespace KMP
         
         private static bool SHACheck()
         {
-        	//string hashPath;
-            //string localName;
-            //System.IO.FileStream stream;
             char[] replaceChars = {'\\', '/'};
             try
             {
@@ -406,75 +399,6 @@ namespace KMP
                         modMismatchError = "SHA Checksum Mismatch: " + FileInfo.LoadedPath;
                         return false;
                     }
-
-                    /*
-
-                    hashPath = String.Join(System.IO.Path.DirectorySeparatorChar.ToString(), System.IO.Path.Combine(GAMEDATAPATH, entry.Key).Split(replaceChars));// make hashpath proper for current platform
-                    localName = String.Join(System.IO.Path.DirectorySeparatorChar.ToString(), entry.Key.Split(replaceChars));
-                    try
-                    {
-                        stream = System.IO.File.OpenRead(hashPath);
-                    }
-                    catch (System.IO.FileNotFoundException)
-                    {
-                        if (entry.Value.required) // only throw the error if it's a required mod file and it's missing
-                        {
-                            modMismatchError = "Required File Missing: " + localName;
-                            return false;
-                        }
-                        else // don't throw an error if it's an optional mod and client doesn't have it installed
-                        {
-                            continue;
-                        }
-                    }
-                    catch (System.IO.DirectoryNotFoundException)
-                    {
-                        if (entry.Value.required) // only throw the error if it's a required mod file and it's missing
-                        {
-                            string dir = hashPath;
-                            while (new System.IO.DirectoryInfo(dir).Parent.Name != "GameData")
-                            {
-                                dir = new System.IO.DirectoryInfo(dir).Parent.FullName;
-                            }
-                            modMismatchError = String.Format("Required Mod Missing or Incomplete: {0} ({1})", new System.IO.DirectoryInfo(dir).Name, localName);
-                            return false;
-                        }
-                        else // don't throw an error if it's an optional mod and client doesn't have it installed
-                        {
-                            continue;
-                        }
-                    }
-                    catch (System.IO.IsolatedStorage.IsolatedStorageException) //EXACTLY the same as directory not found, but thrown for the same reason (why?)
-                    {
-                        if (entry.Value.required) // only throw the error if it's a required mod file and it's missing
-                        {
-                            string dir = hashPath;
-                            while (new System.IO.DirectoryInfo(dir).Parent.Name != "GameData")
-                            {
-                                dir = new System.IO.DirectoryInfo(dir).Parent.FullName;
-                            }
-                            modMismatchError = String.Format("Required Mod Missing or Incomplete: {0} ({1})", new System.IO.DirectoryInfo(dir).Name, localName);
-                            return false;
-                        }
-                        else // don't throw an error if it's an optional mod and client doesn't have it installed
-                        {
-                            continue;
-                        }
-                    }
-                    catch (Exception e)
-                    {
-                        Log.Info(e.ToString());
-                        return false;
-                    }
-                    SHA256Managed sha = new SHA256Managed();
-                    byte[] hash = sha.ComputeHash(stream);
-                    string shaHash = BitConverter.ToString(hash).Replace("-", String.Empty);
-                    if (shaHash.ToLower() != entry.Value.sha.ToLower())
-                    {
-                        modMismatchError = "SHA Checksum Mismatch: " + localName;
-                        return false;
-                    }
-                     * */
                 }
             }
             catch (Exception e)
@@ -496,14 +420,6 @@ namespace KMP
 	        		{
                         foreach (LoadedFileInfo file in KMPManager.LoadedModfiles)
                         {
-                            /*string resource = file.ModPath;//.Substring(GAMEDATAPATH.Length + 1); // get path relative to GameData directory
-                            if (!resource.StartsWith(GAMEDATAPATH))
-                            {
-                                modMismatchError = "You may not join servers when you have mods loaded from outside your GameData directory (perhaps in the depricated Parts or Plugins directories?)";
-                                return false;
-                            }
-                            resource = resource.Substring(GAMEDATAPATH.Length + 1); // get path relative to GameData directory
-                            */
 	        				if(file.ModPath.Contains(checkedResource))
 	        				{
                                 modMismatchError = "File blacklisted: " + file.LoadedPath;
@@ -516,22 +432,11 @@ namespace KMP
 	        	{
                     foreach (LoadedFileInfo file in KMPManager.LoadedModfiles)
                     {
-                        /*if (!resource.StartsWith(GAMEDATAPATH))
+                        if (file.LoadedPath.StartsWith("Plugins") || file.LoadedPath.StartsWith("Parts")) // do not allow mod files that are in the Plugins or Parts directories (they load differently, and often cause errors). All mods should be in the GameData directory.
                         {
-                            modMismatchError = "You may not join servers when you have mods loaded from outside your GameData directory (perhaps in the depricated Parts or Plugins directories?)";
+                            modMismatchError = "You may not join a server if you have mods installed in the deprecated mod directories ('Plugins' or 'Parts' directories in the KSP root directory)";
                             return false;
                         }
-                        resource = resource.Substring(GAMEDATAPATH.Length + 1); // get path relative to GameData directory
-                        string resourcePath = resource.Substring(0, Math.Min(resource.Length, PLUGIN_DATA_DIRECTORY.Length)); // get the substring that is of equal length to the KMP plugin directory (to make sure that we're only skipping files in KMP PluginData directory, which are the only ones that should be different from the server)
-                        
-                        if (!resource.Contains(PLUGIN_DATA_DIRECTORY) && !resource.Contains(PLUGIN_DATA_DIRECTORY.Replace('/', '\\')) && !resourceList.Contains(resource.Replace('\\', '/'))){ //check all files other than those in the KMP PluginData directory, also make sure it wasn't explicitly added to the whitelist
-                            if(!shaList.ContainsKey(resource.Replace('\\', '/'))){ // check and see if it was added to the SHA section (which would have been done automatically using /modgen), but first make sure it's in Unix style
-                                modMismatchError = "File not allowed on this server: " + resource;
-	        					return false;
-                            }
-                        }
-                        */
-
                         if (!resourceList.Contains(file.ModPath) && !shaList.ContainsKey(file.ModPath)) // check if the resource is a) whitelisted, or b) listed in the optional or required SHA sections. If not, the file is not allowed to be loaded.
                         {
                             modMismatchError = "File not allowed on this server: " + file.LoadedPath;
