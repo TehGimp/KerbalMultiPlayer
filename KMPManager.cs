@@ -3519,14 +3519,10 @@ namespace KMP
 				
 				if (FlightDriver.Pause) FlightDriver.SetPause(false);
 				if (gameCheatsEnabled == false) {
-					if (CheatOptions.InfiniteFuel == true)
-						CheatOptions.InfiniteFuel = false;
-					if (CheatOptions.InfiniteEVAFuel == true)
-						CheatOptions.InfiniteEVAFuel = false;
-					if (CheatOptions.InfiniteRCS == true)
-						CheatOptions.InfiniteRCS = false;
-					if (CheatOptions.NoCrashDamage == true)
-						CheatOptions.NoCrashDamage = false;
+					CheatOptions.InfiniteFuel = false;
+					CheatOptions.InfiniteEVAFuel = false;
+					CheatOptions.InfiniteRCS = false;
+					CheatOptions.NoCrashDamage = false;
 					Destroy(FindObjectOfType(typeof(DebugToolbar)));
 				}
 

@@ -54,7 +54,13 @@ namespace KMPServer
         public const string MOD_CONTROL_FILE = "KMPModControl.txt";
         public const string REQUIRED_MODS_PATH = "Mods/Required";
         public const string OPTIONAL_MODS_PATH = "Mods/Optional";
-        
+
+        public const string PLUGIN_DATA_DIRECTORY = "KMP/Plugins/PluginData/KerbalMultiPlayer/";
+        public const string CLIENT_CONFIG_FILENAME = "KMPClientConfig.xml";
+        public const string CLIENT_TOKEN_FILENAME = "KMPPlayerToken.txt";
+        public const string MOD_CONTROL_FILENAME = "KMPModControl.txt";
+        public const String GLOBAL_SETTINGS_FILENAME = "globalsettings.txt";
+
         public static byte[] kmpModControl;
 
         public const int UNIVERSE_VERSION = 4;
@@ -364,8 +370,8 @@ namespace KMPServer
                     "#[File]\n" +
                     "#Example: MechJeb2.dll\n" +
                     "#Alternatively, change 'blacklist' to 'whitelist' and clients will only be allowed to use parts listed here or in the 'sha-requried' and 'sha-optional' sections.\n" +
-                    "This is usefule for when you use mods that create or edit files as the user plays (for example, KMP modifies the 'KMPPlayerToken.txt' file for each user)\n" +
-                    "In this case, you must specify the path AND filename:\n" +
+                    "#This is useful for when you use mods that create or edit files as the user plays (for example, KMP modifies the 'KMPPlayerToken.txt' file for each user)\n" +
+                    "#In this case, you must specify the path AND filename:\n" +
                     "#[File Path]\n" +
                     "#Example: KMP/Plugins/PluginData/KerbalMultiPlayer/KMPPlayerToken.txt\n\n";
 
@@ -405,17 +411,17 @@ namespace KMPServer
                 {
                     Log.Info("No existing mod control file found");
                 }
-                /*string[] requiredWhitelist = {  PLUGIN_DATA_DIRECTORY + "/" + CLIENT_CONFIG_FILENAME + "\n",
-                                                PLUGIN_DATA_DIRECTORY + "/" + CLIENT_TOKEN_FILENAME + "\n",
-                                                PLUGIN_DATA_DIRECTORY + "/" + GLOBAL_SETTINGS_FILENAME + "\n",
-                                                PLUGIN_DATA_DIRECTORY + "/" + MOD_CONTROL_FILE + "\n"
+                string[] requiredWhitelist = {  PLUGIN_DATA_DIRECTORY + CLIENT_CONFIG_FILENAME + "\n",
+                                                PLUGIN_DATA_DIRECTORY + CLIENT_TOKEN_FILENAME + "\n",
+                                                PLUGIN_DATA_DIRECTORY + GLOBAL_SETTINGS_FILENAME + "\n",
+                                                PLUGIN_DATA_DIRECTORY + MOD_CONTROL_FILE + "\n"
                                              };
                 foreach (string item in requiredWhitelist)
                 {
                     if(!resourcelist.Contains(item)){
                         resourcelist += item;
                     }
-                }*/
+                }
                 filestring += "\n\n!resource-whitelist\n" +
                     resourcelistDescription +
                     resourcelist;

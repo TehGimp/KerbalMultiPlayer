@@ -47,7 +47,7 @@ namespace KMP
 
         //public const String INTEROP_CLIENT_FILENAME = "interopclient.txt";
         //public const String INTEROP_PLUGIN_FILENAME = "interopplugin.txt";
-        public const string PLUGIN_DATA_DIRECTORY = "KMP/Plugins/PluginData/KerbalMultiPlayer";
+        public const string PLUGIN_DATA_DIRECTORY = "KMP/Plugins/PluginData/KerbalMultiPlayer/";
         public const string CLIENT_CONFIG_FILENAME = "KMPClientConfig.xml";
         public const string CLIENT_TOKEN_FILENAME = "KMPPlayerToken.txt";
         public const string MOD_CONTROL_FILENAME = "KMPModControl.txt";
@@ -102,7 +102,7 @@ namespace KMP
         public static Dictionary<string, SHAMod> shaList = new Dictionary<string, SHAMod>();
         public static List<string> resourceList = new List<string>();
         public static List<string> requiredModList = new List<string>();
-		public static string resourceControlMode = "whitelist";
+		public static string resourceControlMode = "blacklist";
 		public static string modMismatchError = "Mod Verification Failed - Reason Unknown";
         public static string GAMEDATAPATH = new System.IO.DirectoryInfo(getKMPDirectory()).Parent.Parent.FullName;
         public static byte[] kmpModControl_bytes;
