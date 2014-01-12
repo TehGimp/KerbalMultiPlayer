@@ -68,6 +68,7 @@
     <Compile Include="KMPFlightCtrlState.cs" />
     <Compile Include="KMPVesselLockDisplay.cs" />
     <Compile Include="KMPScenarioUpdate.cs" />
+    <Compile Include="ToolbarButtonWrapper.cs" />
   </ItemGroup>
   <ItemGroup>
     <Content Include="default.png" />
