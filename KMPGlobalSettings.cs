@@ -32,6 +32,7 @@ namespace KMP
         public float chatDXEditorOffsetX;
         public float chatDXEditorOffsetY;
 
+        public bool useNewUiSkin = false;
 
 		public bool infoDisplayBig = false;
 
