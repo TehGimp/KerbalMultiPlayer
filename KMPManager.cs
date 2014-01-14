@@ -122,7 +122,6 @@ namespace KMP
         private bool mappingChatKey = false;
         private bool mappingChatDXToggleKey = false;
 		private bool isGameHUDHidden = false;
-		
 
         PlatformID platform;
 		
@@ -3638,7 +3637,9 @@ namespace KMP
 			KMPVesselLockDisplay.layoutOptions[0] = GUILayout.MaxHeight(KMPVesselLockDisplay.MIN_WINDOW_HEIGHT);
 			KMPVesselLockDisplay.layoutOptions[1] = GUILayout.MaxWidth(KMPVesselLockDisplay.MIN_WINDOW_WIDTH);
 			
-			GUI.skin = HighLogic.Skin;
+			if (!KMPGlobalSettings.instance.useNewUiSkin) {
+				GUI.skin = HighLogic.Skin;
+			}
 			
 			if (!KMPConnectionDisplay.windowEnabled && HighLogic.LoadedScene == GameScenes.MAINMENU) KMPClientMain.clearConnectionState();
 			
@@ -3974,6 +3975,9 @@ namespace KMP
 						= GUILayout.Toggle(KMPGlobalSettings.instance.chatColors, "Chat Colors", GUI.skin.button);
 					
 					GUILayout.EndHorizontal();
+
+					KMPGlobalSettings.instance.useNewUiSkin
+						= GUILayout.Toggle(KMPGlobalSettings.instance.useNewUiSkin, "New GUI Skin", GUI.skin.toggle);
 
 					//Key mapping
 					GUILayout.Label("Key-Bindings");
