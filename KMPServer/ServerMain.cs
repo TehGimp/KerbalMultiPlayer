@@ -234,7 +234,10 @@ namespace KMPServer
                         break;
 
 					case "/set":
-                        if (parts[1].Equals("help"))
+                        if (parts.Length < 3) {
+							Log.Info("Invalid usage. Usage is /set [key] [value]");
+                        }
+                        else if (parts[1].Equals("help"))
                         {
                             Log.Info("ipBinding - The IP address the server should bind to. Defaults to binding to all available IPs." + Environment.NewLine);
                             Log.Info("port - The port used for connecting to the server.");
@@ -267,10 +270,6 @@ namespace KMPServer
                             Log.Info("profanityWords - Replaces the first word with the second." + Environment.NewLine);
                             Log.Info("consoleScale - Changes the window size of the scale. Defaults to 1.0, requires restart." + Environment.NewLine);
                         }
-						else if (parts.Length < 3)
-						{
-							Log.Info("Invalid usage. Usage is /set [key] [value]");
-						}
                         else
                         {
                             string val = String.Join(" ", parts.Skip(2).ToArray());
