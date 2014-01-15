@@ -3020,7 +3020,7 @@ namespace KMPServer
                         }
 
                         //Store update
-                        storeVesselUpdate(vessel_update, cl);
+                        storeVesselUpdate(data, cl, vessel_update.kmpID, vessel_update.tick);
 
                         //Update vessel destroyed status
                         if (checkVesselDestruction(vessel_update, cl))
@@ -3091,7 +3091,7 @@ namespace KMPServer
 									sendVesselStatusUpdateToAll(cl, vessel_update.kmpID);
                                 }
                                 //No one else is controlling it, so store the update
-                                storeVesselUpdate(vessel_update, cl, true);
+                                storeVesselUpdate(data, cl, vessel_update.kmpID, vessel_update.tick, true);
                                 //Update vessel destroyed status
                                 if (checkVesselDestruction(vessel_update, cl))
                                     vessel_update.situation = Situation.DESTROYED;
@@ -3156,9 +3156,8 @@ namespace KMPServer
             }
         }
 
-        private void storeVesselUpdate(KMPVesselUpdate vessel_update, Client cl, bool isSecondary = false)
+        private void storeVesselUpdate(byte[] updateBlob, Client cl, Guid kmpID, double tick, bool isSecondary = false)
         {
-            byte[] updateBlob = ObjectToByteArray(vessel_update);
 			var universeDB = KMPServer.Server.universeDB;
 			if (settings.useMySQL) {
 				universeDB = new MySqlConnection(settings.mySQLConnString);
@@ -3172,9 +3171,9 @@ namespace KMPServer
                 " VALUES (@kmpID, @curSubspace, @ves_tick, @update);";
             cmd.Parameters.AddWithValue("update", updateBlob);
             cmd.CommandText = sql;
-            cmd.Parameters.AddWithValue("kmpID", vessel_update.kmpID);
+            cmd.Parameters.AddWithValue("kmpID", kmpID);
             cmd.Parameters.AddWithValue("curSubspace", cl.currentSubspaceID.ToString("D"));
-            if (!isSecondary) cmd.Parameters.AddWithValue("ves_tick", vessel_update.tick);
+            if (!isSecondary) cmd.Parameters.AddWithValue("ves_tick", tick);
             cmd.ExecuteNonQuery();
             cmd.Dispose();
 			if (settings.useMySQL) universeDB.Close();
