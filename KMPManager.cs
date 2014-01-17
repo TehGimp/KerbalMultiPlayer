@@ -8,14 +8,58 @@ using System.Collections;
 
 namespace KMP
 {
+
     public class Bootstrap : KSP.Testing.UnitTest {
         public Bootstrap() {
 			if (KMPManager.GameObjectInstance == null)
 			{
-				Debug.Log("*** KMP version " + KMPCommon.PROGRAM_VERSION + " started");
+				Log.Info("*** KMP version " + KMPCommon.PROGRAM_VERSION + " started");
 				KMPManager.GameObjectInstance = new GameObject("KMPManager", typeof(KMPManager));
 				UnityEngine.Object.DontDestroyOnLoad(KMPManager.GameObjectInstance);
 			}
+        }
+    }
+
+    public class LoadedFileInfo
+    {
+        /// <summary>
+        /// The full absolute path on this computer. Uses the local system's directory separator character ('/' for Unix, '\' for Windows).
+        /// </summary>
+        public string FullPath;
+
+        /// <summary>
+        /// The relative path starting at the KSP main directory. Uses Unix directory separator ('/') so it will match the server's mod config file.
+        /// </summary>
+        public string LoadedPath;
+
+        /// <summary>
+        /// The directory that this mod has been loaded into (usually 'GameData', but could be 'Plugins' or 'Parts').
+        /// </summary>
+        public string ModDirectory;
+
+        /// <summary>
+        /// The relative path starting in the 'GameData', 'Plugins', or 'Parts' directory (will not have that directory name included). Uses Unix directory separator ('/') so it will match the server's mod config file.
+        /// </summary>
+        public string ModPath;
+
+        /// <summary>
+        /// The SHA256 hash of this file.
+        /// </summary>
+        public string SHA256;
+
+        public LoadedFileInfo(string filepath) {
+            FullPath = filepath.Replace('\\', '/');
+            string location = new System.IO.DirectoryInfo(KSPUtil.ApplicationRootPath).FullName;
+            LoadedPath = filepath.Substring(location.Length).Replace('\\', '/');
+            ModPath = LoadedPath.Substring(LoadedPath.IndexOf('/')+1); // +1 is to cut off remaining directory separator character
+            ModDirectory = LoadedPath.Substring(0, LoadedPath.IndexOf('/'));
+        }
+
+        public void ComputeSHA(System.IO.FileStream stream)
+        {
+            System.Security.Cryptography.SHA256Managed sha = new System.Security.Cryptography.SHA256Managed();
+            byte[] hash = sha.ComputeHash(stream);
+            SHA256 = BitConverter.ToString(hash).Replace("-", String.Empty);
         }
     }
 	
@@ -26,7 +70,7 @@ namespace KMP
 		{
 			//Initialize client
 			KMPClientMain.InitMPClient(this);
-			Debug.Log("Client Initialized.");
+			Log.Debug("Client Initialized.");
 		}
 		
 		public struct VesselEntry
@@ -47,6 +91,12 @@ namespace KMP
 			public int currentSubspaceID;
 			public Guid vesselID;
 		}
+
+        public struct ModFileStream
+        {
+            public LoadedFileInfo File;
+            public System.IO.FileStream Stream;
+        }
 
 		//Singleton
 
@@ -95,6 +145,7 @@ namespace KMP
 		public SortedDictionary<String, VesselStatusInfo> playerStatus = new SortedDictionary<string, VesselStatusInfo>();
 		public RenderingManager renderManager;
 		public PlanetariumCamera planetariumCam;
+        public static List<LoadedFileInfo> LoadedModfiles;
 
 		public Queue<byte[]> interopInQueue = new Queue<byte[]>();
 		
@@ -3030,12 +3081,12 @@ namespace KMP
 			{
 				byte[] serialized = KSP.IO.IOUtils.SerializeToBinary(KMPGlobalSettings.instance);
 				KSP.IO.File.WriteAllBytes<KMPManager>(serialized, GLOBAL_SETTINGS_FILENAME);
-				Debug.Log("Saved Global Settings to file.");
+				Log.Debug("Saved Global Settings to file.");
 			}
 			catch (Exception e)
 			{
         Log.Debug("Exception thrown in saveGlobalSettings(), catch 1, Exception: {0}", e.ToString());
-				Debug.Log(e.Message);
+				Log.Debug(e.Message);
 			}
 		}
 
@@ -3045,7 +3096,6 @@ namespace KMP
 			try
 			{
 				//Deserialize global settings from file
-				//byte[] bytes = KSP.IO.File.ReadAllBytes<KMPManager>(GLOBAL_SETTINGS_FILENAME); //Apparently KSP.IO.File.ReadAllBytes is broken
 				String sPath = System.IO.Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location);
 				sPath += "/PluginData/KerbalMultiPlayer/";
 				byte[] bytes = System.IO.File.ReadAllBytes(sPath + GLOBAL_SETTINGS_FILENAME);
@@ -3101,26 +3151,27 @@ namespace KMP
 			{
         Log.Debug("Exception thrown in loadGlobalSettings(), catch 1, Exception: {0}", e.ToString());
 				success = false;
-				Debug.Log(e.Message);
+				Log.Debug(e.Message);
 			}
 			catch (System.IO.IOException e)
 			{
         Log.Debug("Exception thrown in loadGlobalSettings(), catch 2, Exception: {0}", e.ToString());
 				success = false;
-				Debug.Log(e.Message);
+                Log.Debug(e.Message);
 			}
 			catch (System.IO.IsolatedStorage.IsolatedStorageException e)
 			{
         Log.Debug("Exception thrown in loadGlobalSettings(), catch 3, Exception: {0}", e.ToString());
 				success = false;
-				Debug.Log(e.Message);
+                Log.Debug(e.Message);
 			}
 			if (!success)
 			{
 				try
 				{
 					KSP.IO.File.Delete<KMPManager>(GLOBAL_SETTINGS_FILENAME);
-				} catch (Exception e) { Log.Debug("Exception thrown in loadGlobalSettings(), catch 4, Exception: {0}", e.ToString()); }
+                }
+                catch (Exception e) { Log.Debug("Exception thrown in loadGlobalSettings(), catch 4, Exception: {0}", e.ToString()); }
 				KMPGlobalSettings.instance = new KMPGlobalSettings();
 			}
 		}
@@ -3133,7 +3184,6 @@ namespace KMP
 			CancelInvoke();
 			InvokeRepeating("updateStep", 1/30.0f, 1/30.0f);
 			loadGlobalSettings();
-
             try
             {
                 platform = Environment.OSVersion.Platform;
@@ -3142,6 +3192,51 @@ namespace KMP
             {
                 Log.Debug("Exception thrown in Awake(), catch 1, Exception: {0}", e.ToString());
                 platform = PlatformID.Unix;
+            }
+            LoadedModfiles = new List<LoadedFileInfo>();
+            try
+            {
+                List<UrlDir.UrlFile> files = GameDatabase.Instance.root.AllFiles.ToList(); // add all plugin files
+                files.AddRange(GameDatabase.Instance.root.AllConfigFiles); // add all config files
+                List<string> filenames = files.ConvertAll(x => x.fullPath);
+                List<string> ls = System.IO.Directory.GetFiles(KSPUtil.ApplicationRootPath + "GameData", "*.*", System.IO.SearchOption.AllDirectories).ToList(); // add files that weren't immediately loaded (e.g. files that plugins use later)
+                filenames.AddRange(ls);
+                filenames = filenames.ConvertAll(x => new System.IO.DirectoryInfo(x).FullName);
+                filenames = filenames.Distinct(StringComparer.CurrentCultureIgnoreCase).ToList();
+                List<ModFileStream> FileStreams = new List<ModFileStream>();
+                foreach (string file in filenames)
+                {
+                    try
+                    {
+                        ModFileStream Entry = new ModFileStream();
+                        Entry.File = new LoadedFileInfo(file);
+                        Entry.Stream = new System.IO.FileStream(file, System.IO.FileMode.Open);
+                        Entry.Stream.Lock(0, 0); // lock the file until after it's hashed, so the user can't modify it in the meantime
+                        FileStreams.Add(Entry);
+                    }
+                    catch (Exception e)
+                    {
+                        Log.Debug("Error in part hashing, 1st section: {0}", e.Message);
+                    }
+                }
+                foreach (ModFileStream FileStream in FileStreams)
+                {
+                    try
+                    {
+                        FileStream.File.ComputeSHA(FileStream.Stream);
+                        LoadedModfiles.Add(FileStream.File); // add all data about this file to the mod file list
+                        FileStream.Stream.Unlock(0, 0); // unlock the file once it's no longer needed
+                        Log.Debug("Added and hashed: " + FileStream.File.ModPath + "=" + FileStream.File.SHA256);
+                    }
+                    catch (Exception e)
+                    {
+                        Log.Debug("Error in part hashing, 2nd section: {0}", e.Message);
+                    }
+                }
+            }
+            catch (Exception e)
+            {
+                Log.Debug("Exception thrown in Awake(), catch 1, Exception: {0}", e.ToString());
             }
 			Debug.Log("KMP loaded");
 		}
@@ -3424,14 +3519,10 @@ namespace KMP
 				
 				if (FlightDriver.Pause) FlightDriver.SetPause(false);
 				if (gameCheatsEnabled == false) {
-					if (CheatOptions.InfiniteFuel == true)
-						CheatOptions.InfiniteFuel = false;
-					if (CheatOptions.InfiniteEVAFuel == true)
-						CheatOptions.InfiniteEVAFuel = false;
-					if (CheatOptions.InfiniteRCS == true)
-						CheatOptions.InfiniteRCS = false;
-					if (CheatOptions.NoCrashDamage == true)
-						CheatOptions.NoCrashDamage = false;
+					CheatOptions.InfiniteFuel = false;
+					CheatOptions.InfiniteEVAFuel = false;
+					CheatOptions.InfiniteRCS = false;
+					CheatOptions.NoCrashDamage = false;
 					Destroy(FindObjectOfType(typeof(DebugToolbar)));
 				}
 

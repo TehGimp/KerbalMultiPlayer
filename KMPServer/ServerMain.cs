@@ -20,6 +20,13 @@ namespace KMPServer
 
 		static void Main(string[] args)
 		{
+            if (!System.IO.Directory.Exists(Server.REQUIRED_MODS_PATH))
+            {
+                System.IO.Directory.CreateDirectory(Server.REQUIRED_MODS_PATH);
+            }
+            if(!System.IO.Directory.Exists(Server.OPTIONAL_MODS_PATH)){
+                System.IO.Directory.CreateDirectory(Server.OPTIONAL_MODS_PATH);
+            }
 			settings = new ServerSettings.ConfigStore();
 			ServerSettings.readFromFile(settings);
 			ServerSettings.loadWhitelist(settings);
@@ -59,129 +66,133 @@ namespace KMPServer
 
 		    Log.InitLogger();
 
-		    Console.Title = "KMP Server " + KMPCommon.PROGRAM_VERSION;
-			Log.Info("KMP Server version {0}", KMPCommon.PROGRAM_VERSION);
-			Log.Info("    Created by Shaun Esau and developed by the KMP team http://sesau.ca/ksp/KMP_contribs.html");
-			Log.Info("    Based on Kerbal LiveFeed created by Alfred Lam");
-			Log.Info("");
+            Console.Title = "KMP Server " + KMPCommon.PROGRAM_VERSION;
+            Log.Info("KMP Server version {0}", KMPCommon.PROGRAM_VERSION);
+            Log.Info("    Created by Shaun Esau and developed by the KMP team http://sesau.ca/ksp/KMP_contribs.html");
+            Log.Info("    Based on Kerbal LiveFeed created by Alfred Lam");
+            Log.Info("");
 
-			if (settings.autoHost)
-			{
-				startServer(settings);
-			}
+            if (settings.autoHost)
+            {
+                startServer(settings);
+            }
 
-			Log.Info("Current Configuration:");
-			Log.Info("");
-			
-			foreach (var kvp in ServerSettings.GetCurrentValues(settings))
-			{
-				var tabs = (kvp.Key.Length > 11) ? "\t" : "\t\t";
-				if (kvp.Key == "gameMode")
-				{
-					Log.Info("");
-					Log.Info("Game Mode\t\t: {0}", kvp.Value == "0" ? "Sandbox" : "Career");
-				}
-				else Log.Info("{0}{2}: {1}", kvp.Key, kvp.Value, tabs);
-			}
+            Log.Info("Current Configuration:");
+            Log.Info("");
 
-			Log.Info("");
-			Log.Info("/set [key] [value] to modify a setting.");
-			Log.Info("    /set help for information about each setting.");
-			Log.Info("/whitelist [add|del] [user] to update whitelist.");
+            foreach (var kvp in ServerSettings.GetCurrentValues(settings))
+            {
+                var tabs = (kvp.Key.Length > 11) ? "\t" : "\t\t";
+                if (kvp.Key == "gameMode")
+                {
+                    Log.Info("");
+                    Log.Info("Game Mode\t\t: {0}", kvp.Value == "0" ? "Sandbox" : "Career");
+                }
+                else Log.Info("{0}{2}: {1}", kvp.Key, kvp.Value, tabs);
+            }
+
+            Log.Info("");
+            Log.Info("/set [key] [value] to modify a setting.");
+            Log.Info("    /set help for information about each setting.");
+            Log.Info("/whitelist [add|del] [user] to update whitelist.");
             Log.Info("/admin [add|del] [user] to update admin list.");
-			Log.Info("/mode [sandbox|career] to set server game mode.");
-			Log.Info("/quit to exit, or /start to begin the server.");
-			Log.Info("");
+            Log.Info("/mode [sandbox|career] to set server game mode.");
+            Log.Info("/modgen - Auto-generate a KMPModControl.txt file using what you have placed in the server's 'Mods' directory.\n");
+            Log.Info("/quit to exit, or /start to begin the server.");
+            Log.Info("");
 
-			//Check for missing files, try and copy from KSP installation if possible.
-			string[] RequiredFiles = { "Assembly-CSharp.dll", "Assembly-CSharp-firstpass.dll", "UnityEngine.dll" };
+            //Check for missing files, try and copy from KSP installation if possible.
+            string[] RequiredFiles = { "Assembly-CSharp.dll", "Assembly-CSharp-firstpass.dll", "UnityEngine.dll" };
 
-			var missingFiles = RequiredFiles.Where(f => File.Exists(f) == false);
+            var missingFiles = RequiredFiles.Where(f => File.Exists(f) == false);
 
-			foreach (var f in missingFiles)
-			{
-				var tryKSPpath = @"%programfiles(x86)%\Steam\SteamApps\common\Kerbal Space Program\KSP_Data\Managed\" + f;
-				if (File.Exists(f))
-				{
-					try
-					{
-						File.Copy(tryKSPpath, f);
-					}
-					catch
-					{
-						//Cannot copy.
-					}
-				}
-				else
-				{
-					break;
-				}
-			}
+            foreach (var f in missingFiles)
+            {
+                var tryKSPpath = @"%programfiles(x86)%\Steam\SteamApps\common\Kerbal Space Program\KSP_Data\Managed\" + f;
+                if (File.Exists(f))
+                {
+                    try
+                    {
+                        File.Copy(tryKSPpath, f);
+                    }
+                    catch
+                    {
+                        //Cannot copy.
+                    }
+                }
+                else
+                {
+                    break;
+                }
+            }
 
-			//Check again.
-			missingFiles = RequiredFiles.Where(f => File.Exists(f) == false);
+            //Check again.
+            missingFiles = RequiredFiles.Where(f => File.Exists(f) == false);
 
-			if (missingFiles.Any())
-			{
-				Log.Error("The following required files are missing:");
-				foreach (var f in missingFiles) { Log.Error(f); }
-				Log.Error("Please place them in the KMP server directory. See README.txt for more information.");
-			}
+            if (missingFiles.Any())
+            {
+                Log.Error("The following required files are missing:");
+                foreach (var f in missingFiles) { Log.Error(f); }
+                Log.Error("Please place them in the KMP server directory. See README.txt for more information.");
+            }
 
-			bool running = true;
+            bool running = true;
 
-			while (running)
-			{
-				var line = Console.ReadLine();
+            while (running)
+            {
+                var line = Console.ReadLine();
 
-                Log.Info("Command Input: {0}",line);
+                Log.Info("Command Input: {0}", line);
 
-				var parts = line.Split(' ');
+                var parts = line.Split(' ');
 
-				switch (parts[0].ToLowerInvariant())
-				{
-					case "/quit":
-						return;
-					case "/whitelist":
-						if (parts.Length != 3)
-						{
-							Log.Info("Invalid usage. /whitelist [add|del] [user]");
-						}
+                switch (parts[0].ToLowerInvariant())
+                {
+                    case "/quit":
+                        return;
+                    case "/modgen":
+                        Server.writeModControl(true);
+                        break;
+                    case "/whitelist":
+                        if (parts.Length != 3)
+                        {
+                            Log.Info("Invalid usage. /whitelist [add|del] [user]");
+                        }
 
-						switch (parts[1])
-						{
-							case "add":
-								if (!settings.whitelist.Contains(parts[2], StringComparer.InvariantCultureIgnoreCase))
-								{
-									settings.whitelist.Add(parts[2].ToLowerInvariant());
-									Log.Info("{0} has been added to the whitelist", parts[2]);
-								}
-								else
-								{
-									Log.Info("{0} is already on the whitelist", parts[2]);
-								}
-								break;
-							case "del":
-								if (settings.whitelist.Contains(parts[2], StringComparer.InvariantCultureIgnoreCase))
-								{
-									settings.whitelist.Remove(parts[2].ToLowerInvariant());
-									Log.Info("{0} has been removed from the whitelist", parts[2]);
-								}
-								else
-								{
-									Log.Info("{0} was not already on the whitelist", parts[2]);
-								}
-								break;
-						}
+                        switch (parts[1])
+                        {
+                            case "add":
+                                if (!settings.whitelist.Contains(parts[2], StringComparer.InvariantCultureIgnoreCase))
+                                {
+                                    settings.whitelist.Add(parts[2].ToLowerInvariant());
+                                    Log.Info("{0} has been added to the whitelist", parts[2]);
+                                }
+                                else
+                                {
+                                    Log.Info("{0} is already on the whitelist", parts[2]);
+                                }
+                                break;
+                            case "del":
+                                if (settings.whitelist.Contains(parts[2], StringComparer.InvariantCultureIgnoreCase))
+                                {
+                                    settings.whitelist.Remove(parts[2].ToLowerInvariant());
+                                    Log.Info("{0} has been removed from the whitelist", parts[2]);
+                                }
+                                else
+                                {
+                                    Log.Info("{0} was not already on the whitelist", parts[2]);
+                                }
+                                break;
+                        }
 
-						ServerSettings.saveWhitelist(settings);
-						break;
+                        ServerSettings.saveWhitelist(settings);
+                        break;
 
                     case "/admin":
                         if (parts.Length != 3)
                         {
                             Log.Info("Invalid usage. /admin [add|del] [user]");
-							break;
+                            break;
                         }
 
                         switch (parts[1])
@@ -212,12 +223,12 @@ namespace KMPServer
 
                         ServerSettings.saveAdmins(settings);
                         break;
-					
-					case "/mode":
+
+                    case "/mode":
                         if (parts.Length != 2)
                         {
                             Log.Info("Invalid usage. /mode [sandbox|career]");
-							break;
+                            break;
                         }
                         switch (parts[1].ToLowerInvariant())
                         {
@@ -230,10 +241,10 @@ namespace KMPServer
                                 Log.Info("Game mode set to career");
                                 break;
                         }
-						ServerSettings.writeToFile(settings);
+                        ServerSettings.writeToFile(settings);
                         break;
 
-					case "/set":
+                    case "/set":
                         if (parts.Length < 3) {
 							Log.Info("Invalid usage. Usage is /set [key] [value]");
                         }
@@ -244,16 +255,16 @@ namespace KMPServer
                             Log.Info("httpPort - The port used for viewing server information from a web browser.");
                             Log.Info("httpBroadcast - ?"); // missing setting information
                             Log.Info("maxClients - The maximum number of players that can be connected to the server simultaneously." + Environment.NewLine);
-                            
+
                             Log.Info("screenshotInterval - The minimum time a client must wait after sharing a screenshot before they can share another one." + Environment.NewLine);
                             Log.Info("autoRestart - If true, the server will attempt to restart after catching an unhandled exception." + Environment.NewLine);
                             Log.Info("autoHost - If true, the server will start hosting immediately rather than requiring the admin to enter the 'H' command." + Environment.NewLine);
                             Log.Info("saveScreenshots - If true, the server will save all screenshots to the KMPScreenshots folder." + Environment.NewLine);
                             Log.Info("hostIPV6 - If true, the server will be listening on a IPv6 address." + Environment.NewLine);
                             Log.Info("cheatsEnabled - If true, enable cheats." + Environment.NewLine);
-							Log.Info("backupInterval - Time, in minutes, between universe database backups." + Environment.NewLine);
-							Log.Info("maxDirtyBackups - The maximum number of backups the server will perform before forcing database optimization (which otherwise happens only when the server is empty)." + Environment.NewLine);
-							Log.Info("updatesPerSecond - CHANGING THIS VALUE IS NOT RECOMMENDED - The number of updates that will be received from all clients combined per second. The higher you set this number, the more frequently clients will send updates. As the number of active clients increases, the frequency of updates will decrease to not exceed this many updates per second. " + Environment.NewLine + "WARNING: If this value is set too high then players will be more likely to be disconnected due to lag, while if it is set too low the gameplay experience will degrade significantly." + Environment.NewLine);
+                            Log.Info("backupInterval - Time, in minutes, between universe database backups." + Environment.NewLine);
+                            Log.Info("maxDirtyBackups - The maximum number of backups the server will perform before forcing database optimization (which otherwise happens only when the server is empty)." + Environment.NewLine);
+                            Log.Info("updatesPerSecond - CHANGING THIS VALUE IS NOT RECOMMENDED - The number of updates that will be received from all clients combined per second. The higher you set this number, the more frequently clients will send updates. As the number of active clients increases, the frequency of updates will decrease to not exceed this many updates per second. " + Environment.NewLine + "WARNING: If this value is set too high then players will be more likely to be disconnected due to lag, while if it is set too low the gameplay experience will degrade significantly." + Environment.NewLine);
                             Log.Info("joinMessage - A message shown to players when they join the server." + Environment.NewLine);
                             Log.Info("serverInfo - A message displayed to anyone viewing server information in a browser." + Environment.NewLine);
                             Log.Info("serverMotd - A message displayed to users when they login to the server that can be changed while the server is running." + Environment.NewLine);
@@ -269,6 +280,10 @@ namespace KMPServer
                             Log.Info("autoDekesslerTime - Time, in minutes, that the server will clean up all debris." + Environment.NewLine);
                             Log.Info("profanityWords - Replaces the first word with the second." + Environment.NewLine);
                             Log.Info("consoleScale - Changes the window size of the scale. Defaults to 1.0, requires restart." + Environment.NewLine);
+                        }
+                        else if (parts.Length < 3)
+                        {
+                            Log.Info("Invalid usage. Usage is /set [key] [value]");
                         }
                         else
                         {
@@ -289,16 +304,16 @@ namespace KMPServer
                             else
                                 Log.Info("No key found for {0}", parts[1]);
                         }
-						break;
+                        break;
 
-					case "/start":
-						startServer(settings);
-						break;
-					default:
-						Log.Info("Unrecognised command: {0}", parts[0]);
-						break;
-				}
-			}
+                    case "/start":
+                        startServer(settings);
+                        break;
+                    default:
+                        Log.Info("Unrecognised command: {0}", parts[0]);
+                        break;
+                }
+            }
 		}
 
 		private static void startServer(ServerSettings.ConfigStore settings)

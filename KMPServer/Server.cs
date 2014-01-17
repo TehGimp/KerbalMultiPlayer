@@ -24,6 +24,7 @@ using System.Runtime.Serialization.Formatters.Binary;
 using System.Text.RegularExpressions;
 using System.Globalization;
 using System.Collections.Concurrent;
+using System.Security.Cryptography;
 
 namespace KMPServer
 {
@@ -51,7 +52,15 @@ namespace KMPServer
         public const string DB_FILE_CONN = "Data Source=KMP_universe.db";
         public const string DB_FILE = "KMP_universe.db";
         public const string MOD_CONTROL_FILE = "KMPModControl.txt";
-        
+        public const string REQUIRED_MODS_PATH = "Mods/Required";
+        public const string OPTIONAL_MODS_PATH = "Mods/Optional";
+
+        public const string PLUGIN_DATA_DIRECTORY = "KMP/Plugins/PluginData/KerbalMultiPlayer/";
+        public const string CLIENT_CONFIG_FILENAME = "KMPClientConfig.xml";
+        public const string CLIENT_TOKEN_FILENAME = "KMPPlayerToken.txt";
+        public const string MOD_CONTROL_FILENAME = "KMPModControl.txt";
+        public const String GLOBAL_SETTINGS_FILENAME = "globalsettings.txt";
+
         public static byte[] kmpModControl;
 
         public const int UNIVERSE_VERSION = 4;
@@ -228,7 +237,7 @@ namespace KMPServer
             startDatabase();
         }
         
-		private static void generatePartsList(TextWriter writer)
+		private static List<string> generatePartsList()
         {
                 List<string> partList = new List<string>();
 
@@ -280,7 +289,8 @@ namespace KMPServer
                 //0.23 parts
                 partList.Add("RAPIER"); partList.Add("Large.Crewed.Lab");
 
-                foreach(string part in partList) writer.WriteLine(part);
+                return partList;
+                //foreach(string part in partList) writer.WriteLine(part);
         }
         
         private static void readModControl()
@@ -293,54 +303,238 @@ namespace KMPServer
             catch
             {
             	Log.Info(MOD_CONTROL_FILE + " not found, generating...");
-                TextWriter writer = File.CreateText(MOD_CONTROL_FILE);
-                writer.WriteLine("#You can comment by starting a line with a #, these are ignored by the server.");
-                writer.WriteLine("#Commenting will NOT work unless the line STARTS with a #.");
-                writer.WriteLine("#Sections supported are md5, partslist, resource-blacklist and resource-whitelist.");
-                writer.WriteLine("#You cannot use both resource-blacklist AND resource-whitelist in the same file.");
-                writer.WriteLine("#resource-blacklist bans ONLY the files you specify whereas resource-whitelist bans ALL resources except those you specify.");
-                writer.WriteLine("#Each section has its own type of formatting. Examples have been given.");
-                writer.WriteLine("#Sections are defined as follows");
-                writer.WriteLine();
-                writer.WriteLine("!required");
-                writer.WriteLine();
-                writer.WriteLine("#Here you can define GameData (mod) folders that the client requires before joining the server");
-                writer.WriteLine("#[Folder]");
-                writer.WriteLine("#Example: MechJeb2");
-                writer.WriteLine();
-                writer.WriteLine("Squad");
-                writer.WriteLine("#NOTE: This squad entry ensures that the client hasn't deleted the default parts. Disable this if undesired.");
-                writer.WriteLine();
-                writer.WriteLine("!md5");
-                writer.WriteLine();
-                writer.WriteLine("#To generate the md5 of a file you can use a utility such as this one: http://onlinemd5.com/");
-                writer.WriteLine("#For the MD5 section, file paths are read from inside GameData. If a client's MD5 does not match, they will not be permitted entry.");
-                writer.WriteLine("#You may not specify multiple MD5s for the same file. Do not put spaces around equals sign. Follow the example carefully.");
-                writer.WriteLine("#[File Path]=[MD5]");
-                writer.WriteLine("#Example: MechJeb2/Plugins/MechJeb2.dll=64E6E05C88F3466C63EDACD5CF8E5919");
-                writer.WriteLine();
-                writer.WriteLine("!resource-blacklist");
-                writer.WriteLine();
-                writer.WriteLine("#In this section you can specify the files to ban (or permit, if you change blacklist to whitelist).");
-                writer.WriteLine("#You do not need to specify a path, just a resource name.");
-                writer.WriteLine("#You can control any file from GameData here. It's prefered if you just specify the names of resources (as parts are controled by the partlist).");
-                writer.WriteLine("#[File]");
-                writer.WriteLine("#Example: MechJeb2.dll");
-                writer.WriteLine();
-                writer.WriteLine("!partslist");
-                writer.WriteLine();
-                writer.WriteLine("#This is a list of parts to allow users to put on their ships.");
-                writer.WriteLine("#If a part the client has doesn't appear on this list, they can still join the server but not use the part.");
-                writer.WriteLine("#The default stock parts have been added already for you.");
-                writer.WriteLine("#To add a mod part, add the name from the part's .cfg file. The name is the name from the PART{} section, where underscores are replaced with periods.");
-                writer.WriteLine("#[partname]");
-                writer.WriteLine("#Example: mumech.MJ2.Pod (NOTE: In the part.cfg this MechJeb2 pod is named mumech_MJ2_Pod. The _ have been replaced with .)");
-                writer.WriteLine("#You can use this application to generate partlists from a KSP installation if you want to add mod parts: http://forum.kerbalspaceprogram.com/threads/57284");
-                writer.WriteLine();
-                generatePartsList(writer);
-                writer.Close();
-                readModControl();
+                writeModControl(false);
             }
+        }
+
+        public static void writeModControl(bool autoAdd)
+        {
+            string filestring = "\n" +
+                "#You can comment by starting a line with a #, these are ignored by the server.\n" +
+                "#Commenting will NOT work unless the line STARTS with a '#'.\n" +
+                "#Sections supported are sha-required, sha-optional, partslist, resource-blacklist and resource-whitelist.\n" +
+                "#The client will be required to have the files found in sha-required, and they must match the SHA hash (this is where part mod files and play-altering files should go, like KWRocketry or Ferram Aerospace Research" +
+                "#The client may have the files found in sha-optional, but IF they do then they must match the SHA hash (this is where mods that do not affect other players should go, like EditorExtensions or part catalogue managers\n" +
+                "#You cannot use both resource-blacklist AND resource-whitelist in the same file.\n" +
+                "#resource-blacklist bans ONLY the files you specify\n" +
+                "#resource-whitelist bans ALL resources except those specified in the resource-whitelist section OR in the SHA sections. A file listed in resource-whitelist will NOT be checked for SHA hash. This is useful if you want a mod that modifies files in its own directory as you play.\n" +
+                "#Each section has its own type of formatting. Examples have been given.\n" +
+                "#Sections are defined as follows:\n" +
+                "\n" +
+                "\n" +
+                "!sha-required" +
+                "\n" +
+                "#To generate the SHA of a file you can use a utility such as this one: http://hash.online-convert.com/sha256-generator (use the 'hex' string)\n" +
+                "#For the SHA section, file paths are read from inside GameData. If a client's SHA does not match, they will not be permitted entry.\n" +
+                "#You may not specify multiple SHAs for the same file. Do not put spaces around equals sign. Follow the example carefully.\n" +
+                "#[File Path]=[SHA]\n" +
+                "#Example: MechJeb2/Plugins/MechJeb2.dll=B84BB63AE740F0A25DA047E5EDA35B26F6FD5DF019696AC9D6AF8FC3E031F0B9\n\n";
+
+            Log.Info("Beginning SHA256 hash of required mod files...");
+            string[] ls_required = null;
+            if (autoAdd) // auto-add optional mod list
+            {
+                try
+                {
+                    ls_required = System.IO.Directory.GetFiles(REQUIRED_MODS_PATH, "*.*", System.IO.SearchOption.AllDirectories);
+                }
+                catch (DirectoryNotFoundException)
+                {
+                    Log.Info("Required mods directory not found, creating...");
+                    System.IO.Directory.CreateDirectory(REQUIRED_MODS_PATH);
+                    ls_required = new string[0];
+                }
+                foreach(string file in ls_required){
+                    filestring += file.Substring(OPTIONAL_MODS_PATH.Length+1).Replace("\\", "/") + "="; // cut off first part of path so it starts from GameData directory, make unix-safe
+                    using (FileStream stream = File.OpenRead(file))
+                    {
+                        SHA256Managed sha = new SHA256Managed();
+                        byte[] hash = sha.ComputeHash(stream);
+                        filestring += BitConverter.ToString(hash).Replace("-", String.Empty) + "\n";
+                    }
+                }
+            }
+
+            filestring += "\n\n!sha-optional\n"+
+                "#Formatting for this section is the same as the 'sha-required' section\n\n";
+
+            Log.Info("Beginning SHA256 hash of optional mod files...");
+            string[] ls_optional = null;
+            if (autoAdd) // auto-add optional mod list
+            {
+                try
+                {
+                    ls_optional = System.IO.Directory.GetFiles(OPTIONAL_MODS_PATH, "*.*", System.IO.SearchOption.AllDirectories);
+                }
+                catch (DirectoryNotFoundException)
+                {
+                    Log.Info("Optional mods directory not found, creating...");
+                    System.IO.Directory.CreateDirectory(OPTIONAL_MODS_PATH);
+                    ls_optional = new string[0];
+                }
+                foreach (string file in ls_optional)
+                {
+                    filestring += file.Substring(OPTIONAL_MODS_PATH.Length + 1).Replace("\\", "/") + "=";
+                    using (FileStream stream = File.OpenRead(file))
+                    {
+                        SHA256Managed sha = new SHA256Managed();
+                        byte[] hash = sha.ComputeHash(stream);
+                        filestring += BitConverter.ToString(hash).Replace("-", String.Empty) + "\n";
+                    }
+                }
+            }
+
+            string resourcelistDescription = "#Set this to 'resource-blacklist' and specify the files to ban:\n" +
+                    "#[File]\n" +
+                    "#Example: MechJeb2.dll\n" +
+                    "#Alternatively, change 'blacklist' to 'whitelist' and clients will only be allowed to use parts listed here or in the 'sha-requried' and 'sha-optional' sections.\n" +
+                    "#This is useful for when you use mods that create or edit files as the user plays (for example, KMP modifies the 'KMPPlayerToken.txt' file for each user)\n" +
+                    "#In this case, you must specify the path AND filename:\n" +
+                    "#[File Path]\n" +
+                    "#Example: KMP/Plugins/PluginData/KerbalMultiPlayer/KMPPlayerToken.txt\n\n";
+
+            if(autoAdd){ // this section adds the whitelist from the existing file if it has one, so the user doesn't have to re-add any whitelisted files after auto-generating the Mod Control text file
+                string resourcelist = "";
+                try
+                {
+                    Log.Info("Looking for mod control file to preserve existing whitelist");
+                    using (StreamReader sr = new StreamReader(MOD_CONTROL_FILE))
+                    {
+                        string line;
+                        bool startedList = false;
+                        while (!sr.EndOfStream)
+                        {
+                            line = sr.ReadLine().Trim();
+                            if (line.Equals("!resource-whitelist", StringComparison.InvariantCultureIgnoreCase)) // wait until you find the whitelist section
+                            {
+                                startedList = true;
+                                continue;
+                            }
+                            if(!startedList) // skip all lines before you find it
+                            {
+                                continue;
+                            }
+                            if (line.Length > 0) // skip blank lines
+                            {
+                                if (line[0] == '!') // end at the next control section
+                                    break;
+                                if (line[0] == '#') // skip commented lines
+                                    continue;
+                                resourcelist += line + "\n";
+                            }
+                        }
+                    }
+                }
+                catch 
+                {
+                    Log.Info("No existing mod control file found");
+                }
+                string[] requiredWhitelist = {  PLUGIN_DATA_DIRECTORY + CLIENT_CONFIG_FILENAME + "\n",
+                                                PLUGIN_DATA_DIRECTORY + CLIENT_TOKEN_FILENAME + "\n",
+                                                PLUGIN_DATA_DIRECTORY + GLOBAL_SETTINGS_FILENAME + "\n",
+                                                PLUGIN_DATA_DIRECTORY + MOD_CONTROL_FILE + "\n"
+                                             };
+                foreach (string item in requiredWhitelist)
+                {
+                    if(!resourcelist.Contains(item)){
+                        resourcelist += item;
+                    }
+                }
+                filestring += "\n\n!resource-whitelist\n" +
+                    resourcelistDescription +
+                    resourcelist;
+            
+            } else
+            {
+                filestring += "\n\n" +
+                    "!resource-blacklist\n" +
+                    resourcelistDescription;
+            }
+
+            filestring += "\n\n" +
+                "!partslist\n"+
+                "#This is a list of parts to allow users to put on their ships.\n"+
+                "#If a part the client has doesn't appear on this list, they can still join the server but not use the part.\n"+
+                "#The default stock parts have been added already for you.\n"+
+                "#To add a mod part, add the name from the part's .cfg file. The name is the name from the PART{} section, where underscores are replaced with periods.\n"+
+                "#[partname]\n"+
+                "#Example: mumech.MJ2.Pod (NOTE: In the part.cfg this MechJeb2 pod is named mumech_MJ2_Pod. The _ have been replaced with .)\n"+
+                "#You can use this application to generate partlists from a KSP installation if you want to add mod parts: http://forum.kerbalspaceprogram.com/threads/57284 \n"+
+                "\n";
+
+            List<string> parts = new List<string>();
+            if (autoAdd) // add a part list for all part in the Required and Optional folders
+            {
+                string[] ls = ls_required.Concat(ls_optional).ToArray(); // put files from both optional and required directories together
+                char[] toperiod = { ' ', '_' };
+                foreach (string file in ls)
+                {
+                    if (file.Substring(file.Length - 4).Equals(".cfg", StringComparison.InvariantCultureIgnoreCase)) // check if config file (only place where parts are located)
+                    {
+                        using (StreamReader sr = new StreamReader(file))
+                        {
+                            bool newPart = false;
+                            while (!sr.EndOfStream)
+                            {
+                                string word = str_nextword(sr);
+                                if (word == "PART")
+                                {
+                                    newPart = true;
+                                }
+                                else if (word.Equals("name", StringComparison.InvariantCultureIgnoreCase) && str_nextword(sr).Equals("=", StringComparison.InvariantCultureIgnoreCase) && newPart)
+                                {
+                                    string line = sr.ReadLine();
+                                    line.Trim(); // remove whitespace from part name
+                                    string[] temp = line.Split(toperiod, StringSplitOptions.RemoveEmptyEntries); // convert spaces and underscores to periods
+                                    line = String.Join(".", temp);
+                                    parts.Add(line);
+                                    newPart = false;
+                                }
+                            }
+                        }
+                    }
+                }
+                parts = parts.Distinct().ToList();
+            }
+            else
+            {
+                parts = generatePartsList();
+            }
+            foreach (string part in parts)
+            {
+                filestring += part + "\n";
+            }
+            File.WriteAllText(MOD_CONTROL_FILE, filestring);
+            Log.Info("New {0} file written.", MOD_CONTROL_FILE);
+            readModControl();
+        }
+
+        private static string str_nextword(StreamReader file)
+        {
+            char[] wordBoundaries = { '\n', ' ', '\t', '\r' };
+            string output = "";
+            bool started = false;
+            while (!file.EndOfStream)
+            {
+                char c = (char)file.Read();
+                if (wordBoundaries.Contains(c))
+                {
+                    if (!started)
+                    {
+                        continue;
+                    }
+                    else
+                    {
+                        break;
+                    }
+                }
+                else
+                {
+                    started = true;
+                    output += c;
+                }
+            }
+            return output;
         }
         
         public void saveScreenshot(byte[] bytes, String player)
@@ -558,6 +752,7 @@ namespace KMPServer
 					case "/motd": motdServerCommand(rawParts); break;
 					case "/rules": rulesServerCommand(rawParts); break;
 					case "/setinfo": serverInfoServerCommand(rawParts);break;
+                    case "/modgen": writeModControl(true); break;
                     default: Log.Info("Unknown Command: "+cleanInput); break;
             	}
 			}
@@ -3898,6 +4093,7 @@ namespace KMPServer
 			Log.Info("/rules [rules] - Sets server rules, leave blank for none");
             Log.Info("/say <-u username> [message] - Send a Server message <to specified user>");
 			Log.Info("/help - Displays all commands in the server\n");
+            Log.Info("/modgen - Auto-generate a KMPModControl.txt file using what you have placed in the server's 'Mods' directory.\n");
 
             // to add a new command to the command list just copy the Log.Info method and add how to use that command.
         }
