@@ -3644,15 +3644,17 @@ namespace KMP
 		public void drawGUI()
 		{
 			//KSP Toolbar integration - Can't chuck it in the bootstrap because Toolbar does not instantate early enough.
-			if (!KMPToggleButtonInitialized && ToolbarButtonWrapper.ToolbarManagerPresent ) {
-				KMPToggleButton = ToolbarButtonWrapper.TryWrapToolbarButton("KMP", "Toggle");
-				KMPToggleButton.TexturePath = "KMP/KMPButton/KMPEnabled";
-				KMPToggleButton.ToolTip = "Toggle KMP Windows";
-				KMPToggleButton.AddButtonClickHandler((e) =>
-				{
-					KMPToggleButtonState = !KMPToggleButtonState;
-					KMPToggleButton.TexturePath = KMPToggleButtonState ? "KMP/KMPButton/KMPEnabled" : "KMP/KMPButton/KMPDisabled";
-				});
+			if (!KMPToggleButtonInitialized) {
+				if (ToolbarButtonWrapper.ToolbarManagerPresent) {
+					KMPToggleButton = ToolbarButtonWrapper.TryWrapToolbarButton ("KMP", "Toggle");
+					KMPToggleButton.TexturePath = "KMP/KMPButton/KMPEnabled";
+					KMPToggleButton.ToolTip = "Toggle KMP Windows";
+					KMPToggleButton.AddButtonClickHandler ((e) =>
+					{
+						KMPToggleButtonState = !KMPToggleButtonState;
+						KMPToggleButton.TexturePath = KMPToggleButtonState ? "KMP/KMPButton/KMPEnabled" : "KMP/KMPButton/KMPDisabled";
+					});
+				}
 				KMPToggleButtonInitialized = true;
 			}
 
