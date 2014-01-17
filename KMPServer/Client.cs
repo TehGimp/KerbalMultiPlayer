@@ -20,6 +20,7 @@ namespace KMPServer
 			IN_FLIGHT
 		}
 
+		//Repurpose SEND_BUFFER_SIZE to split large messages.
 		public const int SEND_BUFFER_SIZE = 8192;
         public const int POLL_INTERVAL = 60000;
 
@@ -73,7 +74,9 @@ namespace KMPServer
 		private byte[] receiveBuffer = new byte[8192];
 		private int receiveIndex = 0;
 		private int receiveHandleIndex = 0;
-		private bool isClientSendingData = false;
+		private bool isServerSendingData = false;
+		private byte[] splitMessageData;
+		private int splitMessageReceiveIndex;
 
 		private byte[] currentMessageHeader = new byte[KMPCommon.MSG_HEADER_LENGTH];
 		private int currentMessageHeaderIndex;
@@ -83,6 +86,7 @@ namespace KMPServer
 		public KMPCommon.ClientMessageID currentMessageID;
 
 		public ConcurrentQueue<byte[]> queuedOutMessagesHighPriority;
+		public ConcurrentQueue<byte[]> queuedOutMessagesSplit;
 		public ConcurrentQueue<byte[]> queuedOutMessages;
 		
 		public string disconnectMessage = "";
@@ -171,6 +175,7 @@ namespace KMPServer
 			lastUDPACKTime = 0;
 
 			queuedOutMessagesHighPriority = new ConcurrentQueue<byte[]>();
+			queuedOutMessagesSplit = new ConcurrentQueue<byte[]>();
 			queuedOutMessages = new ConcurrentQueue<byte[]>();
 
 			lock (activityLevelLock)
@@ -217,13 +222,7 @@ namespace KMPServer
 					currentMessageDataIndex = 0;
 					receiveIndex = 0;
 					receiveHandleIndex = 0;
-
-					tcpClient.GetStream().BeginRead(
-						receiveBuffer,
-						receiveIndex,
-						receiveBuffer.Length - receiveIndex,
-						asyncReceive,
-						receiveBuffer);
+					tcpClient.GetStream().BeginRead(receiveBuffer, receiveIndex, receiveBuffer.Length - receiveIndex, asyncReceive,	receiveBuffer);
 				}
 			}
 			catch (InvalidOperationException)
@@ -388,7 +387,7 @@ namespace KMPServer
 			receiveIndex = 0;
 		}
 
-		//Asyc send
+		//Async send
 
 		private void asyncSend(IAsyncResult result)
 		{
@@ -397,8 +396,8 @@ namespace KMPServer
                 if (tcpClient.Connected)
                 {
                     tcpClient.GetStream().EndWrite(result);
-					isClientSendingData = false;
-					if (queuedOutMessagesHighPriority.Count > 0 || queuedOutMessages.Count > 0) {
+					isServerSendingData = false;
+					if (queuedOutMessagesHighPriority.Count > 0 || queuedOutMessagesSplit.Count > 0 || queuedOutMessages.Count > 0) {
 						sendOutgoingMessages();
 					}
                 }
@@ -424,9 +423,34 @@ namespace KMPServer
 		
 		//Messages
 
-		private void messageReceived(KMPCommon.ClientMessageID id, byte[] data)
+		private void messageReceived (KMPCommon.ClientMessageID id, byte[] data)
 		{
-			parent.queueClientMessage(this, id, data);
+				if (id == KMPCommon.ClientMessageID.SPLIT_MESSAGE) {
+						if (splitMessageReceiveIndex == 0) {
+							//New split message
+								int split_message_length = KMPCommon.intFromBytes (data, 4);
+								splitMessageData = new byte[8 + split_message_length];
+								data.CopyTo (splitMessageData, 0);
+								splitMessageReceiveIndex = data.Length;
+						} else {
+								//Continued split message
+								data.CopyTo (splitMessageData, splitMessageReceiveIndex);
+								splitMessageReceiveIndex = splitMessageReceiveIndex + data.Length;
+						}
+						//Check if we have filled the byte array, if so, handle the message.
+						if (splitMessageReceiveIndex == splitMessageData.Length) {
+								//Parse the message and feed it into the client queue
+								KMPCommon.ClientMessageID joined_message_id = (KMPCommon.ClientMessageID)KMPCommon.intFromBytes (splitMessageData, 0);
+								int joined_message_length = KMPCommon.intFromBytes (splitMessageData, 4);
+								byte[] joined_message_data = new byte[joined_message_length];
+								Array.Copy (splitMessageData, 8, joined_message_data, 0, joined_message_length);
+								byte[] joined_message_data_decompressed = KMPCommon.Decompress (joined_message_data);
+								parent.queueClientMessage (this, joined_message_id, joined_message_data_decompressed);
+								splitMessageReceiveIndex = 0;
+						}
+				} else {
+						parent.queueClientMessage (this, id, data);
+				}
 		}
 
 		public void sendOutgoingMessages()
@@ -435,16 +459,22 @@ namespace KMPServer
 			try
 			{
 				lock (sendOutgoingMessagesLock) {
-					if ((queuedOutMessages.Count > 0 || queuedOutMessagesHighPriority.Count > 0) && !isClientSendingData)
+					if ((queuedOutMessagesHighPriority.Count > 0 || queuedOutMessagesSplit.Count > 0 || queuedOutMessages.Count > 0) && !isServerSendingData)
 					{
-						//Check the size of the next message
+						//Send high priority first, then any split messages (chopped up low priority messages), and then the normal queue.
+						//Large low priorty messages get chopped up into a split message just before send.
 						byte[] next_message = null;
 						if (queuedOutMessagesHighPriority.Count > 0) {
 							queuedOutMessagesHighPriority.TryDequeue(out next_message);
 						} else {
-							queuedOutMessages.TryDequeue(out next_message);
+							if (queuedOutMessagesSplit.Count > 0) {
+									queuedOutMessagesSplit.TryDequeue(out next_message);
+							} else {
+								queuedOutMessages.TryDequeue(out next_message);
+								splitOutgoingMessage(ref next_message);
+							}
 						}
-						isClientSendingData = true;
+						isServerSendingData = true;
 						tcpClient.GetStream().BeginWrite(next_message, 0, next_message.Length, asyncSend, next_message);
 					}
 				}
@@ -467,10 +497,30 @@ namespace KMPServer
 			
 		}
 
+		public void splitOutgoingMessage(ref byte[] next_message)
+		{
+			//Only split messages bigger than SPLIT_MESSAGE_SIZE.
+			if (next_message.Length > KMPCommon.SPLIT_MESSAGE_SIZE) {
+				int split_index = 0;
+				while (split_index < next_message.Length) {
+					int bytes_to_read = Math.Min (next_message.Length - split_index, KMPCommon.SPLIT_MESSAGE_SIZE);
+					byte[] split_message_bytes = new byte[bytes_to_read];
+					Array.Copy (next_message, split_index, split_message_bytes, 0, bytes_to_read);
+					byte[] split_message = Server.buildMessageArray (KMPCommon.ServerMessageID.SPLIT_MESSAGE, split_message_bytes);
+					queuedOutMessagesSplit.Enqueue(split_message);
+					split_index = split_index + bytes_to_read;
+				}
+				//Return the first split message if we just split.
+				Log.Debug("Split message into "  + queuedOutMessagesSplit.Count.ToString());
+				queuedOutMessagesSplit.TryDequeue(out next_message);
+			}
+		}
+
 		public void queueOutgoingMessage(KMPCommon.ServerMessageID id, byte[] data)
 		{
 			queueOutgoingMessage(Server.buildMessageArray(id, data));
 		}
+
 
 		public void queueOutgoingMessage(byte[] message_bytes)
 		{
