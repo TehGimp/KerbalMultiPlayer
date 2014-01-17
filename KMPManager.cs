@@ -238,6 +238,9 @@ namespace KMP
 
 		public double safetyBubbleRadius = 2000d;
 		private bool isVerified = false;
+		private ToolbarButtonWrapper KMPToggleButton;
+		private bool KMPToggleButtonState = true;
+		private bool KMPToggleButtonInitialized;
 		
 		public bool globalUIToggle
 		{
@@ -3538,13 +3541,13 @@ namespace KMP
 					isGameHUDHidden = !isGameHUDHidden;
 				}
 
-				if (Input.GetKeyDown(KMPGlobalSettings.instance.guiToggleKey) && isGameHUDHidden == false)
+				if (Input.GetKeyDown(KMPGlobalSettings.instance.guiToggleKey) && !isGameHUDHidden && KMPToggleButtonState)
 					KMPInfoDisplay.infoDisplayActive = !KMPInfoDisplay.infoDisplayActive;
 
                 if (Input.GetKeyDown(KMPGlobalSettings.instance.screenshotKey))
                     StartCoroutine(shareScreenshot());
                     
-                if (Input.GetKeyDown(KMPGlobalSettings.instance.screenshotToggleKey) && isGameHUDHidden == false)
+				if (Input.GetKeyDown(KMPGlobalSettings.instance.screenshotToggleKey) && !isGameHUDHidden && KMPToggleButtonState)
 		    KMPScreenshotDisplay.windowEnabled = !KMPScreenshotDisplay.windowEnabled;
 
                 if (Input.GetKeyDown(KMPGlobalSettings.instance.chatTalkKey))
@@ -3554,7 +3557,7 @@ namespace KMP
                     InputLockManager.SetControlLock(ControlTypes.All,"KMP_ChatActive");
                 }
 
-                if (Input.GetKeyDown(KMPGlobalSettings.instance.chatHideKey) && isGameHUDHidden == false)
+				if (Input.GetKeyDown(KMPGlobalSettings.instance.chatHideKey) && !isGameHUDHidden && KMPToggleButtonState)
                 {
 		    KMPGlobalSettings.instance.chatDXWindowEnabled = !KMPGlobalSettings.instance.chatDXWindowEnabled;
                     if (KMPGlobalSettings.instance.chatDXWindowEnabled) KMPChatDX.enqueueChatLine("Press Chat key (" + (KMPGlobalSettings.instance.chatTalkKey == KeyCode.BackQuote ? "~" : KMPGlobalSettings.instance.chatTalkKey.ToString()) + ") to send a message");
@@ -3640,6 +3643,19 @@ namespace KMP
 
 		public void drawGUI()
 		{
+			//KSP Toolbar integration - Can't chuck it in the bootstrap because Toolbar does not instantate early enough.
+			if (!KMPToggleButtonInitialized && ToolbarButtonWrapper.ToolbarManagerPresent ) {
+				KMPToggleButton = ToolbarButtonWrapper.TryWrapToolbarButton("KMP", "Toggle");
+				KMPToggleButton.TexturePath = "KMP/KMPButton/KMPEnabled";
+				KMPToggleButton.ToolTip = "Toggle KMP Windows";
+				KMPToggleButton.AddButtonClickHandler((e) =>
+				{
+					KMPToggleButtonState = !KMPToggleButtonState;
+					KMPToggleButton.TexturePath = KMPToggleButtonState ? "KMP/KMPButton/KMPEnabled" : "KMP/KMPButton/KMPDisabled";
+				});
+				KMPToggleButtonInitialized = true;
+			}
+
 			if (blockConnections && !KMPClientMain.connectionThreadRunning)
 				blockConnections = false;
 
@@ -3738,7 +3754,7 @@ namespace KMP
 			KMPConnectionDisplay.windowEnabled = (HighLogic.LoadedScene == GameScenes.MAINMENU) && globalUIToggle;
 
             
-            if (KMPGlobalSettings.instance.chatDXWindowEnabled && isGameHUDHidden == false)
+            if (KMPGlobalSettings.instance.chatDXWindowEnabled && !isGameHUDHidden && KMPToggleButtonState)
             {
                 KMPChatDX.windowPos = GUILayout.Window(
                     999994,
@@ -3784,7 +3800,7 @@ namespace KMP
 			
 			if (!KMPConnectionDisplay.windowEnabled && KMPClientMain.handshakeCompleted && KMPClientMain.tcpClient != null)
 			{
-				if(KMPInfoDisplay.infoDisplayActive && isGameHUDHidden == false)
+				if(KMPInfoDisplay.infoDisplayActive && !isGameHUDHidden && KMPToggleButtonState)
 				{
 					KMPInfoDisplay.infoWindowPos = GUILayout.Window(
 						999999,
@@ -3815,7 +3831,7 @@ namespace KMP
       		    KMPGlobalSettings.instance.chatDXWindowEnabled = false;
  		    }
 			
-			if (KMPScreenshotDisplay.windowEnabled)
+			if (KMPScreenshotDisplay.windowEnabled && !isGameHUDHidden && KMPToggleButtonState)
 			{
 				KMPScreenshotDisplay.windowPos = GUILayout.Window(
 					999998,
