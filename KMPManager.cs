@@ -3759,7 +3759,7 @@ namespace KMP
             if (KMPGlobalSettings.instance.chatDXWindowEnabled && !isGameHUDHidden && KMPToggleButtonState)
             {
                 KMPChatDX.windowPos = GUILayout.Window(
-                    999994,
+                    GUIUtility.GetControlID(999994, FocusType.Passive),
                     KMPChatDX.getWindowPos(),
                     chatWindowDX,
                     "",
@@ -3792,7 +3792,7 @@ namespace KMP
               Log.Debug("Exception thrown in drawGUI(), catch 1, Exception: {0}", e.ToString());
         }
 				GUILayout.Window(
-					999996,
+					GUIUtility.GetControlID(999996, FocusType.Passive),
 					KMPConnectionDisplay.windowPos,
 					connectionWindow,
 					"Connection Settings",
@@ -3805,7 +3805,7 @@ namespace KMP
 				if(KMPInfoDisplay.infoDisplayActive && !isGameHUDHidden && KMPToggleButtonState)
 				{
 					KMPInfoDisplay.infoWindowPos = GUILayout.Window(
-						999999,
+						GUIUtility.GetControlID(999999, FocusType.Passive),
 						KMPInfoDisplay.infoWindowPos,
 						infoDisplayWindow,
 						KMPInfoDisplay.infoDisplayMinimized ? "KMP" : "KerbalMP v"+KMPCommon.PROGRAM_VERSION+" ("+KMPGlobalSettings.instance.guiToggleKey+")",
@@ -3815,7 +3815,7 @@ namespace KMP
 					if (isInFlight && !KMPInfoDisplay.infoDisplayMinimized)
 					{
 						GUILayout.Window(
-							999995,
+							GUIUtility.GetControlID(999995, FocusType.Passive),
 							KMPVesselLockDisplay.windowPos,
 							lockWindow,
 							syncing ? "Bailout" : "Lock",
@@ -3836,7 +3836,7 @@ namespace KMP
 			if (KMPScreenshotDisplay.windowEnabled && !isGameHUDHidden && KMPToggleButtonState)
 			{
 				KMPScreenshotDisplay.windowPos = GUILayout.Window(
-					999998,
+					GUIUtility.GetControlID(999998, FocusType.Passive),
 					KMPScreenshotDisplay.windowPos,
 					screenshotWindow,
 					"KerbalMP Viewer (" + KMPGlobalSettings.instance.screenshotToggleKey + ")",
@@ -3847,7 +3847,7 @@ namespace KMP
 //			if (KMPGlobalSettings.instance.chatWindowEnabled)
 //			{
 //				KMPChatDisplay.windowPos = GUILayout.Window(
-//					999997,
+//					GUIUtility.GetControlID(999997, FocusType.Passive),
 //					KMPChatDisplay.windowPos,
 //					chatWindow,
 //					"KerbalMP Chat",
