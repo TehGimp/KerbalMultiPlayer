@@ -3229,6 +3229,8 @@ namespace KMP
                         FileStream.File.ComputeSHA(FileStream.Stream);
                         LoadedModfiles.Add(FileStream.File); // add all data about this file to the mod file list
                         FileStream.Stream.Unlock(0, 0); // unlock the file once it's no longer needed
+                        FileStream.Stream.Close();
+                        FileStream.Stream.Dispose();
                         Log.Debug("Added and hashed: " + FileStream.File.ModPath + "=" + FileStream.File.SHA256);
                     }
                     catch (Exception e)
