@@ -5,6 +5,7 @@ using System.Text;
 using UnityEngine;
 using System.Xml.Serialization;
 using System.Collections;
+using System.Threading;
 
 namespace KMP
 {
@@ -92,10 +93,35 @@ namespace KMP
 			public Guid vesselID;
 		}
 
-        public struct ModFileStream
+        public class OutputData
+        {
+            public String output;
+        }
+        public class ModFileStream
         {
             public LoadedFileInfo File;
             public System.IO.FileStream Stream;
+            public ManualResetEvent resetEvent;
+            public OutputData outputData;
+
+            public void HandleHash(System.Object state)
+            {
+                outputData.output = "";
+                File.ComputeSHA(Stream);
+                LoadedModfiles.Add(File); // add all data about this file to the mod file list
+                try
+                {
+                    Stream.Unlock(0, 0); // unlock the file once it's no longer needed
+                }
+                catch (Exception e)
+                {
+                    outputData.output += "Unable to unlock " + File.ModPath + ", " + e.Message + ", continuing...";
+                }
+                Stream.Close();
+                Stream.Dispose();
+                outputData.output += "Added and hashed: " + File.ModPath + "=" + File.SHA256;
+                resetEvent.Set();
+            }
         }
 
 		//Singleton
@@ -105,6 +131,8 @@ namespace KMP
 		//Properties
 
 		public const String GLOBAL_SETTINGS_FILENAME = "globalsettings.txt";
+
+        public const int MAX_SHA_THREADS = 20;
 
 		public const float INACTIVE_VESSEL_RANGE = 2500.0f;
 		public const float DOCKING_TARGET_RANGE = 200.0f;
@@ -3230,29 +3258,43 @@ namespace KMP
                         Log.Debug("Error in part hashing, 1st section: {0}", e.Message);
                     }
                 }
-                foreach (ModFileStream FileStream in FileStreams)
+                ManualResetEvent[] doneEvents = new ManualResetEvent[MAX_SHA_THREADS];
+                OutputData[] outputs = new OutputData[MAX_SHA_THREADS];
+                for (int i = 0; i < FileStreams.Count; i++)
                 {
+                    int threadIndex = i % MAX_SHA_THREADS;
                     try
                     {
-                        FileStream.File.ComputeSHA(FileStream.Stream);
-                        LoadedModfiles.Add(FileStream.File); // add all data about this file to the mod file list
-                        try
-                        {
-                            FileStream.Stream.Unlock(0, 0); // unlock the file once it's no longer needed
-                        }
-                        catch (Exception e)
-                        {
-                            Log.Debug("Unable to unlock " + FileStream.File.ModPath + ", " + e.Message + ", continuing...");
-                        }
-                        FileStream.Stream.Close();
-                        FileStream.Stream.Dispose();
-                        Log.Debug("Added and hashed: " + FileStream.File.ModPath + "=" + FileStream.File.SHA256);
+                        doneEvents[threadIndex] = new ManualResetEvent(false);
+                        FileStreams.ElementAt(i).resetEvent = doneEvents[threadIndex];
+                        outputs[threadIndex] = new OutputData();
+                        FileStreams.ElementAt(i).outputData = outputs[threadIndex];
+                        ThreadPool.QueueUserWorkItem(FileStreams.ElementAt(i).HandleHash, threadIndex);
                     }
                     catch (Exception e)
                     {
                         Log.Debug("Error in part hashing, 2nd section: {0}", e.Message);
                     }
+                    if (threadIndex == MAX_SHA_THREADS - 1)
+                    {
+                        WaitHandle.WaitAll(doneEvents);
+                        foreach(OutputData output in outputs){
+                            if (output != null && output.output != null && output.output != "")
+                            {
+                                Log.Debug(output.output);
+                            }
+                        }
+                    }
                 }
+                WaitHandle.WaitAll(doneEvents); 
+                foreach (OutputData output in outputs)
+                {
+                    if (output != null && output.output != null && output.output != "")
+                    {
+                        Log.Debug(output.output);
+                    }
+                }
+                Log.Debug("All SHA threading completed");
             }
             catch (Exception e)
             {
