@@ -481,6 +481,7 @@ namespace KMP
 	        }
 	        catch (Exception e)
 	        {
+                modMismatchError = e.Message;
 	        	Log.Debug(e.ToString());
 	        	return false;
 	        }
