@@ -27,6 +27,14 @@ namespace KMPServer
             if(!System.IO.Directory.Exists(Server.OPTIONAL_MODS_PATH)){
                 System.IO.Directory.CreateDirectory(Server.OPTIONAL_MODS_PATH);
             }
+            if (!System.IO.Directory.Exists(Server.REQUIRED_EXACT_MODS_PATH))
+            {
+                System.IO.Directory.CreateDirectory(Server.REQUIRED_EXACT_MODS_PATH);
+            }
+            if (!System.IO.Directory.Exists(Server.OPTIONAL_EXACT_MODS_PATH))
+            {
+                System.IO.Directory.CreateDirectory(Server.OPTIONAL_EXACT_MODS_PATH);
+            }
 			settings = new ServerSettings.ConfigStore();
 			ServerSettings.readFromFile(settings);
 			ServerSettings.loadWhitelist(settings);
@@ -151,7 +159,7 @@ namespace KMPServer
                     case "/quit":
                         return;
                     case "/modgen":
-                        Server.writeModControl(true);
+                        Server.writeModControl(true, settings);
                         break;
                     case "/whitelist":
                         if (parts.Length != 3)
@@ -262,6 +270,7 @@ namespace KMPServer
                             Log.Info("saveScreenshots - If true, the server will save all screenshots to the KMPScreenshots folder." + Environment.NewLine);
                             Log.Info("hostIPV6 - If true, the server will be listening on a IPv6 address." + Environment.NewLine);
                             Log.Info("cheatsEnabled - If true, enable cheats." + Environment.NewLine);
+                            Log.Info("allowPiracy - If true, a player can take control of another player's ship if they can accomplish manual docking (very difficult)." + Environment.NewLine);
                             Log.Info("backupInterval - Time, in minutes, between universe database backups." + Environment.NewLine);
                             Log.Info("maxDirtyBackups - The maximum number of backups the server will perform before forcing database optimization (which otherwise happens only when the server is empty)." + Environment.NewLine);
                             Log.Info("updatesPerSecond - CHANGING THIS VALUE IS NOT RECOMMENDED - The number of updates that will be received from all clients combined per second. The higher you set this number, the more frequently clients will send updates. As the number of active clients increases, the frequency of updates will decrease to not exceed this many updates per second. " + Environment.NewLine + "WARNING: If this value is set too high then players will be more likely to be disconnected due to lag, while if it is set too low the gameplay experience will degrade significantly." + Environment.NewLine);
@@ -280,6 +289,7 @@ namespace KMPServer
                             Log.Info("autoDekesslerTime - Time, in minutes, that the server will clean up all debris." + Environment.NewLine);
                             Log.Info("profanityWords - Replaces the first word with the second." + Environment.NewLine);
                             Log.Info("consoleScale - Changes the window size of the scale. Defaults to 1.0, requires restart." + Environment.NewLine);
+                            Log.Info("checkAllModFiles - If true, all files in the Mods directories are used during the /modgen command. Otherwise, only .dll and .cfg files are used." + Environment.NewLine);
                         }
                         else if (parts.Length < 3)
                         {

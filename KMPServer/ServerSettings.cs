@@ -52,7 +52,7 @@ namespace KMPServer
 			public bool autoDekessler = false;
 			public int autoDekesslerTime = 30;
 			public bool profanityFilter = true;
-			public string profanityWords = "fucker:kerper,faggot:kerpot,shit:kerp,fuck:guck,cunt:kump,piss:heph,fag:olp,dick:derp,cock:beet,asshole:hepderm,nigger:haggar";
+            public string profanityWords = "fuck:kerp,fucker:kerper,fucking:kerping,faggot:kerpot,shit:kerp,cunt:kump,piss:heph,fag:olp,dick:derp,cock:beet,asshole:hepderm,nigger:haggar";
 			public bool whitelisted = false;
 			public String joinMessage = String.Empty;
 			public String serverInfo = String.Empty;
@@ -60,7 +60,8 @@ namespace KMPServer
 			public String serverRules = String.Empty;
 			public double safetyBubbleRadius = 2000d;
 			public bool cheatsEnabled = true;
-			public bool allowPiracy = false;
+            public bool allowPiracy = false;
+            public bool checkAllModFiles = false;
 			public int gameMode = 0;
 
 			private IEnumerable<KeyValuePair<string, string>> _profanity = null;
@@ -438,7 +439,7 @@ namespace KMPServer
 			//Read the settings file into a dictionary before shoving the values in the setting store.
 			try
 			{
-				if (!File.Exists(FileName)) { return; }
+                if (!File.Exists(FileName)) { writeToFile(Store);  return; }
 				using (StreamReader configReader = new StreamReader(FileName))
 				{
 					string CurrentLine;

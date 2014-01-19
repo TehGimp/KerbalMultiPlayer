@@ -154,6 +154,7 @@ namespace KMP
 		public int gameMode = 0; //0=Sandbox, 1=Career
 		public bool gameCheatsEnabled = false; //Allow built-in KSP cheats
 		public bool gameArrr = false; //Allow private vessels to be taken if other user can successfully dock manually
+        public bool checkAllModFiles = false;
 		
 		private float lastGlobalSettingSaveTime = 0.0f;
 		private float lastPluginDataWriteTime = 0.0f;
@@ -3214,7 +3215,14 @@ namespace KMP
                         ModFileStream Entry = new ModFileStream();
                         Entry.File = new LoadedFileInfo(file);
                         Entry.Stream = new System.IO.FileStream(file, System.IO.FileMode.Open);
-                        Entry.Stream.Lock(0, 0); // lock the file until after it's hashed, so the user can't modify it in the meantime
+                        try
+                        {
+                            Entry.Stream.Lock(0, 0); // lock the file until after it's hashed, so the user can't modify it in the meantime
+                        }
+                        catch (Exception e)
+                        {
+                            Log.Debug("Unable to lock " + Entry.File.ModPath + ", " + e.Message + ", continuing...");
+                        }
                         FileStreams.Add(Entry);
                     }
                     catch (Exception e)
@@ -3228,7 +3236,16 @@ namespace KMP
                     {
                         FileStream.File.ComputeSHA(FileStream.Stream);
                         LoadedModfiles.Add(FileStream.File); // add all data about this file to the mod file list
-                        FileStream.Stream.Unlock(0, 0); // unlock the file once it's no longer needed
+                        try
+                        {
+                            FileStream.Stream.Unlock(0, 0); // unlock the file once it's no longer needed
+                        }
+                        catch (Exception e)
+                        {
+                            Log.Debug("Unable to unlock " + FileStream.File.ModPath + ", " + e.Message + ", continuing...");
+                        }
+                        FileStream.Stream.Close();
+                        FileStream.Stream.Dispose();
                         Log.Debug("Added and hashed: " + FileStream.File.ModPath + "=" + FileStream.File.SHA256);
                     }
                     catch (Exception e)
