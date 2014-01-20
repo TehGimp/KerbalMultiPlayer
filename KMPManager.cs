@@ -295,6 +295,8 @@ namespace KMP
 		private bool KMPToggleButtonState = true;
 		private bool KMPToggleButtonInitialized;
 		
+		public static bool showConnectionWindow = false;
+		
 		public bool globalUIToggle
 		{
 			get
@@ -3997,13 +3999,16 @@ namespace KMP
         catch (Exception e) {
               Log.Debug("Exception thrown in drawGUI(), catch 1, Exception: {0}", e.ToString());
         }
-				GUILayout.Window(
-					GUIUtility.GetControlID(999996, FocusType.Passive),
-					KMPConnectionDisplay.windowPos,
-					connectionWindow,
-					"Connection Settings",
-					KMPConnectionDisplay.layoutOptions
-					);
+				if (showConnectionWindow)
+				{
+					GUILayout.Window(
+						GUIUtility.GetControlID(999996, FocusType.Passive),
+						KMPConnectionDisplay.windowPos,
+						connectionWindow,
+						"Connection Settings",
+						KMPConnectionDisplay.layoutOptions
+						);
+				}
 			}
 			
 			if (!KMPConnectionDisplay.windowEnabled && KMPClientMain.handshakeCompleted && KMPClientMain.tcpClient != null)
@@ -4358,6 +4363,12 @@ namespace KMP
 		
 		private void connectionWindow(int windowID)
 		{
+			if (GUILayout.Button("<- Back"))
+			{
+				showConnectionWindow = false;
+				MainMenu m = (MainMenu)FindObjectOfType(typeof(MainMenu));
+				m.envLogic.GoToStage(1);
+			}
 			if(!configRead)
 			{
 				KMPClientMain.readConfigFile();

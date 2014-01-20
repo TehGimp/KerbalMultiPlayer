@@ -20,7 +20,7 @@ namespace KMP
 		{
 			get
 			{
-				return new Rect(Screen.width - MIN_WINDOW_WIDTH * 1.5f, Screen.height / 2 - MIN_WINDOW_HEIGHT / 2, MIN_WINDOW_WIDTH, MIN_WINDOW_HEIGHT); 
+				return new Rect(Screen.width * 0.4f - MIN_WINDOW_WIDTH, Screen.height / 2 - MIN_WINDOW_HEIGHT / 2, MIN_WINDOW_WIDTH, MIN_WINDOW_HEIGHT); 
 			}
 		}
 		public static Vector2 scrollPos = Vector2.zero;
