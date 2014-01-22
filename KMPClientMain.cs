@@ -99,7 +99,7 @@ namespace KMP
 		//ModChecking
 		public static bool modFileChecked = false;
 		public static List<string> partList = new List<string>();
-        public static Dictionary<string, SHAMod> shaList = new Dictionary<string, SHAMod>();
+        public static Dictionary<string, SHAMod> modFileList = new Dictionary<string, SHAMod>();
         public static List<string> resourceList = new List<string>();
         public static List<string> requiredModList = new List<string>();
 		public static string resourceControlMode = "blacklist";
@@ -309,12 +309,13 @@ namespace KMP
 							    if(line.Contains("partslist")){
 								    readmode = "parts";
 							    }
-							    else if(line.Contains("sha-required")){
-                                    readmode = "sha-required";
-							    }
-                                else if (line.Contains("sha-optional"))
+                                else if (line.Contains("required-files"))
                                 {
-                                    readmode = "sha-optional";
+                                    readmode = "required-files";
+							    }
+                                else if (line.Contains("optional-files"))
+                                {
+                                    readmode = "optional-files";
                                 }
 							    else if(line.Contains("resource-blacklist")){ //allow all resources EXCEPT these in file
 								    readmode = "resource";
@@ -332,15 +333,25 @@ namespace KMP
 						    {
 							    allowedParts.Add(line);
 						    }
-                            else if (readmode == "sha-required")
+                            else if (readmode == "required-files")
 						    {
-							    splitline = line.Split('=');
-                                hashes.Add(splitline[0], new SHAMod { sha = splitline[1], required = true });
+                                splitline = line.Split('=');
+                                string hash = "";
+                                if (splitline.Length > 1)
+                                {
+                                    hash = splitline[1];
+                                }
+                                hashes.Add(splitline[0], new SHAMod { sha = hash, required = true });
 						    }
-                            else if (readmode == "sha-optional")
+                            else if (readmode == "optional-files")
                             {
                                 splitline = line.Split('=');
-                                hashes.Add(splitline[0], new SHAMod { sha = splitline[1], required = false });
+                                string hash = "";
+                                if (splitline.Length > 1)
+                                {
+                                    hash = splitline[1];
+                                }
+                                hashes.Add(splitline[0], new SHAMod { sha = hash, required = false });
                             }
 						    else if(readmode == "resource"){
 							    resources.Add(line);
@@ -359,19 +370,24 @@ namespace KMP
 	        
 	        reader.Close();
 	        partList = allowedParts; //make all the vars global once we're done parsing
-            shaList = hashes;
+            modFileList = hashes;
 	        resourceControlMode = resourcemode;
 	        resourceList = resources;
 	        requiredModList = modList;
         }
         
-        private static bool SHACheck()
+        private static bool FileCheck()
         {
             char[] replaceChars = {'\\', '/'};
             try
             {
-                foreach (KeyValuePair<string, SHAMod> entry in shaList)
+                foreach (KeyValuePair<string, SHAMod> entry in modFileList)
                 {
+                    // if server settings don't say to check all mod files, and it's not a DLL or CFG file, then skip it
+                    if (!gameManager.checkAllModFiles && !entry.Key.EndsWith(".cfg", System.StringComparison.InvariantCultureIgnoreCase) && !entry.Key.EndsWith(".dll", System.StringComparison.InvariantCultureIgnoreCase))
+                    {
+                        continue;
+                    }
                     LoadedFileInfo FileInfo = null;
                     if (resourceControlMode == "whitelist")
                     {
@@ -407,7 +423,7 @@ namespace KMP
                             continue;
                         }
                     }
-                    else if (String.Compare(FileInfo.SHA256, entry.Value.sha, true) != 0) // if the mod file exists, then it MUST match the SHA from the server
+                    else if (String.Compare(FileInfo.SHA256, entry.Value.sha, true) != 0 && entry.Value.sha != "") // if the mod file exists, then it MUST match the SHA from the server (unless SHA section was blank, which means it is a required file but doesn't need to match)
                     {
                         modMismatchError = "SHA Checksum Mismatch: " + FileInfo.LoadedPath;
                         return false;
@@ -450,10 +466,14 @@ namespace KMP
                             modMismatchError = "You may not join a server if you have mods installed in the deprecated mod directories ('Plugins' or 'Parts' directories in the KSP root directory)";
                             return false;
                         }
-                        if (!resourceList.Contains(file.ModPath) && !shaList.ContainsKey(file.ModPath)) // check if the resource is a) whitelisted, or b) listed in the optional or required SHA sections. If not, the file is not allowed to be loaded.
+                        // if server settings don't say to check all mod files, and it's not a DLL or CFG file, then skip it
+                        if (gameManager.checkAllModFiles || file.ModPath.EndsWith(".dll", System.StringComparison.InvariantCultureIgnoreCase) || file.ModPath.EndsWith(".cfg", System.StringComparison.InvariantCultureIgnoreCase))
                         {
-                            modMismatchError = "File not allowed on this server: " + file.LoadedPath;
-                            return false;
+                            if (!resourceList.Contains(file.ModPath) && !modFileList.ContainsKey(file.ModPath)) // check if the resource is a) whitelisted, or b) listed in the optional or required SHA sections. If not, the file is not allowed to be loaded.
+                            {
+                                modMismatchError = "File not allowed on this server: " + file.LoadedPath;
+                                return false;
+                            }
                         }
 	        		}
 	        	}
@@ -461,6 +481,7 @@ namespace KMP
 	        }
 	        catch (Exception e)
 	        {
+                modMismatchError = e.Message;
 	        	Log.Debug(e.ToString());
 	        	return false;
 	        }
@@ -476,7 +497,7 @@ namespace KMP
 	        	
 				parseModFile(System.Text.Encoding.UTF8.GetString(kmpModControl_bytes));
 	        	
-	        	if (!resourceCheck() || !SHACheck())
+	        	if (!resourceCheck() || !FileCheck())
 	        	{
 	        		return false;
 	        	}
@@ -779,7 +800,7 @@ namespace KMP
                             int kmpModControl_length = KMPCommon.intFromBytes(data, 16 + server_version_length);
                             kmpModControl_bytes = new byte[kmpModControl_length];
                             Array.Copy(data, 20 + server_version_length, kmpModControl_bytes, 0, kmpModControl_length);
-							
+                            gameManager.checkAllModFiles = Convert.ToBoolean(data[20+server_version_length+kmpModControl_length]);
                             SetMessage("Handshake received. Server version: " + server_version);
                         }
                     }
@@ -934,7 +955,6 @@ namespace KMP
                                 gameManager.gameCheatsEnabled = Convert.ToBoolean(data[21]);
 								gameManager.gameArrr = Convert.ToBoolean(data[22]);
                                 //partList, requiredModList, shaList, resourceList and resourceControlMode 
-
                             }
 
                             receivedSettings = true;

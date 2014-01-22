@@ -134,11 +134,8 @@ namespace KMP
 		protected PropertyInfo ButtonEnalbed;
 		protected PropertyInfo ButtonImportant;
 		protected EventInfo ButtonOnClick;
-		protected System.Type ClickHandlerType;
 		protected EventInfo ButtonOnMouseEnter;
-		protected System.Type MouseEnterHandlerType;
 		protected EventInfo ButtonOnMouseLeave;
-		protected System.Type MouseLeaveHandlerType;
 		protected MethodInfo ButtonDestroy;
 		protected System.Type GameScenesVisibilityType;
 
