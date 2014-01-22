@@ -105,6 +105,10 @@ namespace KMPServer
 
         private bool backedUpSinceEmpty = false;
         private Dictionary<Guid, long> recentlyDestroyed = new Dictionary<Guid, long>();
+		private Dictionary<int, double> subSpaceMasterTick = new Dictionary<int, double>();
+		private Dictionary<int, long> subSpaceMasterTime = new Dictionary<int, long>();
+		private Dictionary<int, float> subSpaceMasterSpeed = new Dictionary<int, float>();
+		private Dictionary<int, long> subSpaceLastRateCheck = new Dictionary<int, long>();
 
 		private Boolean bHandleCommandsRunning = true;
 		
@@ -1923,8 +1927,8 @@ namespace KMPServer
             clientMessageQueue.Enqueue(message);
         }
 
-        private KMPCommon.ClientMessageID[] AllowNullDataMessages = { KMPCommon.ClientMessageID.SCREEN_WATCH_PLAYER, KMPCommon.ClientMessageID.CONNECTION_END, KMPCommon.ClientMessageID.ACTIVITY_UPDATE_IN_FLIGHT, KMPCommon.ClientMessageID.ACTIVITY_UPDATE_IN_GAME, KMPCommon.ClientMessageID.PING };
-        private KMPCommon.ClientMessageID[] AllowClientNotReadyMessages = { KMPCommon.ClientMessageID.HANDSHAKE, KMPCommon.ClientMessageID.TEXT_MESSAGE, KMPCommon.ClientMessageID.SCREENSHOT_SHARE, KMPCommon.ClientMessageID.CONNECTION_END, KMPCommon.ClientMessageID.ACTIVITY_UPDATE_IN_FLIGHT, KMPCommon.ClientMessageID.ACTIVITY_UPDATE_IN_GAME, KMPCommon.ClientMessageID.PING, KMPCommon.ClientMessageID.UDP_PROBE, KMPCommon.ClientMessageID.WARPING, KMPCommon.ClientMessageID.SSYNC };
+        private KMPCommon.ClientMessageID[] AllowNullDataMessages = { KMPCommon.ClientMessageID.SCREEN_WATCH_PLAYER, KMPCommon.ClientMessageID.CONNECTION_END, KMPCommon.ClientMessageID.ACTIVITY_UPDATE_IN_FLIGHT, KMPCommon.ClientMessageID.ACTIVITY_UPDATE_IN_GAME, KMPCommon.ClientMessageID.PING, KMPCommon.ClientMessageID.SYNC_TIME };
+        private KMPCommon.ClientMessageID[] AllowClientNotReadyMessages = { KMPCommon.ClientMessageID.HANDSHAKE, KMPCommon.ClientMessageID.TEXT_MESSAGE, KMPCommon.ClientMessageID.SCREENSHOT_SHARE, KMPCommon.ClientMessageID.CONNECTION_END, KMPCommon.ClientMessageID.ACTIVITY_UPDATE_IN_FLIGHT, KMPCommon.ClientMessageID.ACTIVITY_UPDATE_IN_GAME, KMPCommon.ClientMessageID.PING, KMPCommon.ClientMessageID.UDP_PROBE, KMPCommon.ClientMessageID.WARPING, KMPCommon.ClientMessageID.SSYNC, KMPCommon.ClientMessageID.SYNC_TIME };
 
         public void handleMessage(Client cl, KMPCommon.ClientMessageID id, byte[] data)
         {
@@ -1987,6 +1991,9 @@ namespace KMPServer
 	                    case KMPCommon.ClientMessageID.SSYNC:
 	                        HandleSSync(cl, data);
 	                        break;
+						case KMPCommon.ClientMessageID.SYNC_TIME:
+							HandleTimeSync(cl, data);
+							break;
 	                }
 	            }
 	            catch (NullReferenceException)
@@ -2029,9 +2036,21 @@ namespace KMPServer
             sendSubspace(cl, true);
         }
 
+		private void HandleTimeSync(Client cl, byte[] data)
+		{
+			//Message format: clientsendtick(8), serverreceivetick(8), serversendtick(8). The server send tick gets added during actual sending.
+			byte[] newdata = new byte[16];
+			data.CopyTo (newdata, 0);
+			BitConverter.GetBytes(DateTime.UtcNow.Ticks).CopyTo(newdata, 8);
+			byte[] message_bytes = buildMessageArray(KMPCommon.ServerMessageID.SYNC_TIME, newdata);
+			cl.queueOutgoingMessage(message_bytes); //This is still re-written during the actual send.
+			Log.Debug("{0} time sync request", cl.username);
+		}
+
         private void HandleWarping(Client cl, byte[] data)
         {
             float rate = BitConverter.ToSingle(data, 0);
+			double newsubspacetick = BitConverter.ToDouble(data, 4);
             if (cl.warping)
             {
                 if (rate < 1.1f)
@@ -2068,8 +2087,12 @@ namespace KMPServer
                     }
 					if (settings.useMySQL) universeDB.Close();
                     cl.currentSubspaceID = newSubspace;
+					Log.Debug("Adding new time sync data for subspace {0}", newSubspace);
+					subSpaceMasterTick.Add(cl.currentSubspaceID, newsubspacetick);
+					subSpaceMasterTime.Add(cl.currentSubspaceID, DateTime.UtcNow.Ticks);
+					subSpaceMasterSpeed.Add(cl.currentSubspaceID, 1f);
 					cl.warping = false;
-                    sendSubspace(cl, true, false);
+                    sendSubspace(cl, true, true);
 					cl.lastTick = -1d;
                     Log.Activity("{0} set to new subspace {1}", cl.username, newSubspace);
                 }
@@ -2090,7 +2113,7 @@ namespace KMPServer
             double incomingTick = BitConverter.ToDouble(data, 0);
             double lastSubspaceTick = incomingTick;
 
-            cl.lastTick = incomingTick;
+			cl.lastTick = incomingTick;
             if (!cl.warping)
             {
 				var universeDB = KMPServer.Server.universeDB;
@@ -2117,30 +2140,6 @@ namespace KMPServer
                     cmd.Dispose();
                 }
 				if (settings.useMySQL) universeDB.Close();
-                if (lastSubspaceTick - incomingTick > 0.2d)
-                {
-                    cl.syncOffset += 0.001d;
-                    if (cl.syncOffset > 0.5d) cl.syncOffset = 0.5;
-                    if (cl.receivedHandshake && cl.lastSyncTime < (currentMillisecond - 2500L))
-                    {
-                        Log.Debug("Sending time-sync to {0} current offset {1}", cl.username, cl.syncOffset);
-                        if (cl.lagWarning > 24)
-                        {
-                            cl.lastSyncTime = currentMillisecond;
-                            markClientForDisconnect(cl, "Your game was running too slowly compared to other players. Please try reconnecting in a moment.");
-                        }
-                        else
-                        {
-                            sendSyncMessage(cl, lastSubspaceTick + cl.syncOffset);
-                            cl.lastSyncTime = currentMillisecond;
-                            cl.lagWarning++;
-                        }
-                    }
-                }
-                else
-                {
-                    cl.lagWarning = 0;
-                    if (cl.syncOffset > 0.01d) cl.syncOffset -= 0.001d;
 					var universeDB2 = universeDB;
 					if (settings.useMySQL) {
 						universeDB2 = new MySqlConnection(settings.mySQLConnString);
@@ -2155,8 +2154,9 @@ namespace KMPServer
                     cmd.Dispose();
 					if (settings.useMySQL) universeDB.Close();
                     if (lastSubspaceTick > 100d) sendHistoricalVesselUpdates(cl.currentSubspaceID, incomingTick, lastSubspaceTick);
-                }
-            }
+					cl.averageWarpRate = BitConverter.ToSingle(data, 8);
+					processClientAverageWarpRates(cl.currentSubspaceID);
+			}
         }
 
         private void HandleActivityUpdateInGame(Client cl)
@@ -3227,8 +3227,8 @@ namespace KMPServer
                                 sendVesselStatusUpdateToAll(cl, cl.currentVessel);
                             }
 
-                            cl.currentVessel = vessel_update.kmpID;
-                        }
+							cl.currentVessel = vessel_update.kmpID;
+						}
 
                         //Store update
                         storeVesselUpdate(data, cl, vessel_update.kmpID, vessel_update.tick);
@@ -3531,6 +3531,8 @@ namespace KMPServer
 		
 		private void sendScenarios(Client cl)
 		{
+			if (cl.hasReceivedScenarioModules) return;
+			cl.hasReceivedScenarioModules = true;
 			var universeDB = KMPServer.Server.universeDB;
 			if (settings.useMySQL) {
 				universeDB = new MySqlConnection(settings.mySQLConnString);
@@ -3562,10 +3564,71 @@ namespace KMPServer
 		
         private void sendSyncMessage(Client cl, double tick)
         {
+			double subspaceTick = tick;
+			float subspaceSpeed = 1f;
+			long subspaceTime = DateTime.UtcNow.Ticks;
+			if (subSpaceMasterTick.ContainsKey(cl.currentSubspaceID)) {
+				double tickOffset = (double) (subspaceTime - subSpaceMasterTime[cl.currentSubspaceID]) / 10000000; //The magic number that converts 100ns to seconds.
+				subspaceTick = subSpaceMasterTick[cl.currentSubspaceID] + tickOffset;
+				subspaceSpeed = subSpaceMasterSpeed[cl.currentSubspaceID];
+				Log.Debug ("Found entry: " + tickOffset + " offset for subspace " + cl.currentSubspaceID);
+			} else {
+				subSpaceMasterTick.Add(cl.currentSubspaceID, subspaceTick);
+				subSpaceMasterTime.Add(cl.currentSubspaceID, subspaceTime);
+				subSpaceMasterSpeed.Add(cl.currentSubspaceID, 1f);
+				Log.Debug ("Added entry for subspace " + cl.currentSubspaceID);
+			}
             //Log.Info("Time sync for: " + cl.username);
-            byte[] message_bytes = buildMessageArray(KMPCommon.ServerMessageID.SYNC, BitConverter.GetBytes(tick));
+			byte[] timesyncdata = new byte[20]; //double (8) subspace Tick, long (8) server time, float (4) subspace speed.
+			BitConverter.GetBytes(subspaceTick).CopyTo(timesyncdata, 0);
+			BitConverter.GetBytes(subspaceTime).CopyTo(timesyncdata, 8);
+			BitConverter.GetBytes(subspaceSpeed).CopyTo(timesyncdata, 16);
+            byte[] message_bytes = buildMessageArray(KMPCommon.ServerMessageID.SYNC, timesyncdata);
             cl.queueOutgoingMessage(message_bytes);
         }
+
+		private void sendSyncMessageToSubspace(int subspaceID) {
+			foreach (Client cl in clients) {
+				if (cl.currentSubspaceID == subspaceID) {
+					sendSyncMessage (cl, subSpaceMasterTick[subspaceID]); //The tick is skewed correctly in sendSyncMessage.
+				}
+			}
+		}
+
+		private void processClientAverageWarpRates(int subspaceID) {
+
+			if (subSpaceLastRateCheck.ContainsKey(subspaceID)) {
+				if (currentMillisecond < subSpaceLastRateCheck[subspaceID] + 30000) return; //Only check once every 30 seconds per subspace.
+			}
+			subSpaceLastRateCheck [subspaceID] = currentMillisecond;
+
+			if (!subSpaceMasterSpeed.ContainsKey(subspaceID) || !subSpaceMasterTick.ContainsKey(subspaceID) || !subSpaceMasterSpeed.ContainsKey(subspaceID)) return; //Only works for locked subspaces
+
+			int numberOfClientsInSubspace = 0;
+			float subspaceWarpRateTotal = 0f;
+			float subspaceMinWarpRate = 1f;
+			foreach (Client cl in clients) {
+				if (cl.currentSubspaceID == subspaceID) {
+					numberOfClientsInSubspace++;
+					subspaceWarpRateTotal += cl.averageWarpRate;
+					if (cl.averageWarpRate < subspaceMinWarpRate) subspaceMinWarpRate = cl.averageWarpRate;
+				}
+			}
+			float subspaceAverageWarpRate = subspaceWarpRateTotal / numberOfClientsInSubspace; //Aka: The average warp rate of the subspace.
+			float subspaceTargetRate = (subspaceAverageWarpRate + subspaceMinWarpRate) / 2; //Lets slow down to halfway between the average and slowest player.
+			if (subspaceTargetRate > 1f) subspaceTargetRate = 1f; //Let's just not worry about rates above 0.95 times normal.
+			if (subspaceTargetRate < 0.75f) subspaceTargetRate = 0.75f; //Let's set a lower bound to something still reasonable like 0.75f.
+			float subspaceDiffRate = Math.Abs(subSpaceMasterSpeed [subspaceID] - subspaceTargetRate);
+			if (subspaceDiffRate > 0.05f) { //Allow 3% tolerance
+				Log.Debug ("Subspace " + subspaceID + " relocked to " + subspaceTargetRate + "x speed.");
+				long currenttime = DateTime.UtcNow.Ticks;
+				double tickOffset = (double) (currenttime - subSpaceMasterTime[subspaceID]) / 10000000; //The magic number that converts 100ns to seconds.
+				subSpaceMasterTick[subspaceID] = subSpaceMasterTick[subspaceID] + tickOffset;
+				subSpaceMasterTime[subspaceID] = currenttime;
+				subSpaceMasterSpeed[subspaceID] = subspaceTargetRate;
+				sendSyncMessageToSubspace (subspaceID);
+			}
+		}
 		
         private void sendSyncCompleteMessage(Client cl)
         {

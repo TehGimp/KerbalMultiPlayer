@@ -18,7 +18,7 @@ public class KMPCommon
     }
 
 	public const Int32 FILE_FORMAT_VERSION = 10000;
-	public const Int32 NET_PROTOCOL_VERSION = 10013;
+	public const Int32 NET_PROTOCOL_VERSION = 10014;
 	public const int MSG_HEADER_LENGTH = 8;
     public const int MAX_MESSAGE_SIZE = 1024 * 1024; //Enough room for a max-size craft file
 	public const int MESSAGE_COMPRESSION_THRESHOLD = 4096;
@@ -86,7 +86,8 @@ public class KMPCommon
 		PING,
 		WARPING,
 		SSYNC,
-		SPLIT_MESSAGE /* Pre-emptive add for when message-queueing is implemented client side */
+		SPLIT_MESSAGE, /* Pre-emptive add for when message-queueing is implemented client side */
+		SYNC_TIME /*NTP style sync*/
 	}
 
 	public enum ServerMessageID
@@ -108,7 +109,8 @@ public class KMPCommon
 		PING_REPLY,
 		SYNC /*tick*/,
 		SYNC_COMPLETE,
-		SPLIT_MESSAGE /* This allows higher priority messages more entry points into the send queue */
+		SPLIT_MESSAGE, /* This allows higher priority messages more entry points into the send queue */
+		SYNC_TIME /*NTP style sync*/
 	}
 
 	public enum ClientInteropMessageID
@@ -131,7 +133,8 @@ public class KMPCommon
 		SECONDARY_PLUGIN_UPDATE /*data*/,
 		SCENARIO_UPDATE /*data*/,
 		WARPING /*data*/,
-		SSYNC /*data*/
+		SSYNC /*data*/,
+		SYNC_TIME /*data*/
 	}
 	
 	
