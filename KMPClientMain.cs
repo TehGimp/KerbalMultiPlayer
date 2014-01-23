@@ -2394,7 +2394,9 @@ namespace KMP
 							}
 						}
 						isClientSendingData = true;
-						syncTimeRewrite(ref next_message);
+						if (next_message != null) {
+							syncTimeRewrite(ref next_message);
+						}
 						tcpClient.GetStream().BeginWrite(next_message, 0, next_message.Length, new AsyncCallback(asyncTCPSend), next_message);
 					}
 				}
@@ -2510,7 +2512,7 @@ namespace KMP
 			}
 			catch (Exception e)
 			{
-				Log.Debug("Exception thrown in asyncTCPSend(), catch 1, Exception: {0}", e.ToString());
+				Log.Debug("Exception thrown in asyncUDPSend(), catch 1, Exception: {0}", e.ToString());
 				gameManager.disconnect ("Disconnected: Send Error");
 			}
 		}
