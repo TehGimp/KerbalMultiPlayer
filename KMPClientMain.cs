@@ -2393,11 +2393,11 @@ namespace KMP
 								splitOutgoingMessage(ref next_message);
 							}
 						}
-						isClientSendingData = true;
 						if (next_message != null) {
+							isClientSendingData = true;
 							syncTimeRewrite(ref next_message);
+							tcpClient.GetStream().BeginWrite(next_message, 0, next_message.Length, new AsyncCallback(asyncTCPSend), next_message);
 						}
-						tcpClient.GetStream().BeginWrite(next_message, 0, next_message.Length, new AsyncCallback(asyncTCPSend), next_message);
 					}
 				}
 			}
