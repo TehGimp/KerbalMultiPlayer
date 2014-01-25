@@ -101,7 +101,6 @@ namespace KMP
         {
             public LoadedFileInfo File;
             public System.IO.FileStream Stream;
-            public ManualResetEvent resetEvent;
             public OutputData outputData;
 
             public void HandleHash(System.Object state)
@@ -120,7 +119,11 @@ namespace KMP
                 Stream.Close();
                 Stream.Dispose();
                 outputData.output += "Added and hashed: " + File.ModPath + "=" + File.SHA256;
-                resetEvent.Set();
+				if (Interlocked.Decrement(ref numberOfFilesToCheck) == 0)
+				{
+					Log.Debug("All SHA hashing completed!");
+					ShaFinishedEvent.Set();
+				}
             }
         }
 
@@ -183,6 +186,8 @@ namespace KMP
 		public bool gameCheatsEnabled = false; //Allow built-in KSP cheats
 		public bool gameArrr = false; //Allow private vessels to be taken if other user can successfully dock manually
         public bool checkAllModFiles = false;
+		public static int numberOfFilesToCheck = 0;
+		public static ManualResetEvent ShaFinishedEvent;
 		
 		private float lastGlobalSettingSaveTime = 0.0f;
 		private float lastPluginDataWriteTime = 0.0f;
@@ -3232,49 +3237,27 @@ namespace KMP
                         Log.Debug("Error in part hashing, 1st section: {0}", e.Message);
                     }
                 }
-                ManualResetEvent[] doneEvents = new ManualResetEvent[MAX_SHA_THREADS];
-                OutputData[] outputs = new OutputData[MAX_SHA_THREADS];
+                OutputData[] outputs = new OutputData[FileStreams.Count];
+				ShaFinishedEvent = new ManualResetEvent(false);
+				numberOfFilesToCheck = FileStreams.Count;
+				try {
                 for (int i = 0; i < FileStreams.Count; i++)
                 {
-                    int threadIndex = i % MAX_SHA_THREADS;
-                    try
-                    {
-                        doneEvents[threadIndex] = new ManualResetEvent(false);
-                        FileStreams.ElementAt(i).resetEvent = doneEvents[threadIndex];
-                        outputs[threadIndex] = new OutputData();
-                        FileStreams.ElementAt(i).outputData = outputs[threadIndex];
-                        ThreadPool.QueueUserWorkItem(FileStreams.ElementAt(i).HandleHash, threadIndex);
-                    }
+                    outputs[i] = new OutputData();
+                    FileStreams.ElementAt(i).outputData = outputs[i];
+                    ThreadPool.QueueUserWorkItem(new WaitCallback(FileStreams.ElementAt(i).HandleHash));
+					}
+				}
                     catch (Exception e)
                     {
                         Log.Debug("Error in part hashing, 2nd section: {0}", e.Message);
                     }
-                    if (threadIndex == MAX_SHA_THREADS - 1)
-                    {
-                        WaitHandle.WaitAll(doneEvents);
-                        foreach(OutputData output in outputs){
-                            if (output != null && output.output != null && output.output != "")
-                            {
-                                Log.Debug(output.output);
-                            }
-                        }
-                    }
-                }
-                WaitHandle.WaitAll(doneEvents); 
-                foreach (OutputData output in outputs)
-                {
-                    if (output != null && output.output != null && output.output != "")
-                    {
-                        Log.Debug(output.output);
-                    }
-                }
-                Log.Debug("All SHA threading completed");
             }
             catch (Exception e)
             {
                 Log.Debug("Exception thrown in Awake(), catch 1, Exception: {0}", e.ToString());
             }
-			Debug.Log("KMP loaded");
+			Log.Debug("KMP loaded");
 		}
 		
 		private void Start()
