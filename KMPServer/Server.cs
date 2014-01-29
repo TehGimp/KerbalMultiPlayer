@@ -3619,11 +3619,11 @@ namespace KMPServer
 			if (subspaceTargetRate > 1f) subspaceTargetRate = 1f; //Let's just not worry about rates above 0.95 times normal.
 			if (subspaceTargetRate < 0.75f) subspaceTargetRate = 0.75f; //Let's set a lower bound to something still reasonable like 0.75f.
 			float subspaceDiffRate = Math.Abs(subSpaceMasterSpeed [subspaceID] - subspaceTargetRate);
-			if (subspaceDiffRate > 0.05f) { //Allow 3% tolerance
+			if (subspaceDiffRate > 0.03f) { //Allow 3% tolerance
 				Log.Debug ("Subspace " + subspaceID + " relocked to " + subspaceTargetRate + "x speed.");
 				long currenttime = DateTime.UtcNow.Ticks;
 				double tickOffset = (double) (currenttime - subSpaceMasterTime[subspaceID]) / 10000000; //The magic number that converts 100ns to seconds.
-				subSpaceMasterTick[subspaceID] = subSpaceMasterTick[subspaceID] + tickOffset;
+				subSpaceMasterTick[subspaceID] = subSpaceMasterTick[subspaceID] + (tickOffset * subSpaceMasterSpeed [subspaceID]);
 				subSpaceMasterTime[subspaceID] = currenttime;
 				subSpaceMasterSpeed[subspaceID] = subspaceTargetRate;
 				sendSyncMessageToSubspace (subspaceID);
