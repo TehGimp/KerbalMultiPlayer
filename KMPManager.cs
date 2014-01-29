@@ -4410,6 +4410,11 @@ namespace KMP
 					//Start MP game
 					KMPConnectionDisplay.windowEnabled = false;
 					gameRunning = true;
+					//This is to revert manually setting it to 1. Users won't know about this setting.
+					//Let's remove this somewhere around July 2014.
+					if (GameSettings.PHYSICS_FRAME_DT_LIMIT == 1.0f) {
+						GameSettings.PHYSICS_FRAME_DT_LIMIT = 0.04f;
+					}
 					HighLogic.SaveFolder = "KMP";
 					HighLogic.CurrentGame = GamePersistence.LoadGame("start",HighLogic.SaveFolder,false,true);
 					HighLogic.CurrentGame.Parameters.Flight.CanAutoSave = false;
