@@ -1058,7 +1058,6 @@ namespace KMP
 
 				case KMPCommon.ServerMessageID.SYNC:
 					if (data != null) {
-						gameManager.targetTick = BitConverter.ToDouble (data, 0) + Convert.ToDouble (lastPing);
 						gameManager.skewTargetTick = BitConverter.ToDouble (data, 0);
 						gameManager.skewServerTime = BitConverter.ToInt64 (data, 8);
 						gameManager.skewSubspaceSpeed = BitConverter.ToSingle (data, 16);

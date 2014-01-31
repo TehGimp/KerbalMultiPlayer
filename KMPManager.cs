@@ -268,7 +268,6 @@ namespace KMP
 		private Krakensbane krakensbane;
 		
 		public double lastTick = 0d;
-		public double targetTick = 0d;
 		public double skewTargetTick = 0;
 		public long skewServerTime = 0;
 		public float skewSubspaceSpeed = 1f;
@@ -507,8 +506,6 @@ namespace KMP
 						checkVesselPrivacy(possible_target);
 					}
 				}
-
-				krakensBaneWarp();
 
 				writeUpdates();
 				
@@ -3505,15 +3502,11 @@ namespace KMP
 
 		private void krakensBaneWarp(double krakensTick = 0) {
 			if (warping) return;
-		//Update universe time
-		if (krakensTick == 0) {
-			krakensTick = targetTick;
-		}
 		try
 		{
 			double currentTick = Planetarium.GetUniversalTime();
 			//Let SkewTime handle errors smaller than 5s.
-			if (isInFlight && krakensTick > currentTick+5d)
+			if (isInFlight && Math.Abs(krakensTick - currentTick) > 5d)
 			{
 				Log.Debug("Syncing to new time " + krakensTick + " from " + Planetarium.GetUniversalTime());
 				if (FlightGlobals.ActiveVessel.situation != Vessel.Situations.PRELAUNCH
@@ -3546,7 +3539,7 @@ namespace KMP
 						Log.Debug("Exception thrown in updateStep(), catch 2, Exception: {0}", e.ToString());
 					}
 					//Krakensbane shift to new orbital location
-					if (krakensTick > currentTick+2.5d //if badly out of sync
+					if (Math.Abs(krakensTick - currentTick) > 2.5d //if badly out of sync
 					    && !(FlightGlobals.ActiveVessel.orbit.referenceBody.atmosphere && FlightGlobals.ActiveVessel.orbit.altitude < FlightGlobals.ActiveVessel.orbit.referenceBody.maxAtmosphereAltitude)) //and not in atmo
 					{
 						Log.Debug("Krakensbane shift");
@@ -3593,7 +3586,7 @@ namespace KMP
 					if (isInFlight) {
 						krakensBaneWarp(skewTargetTick + timeFromLastSyncSecondsAdjusted);
 					} else {
-						Planetarium.SetUniversalTime(skewTargetTick + timeFromLastSyncSeconds);
+						Planetarium.SetUniversalTime(skewTargetTick + timeFromLastSyncSecondsAdjusted);
 					}
 					return;
 				}
