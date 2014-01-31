@@ -2330,6 +2330,10 @@ namespace KMP
 
 		private static void splitOutgoingMessage(ref byte[] next_message)
 		{
+			//Protect against null messages
+			if (next_message == null) {
+				return;
+			}
 			//Only split messages bigger than SEND_BUFFER.
 			if (next_message.Length > KMPCommon.SPLIT_MESSAGE_SIZE) {
 				int split_index = 0;
@@ -2392,9 +2396,10 @@ namespace KMP
 								splitOutgoingMessage(ref next_message);
 							}
 						}
+						syncTimeRewrite(ref next_message);
+						//Protect against null messages
 						if (next_message != null) {
 							isClientSendingData = true;
-							syncTimeRewrite(ref next_message);
 							tcpClient.GetStream().BeginWrite(next_message, 0, next_message.Length, new AsyncCallback(asyncTCPSend), next_message);
 						}
 					}
@@ -2418,6 +2423,10 @@ namespace KMP
 		}
 
 		private static void syncTimeRewrite(ref byte[] next_message) {
+			//Protect against null messages
+			if (next_message == null) {
+				return;
+			}
 			//SYNC_TIME Rewriting
 			int next_message_id = BitConverter.ToInt32(next_message, 0);
 			if (next_message_id == (int)KMPCommon.ClientMessageID.SYNC_TIME) {
