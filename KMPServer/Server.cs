@@ -645,6 +645,15 @@ namespace KMPServer
                 settings.ipBinding = "::";
             }
             tcpListener = new TcpListener(IPAddress.Parse(settings.ipBinding), settings.port);
+            if (settings.hostIPv6 == true) {
+                try {
+                    //Windows defaults to v6 only, but this option does not exist in mono so it has to be in a try/catch block along with the casted int.
+                    tcpListener.Server.SetSocketOption(SocketOptionLevel.IPv6, (SocketOptionName)27, 0); 
+                }
+                catch {
+                    Log.Debug ("Failed to unset IPv6Only. Linux and Mac have this option off by default.");
+                }
+            }
             
             listenThread.Start();
 
