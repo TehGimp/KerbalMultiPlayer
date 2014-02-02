@@ -10,17 +10,6 @@ using System.Threading;
 namespace KMP
 {
 
-    public class Bootstrap : KSP.Testing.UnitTest {
-        public Bootstrap() {
-			if (KMPManager.GameObjectInstance == null)
-			{
-				Log.Info("*** KMP version " + KMPCommon.PROGRAM_VERSION + " started");
-				KMPManager.GameObjectInstance = new GameObject("KMPManager", typeof(KMPManager));
-				UnityEngine.Object.DontDestroyOnLoad(KMPManager.GameObjectInstance);
-			}
-        }
-    }
-
     public class LoadedFileInfo
     {
         /// <summary>
@@ -64,6 +53,7 @@ namespace KMP
         }
     }
 	
+	[KSPAddon(KSPAddon.Startup.Instantly, true)]
 	public class KMPManager : MonoBehaviour
 	{
 		
@@ -3188,7 +3178,7 @@ namespace KMP
 
 		public void Awake()
 		{
-			DontDestroyOnLoad(this);
+			DontDestroyOnLoad(this.gameObject);
 			CancelInvoke();
 			InvokeRepeating("updateStep", 1/30.0f, 1/30.0f);
 			loadGlobalSettings();
