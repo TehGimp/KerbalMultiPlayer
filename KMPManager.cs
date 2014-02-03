@@ -91,24 +91,14 @@ namespace KMP
         {
             public LoadedFileInfo File;
             public System.IO.FileStream Stream;
-            public OutputData outputData;
 
             public void HandleHash(System.Object state)
             {
-                outputData.output = "";
                 File.ComputeSHA(Stream);
                 LoadedModfiles.Add(File); // add all data about this file to the mod file list
-                try
-                {
-                    Stream.Unlock(0, 0); // unlock the file once it's no longer needed
-                }
-                catch (Exception e)
-                {
-                    outputData.output += "Unable to unlock " + File.ModPath + ", " + e.Message + ", continuing...";
-                }
                 Stream.Close();
                 Stream.Dispose();
-                outputData.output += "Added and hashed: " + File.ModPath + "=" + File.SHA256;
+                Log.Debug("Added and hashed: " + File.ModPath + "=" + File.SHA256);
 				if (Interlocked.Decrement(ref numberOfFilesToCheck) == 0)
 				{
 					Log.Debug("All SHA hashing completed!");
@@ -3208,15 +3198,7 @@ namespace KMP
                     {
                         ModFileStream Entry = new ModFileStream();
                         Entry.File = new LoadedFileInfo(file);
-                        Entry.Stream = new System.IO.FileStream(file, System.IO.FileMode.Open);
-                        try
-                        {
-                            Entry.Stream.Lock(0, 0); // lock the file until after it's hashed, so the user can't modify it in the meantime
-                        }
-                        catch (Exception e)
-                        {
-                            Log.Debug("Unable to lock " + Entry.File.ModPath + ", " + e.Message + ", continuing...");
-                        }
+                        Entry.Stream = new System.IO.FileStream(file, System.IO.FileMode.Open, System.IO.FileAccess.Read, System.IO.FileShare.Read);
                         FileStreams.Add(Entry);
                     }
                     catch (Exception e)
@@ -3224,25 +3206,20 @@ namespace KMP
                         Log.Debug("Error in part hashing, 1st section: {0}", e.Message);
                     }
                 }
-                OutputData[] outputs = new OutputData[FileStreams.Count];
 				ShaFinishedEvent = new ManualResetEvent(false);
 				numberOfFilesToCheck = FileStreams.Count;
 				try {
-                for (int i = 0; i < FileStreams.Count; i++)
-                {
-                    outputs[i] = new OutputData();
-                    FileStreams.ElementAt(i).outputData = outputs[i];
-                    ThreadPool.QueueUserWorkItem(new WaitCallback(FileStreams.ElementAt(i).HandleHash));
-					}
-				}
-                    catch (Exception e)
-                    {
-                        Log.Debug("Error in part hashing, 2nd section: {0}", e.Message);
+                    for (int i = 0; i <= FileStreams.Count; i++) {
+	                    ThreadPool.QueueUserWorkItem(new WaitCallback(FileStreams.ElementAt(i).HandleHash));
                     }
+                }
+                catch (Exception e) {
+                        Log.Debug("Error in part hashing, 2nd section: {0}", e.Message);
+                }
             }
             catch (Exception e)
             {
-                Log.Debug("Exception thrown in Awake(), catch 1, Exception: {0}", e.ToString());
+                Log.Debug("Exception thrown in Awake(), catch 2, Exception: {0}", e.ToString());
             }
 			Log.Debug("KMP loaded");
 		}
