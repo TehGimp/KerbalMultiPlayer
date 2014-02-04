@@ -46,7 +46,7 @@ namespace KMP {
 		private void GameSceneLoadRequested(GameScenes scene) {
 			if (scene != GameScenes.MAINMENU) {
 				GameEvents.onGameSceneLoadRequested.Remove(GameSceneLoadRequested);
-				mainMenu.envLogic.GoToStage(1);
+				mainMenu.envLogic.GoToStage(0);
 			}
 		}
 		private void Start() {
