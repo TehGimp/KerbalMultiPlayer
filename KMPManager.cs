@@ -296,7 +296,7 @@ namespace KMP
 					case GameScenes.FLIGHT:
 					case GameScenes.SPH:
 					case GameScenes.TRACKSTATION:
-						return KMPInfoDisplay.infoDisplayActive && globalUIToggle;
+						return KMPInfoDisplay.infoDisplayActive && globalUIToggle && KMPToggleButtonState;
 
 					default:
 						return false;
@@ -508,7 +508,7 @@ namespace KMP
 						//Clear locks
 						if (!KMPChatDX.showInput)
 						{
-							InputLockManager.ClearControlLocks();
+							InputLockManager.RemoveControlLock("KMP_ChatActive");
 						}
 						unlockCrewGUI();
 					}
@@ -600,6 +600,13 @@ namespace KMP
 					}
 				}
 			} catch (Exception ex) { Log.Debug("Exception thrown in updateStep(), catch 4, Exception: {0}", ex.ToString()); Log.Debug("uS err: " + ex.Message + " " + ex.StackTrace); }
+		}
+
+		private void removeKMPControlLocks()
+		{
+			InputLockManager.RemoveControlLock("KMP_Occupied");
+			InputLockManager.RemoveControlLock("KMP_Private");
+			InputLockManager.RemoveControlLock("KMP_ChatActive");
 		}
 		
 		private void checkVesselPrivacy(Vessel vessel)
@@ -3416,7 +3423,7 @@ namespace KMP
 			
 		private void OnFlightReady()
 		{
-			InputLockManager.ClearControlLocks();
+			removeKMPControlLocks ();
 			//Ensure vessel uses only stock parts in lieu of proper mod support
 			if (!FlightGlobals.ActiveVessel.isEVA && !FlightGlobals.ActiveVessel.protoVessel.protoPartSnapshots.TrueForAll(pps => KMPClientMain.partList.Contains(pps.partName)))
 			{
@@ -5237,6 +5244,11 @@ namespace KMP
 					EditorLogic.fetch.Unlock("KMP_lock");
 					isEditorLocked = false;
 				}
+			}
+			//Release the lock if the KMP window is hidden.
+			if (gameRunning && !shouldDrawGUI && isEditorLocked && HighLogic.LoadedSceneIsEditor) {
+				EditorLogic.fetch.Unlock("KMP_lock");
+				isEditorLocked = false;
 			}
 		}
         
