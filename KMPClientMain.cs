@@ -515,6 +515,7 @@ namespace KMP
 
         public static void Connect()
         {
+            gameManager.delayForceQuit = true;
             clearConnectionState();
             File.Delete<KMPClientMain>("debug");
             serverThread = new Thread(beginConnect);
