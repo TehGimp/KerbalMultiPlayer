@@ -7,6 +7,7 @@ namespace KMP {
 		private MainMenu mainMenu;
 		public void Awake() {
 			Log.Debug("MenuItemLoader is awake.");
+			GameEvents.onGameSceneLoadRequested.Add(GameSceneLoadRequested);
 
 			//Grab the MainMenu object.
 			mainMenu = (MainMenu)FindObjectOfType(typeof(MainMenu));
@@ -37,13 +38,25 @@ namespace KMP {
 			
 			//Add our new stage to the menu stages
 			List<MainMenuEnvLogic.MenuStage> stages = new List<MainMenuEnvLogic.MenuStage>(mainMenu.envLogic.camPivots);
-			stages.Add(stage);
+			if (stages.Count < 3) {
+				stages.Add(stage);
+			}
 			mainMenu.envLogic.camPivots = stages.ToArray();
 		}
-		
+		private void GameSceneLoadRequested(GameScenes scene) {
+			if (scene != GameScenes.MAINMENU) {
+				GameEvents.onGameSceneLoadRequested.Remove(GameSceneLoadRequested);
+				mainMenu.envLogic.GoToStage(0);
+			}
+		}
+		private void Start() {
+			if (KMPManager.showConnectionWindow) {
+				mainMenu.envLogic.GoToStage(2);
+			}
+		}
 		private void KMPButtonPressed() {
 			mainMenu.envLogic.GoToStage(2); //our new stage.
-			Invoke("ShowKMPWindow", 2.0f); //Show the window in 2 seconds to wait for the camera to move.
+			Invoke("ShowKMPWindow", 1f); //Show the window in 2 seconds to wait for the camera to move.
 		}
 		private void ShowKMPWindow() {
 			KMPManager.showConnectionWindow = true;
