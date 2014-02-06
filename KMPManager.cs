@@ -215,7 +215,7 @@ namespace KMP
 		
 		private bool blockConnections = false;
 		private bool forceQuit = false;
-		private bool delayForceQuit = true;
+		public bool delayForceQuit = true;
 		private bool gameRunning = false;
 		private bool activeTermination = false;
 		
@@ -724,6 +724,7 @@ namespace KMP
 		public void disconnect(string message = "")
 		{
 			blockConnections = true;
+			forceQuit = delayForceQuit; //If we get disconnected straight away, we should forceQuit anyway.
 			if (HighLogic.LoadedSceneIsFlight || HighLogic.LoadedSceneIsEditor)
 			{
 				ScreenMessages.PostScreenMessage("You have been disconnected. Please return to the Main Menu to reconnect.",300f,ScreenMessageStyle.UPPER_CENTER);
@@ -4414,7 +4415,6 @@ namespace KMP
 					GamePersistence.SaveGame("persistent",HighLogic.SaveFolder,SaveMode.OVERWRITE);
 					GameEvents.onFlightReady.Add(this.OnFirstFlightReady);
 					syncing = true;
-					delayForceQuit = true;
 					HighLogic.CurrentGame.Start();
 					
 					if (HasModule("ResearchAndDevelopment"))
