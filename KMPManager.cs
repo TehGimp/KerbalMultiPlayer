@@ -215,6 +215,7 @@ namespace KMP
 		
 		private bool blockConnections = false;
 		private bool forceQuit = false;
+		private bool delayForceQuit = true;
 		private bool gameRunning = false;
 		private bool activeTermination = false;
 		
@@ -3408,7 +3409,7 @@ namespace KMP
 		
 		private void OnFirstFlightReady()
 		{
-			if (syncing)
+			if (syncing && !forceQuit)
 			{
 				Log.Debug("Requesting initial sync");
 				GameEvents.onFlightReady.Remove(this.OnFirstFlightReady);
@@ -3419,6 +3420,7 @@ namespace KMP
 				Invoke("handleSyncTimeout",300f);
 				docking = false;
 			}
+			delayForceQuit = false;
 		}
 			
 		private void OnFlightReady()
@@ -3843,7 +3845,7 @@ namespace KMP
 			if (blockConnections && !KMPClientMain.connectionThreadRunning)
 				blockConnections = false;
 
-			if (forceQuit)
+			if (forceQuit && !delayForceQuit)
 			{
 				Log.Debug("Force quit");
 				forceQuit = false;
@@ -4412,7 +4414,7 @@ namespace KMP
 					GamePersistence.SaveGame("persistent",HighLogic.SaveFolder,SaveMode.OVERWRITE);
 					GameEvents.onFlightReady.Add(this.OnFirstFlightReady);
 					syncing = true;
-
+					delayForceQuit = true;
 					HighLogic.CurrentGame.Start();
 					
 					if (HasModule("ResearchAndDevelopment"))
