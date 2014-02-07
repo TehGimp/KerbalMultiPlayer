@@ -1964,7 +1964,7 @@ namespace KMPServer
             clientMessageQueue.Enqueue(message);
         }
 
-        private KMPCommon.ClientMessageID[] AllowNullDataMessages = { KMPCommon.ClientMessageID.SCREEN_WATCH_PLAYER, KMPCommon.ClientMessageID.CONNECTION_END, KMPCommon.ClientMessageID.ACTIVITY_UPDATE_IN_FLIGHT, KMPCommon.ClientMessageID.ACTIVITY_UPDATE_IN_GAME, KMPCommon.ClientMessageID.PING, KMPCommon.ClientMessageID.SYNC_TIME };
+        private KMPCommon.ClientMessageID[] AllowNullDataMessages = { KMPCommon.ClientMessageID.SCREEN_WATCH_PLAYER, KMPCommon.ClientMessageID.CONNECTION_END, KMPCommon.ClientMessageID.ACTIVITY_UPDATE_IN_FLIGHT, KMPCommon.ClientMessageID.ACTIVITY_UPDATE_IN_GAME, KMPCommon.ClientMessageID.SYNC_TIME };
         private KMPCommon.ClientMessageID[] AllowClientNotReadyMessages = { KMPCommon.ClientMessageID.HANDSHAKE, KMPCommon.ClientMessageID.TEXT_MESSAGE, KMPCommon.ClientMessageID.SCREENSHOT_SHARE, KMPCommon.ClientMessageID.CONNECTION_END, KMPCommon.ClientMessageID.ACTIVITY_UPDATE_IN_FLIGHT, KMPCommon.ClientMessageID.ACTIVITY_UPDATE_IN_GAME, KMPCommon.ClientMessageID.PING, KMPCommon.ClientMessageID.UDP_PROBE, KMPCommon.ClientMessageID.WARPING, KMPCommon.ClientMessageID.SSYNC, KMPCommon.ClientMessageID.SYNC_TIME };
 
         public void handleMessage(Client cl, KMPCommon.ClientMessageID id, byte[] data)
@@ -2017,7 +2017,7 @@ namespace KMPServer
 	                        HandleActivityUpdateInGame(cl);
 	                        break;
 	                    case KMPCommon.ClientMessageID.PING:
-	                        cl.queueOutgoingMessage(KMPCommon.ServerMessageID.PING_REPLY, null);
+	                        cl.queueOutgoingMessage(KMPCommon.ServerMessageID.PING_REPLY, data);
 	                        break;
 	                    case KMPCommon.ClientMessageID.UDP_PROBE:
 	                        HandleUDPProbe(cl, data);
