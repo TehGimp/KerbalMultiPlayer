@@ -281,210 +281,253 @@ namespace KMP
         
         private static void parseModFile(string ModFileContent)
         {
-            System.IO.StringReader reader = new System.IO.StringReader(ModFileContent);
-        	
-	        string resourcemode = "whitelist";
-	        List<string> allowedParts = new List<string>();
-            Dictionary<string, SHAMod> hashes = new Dictionary<string, SHAMod>();
-	        List<string> resources = new List<string>();
-	        List<string> modList = new List<string>();
-	        string line;
-	        string[] splitline;
-	        string readmode = "";
-	        while (true)
-	        {
-	        	line = reader.ReadLine();
-                if (line == null)
+            using (System.IO.StringReader reader = new System.IO.StringReader(ModFileContent))
+            {
+                string resourcemode = "whitelist";
+                List<string> allowedParts = new List<string>();
+                Dictionary<string, SHAMod> hashes = new Dictionary<string, SHAMod>();
+                List<string> resources = new List<string>();
+                List<string> modList = new List<string>();
+                string line;
+                string[] splitline = new string[2];
+                string readmode = "";
+                while (true)
                 {
-                    break;
-                }
-	        	try
-	        	{
-				    if(!String.IsNullOrEmpty(line))
-				    {
-					    if(line[0] != '#')//allows commented lines
-					    {
-						    if(line[0] == '!')//changing readmode
-						    {
-							    if(line.Contains("partslist")){
-								    readmode = "parts";
-							    }
-                                else if (line.Contains("required-files"))
+                    line = reader.ReadLine(); //Trim off any whitespace from the start or end. This would allow indenting of the mod file.
+                    if (line == null)
+                    {
+                        break;
+                    }
+                    line = line.Trim();
+                    try
+                    {
+                        if (!String.IsNullOrEmpty(line) && line[0] != '#') //Skip empty or commented lines.
+                        { 
+                            if (line[0] == '!') //changing readmode
+                            { 
+                                string trimmedLine = line.Substring(1); //Returns 'partslist' from ' !partslist'
+                                switch (trimmedLine)
                                 {
-                                    readmode = "required-files";
-							    }
-                                else if (line.Contains("optional-files"))
-                                {
-                                    readmode = "optional-files";
+                                    case "partslist":
+                                    case "required-files":
+                                    case "optional-files":
+                                        readmode = trimmedLine;
+                                        break;
+                                    case "resource-blacklist": //allow all resources EXCEPT these in file
+                                        readmode = "resource";
+                                        resourcemode = "blacklist";
+                                        break;
+                                    case "resource-whitelist": //allow NO resources EXCEPT these in file
+                                        readmode = "resource";
+                                        resourcemode = "whitelist";
+                                        break;
                                 }
-							    else if(line.Contains("resource-blacklist")){ //allow all resources EXCEPT these in file
-								    readmode = "resource";
-								    resourcemode = "blacklist";
-							    }
-							    else if(line.Contains("resource-whitelist")){ //allow NO resources EXCEPT these in file
-								    readmode = "resource";
-								    resourcemode = "whitelist";
-							    }
-							    else if(line.Contains("required")){
-								    readmode = "required";
-							    }
-						    }
-						    else if(readmode == "parts")
-						    {
-							    allowedParts.Add(line);
-						    }
-                            else if (readmode == "required-files")
-						    {
-                                splitline = line.Split('=');
-                                string hash = "";
-                                if (splitline.Length > 1)
-                                {
-                                    hash = splitline[1];
-                                }
-                                hashes.Add(splitline[0], new SHAMod { sha = hash, required = true });
-						    }
-                            else if (readmode == "optional-files")
-                            {
-                                splitline = line.Split('=');
-                                string hash = "";
-                                if (splitline.Length > 1)
-                                {
-                                    hash = splitline[1];
-                                }
-                                hashes.Add(splitline[0], new SHAMod { sha = hash, required = false });
                             }
-						    else if(readmode == "resource"){
-							    resources.Add(line);
-						    }
-						    else if(readmode == "required"){
-							    modList.Add(line);
-						    }
-					    }
-				    }
-			    }
-		        catch (Exception e)
-		        {
-		            Log.Info(e.ToString());
-		        }
-	        }
-	        
-	        reader.Close();
-	        partList = allowedParts; //make all the vars global once we're done parsing
-            modFileList = hashes;
-	        resourceControlMode = resourcemode;
-	        resourceList = resources;
-	        requiredModList = modList;
+                            else
+                            {
+                                if (readmode == "partslist")
+                                {
+                                    allowedParts.Add(line);
+                                }
+                                if (readmode == "required-files")
+                                {
+                                    string hash = "";
+                                    splitline[0] = line;
+                                    if (line.Contains('=')) //Let's make the = on the end of the lines optional
+                                    {
+                                        splitline = line.Split('=');
+                                        if (splitline.Length > 1)
+                                        {
+                                            hash = splitline[1];
+                                        }
+                                    }
+                                    hashes.Add(splitline[0], new SHAMod { sha = hash, required = true });
+                                }
+                                if (readmode == "optional-files")
+                                {
+                                    splitline = line.Split('=');
+                                    string hash = "";
+                                    splitline[0] = line;
+                                    if (line.Contains('=')) //Let's make the = on the end of the lines optional
+                                    {
+                                        splitline = line.Split('=');
+                                        if (splitline.Length > 1)
+                                        {
+                                            hash = splitline[1];
+                                        }
+                                    }
+                                    hashes.Add(splitline[0], new SHAMod { sha = hash, required = false });
+                                }
+                                if (readmode == "resource")
+                                {
+                                    resources.Add(line);
+                                }
+                                if (readmode == "required")
+                                {
+                                    modList.Add(line);
+                                }
+                            }
+                        }
+                    }
+                    catch (Exception e)
+                    {
+                        Log.Info(e.ToString());
+                    }
+
+                }
+                partList = allowedParts; //make all the vars global once we're done parsing
+                modFileList = hashes;
+                resourceControlMode = resourcemode;
+                resourceList = resources;
+                requiredModList = modList;
+            }
         }
         
         private static bool FileCheck()
         {
-            char[] replaceChars = {'\\', '/'};
             try
             {
-                foreach (KeyValuePair<string, SHAMod> entry in modFileList)
+                //If required, check exists and same hash
+                foreach (KeyValuePair<string, SHAMod> entry in modFileList.Where(x => x.Value.required == true))
                 {
-                    // if server settings don't say to check all mod files, and it's not a DLL or CFG file, then skip it
-                    if (!gameManager.checkAllModFiles && !entry.Key.EndsWith(".cfg", System.StringComparison.InvariantCultureIgnoreCase) && !entry.Key.EndsWith(".dll", System.StringComparison.InvariantCultureIgnoreCase))
+                    if (entry.Key.EndsWith(".dll", StringComparison.CurrentCultureIgnoreCase))
                     {
-                        continue;
-                    }
-                    LoadedFileInfo FileInfo = null;
-                    if (resourceControlMode == "whitelist")
-                    {
-                        if (resourceList.Contains(entry.Key)) // don't check anything that has been specifically whitelisted
-                        {
-                            Log.Debug("SHA hash checking skipped due to whitelisting: " + entry.Key);
-                            continue;
-                        }
-                    }
-                    else if (entry.Key.StartsWith(PLUGIN_DATA_DIRECTORY) && (entry.Key.EndsWith(".txt") || entry.Key.EndsWith(".xml"))) // if using a blacklist, ignore any files in the KMP PluginData folder that are supposed to be there
-                    {
-                        Log.Debug("SHA hash checking skipped due to being a KMP file that changes: " + entry.Key);
-                        continue;
-                    }
-                    try
-                    {
-                        FileInfo = KMPManager.LoadedModfiles.SingleOrDefault(x => x.ModPath == entry.Key);
-                    }
-                    catch (InvalidOperationException)
-                    {
-                        modMismatchError = "Multiple of same file defined in different directories: " + entry.Key;
-                        return false;
-                    }
-                    if (FileInfo == null)
-                    {
-                        if (entry.Value.required) // the file doesn't exist, so refuse connection if it's a required mod
+                        //DLL's are checked against the load list
+                        if (KMPManager.LoadedModfiles.Where(x => x.ModPath == entry.Key).Count() == 0)
                         {
                             modMismatchError = "Required File Missing: " + entry.Key;
                             return false;
                         }
-                        else // if it's just an optional mod, continue because it's ok if it's missing
+                        if (KMPManager.LoadedModfiles.Where(x => x.ModPath == entry.Key && x.SHA256 == entry.Value.sha.ToUpperInvariant()).Count() == 0 && entry.Value.sha != "")
                         {
-                            continue;
+                            LoadedFileInfo debugTest = KMPManager.LoadedModfiles.Where(x => x.ModPath == entry.Key).First();
+
+                            modMismatchError = "SHA Checksum Mismatch: " + entry.Key + " " + debugTest.SHA256 + "/" + entry.Value.sha.ToUpperInvariant();
+                            return false;
                         }
                     }
-                    else if (String.Compare(FileInfo.SHA256, entry.Value.sha, true) != 0 && entry.Value.sha != "") // if the mod file exists, then it MUST match the SHA from the server (unless SHA section was blank, which means it is a required file but doesn't need to match)
+                    else
                     {
-                        modMismatchError = "SHA Checksum Mismatch: " + FileInfo.LoadedPath;
-                        return false;
+                        //All other files are checked against the filesystem
+                        string fileToCheck = System.IO.Path.Combine(GAMEDATAPATH, entry.Key);
+                        if (!System.IO.File.Exists(fileToCheck))
+                        {
+                            modMismatchError = "Required File Missing: " + entry.Key;
+                            return false;
+                        }
+                        if (entry.Value.sha != "")
+                        {
+                            try
+                            {
+                                using (System.IO.Stream hashStream = new System.IO.FileStream(fileToCheck, System.IO.FileMode.Open, System.IO.FileAccess.Read, System.IO.FileShare.ReadWrite))
+                                {
+                                    using (SHA256Managed sha = new SHA256Managed())
+                                    {
+                                        byte[] hash = sha.ComputeHash(hashStream);
+                                        if (BitConverter.ToString(hash).Replace("-", String.Empty) != entry.Value.sha.ToUpperInvariant())
+                                        {
+                                            modMismatchError = "SHA Checksum Mismatch: " + entry.Key;
+                                            return false;
+                                        }
+                                    }
+                                }
+                            }
+                            catch (Exception e)
+                            {
+                                Log.Debug("Failed to hash: " + entry.Key + ", exception" + e.Message.ToString());
+                                modMismatchError = "Failed to hash: " + entry.Key;
+                                return false;
+                            }
+                        }
+                    }
+                }
+                //If optional, if exists check hash
+                foreach (KeyValuePair<string, SHAMod> entry in modFileList.Where(x => x.Value.required == false))
+                {
+                    if (entry.Key.EndsWith(".dll", StringComparison.CurrentCultureIgnoreCase))
+                    {
+                        if (KMPManager.LoadedModfiles.Where(x => x.ModPath == entry.Key) != null)
+                        {
+                            if (KMPManager.LoadedModfiles.Where(x => x.ModPath == entry.Key && x.SHA256 == entry.Value.sha.ToUpperInvariant()) == null && entry.Value.sha != "")
+                            {
+                                modMismatchError = "SHA Checksum Mismatch: " + entry.Key;
+                                return false;
+                            }
+                        }
+                    }
+                    else
+                    {
+                        string fileToCheck = System.IO.Path.Combine(GAMEDATAPATH, entry.Key);
+                        if (System.IO.File.Exists(fileToCheck) && entry.Value.sha != "")
+                        {
+                            using (System.IO.Stream hashStream = new System.IO.FileStream(fileToCheck, System.IO.FileMode.Open, System.IO.FileAccess.Read, System.IO.FileShare.ReadWrite))
+                            {
+                                using (SHA256Managed sha = new SHA256Managed())
+                                {
+                                    byte[] hash = sha.ComputeHash(hashStream);
+                                    if (BitConverter.ToString(hash).Replace("-", String.Empty) != entry.Value.sha.ToUpperInvariant())
+                                    {
+                                        modMismatchError = "SHA Checksum Mismatch: " + entry.Key;
+                                        return false;
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
             }
             catch (Exception e)
             {
+                Log.Debug("Failed to complete files check: " + e.ToString());
                 modMismatchError = e.Message;
                 return false;
             }
-	        return true;
-	    }
+            return true;
+        }
         
         
         private static bool resourceCheck()
         {
-        	try
-        	{
-	        	if(resourceControlMode == "blacklist")
-	        	{
-	        		foreach(string checkedResource in resourceList)
-	        		{
+            //We should auto-allow KMP resources.
+            List<string> allowList = new List<string>();
+            allowList.Add("000_Toolbar/Toolbar.dll");
+            allowList.Add("KMP/Plugins/KerbalMultiPlayer.dll");
+            allowList.Add("KMP/Plugins/ICSharpCode.SharpZipLib.dll");
+            try
+            {
+                if (resourceControlMode == "blacklist")
+                {
+                    foreach (string checkedResource in resourceList)
+                    {
                         foreach (LoadedFileInfo file in KMPManager.LoadedModfiles)
                         {
-	        				if(file.ModPath.Contains(checkedResource))
-	        				{
-                                modMismatchError = "File blacklisted: " + file.LoadedPath;
-	        					return false;
-	        				}
-	        			}
-	        		}
-	        	}
-	        	else if(resourceControlMode == "whitelist")
-	        	{
-                    foreach (LoadedFileInfo file in KMPManager.LoadedModfiles)
-                    {
-                        if (file.LoadedPath.StartsWith("Plugins") || file.LoadedPath.StartsWith("Parts")) // do not allow mod files that are in the Plugins or Parts directories (they load differently, and often cause errors). All mods should be in the GameData directory.
-                        {
-                            modMismatchError = "You may not join a server if you have mods installed in the deprecated mod directories ('Plugins' or 'Parts' directories in the KSP root directory)";
-                            return false;
-                        }
-                        // if server settings don't say to check all mod files, and it's not a DLL or CFG file, then skip it
-                        if (gameManager.checkAllModFiles || file.ModPath.EndsWith(".dll", System.StringComparison.InvariantCultureIgnoreCase) || file.ModPath.EndsWith(".cfg", System.StringComparison.InvariantCultureIgnoreCase))
-                        {
-                            if (!resourceList.Contains(file.ModPath) && !modFileList.ContainsKey(file.ModPath)) // check if the resource is a) whitelisted, or b) listed in the optional or required SHA sections. If not, the file is not allowed to be loaded.
+                            if (file.ModPath.Contains(checkedResource))
                             {
-                                modMismatchError = "File not allowed on this server: " + file.LoadedPath;
+                                modMismatchError = "File blacklisted: " + file.LoadedPath;
                                 return false;
                             }
                         }
-	        		}
-	        	}
-	        	return true;
-	        }
-	        catch (Exception e)
-	        {
+                    }
+                }
+                else if (resourceControlMode == "whitelist")
+                {
+                    foreach (LoadedFileInfo file in KMPManager.LoadedModfiles)
+                    {
+                        if (!resourceList.Contains(file.ModPath) && !modFileList.ContainsKey(file.ModPath) && !allowList.Contains(file.ModPath)) // check if the resource is a) whitelisted, or b) listed in the optional or required SHA sections. If not, the file is not allowed to be loaded.
+                        {
+                            modMismatchError = "File not allowed on this server: " + file.LoadedPath;
+                            return false;
+                        }
+                    }
+                }
+                return true;
+            }
+            catch (Exception e)
+            {
                 modMismatchError = e.Message;
-	        	Log.Debug(e.ToString());
-	        	return false;
-	        }
+                Log.Debug(e.ToString());
+                return false;
+            }
         }
         
         private static bool modCheck(byte[] kmpModControl_bytes)
@@ -801,7 +844,6 @@ namespace KMP
                             int kmpModControl_length = KMPCommon.intFromBytes(data, 16 + server_version_length);
                             kmpModControl_bytes = new byte[kmpModControl_length];
                             Array.Copy(data, 20 + server_version_length, kmpModControl_bytes, 0, kmpModControl_length);
-                            gameManager.checkAllModFiles = Convert.ToBoolean(data[20+server_version_length+kmpModControl_length]);
                             SetMessage("Handshake received. Server version: " + server_version);
                         }
                     }

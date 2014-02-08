@@ -20,20 +20,9 @@ namespace KMPServer
 
 		static void Main(string[] args)
 		{
-            if (!System.IO.Directory.Exists(Server.REQUIRED_MODS_PATH))
+            if (!System.IO.Directory.Exists(Server.MODS_PATH))
             {
-                System.IO.Directory.CreateDirectory(Server.REQUIRED_MODS_PATH);
-            }
-            if(!System.IO.Directory.Exists(Server.OPTIONAL_MODS_PATH)){
-                System.IO.Directory.CreateDirectory(Server.OPTIONAL_MODS_PATH);
-            }
-            if (!System.IO.Directory.Exists(Server.REQUIRED_EXACT_MODS_PATH))
-            {
-                System.IO.Directory.CreateDirectory(Server.REQUIRED_EXACT_MODS_PATH);
-            }
-            if (!System.IO.Directory.Exists(Server.OPTIONAL_EXACT_MODS_PATH))
-            {
-                System.IO.Directory.CreateDirectory(Server.OPTIONAL_EXACT_MODS_PATH);
+                System.IO.Directory.CreateDirectory(Server.MODS_PATH);
             }
 			settings = new ServerSettings.ConfigStore();
 			ServerSettings.readFromFile(settings);
@@ -105,7 +94,7 @@ namespace KMPServer
             Log.Info("/whitelist [add|del] [user] to update whitelist.");
             Log.Info("/admin [add|del] [user] to update admin list.");
             Log.Info("/mode [sandbox|career] to set server game mode.");
-            Log.Info("/modgen - Auto-generate a KMPModControl.txt file using what you have placed in the server's 'Mods' directory.\n");
+            Log.Info("/modgen [blacklist|whitelist] [sha] - Generate a KMPModControl.txt from the 'Mods' directory.\nYou can use blacklist or whitelist mode, defaulting to blacklist.\nYou can optionally specify sha to force required versions.\n");
             Log.Info("/quit to exit, or /start to begin the server.");
             Log.Info("");
 
@@ -159,7 +148,7 @@ namespace KMPServer
                     case "/quit":
                         return;
                     case "/modgen":
-                        Server.writeModControl(true, settings);
+                        Server.writeModControlCommand(parts);
                         break;
                     case "/whitelist":
                         if (parts.Length != 3)
@@ -289,7 +278,6 @@ namespace KMPServer
                             Log.Info("autoDekesslerTime - Time, in minutes, that the server will clean up all debris." + Environment.NewLine);
                             Log.Info("profanityWords - Replaces the first word with the second." + Environment.NewLine);
                             Log.Info("consoleScale - Changes the window size of the scale. Defaults to 1.0, requires restart." + Environment.NewLine);
-                            Log.Info("checkAllModFiles - If true, all files in the Mods directories are used during the /modgen command. Otherwise, only .dll and .cfg files are used." + Environment.NewLine);
                         }
                         else if (parts.Length < 3)
                         {

@@ -45,12 +45,27 @@ namespace KMP
             ModDirectory = LoadedPath.Substring(0, LoadedPath.IndexOf('/'));
         }
 
-        public void ComputeSHA(System.IO.FileStream stream)
-        {
-            System.Security.Cryptography.SHA256Managed sha = new System.Security.Cryptography.SHA256Managed();
-            byte[] hash = sha.ComputeHash(stream);
-            SHA256 = BitConverter.ToString(hash).Replace("-", String.Empty);
-        }
+		public void HandleHash(System.Object state)
+		{
+			try {
+				using (System.IO.Stream hashStream = new System.IO.FileStream(FullPath, System.IO.FileMode.Open, System.IO.FileAccess.Read, System.IO.FileShare.ReadWrite))
+				{
+					using (System.Security.Cryptography.SHA256Managed sha = new System.Security.Cryptography.SHA256Managed()) {
+						byte[] hash = sha.ComputeHash(hashStream);
+						SHA256 = BitConverter.ToString(hash).Replace("-", String.Empty);
+					}
+					Log.Debug("Added and hashed: " + ModPath + "=" + SHA256);
+				}
+			}
+			catch (Exception e) {
+				Log.Debug("Failed to hash: " + ModPath + ", exception: " + e.Message.ToString());
+			}
+			if (Interlocked.Decrement(ref KMPManager.numberOfFilesToCheck) == 0)
+			{
+				Log.Debug("All SHA hashing completed!");
+				KMPManager.ShaFinishedEvent.Set();
+			}
+		}
     }
 	
 	[KSPAddon(KSPAddon.Startup.Instantly, true)]
@@ -82,30 +97,6 @@ namespace KMP
 			public int currentSubspaceID;
 			public Guid vesselID;
 		}
-
-        public class OutputData
-        {
-            public String output;
-        }
-        public class ModFileStream
-        {
-            public LoadedFileInfo File;
-            public System.IO.FileStream Stream;
-
-            public void HandleHash(System.Object state)
-            {
-                File.ComputeSHA(Stream);
-                LoadedModfiles.Add(File); // add all data about this file to the mod file list
-                Stream.Close();
-                Stream.Dispose();
-                Log.Debug("Added and hashed: " + File.ModPath + "=" + File.SHA256);
-				if (Interlocked.Decrement(ref numberOfFilesToCheck) == 0)
-				{
-					Log.Debug("All SHA hashing completed!");
-					ShaFinishedEvent.Set();
-				}
-            }
-        }
 
 		//Singleton
 
@@ -165,7 +156,6 @@ namespace KMP
 		public int gameMode = 0; //0=Sandbox, 1=Career
 		public bool gameCheatsEnabled = false; //Allow built-in KSP cheats
 		public bool gameArrr = false; //Allow private vessels to be taken if other user can successfully dock manually
-        public bool checkAllModFiles = false;
 		public static int numberOfFilesToCheck = 0;
 		public static ManualResetEvent ShaFinishedEvent;
 		
@@ -3195,37 +3185,16 @@ namespace KMP
             LoadedModfiles = new List<LoadedFileInfo>();
             try
             {
-                List<UrlDir.UrlFile> files = GameDatabase.Instance.root.AllFiles.ToList(); // add all plugin files
-                files.AddRange(GameDatabase.Instance.root.AllConfigFiles); // add all config files
-                List<string> filenames = files.ConvertAll(x => x.fullPath);
-                List<string> ls = System.IO.Directory.GetFiles(KSPUtil.ApplicationRootPath + "GameData", "*.*", System.IO.SearchOption.AllDirectories).ToList(); // add files that weren't immediately loaded (e.g. files that plugins use later)
-                filenames.AddRange(ls);
+                List<string> filenames = System.IO.Directory.GetFiles(KSPUtil.ApplicationRootPath + "GameData", "*.dll", System.IO.SearchOption.AllDirectories).ToList(); // add files that weren't immediately loaded (e.g. files that plugins use later)
                 filenames = filenames.ConvertAll(x => new System.IO.DirectoryInfo(x).FullName);
                 filenames = filenames.Distinct(StringComparer.CurrentCultureIgnoreCase).ToList();
-                List<ModFileStream> FileStreams = new List<ModFileStream>();
+                ShaFinishedEvent = new ManualResetEvent(false);
+                numberOfFilesToCheck = filenames.Count;
                 foreach (string file in filenames)
                 {
-                    try
-                    {
-                        ModFileStream Entry = new ModFileStream();
-                        Entry.File = new LoadedFileInfo(file);
-                        Entry.Stream = new System.IO.FileStream(file, System.IO.FileMode.Open, System.IO.FileAccess.Read, System.IO.FileShare.Read);
-                        FileStreams.Add(Entry);
-                    }
-                    catch (Exception e)
-                    {
-                        Log.Debug("Error in part hashing, 1st section: {0}", e.Message);
-                    }
-                }
-				ShaFinishedEvent = new ManualResetEvent(false);
-				numberOfFilesToCheck = FileStreams.Count;
-				try {
-                    for (int i = 0; i <= FileStreams.Count; i++) {
-	                    ThreadPool.QueueUserWorkItem(new WaitCallback(FileStreams.ElementAt(i).HandleHash));
-                    }
-                }
-                catch (Exception e) {
-                        Log.Debug("Error in part hashing, 2nd section: {0}", e.Message);
+                    LoadedFileInfo Entry = new LoadedFileInfo(file);
+                    LoadedModfiles.Add(Entry);
+                    ThreadPool.QueueUserWorkItem(new WaitCallback(Entry.HandleHash));
                 }
             }
             catch (Exception e)
