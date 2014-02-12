@@ -4100,7 +4100,7 @@ namespace KMP
 					bool quit = GUILayout.Button("Quit",lockButtonStyle);
 					if (quit)
 					{
-						if (KMPClientMain.tcpClient.Connected) {
+						if (KMPClientMain.tcpClient != null) {
 							KMPClientMain.sendConnectionEndMessage("Requested quit during sync");
 						}
 						KMPClientMain.endSession = true;
@@ -5227,13 +5227,21 @@ namespace KMP
 		//This code adapted from Kerbal Engineer Redux source
 		private void CheckEditorLock()
 		{
-			if (gameRunning && shouldDrawGUI && HighLogic.LoadedSceneIsEditor)
+			if (!gameRunning || !HighLogic.LoadedSceneIsEditor) {
+				//Only handle editor locks while in the editor
+				return;
+			}
+			EditorLogic editorObject = EditorLogic.fetch;
+			if (editorObject == null) {
+				//If the editor isn't initialized, return early. This stops debug log spam.
+				return;
+			}
+			if (shouldDrawGUI)
 			{
 				Vector2 mousePos = Input.mousePosition;
 				mousePos.y = Screen.height - mousePos.y;
 	
-				bool should_lock = (KMPInfoDisplay.infoWindowPos.Contains(mousePos)
-					|| (KMPScreenshotDisplay.windowEnabled && KMPScreenshotDisplay.windowPos.Contains(mousePos)));
+				bool should_lock = (KMPInfoDisplay.infoWindowPos.Contains(mousePos)	|| (KMPScreenshotDisplay.windowEnabled && KMPScreenshotDisplay.windowPos.Contains(mousePos)));
 				
 				if (should_lock && !isEditorLocked)
 				{
@@ -5242,14 +5250,14 @@ namespace KMP
 				}
 				else if (!should_lock)
 				{
-					if (!isEditorLocked) EditorLogic.fetch.Lock(true, true, true,"KMP_lock");
-					EditorLogic.fetch.Unlock("KMP_lock");
+					if (!isEditorLocked) editorObject.Lock(true, true, true,"KMP_lock");
+					editorObject.Unlock("KMP_lock");
 					isEditorLocked = false;
 				}
 			}
 			//Release the lock if the KMP window is hidden.
-			if (gameRunning && !shouldDrawGUI && isEditorLocked && HighLogic.LoadedSceneIsEditor) {
-				EditorLogic.fetch.Unlock("KMP_lock");
+			if (!shouldDrawGUI && isEditorLocked) {
+				editorObject.Unlock("KMP_lock");
 				isEditorLocked = false;
 			}
 		}
