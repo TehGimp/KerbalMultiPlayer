@@ -1167,6 +1167,11 @@ namespace KMP
                             pingStopwatch.Start();
                         }
                     }
+                    else if (line_lower == "!ntp")
+                    {
+                        handled = true;
+                        gameManager.displayNTP = !gameManager.displayNTP;
+                    }
                     else if (line_lower == "!debug")
                     {
                         handled = true;
