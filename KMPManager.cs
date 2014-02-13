@@ -181,12 +181,12 @@ namespace KMP
 		//NTP-style time syncronize settings
 		private bool isSkewingTime = false;
 		private Int64 offsetSyncTick = 0; //The difference between the servers system clock and ours.
+		private Int64 latencySyncTick = 0; //The network lag detected by NTP.
 		private List<Int64> listClientTimeSyncLatency = new List<Int64>(); //Holds old sync time messages so we can filter bad ones
 		private List<Int64> listClientTimeSyncOffset = new List<Int64>(); //Holds old sync time messages so we can filter bad ones
 		public List<float> listClientTimeWarp = new List<float>(); //Holds the average time skew so we can tell the server how badly we are lagging.
-		private int currentSyncTimeReceived = 0; //Number of TIME_SYNC's received
 		private bool isTimeSyncronized;
-		private const Int64 SYNC_TIME_OFFSET_FILTER = 500000; //50 milliseconds, If the new offset varies by more than 50 milliseconds the message is discarded.
+		public bool displayNTP = false; //Show NTP stats on the client
 		private const Int64 SYNC_TIME_LATENCY_FILTER = 5000000; //500 milliseconds, Must receive reply within this time or the message is discarded
 		private const float SYNC_TIME_INTERVAL = 30f; //How often to sync time.
 		private const int SYNC_TIME_VALID_COUNT = 4; //Number of SYNC_TIME's to receive until time is valid.
@@ -3544,7 +3544,6 @@ namespace KMP
 			if (HighLogic.LoadedScene == GameScenes.EDITOR || HighLogic.LoadedScene == GameScenes.SPH) return; //Time does not advance in the VAB or SPH
 
 			if (!isInFlightOrTracking && isSkewingTime) {
-				Log.Debug ("Stopping skew time");
 				isSkewingTime = false;
 				Time.timeScale = 1f;
 				return;
@@ -3552,16 +3551,14 @@ namespace KMP
 
 
 			//This brings the computers MET timer in to line with the server.
-			if (isTimeSyncronized && skewServerTime != 0 && skewTargetTick != 0) {
+			if (isInFlightOrTracking && isTimeSyncronized && skewServerTime != 0 && skewTargetTick != 0) {
 				long timeFromLastSync = (DateTime.UtcNow.Ticks + offsetSyncTick) - skewServerTime;
 				double timeFromLastSyncSeconds = (double)timeFromLastSync / 10000000;
 				double timeFromLastSyncSecondsAdjusted = timeFromLastSyncSeconds * skewSubspaceSpeed;
 				double currentError = Planetarium.GetUniversalTime () - (skewTargetTick + timeFromLastSyncSecondsAdjusted); //Ticks are integers of 100ns, Planetarium camera is a float in seconds.
 				double currentErrorMs = Math.Round (currentError * 1000, 2);
-				double currentErrorS = Math.Round (currentError, 2);
 
 				if (Math.Abs (currentError) > 5) {
-					skewMessage = ScreenMessages.PostScreenMessage ("Time skew fast, error: " + currentErrorS + " seconds.", 4f, ScreenMessageStyle.UPPER_RIGHT);
 					if (isInFlight) {
 						krakensBaneWarp(skewTargetTick + timeFromLastSyncSecondsAdjusted);
 					} else {
@@ -3593,20 +3590,47 @@ namespace KMP
 					listClientTimeWarp.Add(skewSubspaceSpeed);
 				}
 
-				//Keeps the last 10 seconds of warp history to report to the server
+				//Keeps the last 10 seconds (300 update steps) of clock speed history to report to the server
 				if (listClientTimeWarp.Count > 300) {
 					listClientTimeWarp.RemoveAt(0);
 				}
 
 
-				if (isSkewingTime) {
-					try {
+				if (displayNTP) {
+					if (skewMessage != null) {
+						//Hide the old message.
 						skewMessage.duration = 0;
 					}
-					catch (Exception e) {
-						Log.Debug (e.ToString ());
+					//Current clock error in milliseconds
+					String skewMessageText;
+					skewMessageText = "Clock error: " + currentErrorMs + "ms.\n";
+					skewMessageText += "Game speed: " + Math.Round(Time.timeScale, 3) + "x.\n";
+					//Current client latency detected by NTP (latency - server processing time)
+					long latencySyncTickMs = latencySyncTick / 10000;
+					skewMessageText += "Network latency: " + latencySyncTickMs + "ms.\n";
+					//Current system clock offset
+					skewMessageText += "Clock offset: ";
+					long tempOffsetSyncTick = offsetSyncTick;
+					long offsetSyncTickHours = tempOffsetSyncTick / 36000000000;
+					tempOffsetSyncTick -= offsetSyncTickHours * 36000000000;
+					if (offsetSyncTickHours > 0) {
+						skewMessageText += offsetSyncTickHours + "h, ";
 					}
-					skewMessage = ScreenMessages.PostScreenMessage("Time skew error: " + currentErrorMs + "ms.", 1f, ScreenMessageStyle.UPPER_RIGHT);
+					long offsetSyncTickMinutes = tempOffsetSyncTick / 600000000;
+					tempOffsetSyncTick -= offsetSyncTickMinutes * 600000000;
+					if (offsetSyncTickMinutes > 0) {
+						skewMessageText += offsetSyncTickMinutes + "m, ";
+					}
+					long offsetSyncTickSeconds = tempOffsetSyncTick / 10000000;
+					tempOffsetSyncTick -= offsetSyncTickSeconds * 10000000;
+					if (offsetSyncTickSeconds > 0) {
+						skewMessageText += offsetSyncTickSeconds + "s, ";
+					}
+					long offsetSyncTickMilliseconds = tempOffsetSyncTick / 10000;
+					skewMessageText += offsetSyncTickMilliseconds + "ms.\n";
+					//Current subspace speed
+					skewMessageText += "Subspace Speed: " + Math.Round(skewSubspaceSpeed, 3) + "x.";
+					skewMessage = ScreenMessages.PostScreenMessage(skewMessageText, 1f, ScreenMessageStyle.UPPER_RIGHT);
 				}
 			}
 		}
@@ -3620,7 +3644,6 @@ namespace KMP
 
 		public void HandleSyncTimeCompleted(byte[] data)
 		{
-			currentSyncTimeReceived = currentSyncTimeReceived + 1;
 			Int64 clientSend = BitConverter.ToInt64 (data, 0);
 			Int64 serverReceive = BitConverter.ToInt64 (data, 8);
 			Int64 serverSend = BitConverter.ToInt64 (data, 16);
@@ -3631,8 +3654,7 @@ namespace KMP
 
 			//If time is synced, throw out outliers.
 			if (isTimeSyncronized) {
-				Int64 clientOffsetFilter = (Int64)listClientTimeSyncOffset.Average();
-				if (clientLatency < SYNC_TIME_LATENCY_FILTER && Math.Abs(clientOffset-clientOffsetFilter) < SYNC_TIME_OFFSET_FILTER) {
+				if (clientLatency < SYNC_TIME_LATENCY_FILTER) {
 					listClientTimeSyncOffset.Add (clientOffset);
 					listClientTimeSyncLatency.Add (clientLatency);
 				}
@@ -3644,9 +3666,9 @@ namespace KMP
 			}
 
 			//If received enough TIME_SYNC messages, set time to syncronized.
-			if (currentSyncTimeReceived >= SYNC_TIME_VALID_COUNT && !isTimeSyncronized) {
+			if (listClientTimeSyncOffset.Count >= SYNC_TIME_VALID_COUNT && !isTimeSyncronized) {
 				offsetSyncTick = (Int64)listClientTimeSyncOffset.Average();
-				Int64 latencySyncTick = (Int64)listClientTimeSyncLatency.Average();
+				latencySyncTick = (Int64)listClientTimeSyncLatency.Average();
 				isTimeSyncronized = true;
 				Log.Debug("Initial client time syncronized: " + (latencySyncTick/10000).ToString() + "ms latency, " + (offsetSyncTick/10000).ToString() + "ms offset");
 			}
@@ -3662,6 +3684,7 @@ namespace KMP
 			//Update offset timer so the physwrap skew can use it
 			if (isTimeSyncronized) {
 				offsetSyncTick = (Int64)listClientTimeSyncOffset.Average();
+				latencySyncTick = (Int64)listClientTimeSyncLatency.Average();
 			}
 		}
 
@@ -4381,7 +4404,6 @@ namespace KMP
 					serverVessels_RendezvousSmoothVel.Clear();
 
 					isTimeSyncronized = false;
-					currentSyncTimeReceived = 0;
 					listClientTimeSyncLatency.Clear ();
 					listClientTimeSyncOffset.Clear ();
 					listClientTimeWarp.Clear ();

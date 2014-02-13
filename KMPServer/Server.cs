@@ -2752,6 +2752,8 @@ namespace KMPServer
                         sb.Append("!chat offsetting <true|false> - Turn on/off the tracking center and editor offsets\n");
                         sb.Append("!chat offset [tracking|editor] [offsetX] [offsetY] - Set the offset values (pixels)\n");
                         sb.Append("!chat [width|height|top|left] [value] <percent|pixels>\n");
+                        sb.Append("!ping - Shows current server latency\n");
+                        sb.Append("!ntp - Displays NTP-sync status\n");
                         sb.Append("!whereami - Displays server connection information\n");
 						if(isAdmin(cl.username)) {
 							sb.Append(KMPCommon.RCON_COMMAND + " <cmd> - Execute command /<cmd> as if typed from server console\n");
