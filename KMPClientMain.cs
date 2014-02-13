@@ -740,7 +740,7 @@ namespace KMP
 
                     SetMessage("Connected to server! Handshaking...");
 
-                    while (!endSession && !intentionalConnectionEnd && tcpClient.Connected)
+                    while (!endSession && !intentionalConnectionEnd && tcpClient != null)
                     {
                         //Check for exceptions thrown by threads
                         lock (threadExceptionLock)
@@ -1627,11 +1627,11 @@ namespace KMP
 
         static void processPluginInterop()
         {
-			if (interopInQueue.Count > 0 )
+			if (interopInQueue.Count > 0 && tcpClient != null )
 			{
 				try
 				{
-				while (interopInQueue.Count > 0 && tcpClient.Connected)
+				while (interopInQueue.Count > 0 && tcpClient != null)
 					{
 						byte[] bytes;
 						bytes = interopInQueue.Dequeue();
