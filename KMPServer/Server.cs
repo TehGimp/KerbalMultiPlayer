@@ -1932,7 +1932,13 @@ namespace KMPServer
             message.client = cl;
             message.id = id;
             message.data = data;
-
+           //Write the receive time for NTP sync messages.
+           if (message.id == KMPCommon.ClientMessageID.SYNC_TIME) {
+               byte[] rewriteMessage = new byte[16]; //Holds the client send time and the server receive time.
+               message.data.CopyTo (rewriteMessage, 0);
+               BitConverter.GetBytes (DateTime.UtcNow.Ticks).CopyTo(rewriteMessage, 8);
+               message.data = rewriteMessage;
+            }
             clientMessageQueue.Enqueue(message);
         }
 
@@ -2048,10 +2054,7 @@ namespace KMPServer
 		private void HandleTimeSync(Client cl, byte[] data)
 		{
 			//Message format: clientsendtick(8), serverreceivetick(8), serversendtick(8). The server send tick gets added during actual sending.
-			byte[] newdata = new byte[16];
-			data.CopyTo (newdata, 0);
-			BitConverter.GetBytes(DateTime.UtcNow.Ticks).CopyTo(newdata, 8);
-			byte[] message_bytes = buildMessageArray(KMPCommon.ServerMessageID.SYNC_TIME, newdata);
+			byte[] message_bytes = buildMessageArray(KMPCommon.ServerMessageID.SYNC_TIME, data); //This has already been rewritten in the queueClientMessage.
 			cl.queueOutgoingMessage(message_bytes); //This is still re-written during the actual send.
 			Log.Debug("{0} time sync request", cl.username);
 		}

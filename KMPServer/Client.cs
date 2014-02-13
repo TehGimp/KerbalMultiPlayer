@@ -427,32 +427,32 @@ namespace KMPServer
 
 		private void messageReceived (KMPCommon.ClientMessageID id, byte[] data)
 		{
-				if (id == KMPCommon.ClientMessageID.SPLIT_MESSAGE) {
-						if (splitMessageReceiveIndex == 0) {
-							//New split message
-								int split_message_length = KMPCommon.intFromBytes (data, 4);
-								splitMessageData = new byte[8 + split_message_length];
-								data.CopyTo (splitMessageData, 0);
-								splitMessageReceiveIndex = data.Length;
-						} else {
-								//Continued split message
-								data.CopyTo (splitMessageData, splitMessageReceiveIndex);
-								splitMessageReceiveIndex = splitMessageReceiveIndex + data.Length;
-						}
-						//Check if we have filled the byte array, if so, handle the message.
-						if (splitMessageReceiveIndex == splitMessageData.Length) {
-								//Parse the message and feed it into the client queue
-								KMPCommon.ClientMessageID joined_message_id = (KMPCommon.ClientMessageID)KMPCommon.intFromBytes (splitMessageData, 0);
-								int joined_message_length = KMPCommon.intFromBytes (splitMessageData, 4);
-								byte[] joined_message_data = new byte[joined_message_length];
-								Array.Copy (splitMessageData, 8, joined_message_data, 0, joined_message_length);
-								byte[] joined_message_data_decompressed = KMPCommon.Decompress (joined_message_data);
-								parent.queueClientMessage (this, joined_message_id, joined_message_data_decompressed);
-								splitMessageReceiveIndex = 0;
-						}
+			if (id == KMPCommon.ClientMessageID.SPLIT_MESSAGE) {
+				if (splitMessageReceiveIndex == 0) {
+					//New split message
+					int split_message_length = KMPCommon.intFromBytes (data, 4);
+					splitMessageData = new byte[8 + split_message_length];
+					data.CopyTo (splitMessageData, 0);
+					splitMessageReceiveIndex = data.Length;
 				} else {
-						parent.queueClientMessage (this, id, data);
+					//Continued split message
+					data.CopyTo (splitMessageData, splitMessageReceiveIndex);
+					splitMessageReceiveIndex = splitMessageReceiveIndex + data.Length;
 				}
+				//Check if we have filled the byte array, if so, handle the message.
+				if (splitMessageReceiveIndex == splitMessageData.Length) {
+					//Parse the message and feed it into the client queue
+					KMPCommon.ClientMessageID joined_message_id = (KMPCommon.ClientMessageID)KMPCommon.intFromBytes (splitMessageData, 0);
+					int joined_message_length = KMPCommon.intFromBytes (splitMessageData, 4);
+					byte[] joined_message_data = new byte[joined_message_length];
+					Array.Copy (splitMessageData, 8, joined_message_data, 0, joined_message_length);
+					byte[] joined_message_data_decompressed = KMPCommon.Decompress (joined_message_data);
+					parent.queueClientMessage (this, joined_message_id, joined_message_data_decompressed);
+					splitMessageReceiveIndex = 0;
+				}
+			} else {
+				parent.queueClientMessage (this, id, data);
+			}
 		}
 
 		public void sendOutgoingMessages()

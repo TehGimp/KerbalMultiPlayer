@@ -182,6 +182,7 @@ namespace KMP
 		private bool isSkewingTime = false;
 		private Int64 offsetSyncTick = 0; //The difference between the servers system clock and ours.
 		private Int64 latencySyncTick = 0; //The network lag detected by NTP.
+		private Int64 estimatedServerLag = 0; //The server lag detected by NTP.
 		private List<Int64> listClientTimeSyncLatency = new List<Int64>(); //Holds old sync time messages so we can filter bad ones
 		private List<Int64> listClientTimeSyncOffset = new List<Int64>(); //Holds old sync time messages so we can filter bad ones
 		public List<float> listClientTimeWarp = new List<float>(); //Holds the average time skew so we can tell the server how badly we are lagging.
@@ -3629,7 +3630,18 @@ namespace KMP
 					long offsetSyncTickMilliseconds = tempOffsetSyncTick / 10000;
 					skewMessageText += offsetSyncTickMilliseconds + "ms.\n";
 					//Current subspace speed
-					skewMessageText += "Subspace Speed: " + Math.Round(skewSubspaceSpeed, 3) + "x.";
+					skewMessageText += "Subspace Speed: " + Math.Round(skewSubspaceSpeed, 3) + "x.\n";
+					//Estimated server lag
+					skewMessageText += "Server lag: ";
+					long tempServerLag = estimatedServerLag;
+					long serverLagSeconds = tempServerLag / 10000000;
+					tempServerLag -= serverLagSeconds * 10000000;
+					if (serverLagSeconds > 0) {
+						skewMessageText += serverLagSeconds + "s, ";
+					}
+					long serverLagMilliseconds = tempServerLag / 10000;
+					skewMessageText += serverLagMilliseconds + "ms.\n";
+
 					skewMessage = ScreenMessages.PostScreenMessage(skewMessageText, 1f, ScreenMessageStyle.UPPER_RIGHT);
 				}
 			}
@@ -3651,6 +3663,7 @@ namespace KMP
 			//Fancy NTP algorithm
 			Int64 clientLatency = (clientReceive - clientSend) - (serverSend - serverReceive);
 			Int64 clientOffset = ((serverReceive - clientSend) + (serverSend - clientReceive))/2;
+			estimatedServerLag = serverSend - serverReceive;
 
 			//If time is synced, throw out outliers.
 			if (isTimeSyncronized) {
