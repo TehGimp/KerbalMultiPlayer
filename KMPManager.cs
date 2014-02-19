@@ -740,6 +740,8 @@ namespace KMP
 			else KMPClientMain.SetMessage("Disconnected: " + message);
             saveGlobalSettings();
 			gameRunning = false;
+			//Clear any left over locks.
+			InputLockManager.ClearControlLocks();
 		}
 		
 		private void writePluginUpdate()
@@ -2664,9 +2666,12 @@ namespace KMP
 		private void addRemoteVessel(ProtoVessel protovessel, Guid vessel_id, KMPVessel kvessel = null, KMPVesselUpdate update = null, double distance = 501d)
 		{
 			if (vessel_id == FlightGlobals.ActiveVessel.id && (serverVessels_InUse.ContainsKey(vessel_id) ? !serverVessels_InUse.ContainsKey(vessel_id) : false)) return;
-			if (serverVessels_LoadDelay.ContainsKey(vessel_id) ? serverVessels_LoadDelay[vessel_id] <= UnityEngine.Time.realtimeSinceStartup : false) return;
+			if (serverVessels_LoadDelay.ContainsKey(vessel_id) ? serverVessels_LoadDelay[vessel_id] >= UnityEngine.Time.realtimeSinceStartup : false) return;
 			serverVessels_LoadDelay[vessel_id] = UnityEngine.Time.realtimeSinceStartup + 5f;
-			Log.Debug("addRemoteVessel: " + vessel_id.ToString());
+			Log.Debug("addRemoteVessel: " + vessel_id.ToString() + ", name: " + protovessel.vesselName.ToString() + ", type: " + protovessel.vesselType.ToString());
+			if (protovessel.vesselType == VesselType.Flag) {
+				Invoke("ClearFlagLock", 5f);
+			}
 			Vector3 newWorldPos = Vector3.zero, newOrbitVel = Vector3.zero;
 			bool setTarget = false, wasLoaded = false, wasActive = false;
 			Vessel oldVessel = null;
@@ -2732,7 +2737,7 @@ namespace KMP
 					}
 				}
 
-                if (isInSafetyBubble(protovessel.position, body, protovessel.altitude)) //refuse to load anything too close to the KSC
+                if (isProtoVesselInSafetyBubble(protovessel)) //refuse to load anything too close to the KSC
 				{
 					Log.Debug("Tried to load vessel too close to KSC");
 					return;
@@ -3443,14 +3448,18 @@ namespace KMP
 		
 		public void HandleSyncCompleted()
 		{
-			SyncTime();
-			if (!forceQuit && syncing && !inGameSyncing && gameRunning) Invoke("finishSync",5f);
-			else
-			{
-				Invoke("finishInGameSync",1f);
+			if (gameRunning && !forceQuit && syncing) {
+				if (!inGameSyncing) {
+					SyncTime ();
+					Invoke ("finishSync", 5f);
+					CancelInvoke ("handleSyncTimeout");
+				} else {
+					Invoke ("finishInGameSync", 1f);
+				}
 			}
+
 		}
-		
+
 		private void finishInGameSync()
 		{
 			syncing = false;
@@ -3460,13 +3469,11 @@ namespace KMP
 		
 		private void handleSyncTimeout()
 		{
-			if (!forceQuit && syncing && gameRunning) {
-				disconnect("Sync Timeout");
-				KMPClientMain.sendConnectionEndMessage("Sync Timeout");
-				KMPClientMain.endSession = true;
-				forceQuit = true;
-				KMPClientMain.SetMessage("Disconnected: Sync timeout");
-			}
+			disconnect("Sync Timeout");
+			KMPClientMain.sendConnectionEndMessage("Sync Timeout");
+			KMPClientMain.endSession = true;
+			forceQuit = true;
+			KMPClientMain.SetMessage("Disconnected: Sync timeout");
 		}
 		
 		private void finishSync()
@@ -3477,6 +3484,12 @@ namespace KMP
 				StartCoroutine(returnToSpaceCenter());
 				//Disable debug logging once synced unless explicitly enabled
 			}
+		}
+
+		private void ClearFlagLock()
+		{
+			Log.Debug("Clearing flag locks");
+			InputLockManager.RemoveControlLock("Flag_NoInterruptWhileDeploying");
 		}
 
 		private void krakensBaneWarp(double krakensTick = 0) {
@@ -5210,6 +5223,30 @@ namespace KMP
 			Vector3d projectedPos = pos + (Vector3d.Normalize(kscNormal)*projectionDistance);
 			
 			return Vector3d.Distance(kscPosition, projectedPos) < safetyBubbleRadius;
+		}
+
+		private bool isProtoVesselInSafetyBubble(ProtoVessel protovessel) {
+			//When vessels are landed, position is 0,0,0 - So we need to check lat/long
+			ConfigNode protoVesselNode = new ConfigNode();
+			protovessel.Save(protoVesselNode);
+			CelestialBody kerbinBody = FlightGlobals.Bodies.Find (b => b.name == "Kerbin");
+			//If not kerbin, we aren't in the safety bubble.
+			if (protoVesselNode.GetNode("ORBIT").GetValue("REF") != "1") {
+				return false;
+			}
+			//If we aren't landed, use the vector3 check above.
+			if (!protovessel.landed) {
+				return isInSafetyBubble (protovessel.position, kerbinBody, protovessel.altitude);
+			}
+			//Check our distance
+			double protoVesselLat;
+			double protoVesselLong;
+			Double.TryParse(protoVesselNode.GetValue("lat"), out protoVesselLat);
+			Double.TryParse(protoVesselNode.GetValue("long"), out protoVesselLong);
+			Vector3d kscPosition = kerbinBody.GetWorldSurfacePosition(-0.102668048654,-74.5753856554,60);
+			Vector3d protoVesselPosition = kerbinBody.GetWorldSurfacePosition(protoVesselLat, protoVesselLong, protovessel.altitude);
+			double vesselDistance = Vector3d.Distance(kscPosition, protoVesselPosition);
+			return vesselDistance < safetyBubbleRadius;
 		}
 		
 		public double horizontalDistanceToSafetyBubbleEdge()
