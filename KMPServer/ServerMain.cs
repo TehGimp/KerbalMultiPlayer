@@ -298,12 +298,13 @@ namespace KMPServer
                         else
                         {
                             string val = String.Join(" ", parts.Skip(2).ToArray());
-                            if (settings.Contains(parts[1]))
+                            string setKey = settings.MatchCaseInsensitive(parts[1]);
+                            if (settings.Contains(setKey))
                             {
                                 try
                                 {
-                                    ServerSettings.modifySetting(settings, parts[1], val);
-                                    Log.Info("{0} changed to {1}", parts[1], val);
+                                    ServerSettings.modifySetting(settings, setKey, val);
+                                    Log.Info("{0} changed to {1}", setKey, val);
                                     ServerSettings.writeToFile(settings);
                                 }
                                 catch
