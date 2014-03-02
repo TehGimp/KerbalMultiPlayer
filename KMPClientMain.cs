@@ -1885,7 +1885,7 @@ namespace KMP
             if (to_plugin)
             {
                 if (message.fromServer)
-                    enqueuePluginChatMessage("[Server] " + message.message, false);
+                    enqueuePluginChatMessage("<Server> " + message.message, false);
                 else if (message.isMOTD)
                     enqueuePluginChatMessage("[MOTD] " + message.message, false);
                 else
