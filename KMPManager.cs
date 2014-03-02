@@ -4394,6 +4394,7 @@ namespace KMP
 					
 					//Start MP game
 					KMPConnectionDisplay.windowEnabled = false;
+					KMPInfoDisplay.infoDisplayOptions = false;
 					gameRunning = true;
 					//This is to revert manually setting it to 1. Users won't know about this setting.
 					//Let's remove this somewhere around July 2014.
