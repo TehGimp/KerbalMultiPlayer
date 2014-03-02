@@ -132,6 +132,16 @@ namespace KMPServer
 			{
 				return ServerSettings.Contains(typeof(ServerSettings.ConfigStore), sKey);
 			}
+
+			public string MatchCaseInsensitive (String sKey)
+			{
+				foreach (string fieldName in typeof(ConfigStore).GetFields().Select(field => field.Name)) {
+					if (fieldName.ToLowerInvariant () == sKey.ToLowerInvariant ()) {
+						return fieldName;
+					}
+				}
+				return "";
+			}
 		}
 
 		public const int MIN_UPDATE_INTERVAL = 250;
