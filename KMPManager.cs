@@ -2070,6 +2070,11 @@ namespace KMP
 												
 												if (FlightGlobals.ActiveVessel.mainBody == update_body && vessel_update.relTime == RelativeTime.PRESENT)
 												{
+													if (!extant_vessel.loaded)
+													{
+														Log.Debug("Skipped full update, vessel not loaded");
+														return;
+													}
 													Log.Debug("full update");
 													if (serverVessels_InPresent.ContainsKey(vessel_update.id) ? !serverVessels_InPresent[vessel_update.id] : true)
 													{
