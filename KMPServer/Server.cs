@@ -485,7 +485,7 @@ namespace KMPServer
             {
                 string[] ls = Directory.GetFiles(MODS_PATH, "*", SearchOption.AllDirectories);
                 ls = ls.Distinct().ToArray();
-                char[] toperiod = { ' ', '_' };
+                char[] toperiod = { '_' };
                 foreach (string file in ls)
                 {
                     //We add Squad files manually in generatePartsList above.
