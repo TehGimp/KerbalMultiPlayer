@@ -113,6 +113,7 @@ namespace KMP
         public static bool intentionalConnectionEnd;
         public static bool handshakeCompleted;
         public static TcpClient tcpClient;
+        public static long lastKeepAliveSendTime;
         public static long lastTCPMessageSendTime;
         public static bool quitHelperMessageShow;
         public static int reconnectAttempts;
@@ -706,7 +707,7 @@ namespace KMP
                     tcpClient.Connect(endpoint);
                 }
                 //tcpSocket.SetSocketOption(SocketOptionLevel.Tcp, SocketOptionName.KeepAlive, true);
-                if (tcpClient.Connected)
+                if (tcpClient != null ? tcpClient.Connected : false)
                 {
                     SetMessage("TCP connection established");
                     clientID = -1;
@@ -1538,8 +1539,10 @@ namespace KMP
                     }
 
                     //Send a keep-alive message to prevent timeout
-                    if (stopwatch.ElapsedMilliseconds - lastTCPMessageSendTime >= KEEPALIVE_DELAY)
+                    if (stopwatch.ElapsedMilliseconds - lastTCPMessageSendTime >= KEEPALIVE_DELAY && stopwatch.ElapsedMilliseconds - lastKeepAliveSendTime >= KEEPALIVE_DELAY) {
+                        lastKeepAliveSendTime = stopwatch.ElapsedMilliseconds;
                         queueOutgoingMessage(KMPCommon.ClientMessageID.KEEPALIVE, null);
+                    }
 
                     //Handle received messages
                     while (receivedMessageQueue.Count > 0)
@@ -2448,6 +2451,7 @@ namespace KMP
 						//Protect against null messages
 						if (next_message != null) {
 							isClientSendingData = true;
+							lastTCPMessageSendTime = stopwatch.ElapsedMilliseconds;
 							tcpClient.GetStream().BeginWrite(next_message, 0, next_message.Length, new AsyncCallback(asyncTCPSend), next_message);
 						}
 					}

@@ -4193,6 +4193,23 @@ namespace KMPServer
             Log.Debug("Starting ghost-check thread");
             while (true)
             {
+                //Send periodic messages to the client so we can detect disconnected clients
+                try
+                {
+                    foreach (Client cl in clients)
+                    {
+                        if (cl != null)
+                        {
+                            cl.queueOutgoingMessage(KMPCommon.ServerMessageID.KEEPALIVE, null);
+                        }
+                    }
+                }
+                catch (Exception e)
+                {
+                    Log.Debug("Exception in ghost thread: " + e.Message);
+                }
+
+                //Detect timed out connections
                 int foundGhost = 0;
                 foreach (Client client in clients.ToList().Where(c => !c.isReady && currentMillisecond - c.connectionStartTime > CLIENT_HANDSHAKE_TIMEOUT_DELAY + CLIENT_TIMEOUT_DELAY))
                 {
