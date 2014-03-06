@@ -3726,7 +3726,18 @@ namespace KMP
 			{
 				if (!gameRunning) return;
 				
-				try { if (PauseMenu.isOpen && syncing) PauseMenu.Close(); } catch { }
+				try {
+					if (PauseMenu.isOpen && syncing) {
+						if (KMPClientMain.tcpClient != null) {
+							PauseMenu.Close();
+						} else {
+							disconnect("Connection terminated during sync");
+							forceQuit = true;
+						}
+					}
+				} catch (Exception e) {
+					Log.Debug("Exception thrown in Update(), catch 1, Exception: {0}", e.ToString());
+				}
 				
 				if (FlightDriver.Pause) FlightDriver.SetPause(false);
 				if (gameCheatsEnabled == false) {
@@ -3839,7 +3850,7 @@ namespace KMP
                         }
                     }
                 }
-			} catch (Exception ex) { Log.Debug("Exception thrown in Update(), catch 1, Exception: {0}", ex.ToString()); Log.Debug ("u err: " + ex.Message + " " + ex.StackTrace); }
+			} catch (Exception ex) { Log.Debug("Exception thrown in Update(), catch 2, Exception: {0}", ex.ToString()); Log.Debug ("u err: " + ex.Message + " " + ex.StackTrace); }
 		}
 
 		public void OnGUI()
