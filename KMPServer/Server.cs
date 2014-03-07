@@ -43,7 +43,6 @@ namespace KMPServer
         public const int GHOST_CHECK_DELAY = 30000;
         public const int SLEEP_TIME = 10;
         public const int MAX_SCREENSHOT_COUNT = 10000;
-        public const int UDP_ACK_THROTTLE = 1000;
 
         public const float NOT_IN_FLIGHT_UPDATE_WEIGHT = 1.0f / 4.0f;
         public const int ACTIVITY_RESET_DELAY = 10000;
@@ -83,7 +82,6 @@ namespace KMPServer
         public Timer autoDekesslerTimer;
 
         public TcpListener tcpListener;
-        public UdpClient udpClient;
 
         public HttpListener httpListener;
 
@@ -210,17 +208,6 @@ namespace KMPServer
                 {
                 }
             }
-
-            if (udpClient != null)
-            {
-                try
-                {
-                    udpClient.Close();
-                }
-                catch { }
-            }
-
-            udpClient = null;
 
             if (universeDB != null && (universeDB.State == ConnectionState.Open || settings.useMySQL))
             {
@@ -655,17 +642,6 @@ namespace KMPServer
             }
             
             listenThread.Start();
-
-            try
-            {
-            	udpClient = new UdpClient((IPEndPoint)tcpListener.LocalEndpoint);
-                udpClient.BeginReceive(asyncUDPReceive, null);
-                //udpClient.Client.AllowNatTraversal(1);
-            }
-            catch
-            {
-                udpClient = null;
-            }
 
             displayCommands();
 
@@ -1755,78 +1731,6 @@ namespace KMPServer
             sendServerSettingsToAll();
         }
 
-        private void asyncUDPReceive(IAsyncResult result)
-        {
-            try
-            {
-                if (settings.ipBinding == "0.0.0.0" && settings.hostIPv6 == true) {
-                    settings.ipBinding = "::";
-                }
-                IPEndPoint endpoint = new IPEndPoint(IPAddress.Parse(settings.ipBinding), settings.port);
-                if (udpClient == null) { return; }
-                byte[] received = udpClient.EndReceive(result, ref endpoint);
-                if (received.Length >= KMPCommon.MSG_HEADER_LENGTH + 4)
-                {
-                    int index = 0;
-
-                    //Get the sender index
-                    int sender_index = KMPCommon.intFromBytes(received, index);
-                    index += 4;
-
-                    //Get the message header data
-                    KMPCommon.ClientMessageID id = (KMPCommon.ClientMessageID)KMPCommon.intFromBytes(received, index);
-                    index += 4;
-
-                    int data_length = KMPCommon.intFromBytes(received, index);
-                    index += 4;
-
-                    //Get the data
-                    byte[] data = null;
-
-                    if (data_length > 0 && data_length <= received.Length - index)
-                    {
-                        data = new byte[data_length];
-                        Array.Copy(received, index, data, 0, data.Length);
-                    }
-
-                    Client client = clients.ToList().Where(c => c.isReady && c.clientIndex == sender_index).FirstOrDefault();
-                    if (client != null)
-                    {
-                        if ((currentMillisecond - client.lastUDPACKTime) > UDP_ACK_THROTTLE)
-                        {
-                            //Acknowledge the client's message with a TCP message
-                            client.queueOutgoingMessage(KMPCommon.ServerMessageID.UDP_ACKNOWLEDGE, null);
-                            client.lastUDPACKTime = currentMillisecond;
-                            client.updateReceiveTimestamp();
-                        }
-
-                        //Handle the message
-						if (data == null)
-						{
-							handleMessage(client, id, data);
-						}
-						else
-						{
-                    		byte[] messageData = KMPCommon.Decompress(data);
-                    		if (messageData != null) handleMessage(client, id, messageData);
-							//Consider adding re-request here
-						}
-                    }
-
-                }
-
-                udpClient.BeginReceive(asyncUDPReceive, null); //Begin receiving the next message
-
-            }
-            catch (ThreadAbortException)
-            {
-            }
-            catch (Exception e)
-            {
-                passExceptionToMain(e);
-            }
-        }
-
         private Client getClientByName(String name)
         {
             return clients.Where(c => c.isReady && c.username.Equals(name, StringComparison.InvariantCultureIgnoreCase)).FirstOrDefault();
@@ -1942,7 +1846,7 @@ namespace KMPServer
         }
 
         private KMPCommon.ClientMessageID[] AllowNullDataMessages = { KMPCommon.ClientMessageID.SCREEN_WATCH_PLAYER, KMPCommon.ClientMessageID.CONNECTION_END, KMPCommon.ClientMessageID.ACTIVITY_UPDATE_IN_FLIGHT, KMPCommon.ClientMessageID.ACTIVITY_UPDATE_IN_GAME, KMPCommon.ClientMessageID.PING, KMPCommon.ClientMessageID.SYNC_TIME };
-        private KMPCommon.ClientMessageID[] AllowClientNotReadyMessages = { KMPCommon.ClientMessageID.HANDSHAKE, KMPCommon.ClientMessageID.TEXT_MESSAGE, KMPCommon.ClientMessageID.SCREENSHOT_SHARE, KMPCommon.ClientMessageID.CONNECTION_END, KMPCommon.ClientMessageID.ACTIVITY_UPDATE_IN_FLIGHT, KMPCommon.ClientMessageID.ACTIVITY_UPDATE_IN_GAME, KMPCommon.ClientMessageID.PING, KMPCommon.ClientMessageID.UDP_PROBE, KMPCommon.ClientMessageID.WARPING, KMPCommon.ClientMessageID.SSYNC, KMPCommon.ClientMessageID.SYNC_TIME };
+        private KMPCommon.ClientMessageID[] AllowClientNotReadyMessages = { KMPCommon.ClientMessageID.HANDSHAKE, KMPCommon.ClientMessageID.TEXT_MESSAGE, KMPCommon.ClientMessageID.SCREENSHOT_SHARE, KMPCommon.ClientMessageID.CONNECTION_END, KMPCommon.ClientMessageID.ACTIVITY_UPDATE_IN_FLIGHT, KMPCommon.ClientMessageID.ACTIVITY_UPDATE_IN_GAME, KMPCommon.ClientMessageID.PING, KMPCommon.ClientMessageID.PROBE, KMPCommon.ClientMessageID.WARPING, KMPCommon.ClientMessageID.SSYNC, KMPCommon.ClientMessageID.SYNC_TIME };
 
         public void handleMessage(Client cl, KMPCommon.ClientMessageID id, byte[] data)
         {
@@ -1996,8 +1900,8 @@ namespace KMPServer
 	                    case KMPCommon.ClientMessageID.PING:
 	                        cl.queueOutgoingMessage(KMPCommon.ServerMessageID.PING_REPLY, null);
 	                        break;
-	                    case KMPCommon.ClientMessageID.UDP_PROBE:
-	                        HandleUDPProbe(cl, data);
+	                    case KMPCommon.ClientMessageID.PROBE:
+	                        HandleProbe(cl, data);
 	                        break;
 	                    case KMPCommon.ClientMessageID.WARPING:
 	                        HandleWarping(cl, data);
@@ -2119,7 +2023,7 @@ namespace KMPServer
             }
         }
 
-        private void HandleUDPProbe(Client cl, byte[] data)
+        private void HandleProbe(Client cl, byte[] data)
         {
             double incomingTick = BitConverter.ToDouble(data, 0);
             double lastSubspaceTick = incomingTick;

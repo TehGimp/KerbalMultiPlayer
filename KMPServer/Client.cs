@@ -56,7 +56,6 @@ namespace KMPServer
 		public long connectionStartTime;
 		public long lastReceiveTime;
 		public long lastSyncTime;
-		public long lastUDPACKTime;
         public long lastPollTime = 0;
 
 		public long lastInGameActivityTime;
@@ -173,8 +172,6 @@ namespace KMPServer
 			sharedCraftFile = null;
 			sharedCraftName = String.Empty;
 			sharedCraftType = KMPCommon.CraftType.VAB;
-
-			lastUDPACKTime = 0;
 
 			queuedOutMessagesHighPriority = new ConcurrentQueue<byte[]>();
 			queuedOutMessagesSplit = new ConcurrentQueue<byte[]>();
@@ -552,7 +549,6 @@ namespace KMPServer
 						case (int)KMPCommon.ServerMessageID.SERVER_SETTINGS:
 						case (int)KMPCommon.ServerMessageID.KEEPALIVE:
 						case (int)KMPCommon.ServerMessageID.CONNECTION_END:
-						case (int)KMPCommon.ServerMessageID.UDP_ACKNOWLEDGE:
 						case (int)KMPCommon.ServerMessageID.PING_REPLY:
 								queuedOutMessagesHighPriority.Enqueue(message_bytes);
 								break;
