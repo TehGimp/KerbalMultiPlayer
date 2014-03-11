@@ -62,7 +62,7 @@ namespace KMPServer
 
         public static byte[] kmpModControl;
 
-        public const int UNIVERSE_VERSION = 4;
+        public const int UNIVERSE_VERSION = 5;
 
         public bool quit = false;
         public bool stop = false;
@@ -3749,6 +3749,7 @@ namespace KMPServer
 	                        "CREATE INDEX IF NOT EXISTS kmpVesselUpdateHistoryIdxTick on kmpVesselUpdateHistory(Tick);";
 	                    cmd.CommandText = sql;
 	                    cmd.ExecuteNonQuery();
+						version = 2;
 					}
 					
 					if (version == 2)
@@ -3869,17 +3870,43 @@ namespace KMPServer
 			            }
 						
 						universeDB.BackupDatabase(diskDB);
+						version = 3;
 					}
 					
-					//Upgrade old universe to version 4
-					Log.Info("Upgrading universe database to current version...");
-                    cmd = diskDB.CreateCommand();
-                    sql = String.Format("CREATE TABLE kmpScenarios (ID INTEGER PRIMARY KEY {0}, PlayerID INTEGER, Name NVARCHAR(100), Tick DOUBLE, UpdateMessage BLOB);" +
-						"CREATE INDEX kmpScenariosIdxPlayerID on kmpScenarios(PlayerID);",settings.useMySQL ? "AUTO_INCREMENT" : "AUTOINCREMENT");
-                    cmd.CommandText = sql;
-                    cmd.ExecuteNonQuery();
 					
-					diskDB.BackupDatabase(universeDB);
+					if (version == 3)
+					{
+						//Upgrade old universe to version 4
+						Log.Info("Upgrading universe database...");
+	                    cmd = diskDB.CreateCommand();
+	                    sql = String.Format("CREATE TABLE kmpScenarios (ID INTEGER PRIMARY KEY {0}, PlayerID INTEGER, Name NVARCHAR(100), Tick DOUBLE, UpdateMessage BLOB);" +
+							"CREATE INDEX kmpScenariosIdxPlayerID on kmpScenarios(PlayerID);",settings.useMySQL ? "AUTO_INCREMENT" : "AUTOINCREMENT");
+	                    cmd.CommandText = sql;
+	                    cmd.ExecuteNonQuery();
+						
+						diskDB.BackupDatabase(universeDB);
+						version = 4;
+					}
+					
+					//NOTE: MySQL supported only as of UNIVERSE_VERSION 4+
+					
+					//Upgrade old universe to version 5
+					Log.Info("Upgrading universe database to current version...");
+					if (settings.useMySQL)
+					{
+						//v5 updates target MySQL databases only	
+						cmd = universeDB.CreateCommand();
+	                    sql = String.Format("ALTER TABLE kmpInfo ENGINE=MyISAM;" +
+	                    	"ALTER TABLE kmpSubspace ENGINE=MyISAM;" +
+	                    	"ALTER TABLE kmpPlayer ENGINE=MyISAM;" +
+							"ALTER TABLE kmpVessel ENGINE=MyISAM;" +
+							"ALTER TABLE kmpVesselUpdate ENGINE=MyISAM;" +
+							"ALTER TABLE kmpVesselUpdateHistory ENGINE=MyISAM;" +
+							"ALTER TABLE kmpScenarios ENGINE=MyISAM;"
+	                    );
+	                    cmd.CommandText = sql;
+	                    cmd.ExecuteNonQuery();
+					}
 					
                     cmd = universeDB.CreateCommand();
                     sql = "UPDATE kmpInfo SET Version = @uni_version;";
