@@ -175,7 +175,8 @@ namespace KMP
 		private Int64 estimatedServerLag = 0; //The server lag detected by NTP.
 		private List<Int64> listClientTimeSyncLatency = new List<Int64>(); //Holds old sync time messages so we can filter bad ones
 		private List<Int64> listClientTimeSyncOffset = new List<Int64>(); //Holds old sync time messages so we can filter bad ones
-		public List<float> listClientTimeWarp = new List<float>(); //Holds the average time skew so we can tell the server how badly we are lagging.
+		private List<float> listClientTimeWarp = new List<float>(); //Holds the average time skew so we can tell the server how badly we are lagging.
+		public float AverageClientTimeWarp = 1f;
 		private bool isTimeSyncronized;
 		public bool displayNTP = false; //Show NTP stats on the client
 		private const Int64 SYNC_TIME_LATENCY_FILTER = 5000000; //500 milliseconds, Must receive reply within this time or the message is discarded
@@ -3583,6 +3584,7 @@ namespace KMP
 					listClientTimeWarp.RemoveAt(0);
 				}
 
+				AverageClientTimeWarp = listClientTimeWarp.Average();
 
 				if (displayNTP) {
 					if (skewMessage != null) {
