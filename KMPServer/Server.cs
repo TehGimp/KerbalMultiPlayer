@@ -44,7 +44,7 @@ namespace KMPServer
         public const int SLEEP_TIME = 10;
         public const int MAX_SCREENSHOT_COUNT = 10000;
         public const int UDP_ACK_THROTTLE = 1000;
-        public const int MESSAGE_HANDLE_TIMEOUT = 500; //Allow a maximum of 3 seconds of server lag, then lets try to handle server lag.
+        public const int MESSAGE_HANDLE_TIMEOUT = 500; //Allow a maximum of 0.5 seconds of server lag, then lets try to handle server lag.
 
         public const float NOT_IN_FLIGHT_UPDATE_WEIGHT = 1.0f / 4.0f;
         public const int ACTIVITY_RESET_DELAY = 10000;
