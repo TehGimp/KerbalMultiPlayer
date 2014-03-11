@@ -44,6 +44,7 @@ namespace KMPServer
         public const int SLEEP_TIME = 10;
         public const int MAX_SCREENSHOT_COUNT = 10000;
         public const int UDP_ACK_THROTTLE = 1000;
+        public const int MESSAGE_HANDLE_TIMEOUT = 500; //Allow a maximum of 3 seconds of server lag, then lets try to handle server lag.
 
         public const float NOT_IN_FLIGHT_UPDATE_WEIGHT = 1.0f / 4.0f;
         public const int ACTIVITY_RESET_DELAY = 10000;
@@ -1501,10 +1502,13 @@ namespace KMPServer
             Thread.CurrentThread.CurrentCulture = new CultureInfo("en-GB");
             try
             {
+                long lastMessageBreak;
+                bool shouldOptimizeQueue = false;
                 Log.Debug("Starting disconnect thread");
 
                 while (true)
                 {
+                    lastMessageBreak = stopwatch.ElapsedMilliseconds;
                     //Handle received messages
                     while (clientMessageQueue.Count > 0)
                     {
@@ -1514,6 +1518,17 @@ namespace KMPServer
                             handleMessage(message.client, message.id, message.data);
                         else
                             break;
+
+                        if (stopwatch.ElapsedMilliseconds > lastMessageBreak + MESSAGE_HANDLE_TIMEOUT) {
+                            Log.Debug("Warning: Server lag detected. Optimizing queue.");
+                            shouldOptimizeQueue = true;
+                            break;
+                        }
+                    }
+
+                    if (shouldOptimizeQueue) {
+                        optimizeIncomingMessageQueue();
+                        shouldOptimizeQueue = false;
                     }
 
                     List<Client> disconnectedClients = new List<Client>();
@@ -1590,6 +1605,62 @@ namespace KMPServer
             }
 
             Log.Debug("Ending disconnect thread.");
+        }
+
+        void optimizeIncomingMessageQueue()
+        {
+			if (clientMessageQueue == null) {
+                Log.Debug("Client message queue is null");
+                return;
+			}
+            long optimizeTime = stopwatch.ElapsedMilliseconds;
+            Queue<ClientMessage> tempQueue = new Queue<ClientMessage>(clientMessageQueue);
+            ConcurrentQueue<ClientMessage> newQueue = new ConcurrentQueue<ClientMessage>();
+            List<Guid> vesselsInQueue = new List<Guid>();
+            //Process the queue in reverse, We want to keep the newest updates.
+            tempQueue.Reverse();
+            foreach (ClientMessage message in tempQueue)
+            {
+                if (message.id == KMPCommon.ClientMessageID.PRIMARY_PLUGIN_UPDATE || message.id == KMPCommon.ClientMessageID.SECONDARY_PLUGIN_UPDATE)
+                {
+                    if (message.data == null)
+                    {
+                        //Skip empty messages (this shouldn't happen so let's log them)
+                        Log.Debug("Empty vessel update detected!");
+                        continue;
+                    }
+                    KMPVesselUpdate vessel_update = ByteArrayToObject<KMPVesselUpdate>(message.data);
+                    if (vessel_update == null)
+                    {
+                        //Status only updates
+                        newQueue.Enqueue(message);
+                        continue;
+                    }
+                    if (vessel_update.protoVesselNode != null)
+                    {
+                        //Keep protovessel messages
+                        newQueue.Enqueue(message);
+                    }
+                    else
+                    {
+                        //Keep the latest non-protovessel update.
+                        if (!vesselsInQueue.Contains(vessel_update.kmpID))
+                        {
+                            vesselsInQueue.Add(vessel_update.kmpID);
+                            newQueue.Enqueue(message);
+                        }
+                    }
+                }
+                else
+                {
+                    //Keep all non-vessel messages.
+                    newQueue.Enqueue(message);
+                }
+            }
+            //Flip it back to the original order
+            newQueue.Reverse();
+            Log.Debug("Optimize took " + (stopwatch.ElapsedMilliseconds - optimizeTime) + "ms, old length: " + clientMessageQueue.Count + ", new length: " + newQueue.Count);
+            clientMessageQueue = newQueue;
         }
 
         void sendOutgoingMessages()
