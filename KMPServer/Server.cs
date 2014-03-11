@@ -2456,7 +2456,7 @@ namespace KMPServer
                 //Disconnect the player
                 markClientForDisconnect(cl, "Your username is already claimed by an existing user.");
                 Log.Info("Rejected client due to duplicate username w/o matching guid: {0}", username);
-                //return;
+                return;
             }
             cmd = universeDB.CreateCommand();
             sql = "SELECT COUNT(*) FROM kmpPlayer WHERE Guid = @guid AND Name LIKE @username";
