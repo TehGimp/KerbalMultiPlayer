@@ -3897,25 +3897,26 @@ namespace KMPServer
                     }
                     catch { }
                     DbCommand cmd = universeDB.CreateCommand();
-                    sql = String.Format("CREATE TABLE kmpInfo (Version INTEGER);" +
-                        "CREATE TABLE kmpSubspace (ID INTEGER PRIMARY KEY {0}, LastTick DOUBLE);" +
-                        "CREATE TABLE kmpPlayer (ID INTEGER PRIMARY KEY {0}, Name NVARCHAR(100), Guid CHAR({1}));" +
-                        "CREATE TABLE kmpVessel (Guid CHAR({1}), GameGuid CHAR({1}), OwnerID INTEGER, Private BIT, Active BIT, ProtoVessel {2}, Subspace INTEGER, Destroyed BIT);" +
-                        "CREATE TABLE kmpVesselUpdate (ID INTEGER PRIMARY KEY {0}, Guid CHAR({1}), Subspace INTEGER, UpdateMessage {2});" +
-                        "CREATE TABLE kmpVesselUpdateHistory (Guid CHAR({1}), Subspace INTEGER, Tick DOUBLE, UpdateMessage {2});" +
-						"CREATE TABLE kmpScenarios (ID INTEGER PRIMARY KEY {0}, PlayerID INTEGER, Name NVARCHAR(100), Tick DOUBLE, UpdateMessage {2});" +
+                    sql = String.Format("CREATE TABLE kmpInfo (Version INTEGER){3};" +
+                        "CREATE TABLE kmpSubspace (ID INTEGER PRIMARY KEY {0}, LastTick DOUBLE){3};" +
+                        "CREATE TABLE kmpPlayer (ID INTEGER PRIMARY KEY {0}, Name NVARCHAR(100), Guid CHAR({1})){3};" +
+                        "CREATE TABLE kmpVessel (Guid CHAR({1}), GameGuid CHAR({1}), OwnerID INTEGER, Private BIT, Active BIT, ProtoVessel {2}, Subspace INTEGER, Destroyed BIT){3};" +
+                        "CREATE TABLE kmpVesselUpdate (ID INTEGER PRIMARY KEY {0}, Guid CHAR({1}), Subspace INTEGER, UpdateMessage {2}){3};" +
+                        "CREATE TABLE kmpVesselUpdateHistory (Guid CHAR({1}), Subspace INTEGER, Tick DOUBLE, UpdateMessage {2}){3};" +
+                        "CREATE TABLE kmpScenarios (ID INTEGER PRIMARY KEY {0}, PlayerID INTEGER, Name NVARCHAR(100), Tick DOUBLE, UpdateMessage {2}){3};" +
                         "CREATE INDEX kmpVesselIdxGuid on kmpVessel(Guid);" +
                         "CREATE INDEX kmpVesselUpdateIdxGuid on kmpVesselUpdate(guid);" +
                         "CREATE INDEX kmpVesselUpdateHistoryIdxTick on kmpVesselUpdateHistory(Tick);" +
-						"CREATE INDEX kmpScenariosIdxPlayerID on kmpScenarios(PlayerID);",
-					                    settings.useMySQL ? "AUTO_INCREMENT" : "AUTOINCREMENT",
-					                    settings.useMySQL ? 36 : 16,
-					                    settings.useMySQL ? "LONGBLOB" : "BLOB"
-					                    );
+                        "CREATE INDEX kmpScenariosIdxPlayerID on kmpScenarios(PlayerID);",
+                                        settings.useMySQL ? "AUTO_INCREMENT" : "AUTOINCREMENT",
+                                        settings.useMySQL ? 36 : 16,
+                                        settings.useMySQL ? "LONGBLOB" : "BLOB",
+                                        settings.useMySQL ? " ENGINE=MyISAM" : ""
+                    );
                     cmd.CommandText = sql;
                     cmd.ExecuteNonQuery();
 					
-					cmd = universeDB.CreateCommand();
+                    cmd = universeDB.CreateCommand();
                     sql = "INSERT INTO kmpInfo (Version) VALUES (@uni_version);" +
                         "INSERT INTO kmpSubspace (LastTick) VALUES (100);";
                     cmd.CommandText = sql;
