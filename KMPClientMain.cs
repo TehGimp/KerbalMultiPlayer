@@ -2510,23 +2510,22 @@ namespace KMP
 
         private static void sendUDPProbeMessage(bool forceUDP)
         {
-			byte[] timeData = new byte[12];
-			if (gameManager.lastTick > 0) BitConverter.GetBytes(gameManager.lastTick).CopyTo(timeData, 0);
-			if (gameManager.listClientTimeWarp.Count > 0) {
-				BitConverter.GetBytes (gameManager.listClientTimeWarp.Average ()).CopyTo (timeData, 8);
-			} else {
-				BitConverter.GetBytes (1f).CopyTo (timeData, 8);
-			}
-
-            if (udpConnected || forceUDP)//Always try UDP periodically
+            if (gameManager.lastTick > 0)
             {
-                queueOutgoingUDPMessage(KMPCommon.ClientMessageID.UDP_PROBE, timeData);
+            
+                byte[] timeData = new byte[12];
+                BitConverter.GetBytes(gameManager.lastTick).CopyTo(timeData, 0);
+                BitConverter.GetBytes(gameManager.AverageClientTimeWarp).CopyTo(timeData, 8);
+                if (udpConnected || forceUDP)//Always try UDP periodically
+                {
+                    queueOutgoingUDPMessage(KMPCommon.ClientMessageID.UDP_PROBE, timeData);
+                }
+                else
+                {
+                    queueOutgoingMessage(KMPCommon.ClientMessageID.UDP_PROBE, timeData);
+                }
+                lastUDPProbeTime = stopwatch.ElapsedMilliseconds;
             }
-            else
-            {
-                queueOutgoingMessage(KMPCommon.ClientMessageID.UDP_PROBE, timeData);
-            }
-            lastUDPProbeTime = stopwatch.ElapsedMilliseconds;
         }
 
 		private static void sendOutgoingUDPMessages() {
