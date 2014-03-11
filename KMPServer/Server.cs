@@ -893,7 +893,7 @@ namespace KMPServer
 				universeDB.Open();
 			}
 			DbCommand cmd = universeDB.CreateCommand();
-			String sql = "SELECT  vu.UpdateMessage, v.ProtoVessel, v.Guid" +
+			String sql = "SELECT COUNT(*)" +
 				" FROM kmpVesselUpdate vu" +
 					" INNER JOIN kmpVessel v ON v.Guid = vu.Guid AND v.Destroyed != 1" +
 					" INNER JOIN kmpSubspace s ON s.ID = vu.Subspace" +
@@ -903,13 +903,7 @@ namespace KMPServer
 					"  INNER JOIN kmpSubspace s ON s.ID = vu.Subspace" +
 					"  GROUP BY vu.Guid) t ON t.Guid = vu.Guid AND t.LastTick = s.LastTick;";
 			cmd.CommandText = sql;
-			DbDataReader reader = cmd.ExecuteReader();
-			int count = 0;
-			while (reader.Read())
-			{
-				count++;
-			}
-			reader.Dispose();
+			int count = Convert.ToInt32(cmd.ExecuteScalar());
 			if (settings.useMySQL) universeDB.Close();
 			return count;
 		}
