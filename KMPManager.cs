@@ -153,6 +153,7 @@ namespace KMP
 		
 		public static object interopInQueueLock = new object();
 		
+		public int numberOfShips = 0;
 		public int gameMode = 0; //0=Sandbox, 1=Career
 		public bool gameCheatsEnabled = false; //Allow built-in KSP cheats
 		public bool gameArrr = false; //Allow private vessels to be taken if other user can successfully dock manually
@@ -183,6 +184,7 @@ namespace KMP
 		private const int SYNC_TIME_VALID_COUNT = 4; //Number of SYNC_TIME's to receive until time is valid.
 		private const int MAX_TIME_SYNC_HISTORY = 10; //The last 10 SYNC_TIME's are used for the offset filter.
 		private ScreenMessage skewMessage;
+		private ScreenMessage vesselLoadedMessage;
 
 		private Queue<KMPVesselUpdate> vesselUpdateQueue = new Queue<KMPVesselUpdate>();
 		private Queue<KMPVesselUpdate> newVesselUpdateQueue = new Queue<KMPVesselUpdate>();
@@ -258,6 +260,7 @@ namespace KMP
 		private Vessel lastEVAVessel = null;
 		private bool showServerSync = false;
 		private bool inGameSyncing = false;
+		private List<Guid> vesselUpdatesLoaded = new List<Guid>();
 
 		private bool configRead = false;
 
@@ -359,7 +362,16 @@ namespace KMP
 				if (syncing)
 				{
 					ScreenMessages.PostScreenMessage("Synchronizing universe, please wait...",1f,ScreenMessageStyle.UPPER_CENTER);
-					ScreenMessages.PostScreenMessage("Loaded vessels: " + FlightGlobals.Vessels.Count,0.04f,ScreenMessageStyle.UPPER_RIGHT);
+					if (vesselLoadedMessage != null) {
+						vesselLoadedMessage.duration = 0f;
+					}
+					if (!inGameSyncing) {
+						if (numberOfShips != 0) {
+							vesselLoadedMessage = ScreenMessages.PostScreenMessage("Loaded vessels: " + vesselUpdatesLoaded.Count + "/" + numberOfShips + " (" + (vesselUpdatesLoaded.Count * 100 / numberOfShips) + "%)",1f,ScreenMessageStyle.UPPER_RIGHT);
+						}
+					} else {
+						vesselLoadedMessage = ScreenMessages.PostScreenMessage("Loaded vessels: " + FlightGlobals.Vessels.Count,1f,ScreenMessageStyle.UPPER_RIGHT);
+					}
 				}
 				
 				if (!isInFlight && HighLogic.LoadedScene == GameScenes.TRACKSTATION)
@@ -2668,6 +2680,10 @@ namespace KMP
 			if (protovessel.vesselType == VesselType.Flag) {
 				Invoke("ClearFlagLock", 5f);
 			}
+            if (!vesselUpdatesLoaded.Contains(vessel_id))
+            {
+                vesselUpdatesLoaded.Add(vessel_id);
+            }
 			Vector3 newWorldPos = Vector3.zero, newOrbitVel = Vector3.zero;
 			bool setTarget = false, wasLoaded = false, wasActive = false;
 			Vessel oldVessel = null;
@@ -3547,6 +3563,9 @@ namespace KMP
 				double currentErrorMs = Math.Round (currentError * 1000, 2);
 
 				if (Math.Abs (currentError) > 5) {
+					if (skewMessage != null) {
+						skewMessage.duration = 0f;
+					}
 					if (isInFlight) {
 						krakensBaneWarp(skewTargetTick + timeFromLastSyncSecondsAdjusted);
 					} else {
@@ -4447,7 +4466,8 @@ namespace KMP
 					HighLogic.CurrentGame.Title = "KMP";
 					HighLogic.CurrentGame.Description = "Kerbal Multi Player session";
 					HighLogic.CurrentGame.flagURL = "KMP/Flags/default";
-					
+					vesselUpdatesLoaded.Clear();
+
 					if (gameMode == 1) //Career mode
 						HighLogic.CurrentGame.Mode = Game.Modes.CAREER;
 					

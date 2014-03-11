@@ -885,6 +885,35 @@ namespace KMPServer
 
         }
 
+		private int countShipsInDatabase()
+		{
+			var universeDB = KMPServer.Server.universeDB;
+			if (settings.useMySQL) {
+				universeDB = new MySqlConnection(settings.mySQLConnString);
+				universeDB.Open();
+			}
+			DbCommand cmd = universeDB.CreateCommand();
+			String sql = "SELECT  vu.UpdateMessage, v.ProtoVessel, v.Guid" +
+				" FROM kmpVesselUpdate vu" +
+					" INNER JOIN kmpVessel v ON v.Guid = vu.Guid AND v.Destroyed != 1" +
+					" INNER JOIN kmpSubspace s ON s.ID = vu.Subspace" +
+					" INNER JOIN" +
+					"  (SELECT vu.Guid, MAX(s.LastTick) AS LastTick" +
+					"  FROM kmpVesselUpdate vu" +
+					"  INNER JOIN kmpSubspace s ON s.ID = vu.Subspace" +
+					"  GROUP BY vu.Guid) t ON t.Guid = vu.Guid AND t.LastTick = s.LastTick;";
+			cmd.CommandText = sql;
+			DbDataReader reader = cmd.ExecuteReader();
+			int count = 0;
+			while (reader.Read())
+			{
+				count++;
+			}
+			reader.Dispose();
+			if (settings.useMySQL) universeDB.Close();
+			return count;
+		}
+
         private void listShipsServerCommand()
         {
             countShipsServerCommand(true);
@@ -2934,7 +2963,7 @@ namespace KMPServer
 
             byte[] version_bytes = encoder.GetBytes(KMPCommon.PROGRAM_VERSION);
 
-            byte[] data_bytes = new byte[version_bytes.Length + 20 + kmpModControl.Length + 1];
+            byte[] data_bytes = new byte[version_bytes.Length + 24 + kmpModControl.Length + 1];
 
             //Write net protocol version
             KMPCommon.intToBytes(KMPCommon.NET_PROTOCOL_VERSION).CopyTo(data_bytes, 0);
@@ -2947,12 +2976,15 @@ namespace KMPServer
 
             //Write client ID
             KMPCommon.intToBytes(cl.clientIndex).CopyTo(data_bytes, 8 + version_bytes.Length);
-            
-			//Write gameMode
+
+            //Write gameMode
             KMPCommon.intToBytes(settings.gameMode).CopyTo(data_bytes, 12 + version_bytes.Length);
-			
-            KMPCommon.intToBytes(kmpModControl.Length).CopyTo(data_bytes, 16 + version_bytes.Length);
-            kmpModControl.CopyTo(data_bytes, 20 + version_bytes.Length);
+
+            //Write number of ships in initial sync
+            KMPCommon.intToBytes(countShipsInDatabase()).CopyTo(data_bytes, 16 + version_bytes.Length);
+
+            KMPCommon.intToBytes(kmpModControl.Length).CopyTo(data_bytes, 20 + version_bytes.Length);
+            kmpModControl.CopyTo(data_bytes, 24 + version_bytes.Length);
 
             cl.queueOutgoingMessage(KMPCommon.ServerMessageID.HANDSHAKE, data_bytes);
         }
