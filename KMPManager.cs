@@ -176,7 +176,8 @@ namespace KMP
 		private Int64 estimatedServerLag = 0; //The server lag detected by NTP.
 		private List<Int64> listClientTimeSyncLatency = new List<Int64>(); //Holds old sync time messages so we can filter bad ones
 		private List<Int64> listClientTimeSyncOffset = new List<Int64>(); //Holds old sync time messages so we can filter bad ones
-		public List<float> listClientTimeWarp = new List<float>(); //Holds the average time skew so we can tell the server how badly we are lagging.
+		private List<float> listClientTimeWarp = new List<float>(); //Holds the average time skew so we can tell the server how badly we are lagging.
+		public float listClientTimeWarpAverage = 1; //Uses this varible to avoid locking the queue.
 		private bool isTimeSyncronized;
 		public bool displayNTP = false; //Show NTP stats on the client
 		private const Int64 SYNC_TIME_LATENCY_FILTER = 5000000; //500 milliseconds, Must receive reply within this time or the message is discarded
@@ -205,11 +206,12 @@ namespace KMP
 		private string newHost = "localhost";
 		private string newPort = "2076";
 		private string newFamiliar = "Server";
-		
-		private bool blockConnections = false;
-		private bool forceQuit = false;
+
+		public bool forceQuit = false;
 		public bool delayForceQuit = true;
-		private bool gameRunning = false;
+		public bool gameStart = false;
+		public bool terminateConnection = true;
+		public bool gameRunning = false;
 		private bool activeTermination = false;
 		
 		private bool clearEditorPartList = false;
@@ -726,7 +728,7 @@ namespace KMP
 		
 		public void disconnect(string message = "")
 		{
-			blockConnections = true;
+			KMPClientMain.handshakeCompleted = false;
 			forceQuit = delayForceQuit; //If we get disconnected straight away, we should forceQuit anyway.
 			if (HighLogic.LoadedSceneIsFlight || HighLogic.LoadedSceneIsEditor)
 			{
@@ -743,6 +745,7 @@ namespace KMP
 			else KMPClientMain.SetMessage("Disconnected: " + message);
             saveGlobalSettings();
 			gameRunning = false;
+			terminateConnection = true;
 			//Clear any left over locks.
 			InputLockManager.ClearControlLocks();
 		}
@@ -3593,8 +3596,10 @@ namespace KMP
 				if (UnityEngine.Time.realtimeSinceStartup > lastSubspaceLockChange + 10f) {
 					float requestedRate = (1 / timeWarpRate) * skewSubspaceSpeed;
 					listClientTimeWarp.Add(requestedRate);
+					listClientTimeWarpAverage = listClientTimeWarp.Average();
 				} else {
 					listClientTimeWarp.Add(skewSubspaceSpeed);
+					listClientTimeWarpAverage = listClientTimeWarp.Average();
 				}
 
 				//Keeps the last 10 seconds (300 update steps) of clock speed history to report to the server
@@ -3896,9 +3901,6 @@ namespace KMP
 				KMPToggleButtonInitialized = true;
 			}
 
-			if (blockConnections && !KMPClientMain.connectionThreadRunning)
-				blockConnections = false;
-
 			if (forceQuit && !delayForceQuit)
 			{
 				Log.Debug("Force quit");
@@ -3907,7 +3909,18 @@ namespace KMP
 				if (HighLogic.LoadedScene != GameScenes.MAINMENU)
 					HighLogic.LoadScene(GameScenes.MAINMENU);
 			}
-			
+
+			if (terminateConnection) {
+				KMPClientMain.clearConnectionState();
+				terminateConnection = false;
+			}
+
+			if (HighLogic.LoadedScene == GameScenes.MAINMENU && gameRunning && !delayForceQuit) {
+				//This should fire when you exit the game from the space center screen
+				disconnect("Quit");
+				terminateConnection = true;
+			}
+
 			//Init info display options
 			if (KMPInfoDisplay.layoutOptions == null)
 				KMPInfoDisplay.layoutOptions = new GUILayoutOption[6];
@@ -3989,8 +4002,6 @@ namespace KMP
 				GUI.skin = HighLogic.Skin;
 			}
 			
-			if (!KMPConnectionDisplay.windowEnabled && HighLogic.LoadedScene == GameScenes.MAINMENU) KMPClientMain.clearConnectionState();
-			
 			KMPConnectionDisplay.windowEnabled = (HighLogic.LoadedScene == GameScenes.MAINMENU) && globalUIToggle;
 
             
@@ -4068,11 +4079,11 @@ namespace KMP
 
 			
 		    if(!gameRunning)
-     	    {
+                    {
          		//close the windows if not connected to a server 
        	 	    KMPScreenshotDisplay.windowEnabled = false;
       		    KMPGlobalSettings.instance.chatDXWindowEnabled = false;
- 		    }
+                    }
 			
 			if (KMPScreenshotDisplay.windowEnabled && !isGameHUDHidden && KMPToggleButtonState)
 			{
@@ -4303,7 +4314,6 @@ namespace KMP
 					{
                         disconnect();
 						KMPClientMain.sendConnectionEndMessage("Quit");
-						KMPClientMain.clearConnectionState();
 						KMPClientMain.intentionalConnectionEnd = true;
 						KMPClientMain.endSession = true;
 						gameRunning = false;
@@ -4414,10 +4424,12 @@ namespace KMP
 				KMPClientMain.verifyShipsDirectory();
 				isVerified = true;
 			}
-			if (KMPClientMain.handshakeCompleted && KMPClientMain.tcpClient != null && !blockConnections)
+			if (KMPClientMain.handshakeCompleted && KMPClientMain.tcpClient != null && !gameRunning && gameStart)
 			{
-				if (KMPClientMain.tcpClient.Connected && !gameRunning)
-				{
+					gameStart = false;
+					gameRunning = true;
+
+					Console.WriteLine ("Game started.");
 					//Clear dictionaries
 					sentVessels_Situations.Clear();
 		
@@ -4442,13 +4454,15 @@ namespace KMP
 					listClientTimeSyncLatency.Clear ();
 					listClientTimeSyncOffset.Clear ();
 					listClientTimeWarp.Clear ();
+					//Request rate 1x subspace rate straight away.
+					listClientTimeWarp.Add(1);
+					listClientTimeWarpAverage = 1;
 	
 					newFlags.Clear();
 					
 					//Start MP game
 					KMPConnectionDisplay.windowEnabled = false;
 					KMPInfoDisplay.infoDisplayOptions = false;
-					gameRunning = true;
 					//This is to revert manually setting it to 1. Users won't know about this setting.
 					//Let's remove this somewhere around July 2014.
 					if (GameSettings.PHYSICS_FRAME_DT_LIMIT == 1.0f) {
@@ -4475,7 +4489,7 @@ namespace KMP
 					GameEvents.onFlightReady.Add(this.OnFirstFlightReady);
 					syncing = true;
 					HighLogic.CurrentGame.Start();
-					
+
 					if (HasModule("ResearchAndDevelopment"))
 					{
 						Log.Debug("Erasing scenario modules");
@@ -4523,7 +4537,6 @@ namespace KMP
 					KMPGlobalSettings.instance.chatDXWindowEnabled = true;
 					
 					return;
-				}
 			}
 			
 			GUILayout.BeginHorizontal();
