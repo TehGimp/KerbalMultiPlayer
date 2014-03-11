@@ -74,11 +74,13 @@ namespace KMPServer
 						try
 						{
 							//Uses a Enumerable KVP instead of a dictionary to avoid an extra conversion.
-							_profanity = profanityWords.Split(',').Select(ws =>
-							{
-								var wx = ws.Split(':');
-								return new KeyValuePair<string, string>(wx[0], wx[1]);
-							});
+                            _profanity = profanityWords
+                                .Split(new[] { ',' }, StringSplitOptions.RemoveEmptyEntries)
+                                .Select(x => x.Split(new[] { ':' }, StringSplitOptions.RemoveEmptyEntries))
+                                .ToDictionary(
+                                    s => s.Length > 0 ? s[0] : null,
+                                    s => s.Length > 1 ? s[1] : ""
+                                );  
 						}
 						catch
 						{
