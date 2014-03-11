@@ -18,7 +18,7 @@ public class KMPCommon
     }
 
 	public const Int32 FILE_FORMAT_VERSION = 10000;
-	public const Int32 NET_PROTOCOL_VERSION = 10015;
+	public const Int32 NET_PROTOCOL_VERSION = 10016;
 	public const int MSG_HEADER_LENGTH = 8;
     public const int MAX_MESSAGE_SIZE = 1024 * 1024; //Enough room for a max-size craft file
 	public const int MESSAGE_COMPRESSION_THRESHOLD = 4096;
@@ -78,7 +78,7 @@ public class KMPCommon
 		SCREENSHOT_SHARE /*Description Length : Description : data*/,
 		KEEPALIVE,
 		CONNECTION_END /*Message*/ ,
-		UDP_PROBE,
+		PROBE,
 		NULL,
 		SHARE_CRAFT_FILE /*Craft Type Byte : Craft name length : Craft Name : File bytes*/,
 		ACTIVITY_UPDATE_IN_GAME,
@@ -103,7 +103,6 @@ public class KMPCommon
 		SCREENSHOT_SHARE /*Description Length : Description : data*/,
 		KEEPALIVE,
 		CONNECTION_END /*Message*/,
-		UDP_ACKNOWLEDGE,
 		NULL,
 		CRAFT_FILE /*Craft Type Byte : Craft name length : Craft Name : File bytes*/,
 		PING_REPLY,
