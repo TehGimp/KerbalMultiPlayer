@@ -3809,6 +3809,7 @@ namespace KMPServer
             {
                 if (version > 0 && version < UNIVERSE_VERSION)
                 {
+					Log.Info("Database version {0}, current version is {1}.",version,UNIVERSE_VERSION);
 					DbCommand cmd;
 					if (version == 1)
 					{
@@ -3979,11 +3980,14 @@ namespace KMPServer
 	                    cmd.ExecuteNonQuery();
 					}
 					
+					if (!settings.useMySQL) diskDB.BackupDatabase(universeDB);
+					
                     cmd = universeDB.CreateCommand();
                     sql = "UPDATE kmpInfo SET Version = @uni_version;";
                     cmd.CommandText = sql;
                     cmd.Parameters.AddWithValue("uni_version", UNIVERSE_VERSION);
                     cmd.ExecuteNonQuery();
+					
                     Log.Info("Loading universe...");
                 }
                 else if (version != UNIVERSE_VERSION)
