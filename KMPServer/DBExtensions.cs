@@ -28,26 +28,5 @@ namespace KMPServer
 
             throw new ArgumentException("Parameter Collection must be with SQLite or MySql");
         }
-		
-		public static void BackupDatabase(this DbConnection conn, DbConnection backupConn)
-        {
-            var asSqlLite = conn as SQLiteConnection;
-
-            if (asSqlLite != null)
-            {
-                asSqlLite.BackupDatabase(backupConn as SQLiteConnection, "main", "main", -1, null, 0);
-				return;
-            }
-
-            var asMySQL = conn as MySqlConnection;
-
-            if (asMySQL != null)
-            {
-                //Do nothing, MySQL DB is entirely handled by MySQL server
-				return;
-            }
-
-            throw new ArgumentException("Connection must be with SQLite or MySql");
-        }
     }
 }

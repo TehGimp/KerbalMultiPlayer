@@ -3774,32 +3774,26 @@ namespace KMPServer
 
         public void startDatabase()
         {
-			if (settings.useMySQL)
-            	universeDB = new MySqlConnection(settings.mySQLConnString);
-			else
-				universeDB = new SQLiteConnection("Data Source=:memory:");
-            universeDB.Open();
-			
-			DbConnection diskDB;
             if (settings.useMySQL)
-            	diskDB = universeDB;
-			else
-				diskDB = new SQLiteConnection(DB_FILE_CONN);
-			string sql = "";
-            if (!settings.useMySQL)
-			{
-				diskDB.Open();
+                universeDB = new MySqlConnection(settings.mySQLConnString);
+            else
+                universeDB = new SQLiteConnection(DB_FILE_CONN);
+            universeDB.Open();
 
-	            DbCommand init_cmd = universeDB.CreateCommand();
-	            sql = "PRAGMA auto_vacuum = 1;"; //"FULL" auto_vacuum
-	            init_cmd.CommandText = sql;
-	            init_cmd.ExecuteNonQuery();
-			}
+            string sql = "";
+            if (!settings.useMySQL)
+            {
+                DbCommand init_cmd = universeDB.CreateCommand();
+                sql = "PRAGMA auto_vacuum = 1;"; //"FULL" auto_vacuum
+                sql += "PRAGMA synchronous = 0;"; //Disable synchronous writes
+                init_cmd.CommandText = sql;
+                init_cmd.ExecuteNonQuery();
+            }
 
             Int32 version = 0;
             try
             {
-                DbCommand cmd = diskDB.CreateCommand();
+                DbCommand cmd = universeDB.CreateCommand();
                 sql = "SELECT version FROM kmpInfo";
                 cmd.CommandText = sql;
                 version = Convert.ToInt32(cmd.ExecuteScalar());
@@ -3815,7 +3809,7 @@ namespace KMPServer
 					{
 	                    //Upgrade old universe to version 2
 	                    Log.Info("Upgrading universe database...");
-	                    cmd = diskDB.CreateCommand();
+	                    cmd = universeDB.CreateCommand();
 	                    sql = "CREATE INDEX IF NOT EXISTS kmpVesselIdxGuid on kmpVessel(Guid);" +
 	                        "CREATE INDEX IF NOT EXISTS kmpVesselUpdateIdxGuid on kmpVesselUpdate(guid);" +
 	                        "CREATE INDEX IF NOT EXISTS kmpVesselUpdateHistoryIdxTick on kmpVesselUpdateHistory(Tick);";
@@ -3828,7 +3822,6 @@ namespace KMPServer
 					{
 						//Upgrade old universe to version 3
 	                    Log.Info("Upgrading universe database...");
-						diskDB.BackupDatabase(universeDB);
 						
 						cmd = universeDB.CreateCommand();
 	                    sql = "SELECT Guid FROM kmpPlayer;";
@@ -3940,8 +3933,6 @@ namespace KMPServer
 							cmd2.Parameters.AddWithValue("old_guid", old_guid);
 		                    cmd2.ExecuteNonQuery();
 			            }
-						
-						universeDB.BackupDatabase(diskDB);
 						version = 3;
 					}
 					
@@ -3950,13 +3941,12 @@ namespace KMPServer
 					{
 						//Upgrade old universe to version 4
 						Log.Info("Upgrading universe database...");
-	                    cmd = diskDB.CreateCommand();
+	                    cmd = universeDB.CreateCommand();
 	                    sql = String.Format("CREATE TABLE kmpScenarios (ID INTEGER PRIMARY KEY {0}, PlayerID INTEGER, Name NVARCHAR(100), Tick DOUBLE, UpdateMessage BLOB);" +
 							"CREATE INDEX kmpScenariosIdxPlayerID on kmpScenarios(PlayerID);",settings.useMySQL ? "AUTO_INCREMENT" : "AUTOINCREMENT");
 	                    cmd.CommandText = sql;
 	                    cmd.ExecuteNonQuery();
 						
-						diskDB.BackupDatabase(universeDB);
 						version = 4;
 					}
 					
@@ -3980,8 +3970,6 @@ namespace KMPServer
 	                    cmd.ExecuteNonQuery();
 					}
 					
-					if (!settings.useMySQL) diskDB.BackupDatabase(universeDB);
-					
                     cmd = universeDB.CreateCommand();
                     sql = "UPDATE kmpInfo SET Version = @uni_version;";
                     cmd.CommandText = sql;
@@ -3995,9 +3983,19 @@ namespace KMPServer
                     Log.Info("Creating new universe...");
                     try
                     {
-                        if (!settings.useMySQL) File.Delete("KMP_universe.db");
+                        if (!settings.useMySQL) {
+                            if (universeDB.State == ConnectionState.Open) {
+                                universeDB.Close();
+                            }
+                            if (File.Exists(DB_FILE)) {
+                                File.Delete(DB_FILE);
+                            }
+                            universeDB.Open();
+                        }
                     }
-                    catch { }
+                    catch (Exception e) { 
+                        Log.Debug("Error removing old database: " + e.Message);
+                    }
                     DbCommand cmd = universeDB.CreateCommand();
                     sql = String.Format("CREATE TABLE kmpInfo (Version INTEGER){3};" +
                         "CREATE TABLE kmpSubspace (ID INTEGER PRIMARY KEY {0}, LastTick DOUBLE){3};" +
@@ -4028,9 +4026,7 @@ namespace KMPServer
                 else
                 {
                     Log.Info("Loading universe...");
-                    diskDB.BackupDatabase(universeDB);
                 }
-                if (!settings.useMySQL) diskDB.Close();
             }
 			
 			if (!settings.useMySQL)
@@ -4054,7 +4050,7 @@ namespace KMPServer
         {
 			if (!settings.useMySQL)
 			{
-	            Log.Info("Backing up old disk DB...");
+	            Log.Info("Backing up universe DB...");
 	            try
 	            {
 					if (!File.Exists(DB_FILE))
@@ -4076,8 +4072,6 @@ namespace KMPServer
 	            {
 					if (uncleanedBackups > settings.maxDirtyBackups) cleanDatabase();
 					else uncleanedBackups++;
-	                saveDatabaseToDisk();
-	                Log.Info("Universe saved to disk.");
 	            }
 	            catch(Exception e)
 	            {
@@ -4093,30 +4087,6 @@ namespace KMPServer
 			}
         }
 
-        public void saveDatabaseToDisk()
-        {
-			DbConnection diskDB;
-			if (settings.useMySQL)
-            	diskDB = universeDB;
-			else
-				diskDB = new SQLiteConnection(DB_FILE_CONN);
-			
-			diskDB.Open();
-            if (!settings.useMySQL)
-			{
-            	universeDB.BackupDatabase(diskDB);
-			}
-            DbCommand cmd = diskDB.CreateCommand();
-            string sql = "DELETE FROM kmpSubspace WHERE LastTick < (SELECT Tick FROM (SELECT MIN(s.LastTick) Tick FROM kmpSubspace s INNER JOIN kmpVessel v ON v.Subspace = s.ID) a);" +
-                " DELETE FROM kmpVesselUpdateHistory;" +
-                " DELETE FROM kmpVesselUpdate WHERE ID IN (SELECT ID FROM kmpVesselUpdate vu" +
-                " WHERE Subspace != (SELECT ID FROM kmpSubspace WHERE LastTick = (SELECT MAX(LastTick)" +
-                " FROM kmpSubspace WHERE ID IN (SELECT Subspace FROM kmpVesselUpdate WHERE Guid = vu.Guid))));";
-            cmd.CommandText = sql;
-            cmd.ExecuteNonQuery();
-            diskDB.Close();
-        }
-
         public void cleanDatabase()
         {
 			var universeDB = KMPServer.Server.universeDB;
@@ -4127,7 +4097,17 @@ namespace KMPServer
             try
             {
                 Log.Info("Attempting to optimize database...");
-				
+
+                DbCommand cmd1 = universeDB.CreateCommand();
+                string sql1 = "DELETE FROM kmpSubspace WHERE LastTick < (SELECT Tick FROM (SELECT MIN(s.LastTick) Tick FROM kmpSubspace s INNER JOIN kmpVessel v ON v.Subspace = s.ID) a);" +
+                " DELETE FROM kmpVesselUpdateHistory;" +
+                " DELETE FROM kmpVesselUpdate WHERE ID IN (SELECT ID FROM kmpVesselUpdate vu" +
+                " WHERE Subspace != (SELECT ID FROM kmpSubspace WHERE LastTick = (SELECT MAX(LastTick)" +
+                " FROM kmpSubspace WHERE ID IN (SELECT Subspace FROM kmpVesselUpdate WHERE Guid = vu.Guid))));";
+                cmd1.CommandText = sql1;
+                cmd1.ExecuteNonQuery();
+                cmd1.Dispose();
+
 				uncleanedBackups = 0;
 				
 				if (activeClientCount() > 0)
