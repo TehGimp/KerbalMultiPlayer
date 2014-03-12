@@ -1083,10 +1083,10 @@ namespace KMPServer
 	                settings.bans.Add(rec);
 	                ServerSettings.saveBans(settings);
 					var universeDB = KMPServer.Server.universeDB;
-			if (settings.useMySQL) {
-				universeDB = new MySqlConnection(settings.mySQLConnString);
-				universeDB.Open();
-			}
+					if (settings.useMySQL) {
+						universeDB = new MySqlConnection(settings.mySQLConnString);
+						universeDB.Open();
+					}
                     DbCommand cmd = universeDB.CreateCommand();
                     string sql = "UPDATE kmpPlayer SET Guid = @newGuid WHERE Guid = @guid;";
                     cmd.Parameters.AddWithValue("newGuid", Guid.NewGuid());
@@ -1209,10 +1209,10 @@ namespace KMPServer
                     Guid guid = new Guid(args[1]);
                     String username_lower = args[0].ToLower();
 					var universeDB = KMPServer.Server.universeDB;
-			if (settings.useMySQL) {
-				universeDB = new MySqlConnection(settings.mySQLConnString);
-				universeDB.Open();
-			}
+					if (settings.useMySQL) {
+						universeDB = new MySqlConnection(settings.mySQLConnString);
+						universeDB.Open();
+					}
                     DbCommand cmd = universeDB.CreateCommand();
                     string sql = "DELETE FROM kmpPlayer WHERE Name LIKE @username;" +
                         " INSERT INTO kmpPlayer (Name, Guid) VALUES (@username,@guid);";
@@ -1258,10 +1258,10 @@ namespace KMPServer
                     Guid guid = new Guid(args[1]);
                     String username_lower = args[0].ToLower();
 					var universeDB = KMPServer.Server.universeDB;
-			if (settings.useMySQL) {
-				universeDB = new MySqlConnection(settings.mySQLConnString);
-				universeDB.Open();
-			}
+					if (settings.useMySQL) {
+						universeDB = new MySqlConnection(settings.mySQLConnString);
+						universeDB.Open();
+					}
                     DbCommand cmd = universeDB.CreateCommand();
                     string sql = "UPDATE kmpPlayer SET Name=@username, Guid=@guid WHERE Name LIKE @username OR Guid = @guid;";
                     cmd.CommandText = sql;
@@ -1296,10 +1296,10 @@ namespace KMPServer
 				{
 					String dereg = parts[1];
 					var universeDB = KMPServer.Server.universeDB;
-			if (settings.useMySQL) {
-				universeDB = new MySqlConnection(settings.mySQLConnString);
-				universeDB.Open();
-			}
+					if (settings.useMySQL) {
+						universeDB = new MySqlConnection(settings.mySQLConnString);
+						universeDB.Open();
+					}
 					DbCommand cmd = universeDB.CreateCommand();
 					string sql = "DELETE FROM kmpPlayer WHERE Guid = @dereg OR Name LIKE @dereg;";
 					cmd.CommandText = sql;
@@ -1336,10 +1336,10 @@ namespace KMPServer
             {
                 //Get latest tick & calculate cut-off
 				var universeDB = KMPServer.Server.universeDB;
-			if (settings.useMySQL) {
-				universeDB = new MySqlConnection(settings.mySQLConnString);
-				universeDB.Open();
-			}
+				if (settings.useMySQL) {
+					universeDB = new MySqlConnection(settings.mySQLConnString);
+					universeDB.Open();
+				}
                 DbCommand cmd = universeDB.CreateCommand();
                 string sql = "SELECT MAX(LastTick) FROM kmpSubspace";
                 cmd.CommandText = sql;
@@ -1735,10 +1735,10 @@ namespace KMPServer
                     try
                     {
 						var universeDB = KMPServer.Server.universeDB;
-			if (settings.useMySQL) {
-				universeDB = new MySqlConnection(settings.mySQLConnString);
-				universeDB.Open();
-			}
+						if (settings.useMySQL) {
+							universeDB = new MySqlConnection(settings.mySQLConnString);
+							universeDB.Open();
+						}
                         DbCommand cmd = universeDB.CreateCommand();
                         string sql = "UPDATE kmpVessel SET Active = 0 WHERE Guid = @guid";
                         cmd.CommandText = sql;
@@ -1765,10 +1765,10 @@ namespace KMPServer
                 if (emptySubspace)
                 {
 					var universeDB = KMPServer.Server.universeDB;
-			if (settings.useMySQL) {
-				universeDB = new MySqlConnection(settings.mySQLConnString);
-				universeDB.Open();
-			}
+					if (settings.useMySQL) {
+						universeDB = new MySqlConnection(settings.mySQLConnString);
+						universeDB.Open();
+					}
                     DbCommand cmd = universeDB.CreateCommand();
                     string sql = "DELETE FROM kmpSubspace WHERE ID = @id AND LastTick < (SELECT Tick FROM (SELECT MIN(s.LastTick) Tick FROM kmpSubspace s INNER JOIN kmpVessel v ON v.Subspace = s.ID) a);";
                     cmd.CommandText = sql;
@@ -2118,10 +2118,10 @@ namespace KMPServer
             {
                 //Latest available subspace sync request
 				var universeDB = KMPServer.Server.universeDB;
-			if (settings.useMySQL) {
-				universeDB = new MySqlConnection(settings.mySQLConnString);
-				universeDB.Open();
-			}
+				if (settings.useMySQL) {
+					universeDB = new MySqlConnection(settings.mySQLConnString);
+					universeDB.Open();
+				}
                 DbCommand cmd = universeDB.CreateCommand();
                 string sql = "SELECT ss1.ID FROM kmpSubspace ss1 LEFT JOIN kmpSubspace ss2 ON ss1.LastTick < ss2.LastTick WHERE ss2.ID IS NULL;";
                 cmd.CommandText = sql;
@@ -2162,10 +2162,10 @@ namespace KMPServer
                 {
                     //stopped warping-create subspace & add player to it
 					var universeDB = KMPServer.Server.universeDB;
-			if (settings.useMySQL) {
-				universeDB = new MySqlConnection(settings.mySQLConnString);
-				universeDB.Open();
-			}
+					if (settings.useMySQL) {
+						universeDB = new MySqlConnection(settings.mySQLConnString);
+						universeDB.Open();
+					}
                     DbCommand cmd = universeDB.CreateCommand();
                     string sql = "INSERT INTO kmpSubspace (LastTick) VALUES (@tick);";
                     cmd.CommandText = sql;
@@ -2222,10 +2222,10 @@ namespace KMPServer
             if (!cl.warping)
             {
 				var universeDB = KMPServer.Server.universeDB;
-			if (settings.useMySQL) {
-				universeDB = new MySqlConnection(settings.mySQLConnString);
-				universeDB.Open();
-			}
+				if (settings.useMySQL) {
+					universeDB = new MySqlConnection(settings.mySQLConnString);
+					universeDB.Open();
+				}
                 DbCommand cmd = universeDB.CreateCommand();
                 string sql = "SELECT LastTick FROM kmpSubspace WHERE ID = @id;";
                 cmd.CommandText = sql;
@@ -2273,10 +2273,10 @@ namespace KMPServer
                 try
                 {
 					var universeDB = KMPServer.Server.universeDB;
-			if (settings.useMySQL) {
-				universeDB = new MySqlConnection(settings.mySQLConnString);
-				universeDB.Open();
-			}
+					if (settings.useMySQL) {
+						universeDB = new MySqlConnection(settings.mySQLConnString);
+						universeDB.Open();
+					}
                     DbCommand cmd = universeDB.CreateCommand();
                     string sql = "UPDATE kmpVessel SET Active = 0 WHERE Guid = @id";
                     cmd.CommandText = sql;
@@ -2438,10 +2438,10 @@ namespace KMPServer
                 {
 					Log.Activity("Received scenario update from {0}", cl.username);
 					var universeDB = KMPServer.Server.universeDB;
-			if (settings.useMySQL) {
-				universeDB = new MySqlConnection(settings.mySQLConnString);
-				universeDB.Open();
-			}
+					if (settings.useMySQL) {
+						universeDB = new MySqlConnection(settings.mySQLConnString);
+						universeDB.Open();
+					}
                     DbCommand cmd = universeDB.CreateCommand();
                     string sql = "SELECT ID FROM kmpScenarios WHERE PlayerID = @playerID AND Name = @name;";
                     cmd.CommandText = sql;
@@ -2787,10 +2787,10 @@ namespace KMPServer
             if (!cl.warping)
             {
 				var universeDB = KMPServer.Server.universeDB;
-			if (settings.useMySQL) {
-				universeDB = new MySqlConnection(settings.mySQLConnString);
-				universeDB.Open();
-			}
+				if (settings.useMySQL) {
+					universeDB = new MySqlConnection(settings.mySQLConnString);
+					universeDB.Open();
+				}
                 DbCommand cmd = universeDB.CreateCommand();
                 string sql = "SELECT ss1.ID, ss1.LastTick FROM kmpSubspace ss1 LEFT JOIN kmpSubspace ss2 ON ss1.LastTick < ss2.LastTick WHERE ss2.ID IS NULL;";
                 cmd.CommandText = sql;
@@ -3511,10 +3511,10 @@ namespace KMPServer
                 if (!recentlyDestroyed.ContainsKey(vessel_update.kmpID) || (recentlyDestroyed[vessel_update.kmpID] + 1500L) < currentMillisecond)
                 {
 					var universeDB = KMPServer.Server.universeDB;
-			if (settings.useMySQL) {
-				universeDB = new MySqlConnection(settings.mySQLConnString);
-				universeDB.Open();
-			}
+					if (settings.useMySQL) {
+						universeDB = new MySqlConnection(settings.mySQLConnString);
+						universeDB.Open();
+					}
                     DbCommand cmd = universeDB.CreateCommand();
                     string sql = "UPDATE kmpVessel SET Destroyed = @ves_up_destroyed WHERE Guid = @kmpID;";
 					if (vessel_update.situation == Situation.DESTROYED)
