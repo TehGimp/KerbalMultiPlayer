@@ -109,9 +109,9 @@ namespace KMPServer
 		private Dictionary<int, long> subSpaceLastRateCheck = new Dictionary<int, long>();
 
 		private Boolean bHandleCommandsRunning = true;
-		
+
 		private int uncleanedBackups = 0;
-		
+
         public long currentMillisecond
         {
             get
@@ -240,7 +240,7 @@ namespace KMPServer
 
             startDatabase();
         }
-        
+
 		private static List<string> generatePartsList()
         {
                 List<string> partList = new List<string>();
@@ -296,7 +296,7 @@ namespace KMPServer
                 return partList;
                 //foreach(string part in partList) writer.WriteLine(part);
         }
-        
+
         private static void readModControl()
         {
             try
@@ -553,7 +553,7 @@ namespace KMPServer
             }
             return output;
         }
-        
+
         public void saveScreenshot(byte[] bytes, String player)
         {
             if (!Directory.Exists(SCREENSHOT_DIR))
@@ -623,10 +623,10 @@ namespace KMPServer
 
             //Start hosting server
             stopwatch.Start();
-			
+
 			//read info for server sided mod support
 			readModControl();
-			
+
             Log.Info("Hosting server on port {0} ...", settings.port);
 
             clients = new SynchronizedCollection<Client>(settings.maxClients);
@@ -648,13 +648,13 @@ namespace KMPServer
             if (settings.hostIPv6 == true) {
                 try {
                     //Windows defaults to v6 only, but this option does not exist in mono so it has to be in a try/catch block along with the casted int.
-                    tcpListener.Server.SetSocketOption(SocketOptionLevel.IPv6, (SocketOptionName)27, 0); 
+                    tcpListener.Server.SetSocketOption(SocketOptionLevel.IPv6, (SocketOptionName)27, 0);
                 }
                 catch {
                     Log.Debug ("Failed to unset IPv6Only. Linux and Mac have this option off by default.");
                 }
             }
-            
+
             listenThread.Start();
 
             try
@@ -676,7 +676,7 @@ namespace KMPServer
             ghostCheckThread.Start();
 
 
-            if (settings.autoDekessler) 
+            if (settings.autoDekessler)
 			{
 				autoDekesslerTimer = new Timer(_ => dekesslerServerCommand(new string[0]), null, settings.autoDekesslerTime * 60000, settings.autoDekesslerTime * 60000);
 				Log.Debug("Starting AutoDekessler: Timer Set to " + settings.autoDekesslerTime + " Minutes");
@@ -937,9 +937,9 @@ namespace KMPServer
                                 " WHERE Guid = @guid";
 
                     cmd.Parameters.AddWithValue("private", lockShip);
-                    cmd.Parameters.AddWithValue("guid", vesselGuid.ToByteArray());                    
+                    cmd.Parameters.AddWithValue("guid", vesselGuid.ToByteArray());
                     cmd.CommandText = sql;
-                    
+
                     int rows = -1;
                     if (cmd.CommandText != null) rows = cmd.ExecuteNonQuery();
                     if (settings.useMySQL) universeDB.Close();
@@ -964,7 +964,7 @@ namespace KMPServer
                 Log.Info("Could not parse lock ship command. Format is \"/lockship <vesselID> <true/false>\"");
             }
         }
-        
+
         private void deleteShipServerCommand(string[] parts)
         {
             try
@@ -986,25 +986,25 @@ namespace KMPServer
 	            {
 	            	Log.Info("Vessel {0} marked for deletion.", parts[1]);
 	            }
-	            
+
 	            else
 	            {
 	            	Log.Info("Vessel {0} not found.", parts[1]);
 	            }
 			}
-            
+
             catch (FormatException)
             {
 				Log.Info("Vessel ID invalid.");
             }
 
         }
-        
+
         private void reloadModFileServerCommand()
         {
         	readModControl();
         }
-        
+
 		private void motdServerCommand(string[] parts)
 		{
 			if(parts.Length > 1)
@@ -1018,7 +1018,7 @@ namespace KMPServer
 			ServerSettings.writeToFile(settings);
 			Log.Info("MOTD Updated");
 		}
-		
+
 		private void rulesServerCommand(string[] parts)
 		{
 			if(parts.Length > 1)
@@ -1029,10 +1029,10 @@ namespace KMPServer
 			{
 				settings.serverRules = "";
 			}
-			ServerSettings.writeToFile(settings);	
+			ServerSettings.writeToFile(settings);
 			Log.Info("Rules Updated");
 		}
-		
+
 		private void serverInfoServerCommand(string[] parts)
 		{
 			if(parts.Length > 1)
@@ -1046,7 +1046,7 @@ namespace KMPServer
 			ServerSettings.writeToFile(settings);
 			Log.Info("Server Info Updated");
 		}
-		
+
         //Ban specified user, by name, from the server
         private void banServerCommand(string[] parts)
         {
@@ -1079,7 +1079,7 @@ namespace KMPServer
 	                    WhoBy = "Console",
 	                    When = DateTime.Now,
 	                };
-	
+
 	                settings.bans.Add(rec);
 	                ServerSettings.saveBans(settings);
 					var universeDB = KMPServer.Server.universeDB;
@@ -1371,7 +1371,7 @@ namespace KMPServer
                 {
                     reader.Close();
                 }
-				
+
 				foreach (Tuple<byte[],byte[],Guid> result in results)
 				{
 					KMPVesselUpdate vessel_update = (KMPVesselUpdate)ByteArrayToObject(result.Item1);
@@ -1411,7 +1411,7 @@ namespace KMPServer
             {
                 Log.Info("Listening for clients...");
                 tcpListener.Start(4);
-                
+
                 while (true)
                 {
 
@@ -1678,7 +1678,7 @@ namespace KMPServer
 						}
 						catch (NullReferenceException e)
 						{
-							Log.Debug ("Caught NRE in sendOutgoingMessages: {0}" + e.StackTrace);	
+							Log.Debug ("Caught NRE in sendOutgoingMessages: {0}" + e.StackTrace);
 						}
                     }
 
@@ -1728,7 +1728,7 @@ namespace KMPServer
                         cl.tcpClient.Close();
                     }
                 }
-				
+
 				//Update the database
                 if (cl.currentVessel != Guid.Empty)
                 {
@@ -1777,7 +1777,7 @@ namespace KMPServer
                     cmd.Dispose();
 					if (settings.useMySQL) universeDB.Close();
                 }
-				
+
                 //Only send the disconnect message if the client performed handshake successfully
                 if (cl.receivedHandshake)
                 {
@@ -2044,16 +2044,16 @@ namespace KMPServer
 			{
 	            if (!cl.isValid)
 	            { return; }
-	
+
 	            if (!AllowNullDataMessages.Contains(id) && data == null) { return; }
 	            if (!AllowClientNotReadyMessages.Contains(id) && !cl.isReady) { return; }
-	
+
 	            try
 	            {
 	                //Log.Info("Message id: " + id.ToString() + " from client: " + cl + " data: " + (data != null ? data.Length.ToString() : "0"));
-	
+
 	                UnicodeEncoding encoder = new UnicodeEncoding();
-	
+
 	                switch (id)
 	                {
 	                    case KMPCommon.ClientMessageID.HANDSHAKE:
@@ -2106,7 +2106,7 @@ namespace KMPServer
 	            }
 	            catch (NullReferenceException)
 	            {
-	
+
 	            }
 			}
         }
@@ -2427,7 +2427,7 @@ namespace KMPServer
                 sendPluginUpdateToAll(data, id == KMPCommon.ClientMessageID.SECONDARY_PLUGIN_UPDATE, cl);
             }
         }
-		
+
 		private void HandleScenarioUpdate(Client cl, byte[] data)
         {
             if (cl.isReady)
@@ -2528,7 +2528,7 @@ namespace KMPServer
                 Log.Info("Rejected client due to being banned: {0}", username);
                 accepted = false;
             }
-			
+
             if (!accepted)
                 return;
 
@@ -2600,7 +2600,7 @@ namespace KMPServer
                     sb.Append(" Enter !list to see them.");
                 }
             }
-			
+
 			//Check if server has filled up while waiting for handshake
 			if (activeClientCount() >= settings.maxClients)
 			{
@@ -2617,26 +2617,26 @@ namespace KMPServer
 
                 sendServerMessage(cl, sb.ToString());
                 sendServerSettings(cl);
-	
+
 				//Send the MOTD
 				sb.Remove(0, sb.Length);
 				sb.Append(settings.serverMotd);
 				sendMotdMessage(cl, sb.ToString());
-	
+
 	            Log.Info("{0} (#{2}) has joined the server using client version {1}", username, version, playerID);
-	
+
 	            //Build join message
 	            //sb.Clear();
 	            sb.Remove(0, sb.Length);
 	            sb.Append("User ");
 	            sb.Append(username);
 	            sb.Append(" has joined the server.");
-	
+
 	            //Send the join message to all other clients
 	            sendServerMessageToAll(sb.ToString(), cl);
 			}
 
-			
+
         }
 
         private void sendHistoricalVesselUpdates(int toSubspace, double atTick, double lastTick)
@@ -2701,13 +2701,13 @@ namespace KMPServer
 					universeDB = new MySqlConnection(settings.mySQLConnString);
 					universeDB.Open();
 				}
-				
+
                 DbCommand cmd = universeDB.CreateCommand();
 				string sql = "SELECT LastTick FROM kmpSubspace WHERE ID = @curSubspaceID;";
 				cmd.CommandText = sql;
                 cmd.Parameters.AddWithValue("curSubspaceID", cl.currentSubspaceID.ToString("D"));
 				double subTick = Convert.ToDouble(cmd.ExecuteScalar());
-				
+
 				cmd = universeDB.CreateCommand();
                 sql = "SELECT vu.UpdateMessage, v.ProtoVessel, v.Private, v.OwnerID" +
                     " FROM kmpVesselUpdate vu" +
@@ -3030,7 +3030,7 @@ namespace KMPServer
         {
             //Encode version string
             UnicodeEncoding encoder = new UnicodeEncoding();
-            
+
 
 
             byte[] version_bytes = encoder.GetBytes(KMPCommon.PROGRAM_VERSION);
@@ -3436,9 +3436,9 @@ namespace KMPServer
             {
                 Log.Info("Vessel update error: {0} {1} ", e.Message, e.StackTrace);
             }
-			
+
 			if (settings.useMySQL) universeDB.Close();
-			
+
             //Build the message array
             byte[] message_bytes = buildMessageArray(KMPCommon.ServerMessageID.PLUGIN_UPDATE, data);
             byte[] owned_message_bytes = buildMessageArray(KMPCommon.ServerMessageID.PLUGIN_UPDATE, owned_data);
@@ -3649,7 +3649,7 @@ namespace KMPServer
         {
             cl.queueOutgoingMessage(KMPCommon.ServerMessageID.SERVER_SETTINGS, serverSettingBytes());
         }
-		
+
 		private void sendScenarios(Client cl)
 		{
 			if (cl.hasReceivedScenarioModules) return;
@@ -3682,7 +3682,7 @@ namespace KMPServer
             }
 			if (settings.useMySQL) universeDB.Close();
 		}
-		
+
         private void sendSyncMessage(Client cl, double tick)
         {
 			double subspaceTick = tick;
@@ -3750,7 +3750,7 @@ namespace KMPServer
 				sendSyncMessageToSubspace (subspaceID);
 			}
 		}
-		
+
         private void sendSyncCompleteMessage(Client cl)
         {
             byte[] message_bytes = buildMessageArray(KMPCommon.ServerMessageID.SYNC_COMPLETE, null);
@@ -3762,7 +3762,7 @@ namespace KMPServer
             byte[] message_bytes = buildMessageArray(KMPCommon.ServerMessageID.PLUGIN_UPDATE, data);
             cl.queueOutgoingMessage(message_bytes);
         }
-		
+
 		private void sendScenarioMessage(Client cl,  byte[] data)
         {
             byte[] message_bytes = buildMessageArray(KMPCommon.ServerMessageID.SCENARIO_UPDATE, data);
@@ -3831,12 +3831,12 @@ namespace KMPServer
 	                    cmd.ExecuteNonQuery();
 						version = 2;
 					}
-					
+
 					if (version == 2)
 					{
 						//Upgrade old universe to version 3
 	                    Log.Info("Upgrading universe database...");
-						
+
 						cmd = universeDB.CreateCommand();
 	                    sql = "SELECT Guid FROM kmpPlayer;";
 	                    cmd.CommandText = sql;
@@ -3851,13 +3851,13 @@ namespace KMPServer
 							catch
 							{
 								//Already converted?
-								try 
+								try
 								{
 									guid = new Guid(System.Text.Encoding.ASCII.GetBytes(old_guid.Substring(0,16)));
 								}
 								catch
 								{
-									guid = Guid.Empty;	
+									guid = Guid.Empty;
 								}
 							}
 							DbCommand cmd2 = universeDB.CreateCommand();
@@ -3867,7 +3867,7 @@ namespace KMPServer
 							cmd2.Parameters.AddWithValue("old_guid", old_guid);
 		                    cmd2.ExecuteNonQuery();
 			            }
-						
+
 						cmd = universeDB.CreateCommand();
 	                    sql = "SELECT Guid, GameGuid FROM kmpVessel;";
 	                    cmd.CommandText = sql;
@@ -3884,13 +3884,13 @@ namespace KMPServer
 							catch
 							{
 								//Already converted?
-								try 
+								try
 								{
 									guid = new Guid(System.Text.Encoding.ASCII.GetBytes(old_guid.Substring(0,16)));
 								}
 								catch
 								{
-									guid = Guid.Empty;	
+									guid = Guid.Empty;
 								}
 							}
 							try {
@@ -3899,13 +3899,13 @@ namespace KMPServer
 							catch
 							{
 								//Already converted?
-								try 
+								try
 								{
 									guid = new Guid(System.Text.Encoding.ASCII.GetBytes(old_guid2.Substring(0,16)));
 								}
 								catch
 								{
-									guid = Guid.Empty;	
+									guid = Guid.Empty;
 								}
 							}
 							DbCommand cmd2 = universeDB.CreateCommand();
@@ -3916,7 +3916,7 @@ namespace KMPServer
 							cmd2.Parameters.AddWithValue("old_guid", old_guid);
 		                    cmd2.ExecuteNonQuery();
 			            }
-						
+
 						cmd = universeDB.CreateCommand();
 	                    sql = "SELECT Guid FROM kmpVesselUpdate;";
 	                    cmd.CommandText = sql;
@@ -3931,13 +3931,13 @@ namespace KMPServer
 							catch
 							{
 								//Already converted?
-								try 
+								try
 								{
 									guid = new Guid(System.Text.Encoding.ASCII.GetBytes(old_guid.Substring(0,16)));
 								}
 								catch
 								{
-									guid = Guid.Empty;	
+									guid = Guid.Empty;
 								}
 							}
 							DbCommand cmd2 = universeDB.CreateCommand();
@@ -3949,8 +3949,8 @@ namespace KMPServer
 			            }
 						version = 3;
 					}
-					
-					
+
+
 					if (version == 3)
 					{
 						//Upgrade old universe to version 4
@@ -3960,19 +3960,19 @@ namespace KMPServer
 							"CREATE INDEX kmpScenariosIdxPlayerID on kmpScenarios(PlayerID);",settings.useMySQL ? "AUTO_INCREMENT" : "AUTOINCREMENT");
 	                    cmd.CommandText = sql;
 	                    cmd.ExecuteNonQuery();
-						
+
 						version = 4;
 					}
-					
+
 					//NOTE: MySQL supported only as of UNIVERSE_VERSION 4+
-					
+
 					if (version == 4)
 					{
 						//Upgrade old universe to version 5
 						Log.Info("Upgrading universe database...");
 						if (settings.useMySQL)
 						{
-							//v5 updates target MySQL databases only	
+							//v5 updates target MySQL databases only
 							cmd = universeDB.CreateCommand();
 		                    sql = "ALTER TABLE kmpInfo ENGINE=MyISAM;" +
 		                    	"ALTER TABLE kmpSubspace ENGINE=MyISAM;" +
@@ -3985,7 +3985,7 @@ namespace KMPServer
 		                    cmd.ExecuteNonQuery();
 						}
 					}
-					
+
 					Log.Info("Upgrading universe database to current version...");
 					if (settings.useMySQL)
 					{
@@ -4001,13 +4001,13 @@ namespace KMPServer
 					cmd.CommandText = sql;
 					cmd.ExecuteNonQuery();
 					cleanDatabase();
-					
+
                     cmd = universeDB.CreateCommand();
                     sql = "UPDATE kmpInfo SET Version = @uni_version;";
                     cmd.CommandText = sql;
                     cmd.Parameters.AddWithValue("uni_version", UNIVERSE_VERSION);
                     cmd.ExecuteNonQuery();
-					
+
                     Log.Info("Loading universe...");
                 }
                 else if (version != UNIVERSE_VERSION)
@@ -4025,7 +4025,7 @@ namespace KMPServer
                             universeDB.Open();
                         }
                     }
-                    catch (Exception e) { 
+                    catch (Exception e) {
                         Log.Debug("Error removing old database: " + e.Message);
                     }
                     DbCommand cmd = universeDB.CreateCommand();
@@ -4047,7 +4047,7 @@ namespace KMPServer
                     );
                     cmd.CommandText = sql;
                     cmd.ExecuteNonQuery();
-					
+
                     cmd = universeDB.CreateCommand();
                     sql = "INSERT INTO kmpInfo (Version) VALUES (@uni_version);" +
                         "INSERT INTO kmpSubspace (LastTick) VALUES (100);";
@@ -4060,7 +4060,7 @@ namespace KMPServer
                     Log.Info("Loading universe...");
                 }
             }
-			
+
 			if (!settings.useMySQL)
 			{
 	            DbCommand cmd3 = universeDB.CreateCommand();
@@ -4068,12 +4068,12 @@ namespace KMPServer
 	            cmd3.CommandText = sql;
 	            cmd3.ExecuteNonQuery();
 			}
-			
+
 			DbCommand cmd4 = universeDB.CreateCommand();
             sql = "UPDATE kmpVessel SET Active = 0;";
             cmd4.CommandText = sql;
             cmd4.ExecuteNonQuery();
-			
+
 			if (settings.useMySQL) universeDB.Close();
             Log.Info("Universe OK.");
         }
@@ -4087,7 +4087,7 @@ namespace KMPServer
 	            {
 					if (!File.Exists(DB_FILE))
 						throw new IOException();
-	
+
 	                File.Copy(DB_FILE, DB_FILE + ".bak", true);
 	                Log.Debug("Successfully backed up database.");
 	            }
@@ -4099,7 +4099,7 @@ namespace KMPServer
 	            {
 	                Log.Error("Failed to backup DB: {0}",e.Message);
 	            }
-	
+
 	            try
 	            {
 					if (uncleanedBackups > settings.maxDirtyBackups) cleanDatabase();
@@ -4108,10 +4108,10 @@ namespace KMPServer
 	            catch(Exception e)
 	            {
 	                Log.Error("Failed to backup database: {0} {1}", e.Message,e.StackTrace);
-	
+
 	                Log.Info("Saving secondary copy of last backup.");
 	                File.Copy(DB_FILE + ".bak", DB_FILE + ".before_failure.bak", true);
-	
+
 	                Log.Info("Press any key to quit - ensure database is valid or reset database before restarting server.");
 	                Console.ReadKey();
 	                Environment.Exit(0);
@@ -4131,21 +4131,21 @@ namespace KMPServer
                 Log.Info("Attempting to optimize database...");
 
 				uncleanedBackups = 0;
-				
+
 				if (clients != null && activeClientCount() > 0)
 				{
 					DbCommand cmd;
 					string sql;
-					
+
 					//Get the oldest tick from any active player
 					double earliestClearTick = 2d;
-					
+
 					string subspaceIDs = "";
 					foreach (Client client in clients)
 					{
 						subspaceIDs += (String.IsNullOrEmpty(subspaceIDs) ? "" : ",") + client.currentSubspaceID.ToString("D");
 					}
-					
+
 					if (!String.IsNullOrEmpty(subspaceIDs))
 					{
 						cmd = universeDB.CreateCommand();
@@ -4154,14 +4154,14 @@ namespace KMPServer
 		                cmd.CommandText = sql;
 		                earliestClearTick = Convert.ToDouble(cmd.ExecuteScalar());
 					}
-					
+
 					//Clear anything before that
 					cmd = universeDB.CreateCommand();
 	                sql = "SELECT MIN(s.LastTick) FROM kmpSubspace s INNER JOIN kmpVessel v ON v.Subspace = s.ID AND v.Destroyed > @minTick;";
 					cmd.Parameters.AddWithValue("minTick", earliestClearTick);
 	                cmd.CommandText = sql;
 	                double earliestClearSubspaceTick = Convert.ToDouble(cmd.ExecuteScalar());
-					
+
 					cmd = universeDB.CreateCommand();
 	                sql = "DELETE FROM kmpSubspace WHERE LastTick < @minSubTick;" +
 	                    " DELETE FROM kmpVesselUpdateHistory WHERE Tick < @minTick;" +
@@ -4178,7 +4178,7 @@ namespace KMPServer
 	                string sql = "SELECT MIN(s.LastTick) FROM kmpSubspace s INNER JOIN kmpVessel v ON v.Subspace = s.ID AND v.Destroyed IS NULL;";
 	                cmd.CommandText = sql;
 	                double earliestClearSubspaceTick = Convert.ToDouble(cmd.ExecuteScalar());
-					
+
 					cmd = universeDB.CreateCommand();
 	                sql = "DELETE FROM kmpSubspace WHERE LastTick < @minSubTick;" +
 	                    " DELETE FROM kmpVesselUpdateHistory;" +
@@ -4189,9 +4189,9 @@ namespace KMPServer
 	                    "  WHERE ID IN (SELECT Subspace FROM kmpVesselUpdate vu2 WHERE vu2.Guid = vu.Guid)))) a);";
 					cmd.Parameters.AddWithValue("minSubTick", earliestClearSubspaceTick);
 	                cmd.CommandText = sql;
-	                cmd.ExecuteNonQuery();     
+	                cmd.ExecuteNonQuery();
 				}
-				
+
 				if (!settings.useMySQL)
 				{
 					lock (databaseVacuumLock)
@@ -4237,7 +4237,7 @@ namespace KMPServer
             cmd.Dispose();
 			if (settings.useMySQL) universeDB.Close();
 			if (compTime < 1d || refTime < 1d) return true;
-			
+
             return (compTime >= refTime);
         }
 
@@ -4300,10 +4300,10 @@ namespace KMPServer
                 return default(T);
             }
         }
-		
+
         private string CleanInput(string strIn)
         {
-            // Replace invalid characters with empty strings. 
+            // Replace invalid characters with empty strings.
             try
             {
                 return Regex.Replace(strIn, @"[\r\n\x00\x1a\\'""]", "");
@@ -4326,7 +4326,7 @@ namespace KMPServer
 			Log.Info("/countships - Lists number of ships in universe.");
 			Log.Info("/listships - List all ships in universe along with their ID");
             Log.Info("/lockship [ID] [true/false] - Set ship as private or public.");
-			Log.Info("/deleteship [ID] - Removes ship from universe."); 
+			Log.Info("/deleteship [ID] - Removes ship from universe.");
             Log.Info("/dekessler <mins> - Remove debris that has not been updated for at least <mins> minutes (in-game time) (If no <mins> value is specified, debris that is older than 30 minutes will be cleared)");
             Log.Info("/save - Backup universe");
             Log.Info("/reloadmodfile - Reloads the {0} file. Note that this will not recheck any currently logged in clients, only those joining", MOD_CONTROL_FILE);
@@ -4390,7 +4390,7 @@ namespace KMPServer
         {
             return settings.admins.Contains(username);
         }
-		
+
 		private int activeClientCount()
 		{
 			return clients.Where(cl => cl.isReady).Count();
