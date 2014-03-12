@@ -2090,6 +2090,11 @@ namespace KMP
 														Log.Debug("Skipped full update, vessel not loaded");
 														return;
 													}
+													if (extant_vessel.packed && ourDistance < 2500) {
+														Log.Debug("Skipped full update, packed but in load range");
+														return;
+													}
+
 													Log.Debug("full update");
 													if (serverVessels_InPresent.ContainsKey(vessel_update.id) ? !serverVessels_InPresent[vessel_update.id] : true)
 													{
@@ -2099,7 +2104,6 @@ namespace KMP
 															setPartOpacity(part,1f);
 														}
 													}
-													
 													//Update rotation
 													if (extant_vessel.loaded)
 													{
@@ -2129,15 +2133,13 @@ namespace KMP
 															{
 																//Set velocity by surface velocity
 																Vector3d new_srf_vel = new Vector3d(vessel_update.s_vel[0],vessel_update.s_vel[1],vessel_update.s_vel[2]);
-																if (new_srf_vel.sqrMagnitude>1d) extant_vessel.ChangeWorldVelocity((-1 * extant_vessel.srf_velocity) + new_srf_vel);
-																else extant_vessel.ChangeWorldVelocity(-0.99f * extant_vessel.srf_velocity);
+																extant_vessel.ChangeWorldVelocity(new_srf_vel - extant_vessel.srf_velocity);
 															}
 															else
 															{
 																//Set velocity by orbit velocity
 																Vector3d new_obt_vel = new Vector3d(vessel_update.o_vel[0],vessel_update.o_vel[1],vessel_update.o_vel[2]);
-																if (new_obt_vel.sqrMagnitude>1d) extant_vessel.ChangeWorldVelocity((-1 * extant_vessel.obt_velocity) + new_obt_vel);
-																else extant_vessel.ChangeWorldVelocity(-0.99f * extant_vessel.obt_velocity);
+																extant_vessel.ChangeWorldVelocity(new_obt_vel - extant_vessel.obt_velocity);
 															}
 														}
 														
@@ -2151,13 +2153,7 @@ namespace KMP
 																Vector3d newPos = update_body.GetWorldSurfacePosition(vessel_update.w_pos[1],vessel_update.w_pos[2],extant_vessel.altitude+0.001d);
 																if (extant_vessel.packed) extant_vessel.GoOffRails();
 																extant_vessel.distancePackThreshold = Math.Max(extant_vessel.distancePackThreshold,Vector3.Distance(vessel.worldPosition, FlightGlobals.ship_position) + 250f);
-																if ((newPos - extant_vessel.GetWorldPos3D()).sqrMagnitude > 1d) 
-																	extant_vessel.SetPosition(newPos);
-																else if (Vector3.Distance(vessel.worldPosition, extant_vessel.GetWorldPos3D()) > 25f)
-																{
-																	serverVessels_PartCounts[vessel_update.id] = 0;
-																	addRemoteVessel(protovessel,vessel_update.id,vessel,vessel_update);
-																}
+																extant_vessel.SetPosition(newPos);
 															}
 															else if (extant_vessel.loaded && ((!throttled && Vector3.Distance(vessel.worldPosition, extant_vessel.GetWorldPos3D()) > 1
 															         && (extant_vessel.altitude < 10000f || ourDistance > 2500f)) || vessel_update.id == FlightGlobals.ActiveVessel.id))
