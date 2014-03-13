@@ -369,7 +369,7 @@ namespace KMP
 					}
 					if (!inGameSyncing) {
 						if (numberOfShips != 0) {
-							vesselLoadedMessage = ScreenMessages.PostScreenMessage("Loaded vessels: " + FlightGlobals.Vessels.Count + "/" + numberOfShips + " (" + (vesselUpdatesLoaded.Count * 100 / numberOfShips) + "%)",1f,ScreenMessageStyle.UPPER_RIGHT);
+							vesselLoadedMessage = ScreenMessages.PostScreenMessage("Loaded vessels: " + vesselUpdatesLoaded.Count + "/" + numberOfShips + " (" + (vesselUpdatesLoaded.Count * 100 / numberOfShips) + "%)",1f,ScreenMessageStyle.UPPER_RIGHT);
 						}
 					} else {
 						vesselLoadedMessage = ScreenMessages.PostScreenMessage("Loaded vessels: " + FlightGlobals.Vessels.Count,1f,ScreenMessageStyle.UPPER_RIGHT);

@@ -906,9 +906,9 @@ namespace KMPServer
 
         private int countShipsInDatabase()
         {
-            int? count = Database.ExecuteScalar("SELECT COUNT(*) FROM kmpVessel WHERE Destroyed IS NULL;") as int?;
-			Log.Debug("Vessel count: {0}", (int)(count ?? default(int)));
-            return (int)(count ?? default(int)); // TODO: @NeverCast, Give ExecuteScalar a generic overload
+            int count = Convert.ToInt32(Database.ExecuteScalar("SELECT COUNT(*) FROM kmpVessel WHERE Destroyed IS NULL;"));
+			Log.Debug("Vessel count: {0}", count);
+            return count; // TODO: @NeverCast, Give ExecuteScalar a generic overload
         }
 
         private void listShipsServerCommand()
