@@ -15,29 +15,11 @@ namespace KMPServer
     /// </summary>
     internal class DatabaseHelper
     {
+        #region Constants
         private const String SQLITE_INIT_SQL = "PRAGMA auto_vacuum = 1;PRAGMA synchronous = 0;";
+        #endregion
 
-        /// <summary>
-        /// Connection String used for database connection.
-        /// Set in Constructor. Read-Only
-        /// </summary>
-        internal String ConnectionString { get; private set; }
-
-        /// <summary>
-        /// Database Attributes for the connection
-        /// </summary>
-        internal DatabaseAttributes Attributes { get; private set; }
-
-        /// <summary>
-        /// Create a new Database Helper
-        /// </summary>
-        /// <param name="ConnectionString">Database Connection String</param>
-        internal DatabaseHelper(String ConnectionString, DatabaseAttributes attributes)
-        {
-            this.ConnectionString = ConnectionString;
-            this.Attributes = attributes;
-        }
-
+        #region Static Helpers
         /// <summary>
         /// Create default SQLite connection
         /// </summary>
@@ -57,7 +39,33 @@ namespace KMPServer
         {
             return new DatabaseHelper(connectionString, DatabaseAttributes.MySQL | DatabaseAttributes.MyISAM);
         }
+        #endregion
 
+        #region Properties
+        /// <summary>
+        /// Connection String used for database connection.
+        /// Set in Constructor. Read-Only
+        /// </summary>
+        internal String ConnectionString { get; private set; }
+
+        /// <summary>
+        /// Database Attributes for the connection
+        /// </summary>
+        internal DatabaseAttributes Attributes { get; private set; }
+        #endregion
+
+        /// <summary>
+        /// Create a new Database Helper
+        /// </summary>
+        /// <param name="ConnectionString">Database Connection String</param>
+        internal DatabaseHelper(String ConnectionString, DatabaseAttributes attributes)
+        {
+            this.ConnectionString = ConnectionString;
+            this.Attributes = attributes;
+        }
+
+
+        #region Core Connection Management
         /// <summary>
         /// Get connection for Database
         /// </summary>
@@ -121,7 +129,9 @@ namespace KMPServer
             }
             return cmdObj;
         }
+        #endregion
 
+        #region Private Core Methods
         /// <summary>
         /// Execute a NonQuery 
         /// </summary>
@@ -176,7 +186,9 @@ namespace KMPServer
                 }
             }
         }
+        #endregion
 
+        #region Public Methods
         /// <summary>
         /// Execute a NonQuery 
         /// </summary>
@@ -222,13 +234,25 @@ namespace KMPServer
             }
         }
 
+        #endregion
+
+        #region DatabaseAttributes Enum
         internal enum DatabaseAttributes
         {
             Nothing = 0,
             MySQL = 1,
             SQLite = 2,
-            MyISAM = 4
+            /// <summary>
+            /// Currently not used. Signifies the use of the MyISAM engine in MySQL
+            /// </summary>
+            MyISAM = 4,
+            /// <summary>
+            /// Tells the Database Helper to pool the connection and not close it immediately
+            /// </summary>
+            Pool = 8
         }
+
+        #endregion 
 
         internal delegate void DbRecordHandler(IDataRecord record);
 
