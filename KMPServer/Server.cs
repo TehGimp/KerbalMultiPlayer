@@ -3662,7 +3662,7 @@ namespace KMPServer
 			bool emptySubspace = true;
             foreach (Client client in clients.ToList())
             {
-                if (client != null && current_subspace == client.currentSubspaceID && client.tcpClient.Connected)
+                if (client != null && subspaceID == client.currentSubspaceID && client.tcpClient.Connected)
                 {
                     emptySubspace = false;
                     break;
