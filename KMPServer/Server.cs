@@ -1670,21 +1670,21 @@ namespace KMPServer
             {
                 while (true)
                 {
-                    foreach (var client in clients.ToList().Where(c => c.isValid))
-                    {
-                        try
-						{
-							client.sendOutgoingMessages();
-						}
-						catch (NullReferenceException e)
-						{
-							Log.Debug ("Caught NRE in sendOutgoingMessages: {0}" + e.StackTrace);
-						}
-                    }
-
+					try
+					{
+	                    foreach (var client in clients.ToList().Where(c => c.isValid).ToList())
+	                    {
+	                        
+								client.sendOutgoingMessages();
+							
+	                    }
+					}
+					catch (NullReferenceException e)
+					{
+						Log.Debug ("Caught NRE in sendOutgoingMessages: {0}" + e.StackTrace);	
+					}
                     Thread.Sleep(SLEEP_TIME);
                 }
-
             }
             catch (ThreadAbortException)
             {
