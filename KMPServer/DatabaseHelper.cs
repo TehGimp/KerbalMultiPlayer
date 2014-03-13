@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Data;
 using System.Data.Common;
 using System.Data.SQLite;
+using System.IO;
 using System.Linq;
 using System.Text;
 
@@ -14,6 +15,8 @@ namespace KMPServer
     /// </summary>
     internal class DatabaseHelper
     {
+        private const String SQLITE_INIT_SQL = "PRAGMA auto_vacuum = 1;PRAGMA synchronous = 0;";
+
         /// <summary>
         /// Connection String used for database connection.
         /// Set in Constructor. Read-Only
@@ -88,7 +91,7 @@ namespace KMPServer
                     if ((Attributes & DatabaseAttributes.SQLite) == DatabaseAttributes.SQLite)
                     {
                         // Init SQLite connection
-                        _ExecuteNonQuery(connection, "PRAGMA auto_vacuum = 1;PRAGMA synchronous = 0;");
+                        _ExecuteNonQuery(connection, SQLITE_INIT_SQL);
                     }
                 }
             }
@@ -99,12 +102,22 @@ namespace KMPServer
         /// </summary>
         /// <param name="connection">Connection to create command object from</param>
         /// <param name="query">Query string to apply</param>
+        /// <param name="parameters">Parameter as a string,value,string,value set</param>
         /// <returns>Returns a Text Command Type and with Query set</returns>
-        private DbCommand CreateCommand(DbConnection connection, String query)
+        private DbCommand CreateCommand(DbConnection connection, String query, params object[] parameters)
         {
             var cmdObj = connection.CreateCommand();
             cmdObj.CommandType = System.Data.CommandType.Text;
             cmdObj.CommandText = query;
+            if (parameters != null && parameters.Length > 0 )
+            {
+                if (parameters.Length % 2 != 0) throw new IOException("Cannot create command with parameters. Argument count isn't a factor of 2");
+                for (int i = 0; i < parameters.Length; i++)
+                {
+                    if (parameters[i] as String == null) throw new IOException(String.Format("Cannot convert {0} to Parameter key in CreateCommand", parameters[i] ?? "<null>"));
+                    cmdObj.Parameters.AddWithValue(parameters[i] as String, parameters[i + 1]);
+                }
+            }
             return cmdObj;
         }
 
@@ -114,9 +127,9 @@ namespace KMPServer
         /// <param name="connection">Connection to Execute on</param>
         /// <param name="query">Query to execute</param>
         /// <returns>Rows affected</returns>
-        private int _ExecuteNonQuery(DbConnection connection, String query)
+        private int _ExecuteNonQuery(DbConnection connection, String query, params object[] parameters)
         {
-            using (var command = CreateCommand(connection, query))
+            using (var command = CreateCommand(connection, query, parameters))
             {
                 return command.ExecuteNonQuery();
             }
@@ -128,9 +141,9 @@ namespace KMPServer
         /// <param name="connection">Connection to execute on</param>
         /// <param name="query">Query to execute</param>
         /// <returns>Single result from Query</returns>
-        private object _ExecuteScalar(DbConnection connection, String query)
+        private object _ExecuteScalar(DbConnection connection, String query, params object[] parameters)
         {
-            using (var command = CreateCommand(connection, query))
+            using (var command = CreateCommand(connection, query, parameters))
             {
                 return command.ExecuteScalar();
             }
@@ -142,9 +155,9 @@ namespace KMPServer
         /// <param name="connection">Connection to invoke on</param>
         /// <param name="query">Query to execute</param>
         /// <param name="handler">Handler to invoke for each record</param>
-        private void _ExecuteReader(DbConnection connection, String query, DbRecordHandler handler)
+        private void _ExecuteReader(DbConnection connection, String query, DbRecordHandler handler, params object[] parameters)
         {
-            using (var command = CreateCommand(connection, query))
+            using (var command = CreateCommand(connection, query, parameters))
             {
                 using (var reader = command.ExecuteReader())
                 {
@@ -169,12 +182,12 @@ namespace KMPServer
         /// <param name="connection">Connection to Execute on</param>
         /// <param name="query">Query to execute</param>
         /// <returns>Rows affected</returns>
-        internal int ExecuteNonQuery(String query)
+        internal int ExecuteNonQuery(String query, params object[] parameters)
         {
             using (var connection = Connection)
             {
                 InitConnection(connection);
-                return _ExecuteNonQuery(connection, query);
+                return _ExecuteNonQuery(connection, query, parameters);
             }
         }
 
@@ -184,12 +197,12 @@ namespace KMPServer
         /// <param name="connection">Connection to execute on</param>
         /// <param name="query">Query to execute</param>
         /// <returns>Single result from Query</returns>
-        internal object ExecuteScalar(String query)
+        internal object ExecuteScalar(String query, params object[] parameters)
         {
             using (var connection = Connection)
             {
                 InitConnection(connection);
-                return _ExecuteScalar(connection, query);
+                return _ExecuteScalar(connection, query, parameters);
             }
         }
 
@@ -199,12 +212,12 @@ namespace KMPServer
         /// <param name="connection">Connection to invoke on</param>
         /// <param name="query">Query to execute</param>
         /// <param name="handler">Handler to invoke for each record</param>
-        internal void ExecuteReader(String query, DbRecordHandler handler)
+        internal void ExecuteReader(String query, DbRecordHandler handler, params object[] parameters)
         {
             using (var connection = Connection)
             {
                 InitConnection(connection);
-                _ExecuteReader(connection, query, handler);
+                _ExecuteReader(connection, query, handler, parameters);
             }
         }
 
