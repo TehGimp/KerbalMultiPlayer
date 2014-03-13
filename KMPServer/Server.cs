@@ -2169,7 +2169,7 @@ namespace KMPServer
                     DbCommand cmd = universeDB.CreateCommand();
                     string sql = "INSERT INTO kmpSubspace (LastTick) VALUES (@tick);";
                     cmd.CommandText = sql;
-                    cmd.Parameters.AddWithValue("tick", 0d);
+                    cmd.Parameters.AddWithValue("tick", 0d.ToString("0.0").Replace(",", "."));
                     cmd.ExecuteNonQuery();
                     cmd.Dispose();
                     cmd = universeDB.CreateCommand();
@@ -2721,7 +2721,7 @@ namespace KMPServer
                 if (excludeOwnActive) sql += " AND NOT v.Guid = @curVessel";
                 sql += ";";
                 cmd.CommandText = sql;
-                cmd.Parameters.AddWithValue("subTick", subTick);
+                cmd.Parameters.AddWithValue("subTick", subTick.ToString("0.0").Replace(",", "."));
                 if (excludeOwnActive) cmd.Parameters.AddWithValue("curVessel", cl.currentVessel);
                 DbDataReader reader = cmd.ExecuteReader();
                 try
@@ -3498,7 +3498,7 @@ namespace KMPServer
             cmd.CommandText = sql;
             cmd.Parameters.AddWithValue("kmpID", kmpID);
             cmd.Parameters.AddWithValue("curSubspace", cl.currentSubspaceID.ToString("D"));
-            if (!isSecondary) cmd.Parameters.AddWithValue("ves_tick", tick);
+            if (!isSecondary) cmd.Parameters.AddWithValue("ves_tick", tick.ToString("0.0").Replace(",", "."));
             cmd.ExecuteNonQuery();
             cmd.Dispose();
 			if (settings.useMySQL) universeDB.Close();
@@ -3516,10 +3516,10 @@ namespace KMPServer
 						universeDB.Open();
 					}
                     DbCommand cmd = universeDB.CreateCommand();
-                    string sql = "UPDATE kmpVessel SET Destroyed = @ves_up_destroyed WHERE Guid = @kmpID;";
+                    string sql = "UPDATE kmpVessel SET Destroyed = @ves_up_destroyed WHERE Guid = @kmpID AND (@ves_up_destroyed IS NULL OR Destroyed IS NULL OR Destroyed > @ves_up_destroyed);";
 					if (vessel_update.situation == Situation.DESTROYED)
 					{
-                    	cmd.Parameters.AddWithValue("ves_up_destroyed", vessel_update.tick);
+                    	cmd.Parameters.AddWithValue("ves_up_destroyed", vessel_update.tick.ToString("0.0").Replace(",", "."));
                     }
                     else
 					{
@@ -4158,7 +4158,7 @@ namespace KMPServer
 					//Clear anything before that
 					cmd = universeDB.CreateCommand();
 	                sql = "SELECT MIN(s.LastTick) FROM kmpSubspace s INNER JOIN kmpVessel v ON v.Subspace = s.ID AND v.Destroyed > @minTick;";
-					cmd.Parameters.AddWithValue("minTick", earliestClearTick);
+					cmd.Parameters.AddWithValue("minTick", earliestClearTick.ToString("0.0").Replace(",", "."));
 	                cmd.CommandText = sql;
 	                double earliestClearSubspaceTick = Convert.ToDouble(cmd.ExecuteScalar());
 
@@ -4166,8 +4166,8 @@ namespace KMPServer
 	                sql = "DELETE FROM kmpSubspace WHERE LastTick < @minSubTick;" +
 	                    " DELETE FROM kmpVesselUpdateHistory WHERE Tick < @minTick;" +
 	                    " DELETE FROM kmpVessel WHERE Destroyed < @minTick";
-					cmd.Parameters.AddWithValue("minTick", earliestClearTick);
-					cmd.Parameters.AddWithValue("minSubTick", earliestClearSubspaceTick);
+					cmd.Parameters.AddWithValue("minTick", earliestClearTick.ToString("0.0").Replace(",", "."));
+					cmd.Parameters.AddWithValue("minSubTick", earliestClearSubspaceTick.ToString("0.0").Replace(",", "."));
 	                cmd.CommandText = sql;
 	                cmd.ExecuteNonQuery();
 				}
@@ -4187,7 +4187,7 @@ namespace KMPServer
 						" DELETE FROM kmpVesselUpdate WHERE ID IN (SELECT ID FROM (SELECT ID FROM kmpVesselUpdate vu" +
 	                    "  WHERE Subspace != (SELECT ID FROM kmpSubspace WHERE LastTick = (SELECT MAX(LastTick) FROM kmpSubspace" +
 	                    "  WHERE ID IN (SELECT Subspace FROM kmpVesselUpdate vu2 WHERE vu2.Guid = vu.Guid)))) a);";
-					cmd.Parameters.AddWithValue("minSubTick", earliestClearSubspaceTick);
+					cmd.Parameters.AddWithValue("minSubTick", earliestClearSubspaceTick.ToString("0.0").Replace(",", "."));
 	                cmd.CommandText = sql;
 	                cmd.ExecuteNonQuery();
 				}
