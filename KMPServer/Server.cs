@@ -3296,7 +3296,7 @@ namespace KMPServer
                 
                 Database.ExecuteNonQuery("DELETE FROM kmpSubspace WHERE ID = @id AND LastTick < @minTick;",
                     "id", subspaceID.ToString("D"),
-                    "minTick", minTick.ToString("D"));
+                    "minTick", minTick.ToString("0.0"));
             }
         }
 
