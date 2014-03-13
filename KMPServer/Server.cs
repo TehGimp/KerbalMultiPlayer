@@ -906,15 +906,8 @@ namespace KMPServer
 
         private int countShipsInDatabase()
         {
-            int? count = Database.ExecuteScalar("SELECT COUNT(*)" +
-                " FROM kmpVesselUpdate vu" +
-                    " INNER JOIN kmpVessel v ON v.Guid = vu.Guid" +
-                    " INNER JOIN kmpSubspace s ON s.ID = vu.Subspace" +
-                    " INNER JOIN" +
-                    "  (SELECT vu.Guid, MAX(s.LastTick) AS LastTick" +
-                    "  FROM kmpVesselUpdate vu" +
-                    "  INNER JOIN kmpSubspace s ON s.ID = vu.Subspace" +
-                    "  GROUP BY vu.Guid) t ON t.Guid = vu.Guid AND t.LastTick = s.LastTick;") as int?;
+            int? count = Database.ExecuteScalar("SELECT COUNT(*) FROM kmpVessel WHERE Destroyed IS NULL;") as int?;
+			Log.Debug("Vessel count: {0}", (int)(count ?? default(int)));
             return (int)(count ?? default(int)); // TODO: @NeverCast, Give ExecuteScalar a generic overload
         }
 
@@ -3707,7 +3700,7 @@ namespace KMPServer
 
                 Log.Info("Optimized in-memory universe database.");
             }
-            catch (System.Data.SQLite.SQLiteException ex)
+            catch (Exception ex)
             {
                 Log.Error("Couldn't optimize database: {0}", ex.Message);
             }
