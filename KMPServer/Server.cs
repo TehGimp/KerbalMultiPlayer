@@ -237,8 +237,6 @@ namespace KMPServer
                 }
                 catch { }
             }
-
-            startDatabase();
         }
 
 		private static List<string> generatePartsList()
@@ -620,107 +618,120 @@ namespace KMPServer
         public void hostingLoop()
         {
             clearState();
-
-            //Start hosting server
-            stopwatch.Start();
-
-			//read info for server sided mod support
-			readModControl();
-
-            Log.Info("Hosting server on port {0} ...", settings.port);
-
-            clients = new SynchronizedCollection<Client>(settings.maxClients);
-            flight_clients = new SynchronizedCollection<Client>(settings.maxClients);
-            cleanupClients = new SynchronizedCollection<Client>(settings.maxClients);
-            clientMessageQueue = new ConcurrentQueue<ClientMessage>();
-
-            listenThread = new Thread(new ThreadStart(listenForClients));
-            commandThread = new Thread(new ThreadStart(handleCommands));
-            connectionThread = new Thread(new ThreadStart(handleConnections));
-            outgoingMessageThread = new Thread(new ThreadStart(sendOutgoingMessages));
-            ghostCheckThread = new Thread(new ThreadStart(checkGhosts));
-
-            threadException = null;
-            if (settings.ipBinding == "0.0.0.0" && settings.hostIPv6 == true) {
-                settings.ipBinding = "::";
-            }
-            tcpListener = new TcpListener(IPAddress.Parse(settings.ipBinding), settings.port);
-            if (settings.hostIPv6 == true) {
-                try {
-                    //Windows defaults to v6 only, but this option does not exist in mono so it has to be in a try/catch block along with the casted int.
-                    tcpListener.Server.SetSocketOption(SocketOptionLevel.IPv6, (SocketOptionName)27, 0);
-                }
-                catch {
-                    Log.Debug ("Failed to unset IPv6Only. Linux and Mac have this option off by default.");
-                }
-            }
-
-            listenThread.Start();
-
-            try
-            {
-            	udpClient = new UdpClient((IPEndPoint)tcpListener.LocalEndpoint);
-                udpClient.BeginReceive(asyncUDPReceive, null);
-                //udpClient.Client.AllowNatTraversal(1);
-            }
-            catch
-            {
-                udpClient = null;
-            }
-
-            displayCommands();
-
-            commandThread.Start();
-            connectionThread.Start();
-            outgoingMessageThread.Start();
-            ghostCheckThread.Start();
-
-
-            if (settings.autoDekessler)
+			
+			try
 			{
-				autoDekesslerTimer = new Timer(_ => dekesslerServerCommand(new string[0]), null, settings.autoDekesslerTime * 60000, settings.autoDekesslerTime * 60000);
-				Log.Debug("Starting AutoDekessler: Timer Set to " + settings.autoDekesslerTime + " Minutes");
+	            startDatabase();
+				
+	            //Start hosting server
+	            stopwatch.Start();
+	
+				//read info for server sided mod support
+				readModControl();
+	
+	            Log.Info("Hosting server on port {0} ...", settings.port);
+	
+	            clients = new SynchronizedCollection<Client>(settings.maxClients);
+	            flight_clients = new SynchronizedCollection<Client>(settings.maxClients);
+	            cleanupClients = new SynchronizedCollection<Client>(settings.maxClients);
+	            clientMessageQueue = new ConcurrentQueue<ClientMessage>();
+	
+	            listenThread = new Thread(new ThreadStart(listenForClients));
+	            commandThread = new Thread(new ThreadStart(handleCommands));
+	            connectionThread = new Thread(new ThreadStart(handleConnections));
+	            outgoingMessageThread = new Thread(new ThreadStart(sendOutgoingMessages));
+	            ghostCheckThread = new Thread(new ThreadStart(checkGhosts));
+	
+	            threadException = null;
+	            if (settings.ipBinding == "0.0.0.0" && settings.hostIPv6 == true) {
+	                settings.ipBinding = "::";
+	            }
+	            tcpListener = new TcpListener(IPAddress.Parse(settings.ipBinding), settings.port);
+	            if (settings.hostIPv6 == true) {
+	                try {
+	                    //Windows defaults to v6 only, but this option does not exist in mono so it has to be in a try/catch block along with the casted int.
+	                    tcpListener.Server.SetSocketOption(SocketOptionLevel.IPv6, (SocketOptionName)27, 0);
+	                }
+	                catch {
+	                    Log.Debug ("Failed to unset IPv6Only. Linux and Mac have this option off by default.");
+	                }
+	            }
+	
+	            listenThread.Start();
+	
+	            try
+	            {
+	            	udpClient = new UdpClient((IPEndPoint)tcpListener.LocalEndpoint);
+	                udpClient.BeginReceive(asyncUDPReceive, null);
+	                //udpClient.Client.AllowNatTraversal(1);
+	            }
+	            catch
+	            {
+	                udpClient = null;
+	            }
+	
+	            displayCommands();
+	
+	            commandThread.Start();
+	            connectionThread.Start();
+	            outgoingMessageThread.Start();
+	            ghostCheckThread.Start();
+	
+	
+	            if (settings.autoDekessler)
+				{
+					autoDekesslerTimer = new Timer(_ => dekesslerServerCommand(new string[0]), null, settings.autoDekesslerTime * 60000, settings.autoDekesslerTime * 60000);
+					Log.Debug("Starting AutoDekessler: Timer Set to " + settings.autoDekesslerTime + " Minutes");
+				}
+	
+	            if (settings.httpBroadcast)
+	                startHttpServer();
+	
+	            long last_backup_time = 0;
+	
+	            while (!stop)
+	            {
+	                //Check for exceptions that occur in threads
+	                lock (threadExceptionLock)
+	                {
+	                    if (threadException != null)
+	                    {
+	                        Exception e = threadException;
+	                        threadExceptionStackTrace = e.StackTrace;
+	                        throw e;
+	                    }
+	                }
+	
+	                if (currentMillisecond - last_backup_time > (settings.backupInterval * 60000) && (activeClientCount() > 0 || !backedUpSinceEmpty))
+	                {
+	                    if (activeClientCount() <= 0)
+	                    {
+	                        backedUpSinceEmpty = true;
+	                        cleanDatabase();
+	                    }
+	
+	                    last_backup_time = currentMillisecond;
+	                    backupDatabase();
+	                }
+	
+	                Thread.Sleep(SLEEP_TIME);
+	            }
+	
+	            clearState();
+	            stopwatch.Stop();
+	
+	            Log.Info("Server session ended.");
+	            if (quit) { Log.Info("Quitting"); Thread.Sleep(1000); Environment.Exit(0); }
 			}
-
-            if (settings.httpBroadcast)
-                startHttpServer();
-
-            long last_backup_time = 0;
-
-            while (!stop)
-            {
-                //Check for exceptions that occur in threads
-                lock (threadExceptionLock)
-                {
-                    if (threadException != null)
-                    {
-                        Exception e = threadException;
-                        threadExceptionStackTrace = e.StackTrace;
-                        throw e;
-                    }
-                }
-
-                if (currentMillisecond - last_backup_time > (settings.backupInterval * 60000) && (activeClientCount() > 0 || !backedUpSinceEmpty))
-                {
-                    if (activeClientCount() <= 0)
-                    {
-                        backedUpSinceEmpty = true;
-                        cleanDatabase();
-                    }
-
-                    last_backup_time = currentMillisecond;
-                    backupDatabase();
-                }
-
-                Thread.Sleep(SLEEP_TIME);
-            }
-
-            clearState();
-            stopwatch.Stop();
-
-            Log.Info("Server session ended.");
-            if (quit) { Log.Info("Quitting"); Thread.Sleep(1000); Environment.Exit(0); }
-
+			catch (MySqlException e)
+			{
+				Log.Error("Fatal error accessing MySQL database, server session ended!");
+				Log.Error(e.Message);
+			}
+			catch (Exception e)
+			{
+				Log.Error("Fatal error, server session ended! Exception details:\n{0}\n{1}",e.Message,e.StackTrace);
+			}
         }
 
         private void startHttpServer()
