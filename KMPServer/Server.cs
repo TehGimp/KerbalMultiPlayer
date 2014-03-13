@@ -1551,7 +1551,10 @@ namespace KMPServer
             tempQueue.Reverse();
             foreach (ClientMessage message in tempQueue)
             {
-                if (message.id == KMPCommon.ClientMessageID.PRIMARY_PLUGIN_UPDATE || message.id == KMPCommon.ClientMessageID.SECONDARY_PLUGIN_UPDATE)
+				if (message.id == KMPCommon.ClientMessageID.SECONDARY_PLUGIN_UPDATE) {
+						continue;
+				}
+                if (message.id == KMPCommon.ClientMessageID.PRIMARY_PLUGIN_UPDATE)
                 {
                     if (message.data == null)
                     {
@@ -2478,7 +2481,6 @@ namespace KMPServer
                         vessel_update.isPrivate = record.GetBoolean(2);
                         vessel_update.isMine = record.GetInt32(3) == cl.playerID;
                         vessel_update.setProtoVessel(protoVessel);
-                        vessel_update.isSyncOnlyUpdate = true;
                         vessel_update.distance = 0;
                         byte[] update = ObjectToByteArray(vessel_update);
                         sendVesselMessage(cl, update);
