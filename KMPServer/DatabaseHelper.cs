@@ -332,7 +332,7 @@ namespace KMPServer
         {
             return String.Format("DatabaseHelper connected to {0}. Total Queries: {1}, Total State Changes: {2}, Time Spent On Query: {3}, Time Spent On State: {4}, Avg. Query: {5}, Avg. State Change: {6}",
                 ConnectionString, TotalServicedQueries, TotalDatabaseOpens, TimeSpentOnQuery, TimeSpentChangingState,
-                new TimeSpan(TimeSpentChangingState.Ticks / TotalDatabaseOpens == 0 ? 1 : TotalDatabaseOpens), new TimeSpan(TimeSpentOnQuery.Ticks / TotalServicedQueries == 0 ? 1 : TotalServicedQueries));
+                 new TimeSpan(TimeSpentOnQuery.Ticks / TotalServicedQueries == 0 ? 1 : TotalServicedQueries), new TimeSpan(TimeSpentChangingState.Ticks / TotalDatabaseOpens == 0 ? 1 : TotalDatabaseOpens));
         }
 
     }
