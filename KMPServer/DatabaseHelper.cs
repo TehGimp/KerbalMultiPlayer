@@ -113,7 +113,7 @@ namespace KMPServer
             if (parameters != null && parameters.Length > 0 )
             {
                 if (parameters.Length % 2 != 0) throw new IOException("Cannot create command with parameters. Argument count isn't a factor of 2");
-                for (int i = 0; i < parameters.Length; i++)
+                for (int i = 0; i < parameters.Length; i += 2)
                 {
                     if (parameters[i] as String == null) throw new IOException(String.Format("Cannot convert {0} to Parameter key in CreateCommand", parameters[i] ?? "<null>"));
                     cmdObj.Parameters.AddWithValue(parameters[i] as String, parameters[i + 1]);
