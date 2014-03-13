@@ -878,14 +878,9 @@ namespace KMPServer
 
         private void countShipsServerCommand(bool bList = false)
         {
-            var universeDB = KMPServer.Server.universeDB;
-            if (settings.useMySQL)
-            {
-                universeDB = new MySqlConnection(settings.mySQLConnString);
-                universeDB.Open();
-            }
-            DbCommand cmd = universeDB.CreateCommand();
-            String sql = "SELECT  vu.UpdateMessage, v.ProtoVessel, v.Guid" +
+
+            int count = 0;
+            Database.ExecuteReader("SELECT  vu.UpdateMessage, v.ProtoVessel, v.Guid" +
                         " FROM kmpVesselUpdate vu" +
                         " INNER JOIN kmpVessel v ON v.Guid = vu.Guid AND v.Destroyed IS NULL" +
                         " INNER JOIN kmpSubspace s ON s.ID = vu.Subspace" +
@@ -893,19 +888,15 @@ namespace KMPServer
                         "  (SELECT vu.Guid, MAX(s.LastTick) AS LastTick" +
                         "  FROM kmpVesselUpdate vu" +
                         "  INNER JOIN kmpSubspace s ON s.ID = vu.Subspace" +
-                        "  GROUP BY vu.Guid) t ON t.Guid = vu.Guid AND t.LastTick = s.LastTick;";
-            cmd.CommandText = sql;
-            DbDataReader reader = cmd.ExecuteReader();
-            int count = 0;
-            while (reader.Read())
-            {
-                KMPVesselUpdate vessel_update = (KMPVesselUpdate)ByteArrayToObject(GetDataReaderBytes(reader, 0));
-                if (bList)
-                    Log.Info("Name: {0}\tID: {1}", vessel_update.name, vessel_update.kmpID);
-                count++;
-            }
-            reader.Dispose();
-            if (settings.useMySQL) universeDB.Close();
+                        "  GROUP BY vu.Guid) t ON t.Guid = vu.Guid AND t.LastTick = s.LastTick;",
+                record =>
+                {
+                    KMPVesselUpdate vessel_update = (KMPVesselUpdate)ByteArrayToObject(GetDataReaderBytes(record, 0));
+                    if (bList)
+                        Log.Info("Name: {0}\tID: {1}", vessel_update.name, vessel_update.kmpID);
+                    count++;
+                });
+
             if (count == 0)
                 Log.Info("No ships.");
             else if (!bList)
@@ -914,12 +905,7 @@ namespace KMPServer
 
         private int countShipsInDatabase()
         {
-            var universeDB = KMPServer.Server.universeDB;
-            if (settings.useMySQL)
-            {
-                universeDB = DatabaseHelper.CreateForMySQL(settings.mySQLConnString);
-            }
-            int? count = universeDB.ExecuteScalar("SELECT COUNT(*)" +
+            int? count = Database.ExecuteScalar("SELECT COUNT(*)" +
                 " FROM kmpVesselUpdate vu" +
                     " INNER JOIN kmpVessel v ON v.Guid = vu.Guid" +
                     " INNER JOIN kmpSubspace s ON s.ID = vu.Subspace" +
@@ -928,7 +914,7 @@ namespace KMPServer
                     "  FROM kmpVesselUpdate vu" +
                     "  INNER JOIN kmpSubspace s ON s.ID = vu.Subspace" +
                     "  GROUP BY vu.Guid) t ON t.Guid = vu.Guid AND t.LastTick = s.LastTick;") as int?;
-            return (int)(count ?? default(int));
+            return (int)(count ?? default(int)); // TODO: @NeverCast, Give ExecuteScalar a generic overload
         }
 
         private void listShipsServerCommand()
@@ -946,25 +932,13 @@ namespace KMPServer
                     Guid vesselGuid = new Guid(args[0]);
                     bool lockShip = Boolean.Parse(args[1].ToLower());
 
-                    var universeDB = KMPServer.Server.universeDB;
-                    if (settings.useMySQL)
-                    {
-                        universeDB = new MySqlConnection(settings.mySQLConnString);
-                        universeDB.Open();
-                    }
-                    DbCommand cmd = universeDB.CreateCommand();
 
-                    String sql = "UPDATE kmpVessel" +
+
+                    int rows = Database.ExecuteNonQuery("UPDATE kmpVessel" +
                                 " SET Private = @private" +
-                                " WHERE Guid = @guid";
-
-                    cmd.Parameters.AddWithValue("private", lockShip);
-                    cmd.Parameters.AddWithValue("guid", vesselGuid.ToByteArray());
-                    cmd.CommandText = sql;
-
-                    int rows = -1;
-                    if (cmd.CommandText != null) rows = cmd.ExecuteNonQuery();
-                    if (settings.useMySQL) universeDB.Close();
+                                " WHERE Guid = @guid",
+                                "private", lockShip,
+                                "guid", vesselGuid.ToByteArray());
 
                     if (rows != -1 && rows <= 1)
                     {
@@ -991,20 +965,10 @@ namespace KMPServer
         {
             try
             {
-                var universeDB = KMPServer.Server.universeDB;
-                if (settings.useMySQL)
-                {
-                    universeDB = new MySqlConnection(settings.mySQLConnString);
-                    universeDB.Open();
-                }
-                DbCommand cmd = universeDB.CreateCommand();
-                String sql = "UPDATE kmpVessel SET Destroyed = 1 WHERE Guid = @guid;";
                 Guid tokill = new Guid(parts[1]);
-                cmd.Parameters.AddWithValue("guid", tokill.ToByteArray());
-                cmd.CommandText = sql;
-                int rows = -1;
-                rows = cmd.ExecuteNonQuery();
-                if (settings.useMySQL) universeDB.Close();
+                int rows = Database.ExecuteNonQuery("UPDATE kmpVessel SET Destroyed = 1 WHERE Guid = @guid;",
+                    "guid", tokill.ToByteArray());
+
                 if (rows != -1 && rows != 0)
                 {
                     Log.Info("Vessel {0} marked for deletion.", parts[1]);
@@ -3544,7 +3508,7 @@ namespace KMPServer
                         //Upgrade old universe to version 4
                         Log.Info("Upgrading universe database...");
                         Database.ExecuteNonQuery(String.Format("CREATE TABLE kmpScenarios (ID INTEGER PRIMARY KEY {0}, PlayerID INTEGER, Name NVARCHAR(100), Tick DOUBLE, UpdateMessage BLOB);" +
-                            "CREATE INDEX kmpScenariosIdxPlayerID on kmpScenarios(PlayerID);", settings.useMySQL ? "AUTO_INCREMENT" : "AUTOINCREMENT");
+                            "CREATE INDEX kmpScenariosIdxPlayerID on kmpScenarios(PlayerID);", settings.useMySQL ? "AUTO_INCREMENT" : "AUTOINCREMENT"));
                         version = 4;
                     }
 
