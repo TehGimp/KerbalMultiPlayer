@@ -35,6 +35,7 @@ namespace KMPServer
         internal DatabaseHelper(String ConnectionString, DatabaseAttributes attributes)
         {
             this.ConnectionString = ConnectionString;
+            this.Attributes = attributes;
         }
 
         /// <summary>
