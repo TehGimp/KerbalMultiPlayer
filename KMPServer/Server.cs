@@ -805,6 +805,7 @@ namespace KMPServer
                     case "/rules": rulesServerCommand(rawParts); break;
                     case "/setinfo": serverInfoServerCommand(rawParts); break;
                     case "/modgen": writeModControlCommand(parts); break;
+                    case "/dbdiag": Log.Info("[DBDIAG] {0}", Database); break;
                     default: Log.Info("Unknown Command: " + cleanInput); break;
                 }
             }

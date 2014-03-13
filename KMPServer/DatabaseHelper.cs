@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Data;
 using System.Data.Common;
 using System.Data.SQLite;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Text;
@@ -17,6 +18,34 @@ namespace KMPServer
     {
         #region Constants
         private const String SQLITE_INIT_SQL = "PRAGMA auto_vacuum = 1;PRAGMA synchronous = 0;";
+        #endregion
+
+        #region Diagnostics
+        private Stopwatch stateChangeWatch = new Stopwatch();
+        private Stopwatch queryWatch = new Stopwatch();
+        private int connectionOpenCount = 0;
+        private int connectionQueryCount = 0;
+
+        public TimeSpan TimeSpentChangingState
+        {
+            get { return stateChangeWatch.Elapsed; }
+        }
+
+        public TimeSpan TimeSpentOnQuery
+        {
+            get { return queryWatch.Elapsed; }
+        }
+
+        public int TotalServicedQueries
+        {
+            get { return connectionQueryCount; }
+        }
+
+        public int TotalDatabaseOpens
+        {
+            get { return connectionOpenCount; }
+        }
+
         #endregion
 
         #region Static Helpers
@@ -66,6 +95,18 @@ namespace KMPServer
 
 
         #region Core Connection Management
+
+        /// <summary>
+        /// If pooling is enabled. Pools the connection
+        /// </summary>
+        /// <param name="connection">Connection to pool</param>
+        /// <returns>If pooling is disabled, returns it's only argument. Else it returns a pooled connection</returns>
+        private DbConnection PoolNewConnection(DbConnection connection)
+        {
+            // Currently not implemented. Wont implement until more tests
+            return connection;
+        }
+
         /// <summary>
         /// Get connection for Database
         /// </summary>
@@ -75,12 +116,15 @@ namespace KMPServer
             /* If we wanted to we could do our own sort of pooling to make it common between all engines */
             get
             {
+                stateChangeWatch.Start();
                 switch (Attributes & (DatabaseAttributes.SQLite | DatabaseAttributes.MySQL))
                 {
                     case DatabaseAttributes.MySQL:
-                        return new MySqlConnection(ConnectionString);
+                        stateChangeWatch.Stop();
+                        return PoolNewConnection(new MySqlConnection(ConnectionString));
                     case DatabaseAttributes.SQLite:
-                        return new SQLiteConnection(ConnectionString);
+                        stateChangeWatch.Stop();
+                        return PoolNewConnection(new SQLiteConnection(ConnectionString));
                 }
                 return null;
             }
@@ -96,7 +140,10 @@ namespace KMPServer
             {
                 if (connection.State != ConnectionState.Open)
                 {
+                    stateChangeWatch.Start();
                     connection.Open();
+                    connectionOpenCount++;
+                    stateChangeWatch.Stop();
                     if ((Attributes & DatabaseAttributes.SQLite) == DatabaseAttributes.SQLite)
                     {
                         // Init SQLite connection
@@ -127,6 +174,7 @@ namespace KMPServer
                     cmdObj.Parameters.AddWithValue(parameters[i] as String, parameters[i + 1]);
                 }
             }
+            connectionQueryCount++;
             return cmdObj;
         }
         #endregion
@@ -140,9 +188,17 @@ namespace KMPServer
         /// <returns>Rows affected</returns>
         private int _ExecuteNonQuery(DbConnection connection, String query, params object[] parameters)
         {
-            using (var command = CreateCommand(connection, query, parameters))
+            try
             {
-                return command.ExecuteNonQuery();
+                queryWatch.Start();
+                using (var command = CreateCommand(connection, query, parameters))
+                {
+                    return command.ExecuteNonQuery();
+                }
+            }
+            finally
+            {
+                queryWatch.Stop();
             }
         }
 
@@ -154,9 +210,17 @@ namespace KMPServer
         /// <returns>Single result from Query</returns>
         private object _ExecuteScalar(DbConnection connection, String query, params object[] parameters)
         {
-            using (var command = CreateCommand(connection, query, parameters))
+            try
             {
-                return command.ExecuteScalar();
+                queryWatch.Start();
+                using (var command = CreateCommand(connection, query, parameters))
+                {
+                    return command.ExecuteScalar();
+                }
+            }
+            finally
+            {
+                queryWatch.Stop();
             }
         }
 
@@ -168,22 +232,30 @@ namespace KMPServer
         /// <param name="handler">Handler to invoke for each record</param>
         private void _ExecuteReader(DbConnection connection, String query, DbRecordHandler handler, params object[] parameters)
         {
-            using (var command = CreateCommand(connection, query, parameters))
+            try
             {
-                using (var reader = command.ExecuteReader())
+                queryWatch.Start();
+                using (var command = CreateCommand(connection, query, parameters))
                 {
-                    while (reader.Read())
+                    using (var reader = command.ExecuteReader())
                     {
-                        try
+                        while (reader.Read())
                         {
-                            handler(reader);
+                            try
+                            {
+                                handler(reader);
+                            }
+                            catch (Exception ex)
+                            {
+                                Log.Error("Error handling row in reader from DatabaseHelper: {0}", ex);
+                            }
                         }
-                        catch (Exception ex)
-                        {
-                            Log.Error("Error handling row in reader from DatabaseHelper: {0}", ex);
-                        }
-                    }                    
+                    }
                 }
+            }
+            finally
+            {
+                queryWatch.Stop();
             }
         }
         #endregion
@@ -255,6 +327,13 @@ namespace KMPServer
         #endregion 
 
         internal delegate void DbRecordHandler(IDataRecord record);
+
+        public override string ToString()
+        {
+            return String.Format("DatabaseHelper connected to {0}. Total Queries: {1}, Total State Changes: {2}, Time Spent On Query: {3}, Time Spent On State: {4}, Avg. Query: {5}, Avg. State Change: {6}",
+                ConnectionString, TotalServicedQueries, TotalDatabaseOpens, TimeSpentOnQuery, TimeSpentChangingState,
+                new TimeSpan(TimeSpentChangingState.Ticks / TotalDatabaseOpens == 0 ? 1 : TotalDatabaseOpens), new TimeSpan(TimeSpentOnQuery.Ticks / TotalServicedQueries == 0 ? 1 : TotalServicedQueries));
+        }
 
     }
 }

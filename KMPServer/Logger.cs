@@ -57,7 +57,10 @@ namespace KMPServer
 		{
 			try {
 				string Line = string.Format("[{0}] : {1}", level.ToString (), string.Format(format, args));
-				ServerMain.server.sendTextMessageToAdmins(Line);
+                if (ServerMain.server != null)
+                {
+                    ServerMain.server.sendTextMessageToAdmins(Line);
+                }
 			}
 			catch (Exception) {};
 		}

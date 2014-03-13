@@ -95,6 +95,7 @@ namespace KMPServer
             Log.Info("/admin [add|del] [user] to update admin list.");
             Log.Info("/mode [sandbox|career] to set server game mode.");
             Log.Info("/modgen [blacklist|whitelist] [sha] - Generate a KMPModControl.txt from the 'Mods' directory.\nYou can use blacklist or whitelist mode, defaulting to blacklist.\nYou can optionally specify sha to force required versions.\n");
+            Log.Info("/dbdiag - Run a diagnostic on the Database Manager to see performance");
             Log.Info("/quit to exit, or /start to begin the server.");
             Log.Info("");
 
