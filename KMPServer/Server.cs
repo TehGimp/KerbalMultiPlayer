@@ -3656,9 +3656,6 @@ namespace KMPServer
 
                 if (clients != null && activeClientCount() > 0)
                 {
-                    DbCommand cmd;
-                    string sql;
-
                     //Get the oldest tick from any active player
                     double earliestClearTick = 2d;
 

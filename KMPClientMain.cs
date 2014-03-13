@@ -114,7 +114,6 @@ namespace KMP
         public static TcpClient tcpClient;
         public static long lastKeepAliveSendTime;
         public static long lastTCPMessageSendTime;
-        public static long lastTCPKeepaliveTime;
         public static bool quitHelperMessageShow;
         public static int reconnectAttempts;
         public static UdpClient udpClient;
