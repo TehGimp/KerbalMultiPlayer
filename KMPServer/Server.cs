@@ -722,6 +722,12 @@ namespace KMPServer
                         if (activeClientCount() <= 0)
                         {
                             backedUpSinceEmpty = true;
+							if (settings.freezeTimeWhenServerIsEmpty)
+							{
+								subSpaceMasterTick.Clear();
+								subSpaceMasterTime.Clear();
+								subSpaceMasterSpeed.Clear();
+							}
                             CleanDatabase();
                         }
 

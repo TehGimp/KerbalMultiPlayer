@@ -62,6 +62,7 @@ namespace KMPServer
 			public bool cheatsEnabled = true;
             public bool allowPiracy = false;
             public bool checkAllModFiles = false;
+			public bool freezeTimeWhenServerIsEmpty = false;
 			public int gameMode = 0;
 
 			private IEnumerable<KeyValuePair<string, string>> _profanity = null;
