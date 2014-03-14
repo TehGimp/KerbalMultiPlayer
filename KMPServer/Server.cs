@@ -2038,16 +2038,11 @@ namespace KMPServer
                 if (rate < 1.1f)
                 {
                     //stopped warping-create subspace & add player to it
-
-                    Database.ExecuteNonQuery("INSERT INTO kmpSubspace (LastTick) VALUES (@tick);",
-                        "tick", 0d.ToString("0.0").Replace(",", "."));
-
                     int newSubspace = -1;
 
-                    Database.ExecuteReader(settings.useMySQL ?
+                    newSubspace = Convert.ToInt32(Database.ExecuteScalar("INSERT INTO kmpSubspace (LastTick) VALUES (@tick);" + (settings.useMySQL ?
                         "SELECT LAST_INSERT_ID();" :
-                        "SELECT last_insert_rowid();",
-                        record => newSubspace = record.GetInt32(0));
+                        "SELECT last_insert_rowid();"),"tick", 0d.ToString("0.0").Replace(",", ".")));
                     
                     cl.currentSubspaceID = newSubspace;
                     Log.Debug("Adding new time sync data for subspace {0}", newSubspace);
