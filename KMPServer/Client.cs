@@ -438,7 +438,7 @@ namespace KMPServer
 					split_index = split_index + bytes_to_read;
 				}
 				//Return the first split message if we just split.
-				Log.Debug("Split message into "  + queuedOutMessagesSplit.Count.ToString());
+				//Log.Debug("Split message into "  + queuedOutMessagesSplit.Count.ToString());
 				queuedOutMessagesSplit.TryDequeue(out next_message);
 			}
 		}

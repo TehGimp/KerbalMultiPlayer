@@ -1442,7 +1442,7 @@ namespace KMPServer
 
                         if (stopwatch.ElapsedMilliseconds > lastMessageBreak + MESSAGE_HANDLE_TIMEOUT)
                         {
-                            Log.Debug("Warning: Server lag detected. Optimizing queue.");
+                            //Log.Debug("Warning: Server lag detected. Optimizing queue.");
                             shouldOptimizeQueue = true;
                             break;
                         }
@@ -1534,10 +1534,10 @@ namespace KMPServer
         {
             if (clientMessageQueue == null)
             {
-                Log.Debug("Client message queue is null");
+                //Log.Debug("Client message queue is null");
                 return;
             }
-            long optimizeTime = stopwatch.ElapsedMilliseconds;
+            //long optimizeTime = stopwatch.ElapsedMilliseconds;
             Queue<ClientMessage> tempQueue = new Queue<ClientMessage>(clientMessageQueue);
             ConcurrentQueue<ClientMessage> newQueue = new ConcurrentQueue<ClientMessage>();
             List<Guid> vesselsInQueue = new List<Guid>();
@@ -1550,7 +1550,7 @@ namespace KMPServer
                     if (message.data == null)
                     {
                         //Skip empty messages (this shouldn't happen so let's log them)
-                        Log.Debug("Empty vessel update detected!");
+                        //Log.Debug("Empty vessel update detected!");
                         continue;
                     }
                     KMPVesselUpdate vessel_update = ByteArrayToObject<KMPVesselUpdate>(message.data);
@@ -1583,7 +1583,7 @@ namespace KMPServer
             }
             //Flip it back to the original order
             newQueue.Reverse();
-            Log.Debug("Optimize took " + (stopwatch.ElapsedMilliseconds - optimizeTime) + "ms, old length: " + clientMessageQueue.Count + ", new length: " + newQueue.Count);
+            //Log.Debug("Optimize took " + (stopwatch.ElapsedMilliseconds - optimizeTime) + "ms, old length: " + clientMessageQueue.Count + ", new length: " + newQueue.Count);
             clientMessageQueue = newQueue;
         }
 
@@ -3672,14 +3672,14 @@ namespace KMPServer
                         earliestClearTick = Convert.ToDouble(Database.ExecuteScalar("SELECT MIN(LastTick) FROM kmpSubspace WHERE ID IN (@subspaceids);",
                             "subspaceids", subspaceIDs));
                     }
-
+					
                     //Clear anything before that
-                    double earliestClearSubspaceTick = Convert.ToDouble(Database.ExecuteScalar("SELECT MIN(s.LastTick) FROM kmpSubspace s INNER JOIN kmpVessel v ON v.Subspace = s.ID AND v.Destroyed > @minTick;",
+                    double earliestClearSubspaceTick = Convert.ToDouble(Database.ExecuteScalar("SELECT MIN(s.LastTick) FROM kmpSubspace s INNER JOIN kmpVessel v ON v.Subspace = s.ID AND (v.Destroyed IS NULL OR v.Destroyed > @minTick);",
                         "minTick", earliestClearTick.ToString("0.0").Replace(",", ".")));
-
+					
                     Database.ExecuteNonQuery("DELETE FROM kmpSubspace WHERE LastTick < @minSubTick;" +
                         " DELETE FROM kmpVesselUpdateHistory WHERE Tick < @minTick;" +
-                        " DELETE FROM kmpVessel WHERE Destroyed < @minTick",
+                        " DELETE FROM kmpVessel WHERE Destroyed < @minTick;",
                     "minTick", earliestClearTick.ToString("0.0").Replace(",", "."),
                     "minSubTick", earliestClearSubspaceTick.ToString("0.0").Replace(",", "."));
                 }
