@@ -906,8 +906,15 @@ namespace KMPServer
 
         private int countShipsInDatabase()
         {
-            int count = Convert.ToInt32(Database.ExecuteScalar("SELECT COUNT(*) FROM kmpVessel WHERE Destroyed IS NULL;"));
-			Log.Debug("Vessel count: {0}", count);
+            int count = Convert.ToInt32(Database.ExecuteScalar("SELECT COUNT(*)" +
+                    " FROM kmpVesselUpdate vu" +
+                    " INNER JOIN kmpVessel v ON v.Guid = vu.Guid AND v.Destroyed IS NULL" +
+                    " INNER JOIN kmpSubspace s ON s.ID = vu.Subspace" +
+                    " INNER JOIN" +
+                    "  (SELECT vu.Guid, MAX(s.LastTick) AS LastTick" +
+                    "  FROM kmpVesselUpdate vu" +
+                    "  INNER JOIN kmpSubspace s ON s.ID = vu.Subspace" +
+                    "  GROUP BY vu.Guid) t ON t.Guid = vu.Guid AND t.LastTick = s.LastTick"));
             return count; // TODO: @NeverCast, Give ExecuteScalar a generic overload
         }
 

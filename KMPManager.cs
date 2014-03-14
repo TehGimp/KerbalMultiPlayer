@@ -1970,7 +1970,7 @@ namespace KMP
 			if (vessel_update.getProtoVesselNode() != null) serverVessels_ProtoVessels[vessel_update.id] = vessel_update.getProtoVesselNode();
 			
 			//Apply update if able
-			if (isInFlightOrTracking)
+			if (isInFlightOrTracking || syncing)
 			{
 				if (vessel_update.relativeTo == Guid.Empty && (vessel_update.id != FlightGlobals.ActiveVessel.id || (serverVessels_InUse[vessel_update.id] || (serverVessels_IsPrivate[vessel_update.id] && !serverVessels_IsMine[vessel_update.id]))))
 				{
@@ -2683,7 +2683,7 @@ namespace KMP
 			if (protovessel.vesselType == VesselType.Flag) {
 				Invoke("ClearFlagLock", 5f);
 			}
-            if (!vesselUpdatesLoaded.Contains(vessel_id))
+			if (!vesselUpdatesLoaded.Contains(vessel_id)) //This can be moved elsewhere in addRemoteVessel (or applyVesselUpdate) to help track issues with loading a specific vessel
             {
                 vesselUpdatesLoaded.Add(vessel_id);
             }
@@ -3416,13 +3416,19 @@ namespace KMP
 				GameEvents.onFlightReady.Add(this.OnFlightReady);
 				MapView.EnterMapView();
 				MapView.MapCamera.SetTarget("Kerbin");
-				StartCoroutine(sendSubspaceSyncRequest(-1,true));
+				Invoke("sendInitialSyncRequest",0.5f);
 				Invoke("handleSyncTimeout",300f);
 				docking = false;
 			}
 			delayForceQuit = false;
 		}
-			
+		
+		private void sendInitialSyncRequest()
+		{
+			if (isInFlightOrTracking) StartCoroutine(sendSubspaceSyncRequest(-1,true));
+			else Invoke("sendInitialSyncRequest",0.25f);
+		}
+		
 		private void OnFlightReady()
 		{
 			removeKMPControlLocks ();
