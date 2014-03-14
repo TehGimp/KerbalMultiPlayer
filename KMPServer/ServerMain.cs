@@ -245,45 +245,45 @@ namespace KMPServer
                     case "/set":
                         if (parts.Length > 1 && parts[1].Equals("help"))
                         {
-                            Log.Info("ipBinding - The IP address the server should bind to. Defaults to binding to all available IPs." + Environment.NewLine);
+                            Log.Info("ipBinding - The IP address the server should bind to. Defaults to binding to all available IPs.");
                             Log.Info("port - The port used for connecting to the server.");
                             Log.Info("httpPort - The port used for viewing server information from a web browser.");
                             Log.Info("httpBroadcast - ?"); // missing setting information
-                            Log.Info("maxClients - The maximum number of players that can be connected to the server simultaneously." + Environment.NewLine);
+                            Log.Info("maxClients - The maximum number of players that can be connected to the server simultaneously.");
 
-                            Log.Info("screenshotInterval - The minimum time a client must wait after sharing a screenshot before they can share another one." + Environment.NewLine);
-                            Log.Info("autoRestart - If true, the server will attempt to restart after catching an unhandled exception." + Environment.NewLine);
-                            Log.Info("autoHost - If true, the server will start hosting immediately rather than requiring the admin to enter the 'H' command." + Environment.NewLine);
-                            Log.Info("saveScreenshots - If true, the server will save all screenshots to the KMPScreenshots folder." + Environment.NewLine);
-                            Log.Info("hostIPV6 - If true, the server will be listening on a IPv6 address." + Environment.NewLine);
+                            Log.Info("screenshotInterval - The minimum time a client must wait after sharing a screenshot before they can share another one.");
+                            Log.Info("autoRestart - If true, the server will attempt to restart after catching an unhandled exception.");
+                            Log.Info("autoHost - If true, the server will start hosting immediately rather than requiring the admin to enter the 'H' command.");
+                            Log.Info("saveScreenshots - If true, the server will save all screenshots to the KMPScreenshots folder.");
+                            Log.Info("hostIPV6 - If true, the server will be listening on a IPv6 address.");
 						    
-							Log.Info("useMySQL - If true, the server will use the configured MySQL connection string instead of the built-in SQLite database to store the universe." + Environment.NewLine);
-							Log.Info("mySQLConnString - The connection string to use when using a MySQL server to host the universe database." + Environment.NewLine);
-                            Log.Info("backupInterval - Time, in minutes, between universe database backups." + Environment.NewLine);
-                            Log.Info("maxDirtyBackups - The maximum number of backups the server will perform before forcing database optimization (which otherwise happens only when the server is empty)." + Environment.NewLine);
-                            Log.Info("updatesPerSecond - CHANGING THIS VALUE IS NOT RECOMMENDED - The number of updates that will be received from all clients combined per second. The higher you set this number, the more frequently clients will send updates. As the number of active clients increases, the frequency of updates will decrease to not exceed this many updates per second. " + Environment.NewLine + "WARNING: If this value is set too high then players will be more likely to be disconnected due to lag, while if it is set too low the gameplay experience will degrade significantly." + Environment.NewLine);
+							Log.Info("useMySQL - If true, the server will use the configured MySQL connection string instead of the built-in SQLite database to store the universe.");
+							Log.Info("mySQLConnString - The connection string to use when using a MySQL server to host the universe database.");
+                            Log.Info("backupInterval - Time, in minutes, between universe database backups.");
+                            Log.Info("maxDirtyBackups - The maximum number of backups the server will perform before forcing database optimization (which otherwise happens only when the server is empty).");
+                            Log.Info("updatesPerSecond - CHANGING THIS VALUE IS NOT RECOMMENDED - The number of updates that will be received from all clients combined per second. The higher you set this number, the more frequently clients will send updates. As the number of active clients increases, the frequency of updates will decrease to not exceed this many updates per second. " + "WARNING: If this value is set too high then players will be more likely to be disconnected due to lag, while if it is set too low the gameplay experience will degrade significantly.");
 						
-                        	Log.Info("totalInactiveShips - CHANGING THIS VALUE IS NOT RECOMMENDED - The maximum number of inactive ships that can be updated by clients simultaneously." + Environment.NewLine);    
-							Log.Info("consoleScale - Changes the window size of the scale. Defaults to 1.0, requires restart." + Environment.NewLine);	
-							Log.Info("LogLevel - Log verbosity. Choose from: Debug, Activity, Info, Notice, Warning, or Error." + Environment.NewLine);	
-							Log.Info("maximumLogs - The maximum number of log files to store." + Environment.NewLine);	
-							Log.Info("screenshotHeight - The height of screenshots sent by players, in pixels." + Environment.NewLine);
+                        	Log.Info("totalInactiveShips - CHANGING THIS VALUE IS NOT RECOMMENDED - The maximum number of inactive ships that can be updated by clients simultaneously.");    
+							Log.Info("consoleScale - Changes the window size of the scale. Defaults to 1.0, requires restart.");	
+							Log.Info("LogLevel - Log verbosity. Choose from: Debug, Activity, Info, Notice, Warning, or Error.");	
+							Log.Info("maximumLogs - The maximum number of log files to store.");	
+							Log.Info("screenshotHeight - The height of screenshots sent by players, in pixels.");
 						
-							Log.Info("autoDekessler - If true, server will clean up all debris in 'autoDekesslerTime'." + Environment.NewLine);
-                            Log.Info("autoDekesslerTime - Time, in minutes, that the server will clean up all debris." + Environment.NewLine);
-                        	Log.Info("profanityFilter - If true, enables the built-in profanity filter." + Environment.NewLine);    
-							Log.Info("profanityWords - List of profanity replacements. Replaces the first word with the second." + Environment.NewLine);
-							Log.Info("whitelisted - If true, enables the player whitelist." + Environment.NewLine);
+							Log.Info("autoDekessler - If true, server will clean up all debris in 'autoDekesslerTime'.");
+                            Log.Info("autoDekesslerTime - Time, in minutes, that the server will clean up all debris.");
+                        	Log.Info("profanityFilter - If true, enables the built-in profanity filter.");    
+							Log.Info("profanityWords - List of profanity replacements. Replaces the first word with the second.");
+							Log.Info("whitelisted - If true, enables the player whitelist.");
 						
-							Log.Info("joinMessage - A message shown to players when they join the server." + Environment.NewLine);
-                            Log.Info("serverInfo - A message displayed to anyone viewing server information in a browser." + Environment.NewLine);
-                            Log.Info("serverMotd - A message displayed to users when they login to the server that can be changed while the server is running." + Environment.NewLine);
-                            Log.Info("serverRules - A message displayed to users when they ask to view the server's rules." + Environment.NewLine);
-                            Log.Info("safetyBubbleRadius - The radius of the 'safety cylinder' which prevents collisions near KSC." + Environment.NewLine);
+							Log.Info("joinMessage - A message shown to players when they join the server.");
+                            Log.Info("serverInfo - A message displayed to anyone viewing server information in a browser.");
+                            Log.Info("serverMotd - A message displayed to users when they login to the server that can be changed while the server is running.");
+                            Log.Info("serverRules - A message displayed to users when they ask to view the server's rules.");
+                            Log.Info("safetyBubbleRadius - The radius of the 'safety cylinder' which prevents collisions near KSC.");
 							
-							Log.Info("cheatsEnabled - If true, enable KSP's built-in debug cheats." + Environment.NewLine);
-                            Log.Info("allowPiracy - If true, a player can take control of another player's ship if they can accomplish manual docking (very difficult)." + Environment.NewLine);
-                            Log.Info("freezeTimeWhenServerIsEmpty - If true, universe time is frozen when the server is empty (otherwise universe time runs continuously once a single player joins the server)." + Environment.NewLine);
+							Log.Info("cheatsEnabled - If true, enable KSP's built-in debug cheats.");
+                            Log.Info("allowPiracy - If true, a player can take control of another player's ship if they can accomplish manual docking (very difficult).");
+                            Log.Info("freezeTimeWhenServerIsEmpty - If true, universe time is frozen when the server is empty (otherwise universe time runs continuously once a single player joins the server).");
                         }
                         else if (parts.Length < 3)
                         {
