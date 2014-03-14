@@ -3652,71 +3652,68 @@ namespace KMPServer
         {
             try
             {
-                Log.Info("Attempting to optimize database...");
-
-                uncleanedBackups = 0;
-
-                if (clients != null && activeClientCount() > 0)
-                {
-                    //Get the oldest tick from any active player
-                    double earliestClearTick = 2d;
-
-                    string subspaceIDs = "";
-                    foreach (Client client in clients)
-                    {
-                        subspaceIDs += (String.IsNullOrEmpty(subspaceIDs) ? "" : ",") + client.currentSubspaceID.ToString("D");
-                    }
-
-                    if (!String.IsNullOrEmpty(subspaceIDs))
-                    {
-                        earliestClearTick = Convert.ToDouble(Database.ExecuteScalar("SELECT MIN(LastTick) FROM kmpSubspace WHERE ID IN (@subspaceids);",
-                            "subspaceids", subspaceIDs));
-                    }
-					
-                    //Clear anything before that
-                    double earliestClearSubspaceTick = Convert.ToDouble(Database.ExecuteScalar("SELECT MIN(s.LastTick) FROM kmpSubspace s INNER JOIN kmpVessel v ON v.Subspace = s.ID AND (v.Destroyed IS NULL OR v.Destroyed > @minTick);",
-                        "minTick", earliestClearTick.ToString("0.0").Replace(",", ".")));
-					
-                    Database.ExecuteNonQuery("DELETE FROM kmpSubspace WHERE LastTick < @minSubTick;" +
-                        " DELETE FROM kmpVesselUpdateHistory WHERE Tick < @minTick;" +
-                        " DELETE FROM kmpVessel WHERE Destroyed < @minTick;",
-                    "minTick", earliestClearTick.ToString("0.0").Replace(",", "."),
-                    "minSubTick", earliestClearSubspaceTick.ToString("0.0").Replace(",", "."));
-                }
-                else
-                {
-                    //Clear all but the latest subspace
-					double earliestClearSubspaceTick;
-					try
-					{
-	                    earliestClearSubspaceTick = Convert.ToDouble(
-	                        Database.ExecuteScalar("SELECT MIN(s.LastTick) FROM kmpSubspace s INNER JOIN kmpVessel v ON v.Subspace = s.ID AND v.Destroyed IS NULL;"));
-					}
-					catch 
-					{
-						//Probably just a new database
-						earliestClearSubspaceTick = 0d;
-					}
-                    
-                    Database.ExecuteNonQuery("DELETE FROM kmpSubspace WHERE LastTick < @minSubTick;" +
-                        " DELETE FROM kmpVesselUpdateHistory;" +
-                        " DELETE FROM kmpVessel WHERE Destroyed IS NOT NULL;" +
-                        " DELETE FROM kmpVesselUpdate WHERE Guid NOT IN (SELECT Guid FROM kmpVessel);" +
-                        " DELETE FROM kmpVesselUpdate WHERE ID IN (SELECT ID FROM (SELECT ID FROM kmpVesselUpdate vu" +
-                        "  WHERE Subspace != (SELECT ID FROM kmpSubspace WHERE LastTick = (SELECT MAX(LastTick) FROM kmpSubspace" +
-                        "  WHERE ID IN (SELECT Subspace FROM kmpVesselUpdate vu2 WHERE vu2.Guid = vu.Guid)))) a);",
-                        "minSubTick", earliestClearSubspaceTick.ToString("0.0").Replace(",", "."));
-                }
-
-                if (!settings.useMySQL)
-                {
-                    lock (databaseVacuumLock)
-                    {
-                        Database.ExecuteNonQuery("VACUUM;");
-                    }
-                }
-
-                Log.Info("Optimized in-memory universe database.");
+				int vesselCount = Convert.ToInt32(Database.ExecuteScalar("SELECT COUNT(*) FROM kmpVessel;"));
+				if (vesselCount > 0)
+				{
+	                Log.Info("Attempting to optimize database...");
+	
+	                uncleanedBackups = 0;
+	
+	                if (clients != null && activeClientCount() > 0)
+	                {
+	                    //Get the oldest tick from any active player
+	                    double earliestClearTick = 2d;
+	
+	                    string subspaceIDs = "";
+	                    foreach (Client client in clients)
+	                    {
+	                        subspaceIDs += (String.IsNullOrEmpty(subspaceIDs) ? "" : ",") + client.currentSubspaceID.ToString("D");
+	                    }
+	
+	                    if (!String.IsNullOrEmpty(subspaceIDs))
+	                    {
+	                        earliestClearTick = Convert.ToDouble(Database.ExecuteScalar("SELECT MIN(LastTick) FROM kmpSubspace WHERE ID IN (@subspaceids);",
+	                            "subspaceids", subspaceIDs));
+	                    }
+						
+	                    //Clear anything before that
+	                    double earliestClearSubspaceTick = Convert.ToDouble(Database.ExecuteScalar("SELECT MIN(s.LastTick) FROM kmpSubspace s INNER JOIN kmpVessel v ON v.Subspace = s.ID AND (v.Destroyed IS NULL OR v.Destroyed > @minTick);",
+	                        "minTick", earliestClearTick.ToString("0.0").Replace(",", ".")));
+						
+	                    Database.ExecuteNonQuery("DELETE FROM kmpSubspace WHERE LastTick < @minSubTick;" +
+	                        " DELETE FROM kmpVesselUpdateHistory WHERE Tick < @minTick;" +
+	                        " DELETE FROM kmpVessel WHERE Destroyed IS NOT NULL AND Destroyed < @minTick;",
+	                    "minTick", earliestClearTick.ToString("0.0").Replace(",", "."),
+	                    "minSubTick", earliestClearSubspaceTick.ToString("0.0").Replace(",", "."));
+	                }
+	                else
+	                {
+	                    //Clear all but the latest subspace
+						double earliestClearSubspaceTick;
+						
+						earliestClearSubspaceTick = Convert.ToDouble(
+		                        Database.ExecuteScalar("SELECT MIN(s.LastTick) FROM kmpSubspace s INNER JOIN kmpVessel v ON v.Subspace = s.ID AND v.Destroyed IS NULL;"));
+	                    
+	                    Database.ExecuteNonQuery("DELETE FROM kmpSubspace WHERE LastTick < @minSubTick;" +
+	                        " DELETE FROM kmpVesselUpdateHistory;" +
+	                        " DELETE FROM kmpVessel WHERE Destroyed IS NOT NULL;" +
+	                        " DELETE FROM kmpVesselUpdate WHERE Guid NOT IN (SELECT Guid FROM kmpVessel);" +
+	                        " DELETE FROM kmpVesselUpdate WHERE ID IN (SELECT ID FROM (SELECT ID FROM kmpVesselUpdate vu" +
+	                        "  WHERE Subspace != (SELECT ID FROM kmpSubspace WHERE LastTick = (SELECT MAX(LastTick) FROM kmpSubspace" +
+	                        "  WHERE ID IN (SELECT Subspace FROM kmpVesselUpdate vu2 WHERE vu2.Guid = vu.Guid)))) a);",
+	                        "minSubTick", earliestClearSubspaceTick.ToString("0.0").Replace(",", "."));
+	                }
+	
+	                if (!settings.useMySQL)
+	                {
+	                    lock (databaseVacuumLock)
+	                    {
+	                        Database.ExecuteNonQuery("VACUUM;");
+	                    }
+	                }
+	
+	                Log.Info("Optimized in-memory universe database.");
+				}
             }
             catch (Exception ex)
             {
