@@ -3684,8 +3684,17 @@ namespace KMPServer
                 else
                 {
                     //Clear all but the latest subspace
-                    double earliestClearSubspaceTick = Convert.ToDouble(
-                        Database.ExecuteScalar("SELECT MIN(s.LastTick) FROM kmpSubspace s INNER JOIN kmpVessel v ON v.Subspace = s.ID AND v.Destroyed IS NULL;"));
+					double earliestClearSubspaceTick;
+					try
+					{
+	                    earliestClearSubspaceTick = Convert.ToDouble(
+	                        Database.ExecuteScalar("SELECT MIN(s.LastTick) FROM kmpSubspace s INNER JOIN kmpVessel v ON v.Subspace = s.ID AND v.Destroyed IS NULL;"));
+					}
+					catch 
+					{
+						//Probably just a new database
+						earliestClearSubspaceTick = 0d;
+					}
                     
                     Database.ExecuteNonQuery("DELETE FROM kmpSubspace WHERE LastTick < @minSubTick;" +
                         " DELETE FROM kmpVesselUpdateHistory;" +
