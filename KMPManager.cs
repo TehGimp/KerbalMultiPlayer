@@ -215,6 +215,7 @@ namespace KMP
 		private bool activeTermination = false;
 		
 		private bool clearEditorPartList = false;
+		private bool closePauseMenu = false;
 		
 		//Vessel dictionaries
 		public Dictionary<Guid, Vessel.Situations> sentVessels_Situations = new Dictionary<Guid, Vessel.Situations>();
@@ -3758,11 +3759,19 @@ namespace KMP
 				
 				try {
 					if (PauseMenu.isOpen && syncing) {
-						if (KMPClientMain.tcpClient != null) {
+						if (KMPClientMain.tcpClient != null ) {
 							PauseMenu.Close();
 						} else {
 							disconnect("Connection terminated during sync");
 							forceQuit = true;
+						}
+					}
+					else
+					{
+						if (PauseMenu.isOpen && closePauseMenu)
+						{
+							closePauseMenu = false;
+							PauseMenu.Close();
 						}
 					}
 				} catch (Exception e) {
@@ -3785,6 +3794,7 @@ namespace KMP
                 //Find an instance of the game's PlanetariumCamera
                 if (planetariumCam == null)
                     planetariumCam = (PlanetariumCamera)FindObjectOfType(typeof(PlanetariumCamera));
+				
 				if (Input.GetKeyDown(KeyCode.F2))
 				{
 					isGameHUDHidden = !isGameHUDHidden;
@@ -3797,19 +3807,27 @@ namespace KMP
                     StartCoroutine(shareScreenshot());
                     
 				if (Input.GetKeyDown(KMPGlobalSettings.instance.screenshotToggleKey) && !isGameHUDHidden && KMPToggleButtonState)
-		    KMPScreenshotDisplay.windowEnabled = !KMPScreenshotDisplay.windowEnabled;
-
+					KMPScreenshotDisplay.windowEnabled = !KMPScreenshotDisplay.windowEnabled;
+				
                 if (Input.GetKeyDown(KMPGlobalSettings.instance.chatTalkKey))
                 {
                     KMPChatDX.showInput = true;
                     //DISABLE SHIP CONTROL
                     InputLockManager.SetControlLock(ControlTypes.All,"KMP_ChatActive");
                 }
+				
+				if (Input.GetKeyDown(KeyCode.Escape) && KMPChatDX.showInput)
+				{
+					KMPChatDX.showInput = false;
+					//ENABLE SHIP CONTROL
+					InputLockManager.RemoveControlLock("KMP_ChatActive");
+					closePauseMenu = true;
+				}
 
 				if (Input.GetKeyDown(KMPGlobalSettings.instance.chatHideKey) && !isGameHUDHidden && KMPToggleButtonState)
                 {
-		    KMPGlobalSettings.instance.chatDXWindowEnabled = !KMPGlobalSettings.instance.chatDXWindowEnabled;
-                    if (KMPGlobalSettings.instance.chatDXWindowEnabled) KMPChatDX.enqueueChatLine("Press Chat key (" + (KMPGlobalSettings.instance.chatTalkKey == KeyCode.BackQuote ? "~" : KMPGlobalSettings.instance.chatTalkKey.ToString()) + ") to send a message");
+		    		KMPGlobalSettings.instance.chatDXWindowEnabled = !KMPGlobalSettings.instance.chatDXWindowEnabled;
+                    //if (KMPGlobalSettings.instance.chatDXWindowEnabled) KMPChatDX.enqueueChatLine("Press Chat key (" + (KMPGlobalSettings.instance.chatTalkKey == KeyCode.BackQuote ? "~" : KMPGlobalSettings.instance.chatTalkKey.ToString()) + ") to send a message");
                 }
 
                 if (Input.anyKeyDown)
