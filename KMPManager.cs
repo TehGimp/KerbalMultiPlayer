@@ -4908,7 +4908,6 @@ namespace KMP
 
             GUILayout.FlexibleSpace();
 
-
             foreach (KMPChatDX.ChatLine line in KMPChatDX.chatLineQueue)
             {
                 GUILayout.BeginHorizontal();

@@ -28,7 +28,10 @@ namespace KMP
 
         public static float editorOffsetX = 255;
         public static float editorOffsetY = 20;
-
+		
+		public static float flightOffsetX = 40;
+        public static float flightOffsetY = 20;
+		
         public static GameScenes lastScene = GameScenes.MAINMENU;
 
         public static bool showInput = false;
@@ -108,7 +111,13 @@ namespace KMP
                         windowPos.y = chatboxY + editorOffsetY;
 
                         return windowPos;
+					
+                    case GameScenes.FLIGHT:
+                        windowPos.x = chatboxX + flightOffsetX;
+                        windowPos.y = chatboxY + flightOffsetY;
 
+                        return windowPos;
+					
                     default:
                         windowPos.x = chatboxX;
                         windowPos.y = chatboxY;
@@ -124,9 +133,44 @@ namespace KMP
 
         public static void enqueueChatLine(String line)
         {
-            ChatLine chat_line = new ChatLine(line);
-
-            chatLineQueue.Enqueue(chat_line);
+			Color lineColor = Color.yellow;
+			bool colorSet = false;
+			foreach (String singleLine in line.Split('\n'))
+			{
+				string choppedLine = "";
+				foreach (String word in singleLine.Split(' '))
+				{
+					//if (GUI.skin.GetStyle("Box").CalcSize(new GUIContent(choppedLine + word)).x > chatboxWidth)
+					if (choppedLine.Length + word.Length > chatboxWidth / 7) //Kludgy but works relatively reliably
+					{
+			            ChatLine chat_line = new ChatLine(choppedLine.Substring(0,choppedLine.Length-1));
+						if (!colorSet)
+						{
+							lineColor = chat_line.color;
+							colorSet = true;
+						}
+						else
+						{
+							chat_line.color = lineColor;	
+						}
+			            chatLineQueue.Enqueue(chat_line);
+						choppedLine = word + " ";
+					}
+					else
+					{
+						choppedLine += word + " ";
+					}
+				}
+				if (choppedLine.Length > 0)
+				{
+					ChatLine chat_line = new ChatLine(choppedLine.Substring(0,choppedLine.Length-1));
+					if (colorSet)
+					{
+						chat_line.color = lineColor;
+					}
+		            chatLineQueue.Enqueue(chat_line);
+				}
+			}
             while (chatLineQueue.Count > MAX_CHAT_LINES)
                 chatLineQueue.Dequeue();
 
