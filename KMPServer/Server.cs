@@ -742,10 +742,12 @@ namespace KMPServer
             {
                 Log.Error("Fatal error accessing MySQL database, server session ended!");
                 Log.Error(e.Message);
+				Log.Debug(e.StackTrace);
             }
             catch (Exception e)
             {
-                Log.Error("Fatal error, server session ended! Exception details:\n{0}\n{1}", e.Message, e.StackTrace);
+                Log.Error("Fatal error, server session ended! Exception: {0}", e.Message);
+				Log.Debug(e.StackTrace);
             }
         }
 
