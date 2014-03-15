@@ -56,7 +56,7 @@ namespace KMPServer
         /// <returns>DatabaseHelper for Database</returns>
         internal static DatabaseHelper CreateForSQLite(String filePath)
         {
-            return new DatabaseHelper("Data Source=" + filePath, DatabaseAttributes.SQLite);
+            return new DatabaseHelper("Data Source=" + filePath + "; Pooling=true; Max Pool Size=100;", DatabaseAttributes.SQLite);
         }
 
         /// <summary>
