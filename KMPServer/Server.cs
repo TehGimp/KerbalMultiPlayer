@@ -3554,20 +3554,6 @@ namespace KMPServer
                 else if (version != UNIVERSE_VERSION)
                 {
                     Log.Info("Creating new universe...");
-                    try
-                    {
-                        if (!settings.useMySQL)
-                        {
-                            if (File.Exists(DB_FILE))
-                            {
-                                File.Delete(DB_FILE);
-                            }
-                        }
-                    }
-                    catch (Exception e)
-                    {
-                        Log.Debug("Error removing old database: " + e.Message);
-                    }
                     Database.ExecuteNonQuery(String.Format("CREATE TABLE kmpInfo (Version INTEGER){3};" +
                         "CREATE TABLE kmpSubspace (ID INTEGER PRIMARY KEY {0}, LastTick DOUBLE){3};" +
                         "CREATE TABLE kmpPlayer (ID INTEGER PRIMARY KEY {0}, Name NVARCHAR(100), Guid CHAR({1})){3};" +
