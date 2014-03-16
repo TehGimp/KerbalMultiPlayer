@@ -8,6 +8,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Text;
+using System.Threading;
 
 namespace KMPServer
 {
@@ -25,6 +26,7 @@ namespace KMPServer
         private Stopwatch queryWatch = new Stopwatch();
         private int connectionOpenCount = 0;
         private int connectionQueryCount = 0;
+        private DbConnection ReadRefDb = null;
 
         public TimeSpan TimeSpentChangingState
         {
@@ -56,7 +58,7 @@ namespace KMPServer
         /// <returns>DatabaseHelper for Database</returns>
         internal static DatabaseHelper CreateForSQLite(String filePath)
         {
-            return new DatabaseHelper("Data Source=" + filePath + "; Pooling=true; Max Pool Size=100;", DatabaseAttributes.SQLite);
+            return new DatabaseHelper("Data Source=" + filePath + "; Pooling=true; Max Pool Size=100;", DatabaseAttributes.SQLite | DatabaseAttributes.KeepRef);
         }
 
         /// <summary>
@@ -82,6 +84,12 @@ namespace KMPServer
         /// </summary>
         internal DatabaseAttributes Attributes { get; private set; }
         #endregion
+
+        /// <summary>
+        /// The amount of queries currently using the database
+        /// </summary>
+        /// <remarks>Syncronize access to this integer!</remarks>
+        private int DatabaseUsers = 0;
 
         /// <summary>
         /// Create a new Database Helper
@@ -116,6 +124,8 @@ namespace KMPServer
             /* If we wanted to we could do our own sort of pooling to make it common between all engines */
             get
             {
+                // Keep a single connection object during a reader operation
+                if ((Attributes & DatabaseAttributes.KeepRef) == DatabaseAttributes.KeepRef && ReadRefDb != null && ReadRefDb.State == ConnectionState.Open) return ReadRefDb;
                 stateChangeWatch.Start();
                 switch (Attributes & (DatabaseAttributes.SQLite | DatabaseAttributes.MySQL))
                 {
@@ -128,6 +138,29 @@ namespace KMPServer
                 }
                 return null;
             }
+        }
+
+        // Do I use a lock? Monitor perhaps? Or I could just use a counter and interlock
+        /// <summary>
+        /// Database is in use 
+        /// </summary>
+        private void UseDB()
+        {
+            Interlocked.Increment(ref DatabaseUsers);
+        }
+
+        /// <summary>
+        /// Database is no longer in use
+        /// </summary>
+        /// <returns>Passthrough object</returns>
+        private T Finish<T>(T o, DbConnection conn)
+        {
+            if (Interlocked.Decrement(ref DatabaseUsers) == 0)
+            {
+                if(ReadRefDb != conn && conn != null)
+                    conn.Dispose();
+            }
+            return o;
         }
 
         /// <summary>
@@ -234,6 +267,7 @@ namespace KMPServer
         {
             try
             {
+                if ((Attributes & DatabaseAttributes.KeepRef) == DatabaseAttributes.KeepRef) ReadRefDb = connection;
                 queryWatch.Start();
                 using (var command = CreateCommand(connection, query, parameters))
                 {
@@ -255,6 +289,7 @@ namespace KMPServer
             }
             finally
             {
+                if ((Attributes & DatabaseAttributes.KeepRef) == DatabaseAttributes.KeepRef) ReadRefDb = null;
                 queryWatch.Stop();
             }
         }
@@ -269,11 +304,10 @@ namespace KMPServer
         /// <returns>Rows affected</returns>
         internal int ExecuteNonQuery(String query, params object[] parameters)
         {
-            using (var connection = Connection)
-            {
-                InitConnection(connection);
-                return _ExecuteNonQuery(connection, query, parameters);
-            }
+            UseDB();
+            var connection = Connection;
+            InitConnection(connection);
+            return Finish(_ExecuteNonQuery(connection, query, parameters), connection);
         }
 
         /// <summary>
@@ -284,11 +318,10 @@ namespace KMPServer
         /// <returns>Single result from Query</returns>
         internal object ExecuteScalar(String query, params object[] parameters)
         {
-            using (var connection = Connection)
-            {
-                InitConnection(connection);
-                return _ExecuteScalar(connection, query, parameters);
-            }
+            UseDB();
+            var connection = Connection;
+            InitConnection(connection);
+            return Finish(_ExecuteScalar(connection, query, parameters), connection);
         }
 
         /// <summary>
@@ -299,11 +332,11 @@ namespace KMPServer
         /// <param name="handler">Handler to invoke for each record</param>
         internal void ExecuteReader(String query, DbRecordHandler handler, params object[] parameters)
         {
-            using (var connection = Connection)
-            {
-                InitConnection(connection);
-                _ExecuteReader(connection, query, handler, parameters);
-            }
+            UseDB();
+            var connection = Connection;
+            InitConnection(connection);
+            _ExecuteReader(connection, query, handler, parameters);
+            Finish<object>(null, connection);
         }
 
         #endregion
@@ -321,7 +354,11 @@ namespace KMPServer
             /// <summary>
             /// Tells the Database Helper to pool the connection and not close it immediately
             /// </summary>
-            Pool = 8
+            Pool = 8,
+            /// <summary>
+            /// Tells the Database Helper to use one connection object while a reader is executing
+            /// </summary>
+            KeepRef = 16
         }
 
         #endregion 
