@@ -157,7 +157,7 @@ namespace KMPServer
         {
             if (Interlocked.Decrement(ref DatabaseUsers) == 0)
             {
-                if(ReadRefDb != conn && conn != null)
+                if(ReadRefDb == conn && conn != null)
                     conn.Dispose();
             }
             return o;
