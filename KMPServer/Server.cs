@@ -1928,60 +1928,83 @@ namespace KMPServer
                 //Build response string
                 StringBuilder response_builder = new StringBuilder();
 
-                response_builder.Append("Version: ");
+                response_builder.Append("{");
+                response_builder.Append('\n');
+                response_builder.Append("\"version\": \"");
                 response_builder.Append(KMPCommon.PROGRAM_VERSION);
+                response_builder.Append("\",");
                 response_builder.Append('\n');
 
-                response_builder.Append("Port: ");
+                response_builder.Append("\"port\": ");
                 response_builder.Append(settings.port);
+                response_builder.Append(",");
                 response_builder.Append('\n');
 
-                response_builder.Append("Num Players: ");
+                response_builder.Append("\"playersActive\": ");
                 response_builder.Append(activeClientCount());
-                response_builder.Append('/');
-                response_builder.Append(settings.maxClients);
+                response_builder.Append(",");
                 response_builder.Append('\n');
 
-                response_builder.Append("Players: ");
+                response_builder.Append("\"playersMax\": ");
+                response_builder.Append(settings.maxClients);
+                response_builder.Append(",");
+                response_builder.Append('\n');
+
+                response_builder.Append("\"playersOnline\": {");
 
                 bool first = true;
 
                 foreach (var client in clients.ToList().Where(c => c.isReady))
                 {
-                    if (first)
+                    if (first) {
                         first = false;
-                    else
-                        response_builder.Append(", ");
+                    } else {
+                        response_builder.Append('\n');
+                        response_builder.Append(",");
+                    }
 
+
+                    response_builder.Append("    \"");
                     response_builder.Append(client.username);
+                    response_builder.Append("\"");
                 }
 
+                if(clients.ToList().Any())
+                    response_builder.Append('\n');
+                response_builder.Append("},");
                 response_builder.Append('\n');
 
-                response_builder.Append("Information: ");
+                response_builder.Append("\"serverInfo\": \"");
                 response_builder.Append(settings.serverInfo);
+                response_builder.Append("\",");
                 response_builder.Append('\n');
 
-                response_builder.Append("Updates per Second: ");
+                response_builder.Append("\"updatesPerSecond\": ");
                 response_builder.Append(settings.updatesPerSecond);
+                response_builder.Append(",");
                 response_builder.Append('\n');
 
-                response_builder.Append("Inactive Ship Limit: ");
+                response_builder.Append("\"shipsInactive\": ");
                 response_builder.Append(settings.totalInactiveShips);
+                response_builder.Append(",");
                 response_builder.Append('\n');
 
-                response_builder.Append("Screenshot Height: ");
+                response_builder.Append("\"screenshotHeight\": ");
                 response_builder.Append(settings.screenshotSettings.maxHeight);
+                response_builder.Append(",");
                 response_builder.Append('\n');
 
-                response_builder.Append("Screenshot Save: ");
-                response_builder.Append(settings.saveScreenshots);
+                response_builder.Append("\"saveScreenshots\": ");
+                response_builder.Append(settings.saveScreenshots.ToString().ToLower());
+                response_builder.Append(",");
                 response_builder.Append('\n');
 
-                response_builder.Append("Whitelisted: ");
-                response_builder.Append(settings.whitelisted);
+                response_builder.Append("\"whitelisted\": ");
+                response_builder.Append(settings.whitelisted.ToString().ToLower());
+                response_builder.Append("");
                 response_builder.Append('\n');
 
+                response_builder.Append("}");
 
 
                 //Send response
