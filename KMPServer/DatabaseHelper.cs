@@ -27,6 +27,7 @@ namespace KMPServer
         private int connectionOpenCount = 0;
         private int connectionQueryCount = 0;
         private DbConnection ReadRefDb = null;
+		private bool firstConnection = true;
 
         public TimeSpan TimeSpentChangingState
         {
@@ -177,9 +178,10 @@ namespace KMPServer
                     connection.Open();
                     connectionOpenCount++;
                     stateChangeWatch.Stop();
-                    if ((Attributes & DatabaseAttributes.SQLite) == DatabaseAttributes.SQLite)
+                    if ((Attributes & DatabaseAttributes.SQLite) == DatabaseAttributes.SQLite && firstConnection)
                     {
                         // Init SQLite connection
+						firstConnection = false;
                         _ExecuteNonQuery(connection, SQLITE_INIT_SQL);
                     }
                 }
