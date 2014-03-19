@@ -379,12 +379,26 @@ namespace KMP
 				
 				if (!isInFlight && HighLogic.LoadedScene == GameScenes.TRACKSTATION)
 				{
-					foreach (object button in GameObject.FindObjectsOfType(typeof(ScreenSafeUIButton)))
-					{
-						ScreenSafeUIButton ssUIButton = (ScreenSafeUIButton) button;
-						if (ssUIButton.tooltip == "Terminate") ssUIButton.Unlock();
-						if (ssUIButton.tooltip == "Fly") ssUIButton.Unlock();
-					}
+					try {
+						SpaceTracking st = (SpaceTracking) GameObject.FindObjectOfType(typeof(SpaceTracking));
+						
+						if (st.mainCamera.target.vessel != null && (serverVessels_IsMine[st.mainCamera.target.vessel.id] || !serverVessels_IsPrivate[st.mainCamera.target.vessel.id]))
+						{
+							//Public/owned vessel
+							st.FlyButton.Unlock();
+							st.DeleteButton.Unlock();
+							if (st.mainCamera.target.vessel.mainBody.bodyName == "Kerbin" && (st.mainCamera.target.vessel.situation == Vessel.Situations.LANDED || st.mainCamera.target.vessel.situation == Vessel.Situations.SPLASHED))
+								st.RecoverButton.Unlock();
+							else st.RecoverButton.Lock();
+						}
+						else
+						{
+							//Private unowned vessel
+							st.FlyButton.Lock();
+							st.DeleteButton.Lock();
+							st.RecoverButton.Lock();
+						}
+					} catch {}
 				}
 				
 				if (lastWarpRate != TimeWarp.CurrentRate)
@@ -504,11 +518,14 @@ namespace KMP
 				//If in flight, check remote vessels, set position variable for docking-mode position updates
 				if (isInFlight)
 				{
+					VesselRecoveryButton vrb = null;
+					try { vrb = (VesselRecoveryButton) GameObject.FindObjectOfType(typeof(VesselRecoveryButton)); } catch {}
 					if (controlsLocked)
 					{
-						//Prevent EVA'ing crew
+						//Prevent EVA'ing crew or vessel recovery
 						lockCrewGUI();
 						Log.Debug("il: " + InputLockManager.PrintLockStack());
+						if (vrb != null) vrb.ssuiButton.Lock();
 					}
 					else 
 					{
@@ -518,6 +535,8 @@ namespace KMP
 							InputLockManager.RemoveControlLock("KMP_ChatActive");
 						}
 						unlockCrewGUI();
+						if (vrb != null && FlightGlobals.ActiveVessel.mainBody.bodyName == "Kerbin" && (FlightGlobals.ActiveVessel.situation == Vessel.Situations.LANDED || FlightGlobals.ActiveVessel.situation == Vessel.Situations.SPLASHED)) vrb.ssuiButton.Unlock();
+						else if (vrb != null) vrb.ssuiButton.Lock();
 					}
 					checkRemoteVesselIntegrity();
 					activeVesselPosition = FlightGlobals.ship_CoM;
@@ -3659,7 +3678,7 @@ namespace KMP
 					}
 					long serverLagMilliseconds = tempServerLag / 10000;
 					skewMessageText += serverLagMilliseconds + "ms.\n";
-
+					
 					skewMessage = ScreenMessages.PostScreenMessage(skewMessageText, 1f, ScreenMessageStyle.UPPER_RIGHT);
 				}
 			}
