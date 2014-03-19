@@ -133,16 +133,79 @@ namespace KMPServer
                 foreach (var f in missingFiles) { Log.Error(f); }
                 Log.Error("Please place them in the KMP server directory. See README.txt for more information.");
             }
-
+			
+			string lastCommand = "";
             bool running = true;
 
             while (running)
             {
-                var line = Console.ReadLine();
+				ConsoleKeyInfo keypress;
+				int inputIndex = 0;
+				var input = "";
+				
+				while (true)
+				{
+					keypress = Console.ReadKey();
+					if (keypress.Key == ConsoleKey.UpArrow)
+					{
+						input = lastCommand;
+						inputIndex = input.Length;
+						echoInput(input,inputIndex);
+					}
+					else if (keypress.Key == ConsoleKey.DownArrow)
+					{
+						//do nothing, but prevent key from counting as input
+					}
+					else if (keypress.Key == ConsoleKey.LeftArrow)
+					{
+						if (inputIndex > 0)
+						{
+							inputIndex--;
+							Console.SetCursorPosition(inputIndex, Console.CursorTop);
+						}
+					}
+					else if (keypress.Key == ConsoleKey.RightArrow)
+					{
+						if (inputIndex < input.Length)
+						{
+							inputIndex++;
+							Console.SetCursorPosition(inputIndex, Console.CursorTop);
+						}
+					}
+					else if (keypress.Key == ConsoleKey.Backspace && inputIndex > 0)
+					{
+						inputIndex--;
+						input = input.Remove(inputIndex,1);
+						echoInput(input + " ",inputIndex);
+					}
+					else if (keypress.Key == ConsoleKey.Delete && inputIndex < input.Length)
+					{
+						input = input.Remove(inputIndex,1);
+						echoInput(input + " ",inputIndex);
+					}
+					else if (keypress.Key == ConsoleKey.Escape)
+					{
+						Console.WriteLine();
+						input = "";
+						break;
+					}
+					else if (keypress.Key == ConsoleKey.Enter)
+					{
+						break;
+					}
+					else
+					{
+						input = input.Insert(inputIndex,keypress.KeyChar.ToString());
+						inputIndex++;
+						echoInput(input,inputIndex);
+					}
+				}
+				
+				lastCommand = input;
+				
+                Log.Info("Command Input: {0}", input);
 
-                Log.Info("Command Input: {0}", line);
-
-                var parts = line.Split(' ');
+                var parts = input.Split(' ');
 
                 switch (parts[0].ToLowerInvariant())
                 {
@@ -287,7 +350,7 @@ namespace KMPServer
                         }
                         else if (parts.Length < 3)
                         {
-                            Log.Info("Invalid usage. Usage is /set [key] [value]");
+                            Log.Info("Invalid usage. Usage is /set [key] [value] or /set help");
                         }
                         else
                         {
@@ -319,6 +382,13 @@ namespace KMPServer
                         break;
                 }
             }
+		}
+		
+		private static void echoInput(string line, int index)
+		{
+			Console.SetCursorPosition(0, Console.CursorTop);
+			Console.Write(line);
+			Console.SetCursorPosition(index, Console.CursorTop);	
 		}
 
 		private static void startServer(ServerSettings.ConfigStore settings)
