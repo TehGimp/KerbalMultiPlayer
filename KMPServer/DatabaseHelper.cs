@@ -18,7 +18,7 @@ namespace KMPServer
     internal class DatabaseHelper
     {
         #region Constants
-        private const String SQLITE_INIT_SQL = "PRAGMA synchronous = 0; PRAGMA auto_vacuum = 1;";
+        private const String SQLITE_INIT_SQL = "PRAGMA synchronous = 0; PRAGMA auto_vacuum = 1; PRAGMA journal_mode = TRUNCATE; PRAGMA page_size = 8192; VACUUM;";
         #endregion
 
         #region Diagnostics
@@ -27,6 +27,7 @@ namespace KMPServer
         private int connectionOpenCount = 0;
         private int connectionQueryCount = 0;
         private DbConnection ReadRefDb = null;
+        private bool firstConnection = true;
 
         public TimeSpan TimeSpentChangingState
         {
@@ -119,22 +120,22 @@ namespace KMPServer
         /// Get connection for Database
         /// </summary>
         /// <returns>DbConnection of either MySqlConnection or SQLiteConnection</returns>
-        private DbConnection Connection 
+        private DbConnection Connection
         {
             /* If we wanted to we could do our own sort of pooling to make it common between all engines */
-            get
-            {
+            get {
                 // Keep a single connection object during a reader operation
-                if ((Attributes & DatabaseAttributes.KeepRef) == DatabaseAttributes.KeepRef && ReadRefDb != null && ReadRefDb.State == ConnectionState.Open) return ReadRefDb;
+                if ((Attributes & DatabaseAttributes.KeepRef) == DatabaseAttributes.KeepRef && ReadRefDb != null && ReadRefDb.State == ConnectionState.Open)
+                    return ReadRefDb;
                 stateChangeWatch.Start();
                 switch (Attributes & (DatabaseAttributes.SQLite | DatabaseAttributes.MySQL))
                 {
-                    case DatabaseAttributes.MySQL:
-                        stateChangeWatch.Stop();
-                        return PoolNewConnection(new MySqlConnection(ConnectionString));
-                    case DatabaseAttributes.SQLite:
-                        stateChangeWatch.Stop();
-                        return PoolNewConnection(new SQLiteConnection(ConnectionString));
+                case DatabaseAttributes.MySQL:
+                    stateChangeWatch.Stop();
+                    return PoolNewConnection(new MySqlConnection(ConnectionString));
+                case DatabaseAttributes.SQLite:
+                    stateChangeWatch.Stop();
+                    return PoolNewConnection(new SQLiteConnection(ConnectionString));
                 }
                 return null;
             }
@@ -157,7 +158,7 @@ namespace KMPServer
         {
             if (Interlocked.Decrement(ref DatabaseUsers) == 0)
             {
-                if(ReadRefDb == conn && conn != null)
+                if (ReadRefDb == conn && conn != null)
                     conn.Dispose();
             }
             return o;
@@ -177,9 +178,10 @@ namespace KMPServer
                     connection.Open();
                     connectionOpenCount++;
                     stateChangeWatch.Stop();
-                    if ((Attributes & DatabaseAttributes.SQLite) == DatabaseAttributes.SQLite)
+                    if ((Attributes & DatabaseAttributes.SQLite) == DatabaseAttributes.SQLite && firstConnection)
                     {
                         // Init SQLite connection
+                        firstConnection = false;
                         _ExecuteNonQuery(connection, SQLITE_INIT_SQL);
                     }
                 }
@@ -198,12 +200,14 @@ namespace KMPServer
             var cmdObj = connection.CreateCommand();
             cmdObj.CommandType = System.Data.CommandType.Text;
             cmdObj.CommandText = query;
-            if (parameters != null && parameters.Length > 0 )
+            if (parameters != null && parameters.Length > 0)
             {
-                if (parameters.Length % 2 != 0) throw new IOException("Cannot create command with parameters. Argument count isn't a factor of 2");
+                if (parameters.Length % 2 != 0)
+                    throw new IOException("Cannot create command with parameters. Argument count isn't a factor of 2");
                 for (int i = 0; i < parameters.Length; i += 2)
                 {
-                    if (parameters[i] as String == null) throw new IOException(String.Format("Cannot convert {0} to Parameter key in CreateCommand", parameters[i] ?? "<null>"));
+                    if (parameters[i] as String == null)
+                        throw new IOException(String.Format("Cannot convert {0} to Parameter key in CreateCommand", parameters[i] ?? "<null>"));
                     cmdObj.Parameters.AddWithValue(parameters[i] as String, parameters[i + 1]);
                 }
             }
@@ -228,8 +232,7 @@ namespace KMPServer
                 {
                     return command.ExecuteNonQuery();
                 }
-            }
-            finally
+            } finally
             {
                 queryWatch.Stop();
             }
@@ -250,8 +253,7 @@ namespace KMPServer
                 {
                     return command.ExecuteScalar();
                 }
-            }
-            finally
+            } finally
             {
                 queryWatch.Stop();
             }
@@ -267,7 +269,8 @@ namespace KMPServer
         {
             try
             {
-                if ((Attributes & DatabaseAttributes.KeepRef) == DatabaseAttributes.KeepRef) ReadRefDb = connection;
+                if ((Attributes & DatabaseAttributes.KeepRef) == DatabaseAttributes.KeepRef)
+                    ReadRefDb = connection;
                 queryWatch.Start();
                 using (var command = CreateCommand(connection, query, parameters))
                 {
@@ -278,18 +281,17 @@ namespace KMPServer
                             try
                             {
                                 handler(reader);
-                            }
-                            catch (Exception ex)
+                            } catch (Exception ex)
                             {
                                 Log.Error("Error handling row in reader from DatabaseHelper: {0}", ex);
                             }
                         }
                     }
                 }
-            }
-            finally
+            } finally
             {
-                if ((Attributes & DatabaseAttributes.KeepRef) == DatabaseAttributes.KeepRef) ReadRefDb = null;
+                if ((Attributes & DatabaseAttributes.KeepRef) == DatabaseAttributes.KeepRef)
+                    ReadRefDb = null;
                 queryWatch.Stop();
             }
         }
