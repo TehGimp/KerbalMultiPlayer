@@ -94,10 +94,11 @@ namespace KMPServer
             Log.Info("/whitelist [add|del] [user] to update whitelist.");
             Log.Info("/admin [add|del] [user] to update admin list.");
             Log.Info("/mode [sandbox|career] to set server game mode.");
-            Log.Info("/modgen [blacklist|whitelist] [sha] - Generate a KMPModControl.txt from the 'Mods' directory.\nYou can use blacklist or whitelist mode, defaulting to blacklist.\nYou can optionally specify sha to force required versions.\n");
-            Log.Info("/dbdiag - Run a diagnostic on the Database Manager to see performance");
+            Log.Info("/dbdiag to run database performance diagnostics.");
+			Log.Info("/modgen [blacklist|whitelist] [sha] to generate a KMPModControl.txt from the 'Mods' directory.");
+			Log.Info("\tYou can use blacklist or whitelist mode, defaulting to blacklist.");
+			Log.Info("\tYou can optionally specify sha to force required versions.");
             Log.Info("/quit to exit, or /start to begin the server.");
-            Log.Info("");
 
             //Check for missing files, try and copy from KSP installation if possible.
             string[] RequiredFiles = { "Assembly-CSharp.dll", "Assembly-CSharp-firstpass.dll", "UnityEngine.dll" };
@@ -316,7 +317,7 @@ namespace KMPServer
 
                             Log.Info("screenshotInterval - The minimum time a client must wait after sharing a screenshot before they can share another one.");
                             Log.Info("autoRestart - If true, the server will attempt to restart after catching an unhandled exception.");
-                            Log.Info("autoHost - If true, the server will start hosting immediately rather than requiring the admin to enter the 'H' command.");
+                            Log.Info("autoHost - If true, the server will start hosting immediately rather than requiring the admin to enter the '/start' command.");
                             Log.Info("saveScreenshots - If true, the server will save all screenshots to the KMPScreenshots folder.");
                             Log.Info("hostIPV6 - If true, the server will be listening on a IPv6 address.");
 						    
