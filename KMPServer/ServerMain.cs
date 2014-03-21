@@ -311,7 +311,7 @@ namespace KMPServer
                             Log.Info("ipBinding - The IP address the server should bind to. Defaults to binding to all available IPs.");
                             Log.Info("port - The port used for connecting to the server.");
                             Log.Info("httpPort - The port used for viewing server information from a web browser.");
-                            Log.Info("httpBroadcast - ?"); // missing setting information
+                            Log.Info("httpBroadcast - Enable simple http server for viewing server information from  a web browser.");
                             Log.Info("maxClients - The maximum number of players that can be connected to the server simultaneously.");
 
                             Log.Info("screenshotInterval - The minimum time a client must wait after sharing a screenshot before they can share another one.");
