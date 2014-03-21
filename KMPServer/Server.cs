@@ -3809,19 +3809,19 @@ namespace KMPServer
             Log.Info("/update [username] [token] - Update existing roster entry for player <username>/token <token> (one param must match existing roster entry, other will be updated)");
             Log.Info("/unregister [username/token] - Remove any player that has a matching username or token from the roster");
             Log.Info("/clearclients - Attempt to clear 'ghosted' clients");
-            Log.Info("/countships - Lists number of ships in universe.");
+            Log.Info("/countships - Lists number of ships in universe");
             Log.Info("/listships - List all ships in universe along with their ID");
-            Log.Info("/lockship [ID] [true/false] - Set ship as private or public.");
-            Log.Info("/deleteship [ID] - Removes ship from universe.");
+            Log.Info("/lockship [ID] [true/false] - Set ship as private or public");
+            Log.Info("/deleteship [ID] - Removes ship from universe");
             Log.Info("/dekessler <mins> - Remove debris that has not been updated for at least <mins> minutes (in-game time) (If no <mins> value is specified, debris that is older than 30 minutes will be cleared)");
             Log.Info("/save - Backup universe");
             Log.Info("/reloadmodfile - Reloads the {0} file. Note that this will not recheck any currently logged in clients, only those joining", MOD_CONTROL_FILE);
             Log.Info("/setinfo [info] - Updates the server info seen on master server list");
             Log.Info("/motd [message] - Sets message of the day, leave blank for none");
             Log.Info("/rules [rules] - Sets server rules, leave blank for none");
+			Log.Info("/modgen [blacklist|whitelist] [sha] - Auto-generate a KMPModControl.txt file using what you have placed in the server's 'Mods' directory");
             Log.Info("/say <-u username> [message] - Send a Server message <to specified user>");
             Log.Info("/help - Displays all commands in the server\n");
-            Log.Info("/modgen - Auto-generate a KMPModControl.txt file using what you have placed in the server's 'Mods' directory.\n");
 
             // to add a new command to the command list just copy the Log.Info method and add how to use that command.
         }

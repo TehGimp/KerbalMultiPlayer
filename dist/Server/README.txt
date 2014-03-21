@@ -32,7 +32,8 @@ NOTE: KMP Server has been tested on Windows 7+ and Ubuntu 12.04 systems. Other p
   OS X or other Linux distributions, are not "officially" supported but often still work correctly
   provided a suitable library for SQLite is supplied. If KMP Server doesn't work "out of the box"
   on your system and you are able to find a native SQLite package, you may be able to get things
-  working by replacing the file "libsqlite3.so.0" with a native equivalent.
+  working by replacing the file "libsqlite3.so.0" with a native equivalent. You may also be able to
+  work around this dependency by using a MySQL database instead of SQLite.
 
 
 Starting the Server
@@ -51,20 +52,21 @@ Configuration
 ipBinding - The IP address the server should bind to. Defaults to binding to all available IPs.
 port - The port used for connecting to the server.
 httpPort - The port used for viewing server information from a web browser.
+httpBroadcast - Enable simple http server for viewing server information from  a web browser.
 maxClients - The maximum number of players that can be connected to the server simultaneously.
 screenshotInterval - The minimum time a client must wait after sharing a screenshot before they can
   share another one.
 autoRestart - If true, the server will attempt to restart after catching an unhandled exception.
 autoHost - If true, the server will start hosting immediately rather than requiring the admin to
-  enter the "H" command.
+  enter the "/start" command.
 saveScreenshots - If true, the server will save all screenshots to the KMPScreenshots folder.
 hostIPv6 - If true, the server will attempt to use IPv6.
 useMySQL - If true, the server will use the supplied MySQL connection string instead of the
-  built-in SQLite database.
+  built-in SQLite database to store the universe.
 mySQLConnString - The connection string used to connect to the MySQL database.
-backupInterval - Minutes between server backups to disk (applies to SQLite databases only).
-maxDirtyBackups - The maximum number of backups to disk permitted before the game database will be
-  force-optimized.
+backupInterval - Time, in minutes, between universe database backups.
+maxDirtyBackups - The maximum number of backups the server will perform before forcing database
+  optimization (which otherwise happens only when the server is empty).
 updatesPerSecond - CHANGING THIS VALUE IS NOT RECOMMENDED - The number of updates that will be
   received from all clients combined per second. The higher you set this number, the more
   frequently clients will send updates. As the number of active clients increases, the frequency of
@@ -73,15 +75,15 @@ updatesPerSecond - CHANGING THIS VALUE IS NOT RECOMMENDED - The number of update
       to lag, while if it is set too low the gameplay experience will degrade significantly.
 totalInactiveShips - CHANGING THIS VALUE IS NOT RECOMMENDED - The number of secondary updates that
   are allowed between all players per primary update.
-consoleScale - The console scale.
+consoleScale - Changes the window size of the scale. Defaults to 1.0, requires restart.
 LogLevel - Log verbosity. Choose from: Debug, Activity, Info, Notice, Warning, or Error.
-maximumLogs - The number of log files to retain.
-screenshotHeight - The maximum height of the screenshots that players can share. Can range from 135
-  to 540 (recommended values: 135, 144, 180, 270, 315, 360, 540).
+maximumLogs - The number of log files to store.
+screenshotHeight - The height of screenshots sent by players, in pixels. Can range from 135 to 540
+  (recommended values: 135, 144, 180, 270, 315, 360, 540).
 autoDekessler - Enable periodic clearing of debris from the server universe (useful for high-usage
   servers).
 autoDekesslerTime - The interval, in minutes, between auto-dekessler cleanups.
-profanityFilter - Enable/disable the built-in profanity filter.
+profanityFilter - If true, enables the built-in profanity filter.
 profanityWords - Words for the profanity filter.
 whitelisted - If true, enables the player whitelist.
 joinMessage - A message shown to players when they join the server.
@@ -90,8 +92,10 @@ serverMotd - A message displayed to users when they login to the server that can
   the server is running.
 serverRules - A message displayed to users when they ask to view the server's rules.
 safetyBubbleRadius - The radius of the "safety cylinder" which prevents collisions near KSC.
-cheatsEnabled - If true, KSP's built-in cheats are available.
+cheatsEnabled - If true, enable KSP's built-in debug cheats.
 allowPriacy - If true, players can steal "Private" vessels if they can accomplish a manual docking.
+freezeTimeWhenServerIsEmpty - If true, universe time is frozen when the server is empty (otherwise
+  universe time runs continuously once a single player joins the server).
 
 Use "/mode" to choose between Sandbox and Career mode.
 
@@ -99,8 +103,21 @@ You can also change these settings from the command line with this syntax:
   KMPServer.exe +port 2076
 
 
-Server Commands
----------------
+Server Config Commands (before /start)
+----------------------------------------
+/set <key> <value> - Modify a setting (use "/set help" for information about each setting).
+/whitelist <add|del> <user> - Update player whitelist.
+/admin <add|del> <user> - Update the list of server admins.
+/mode <sandbox|career> - Change game-mode.
+/modgen <blacklist|whitelist> <sha> - Generate a KMPModControl.txt from the 'Mods' directory. You
+  can use blacklist or whitelist mode, defaulting to blacklist. You can optionally specify sha to
+  force required versions.
+/quit - Quit the server.
+/start - Begin the server session.
+
+
+Server Commands (after /start)
+--------------------------------
 /quit & stop - Quit the server cleanly, saving the universe database and disconnecting clients.
 /listclients - List currently connected players.
 /countclients - Display player counts.
@@ -115,23 +132,31 @@ Server Commands
 /unregister <username/token> - Remove any player that has a matching username or token from the
   roster.
 /clearclients - Disconnect any invalid clients.
+/countships - Lists number of ships in universe.
+/listships - List all ships in universe along with their ID
+/lockship <ID> <true/false> - Set ship as private or public.
 /deleteship <ID> - Removes ship from universe.
 /dekessler <mins> - Remove debris that has not been updated for at least <mins> minutes in-game
   time (default 30 mins).
 /save - Backup the universe database to disk.
+/reloadmodfile -  Reloads the KMPModControl.txt file. Note that this will not recheck any currently
+  logged in clients, only those joining.
 /setinfo <info> - Updates the server info seen on master server list.
 /motd <message> - Set MOTD.
 /rules <rules> - Set server rules.
+/modgen <blacklist|whitelist> <sha> - Auto-generate a KMPModControl.txt file using what you have
+  placed in the server's 'Mods' directory.
 /say <-u username> <message> - Send a chat message as server (optional: to specified user).
 /help - Display server commands.
 
 
 Enabling Mods
 -------------
-Since KMP v0.1.5.0, mods are now controlled from the server using the KMPModControl.txt file in the
-  server directory. This file will be automatically created if it is missing. Further instructions
-  for setting up mod control are detailed in KMPModControl.txt. The mod control system is also set
-  to get upgrades in the next release (v0.1.6.0) that will make minor changes to the
-  KMPModControl.txt format.
+Mods are now controlled from the server using the KMPModControl.txt file in the server directory.
+  This file will be automatically created if it is missing. Further instructions for setting up mod
+  control are detailed in KMPModControl.txt. You can auto-generate the mod-control file by placing
+  all desired server mod files into the "Mods" folder (as they would appear in [KSP]/GameData) and
+  using the "/modgen" server command.
+
 
 Source available at: https://github.com/TehGimp/KerbalMultiPlayer

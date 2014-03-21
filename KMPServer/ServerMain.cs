@@ -94,10 +94,11 @@ namespace KMPServer
             Log.Info("/whitelist [add|del] [user] to update whitelist.");
             Log.Info("/admin [add|del] [user] to update admin list.");
             Log.Info("/mode [sandbox|career] to set server game mode.");
-            Log.Info("/modgen [blacklist|whitelist] [sha] - Generate a KMPModControl.txt from the 'Mods' directory.\nYou can use blacklist or whitelist mode, defaulting to blacklist.\nYou can optionally specify sha to force required versions.\n");
-            Log.Info("/dbdiag - Run a diagnostic on the Database Manager to see performance");
+            Log.Info("/dbdiag to run database performance diagnostics.");
+			Log.Info("/modgen [blacklist|whitelist] [sha] to generate a KMPModControl.txt from the 'Mods' directory.");
+			Log.Info("\tYou can use blacklist or whitelist mode, defaulting to blacklist.");
+			Log.Info("\tYou can optionally specify sha to force required versions.");
             Log.Info("/quit to exit, or /start to begin the server.");
-            Log.Info("");
 
             //Check for missing files, try and copy from KSP installation if possible.
             string[] RequiredFiles = { "Assembly-CSharp.dll", "Assembly-CSharp-firstpass.dll", "UnityEngine.dll" };
@@ -133,16 +134,79 @@ namespace KMPServer
                 foreach (var f in missingFiles) { Log.Error(f); }
                 Log.Error("Please place them in the KMP server directory. See README.txt for more information.");
             }
-
+			
+			string lastCommand = "";
             bool running = true;
 
             while (running)
             {
-                var line = Console.ReadLine();
+				ConsoleKeyInfo keypress;
+				int inputIndex = 0;
+				var input = "";
+				
+				while (true)
+				{
+					keypress = Console.ReadKey();
+					if (keypress.Key == ConsoleKey.UpArrow)
+					{
+						input = lastCommand;
+						inputIndex = input.Length;
+						echoInput(input,inputIndex);
+					}
+					else if (keypress.Key == ConsoleKey.DownArrow)
+					{
+						//do nothing, but prevent key from counting as input
+					}
+					else if (keypress.Key == ConsoleKey.LeftArrow)
+					{
+						if (inputIndex > 0)
+						{
+							inputIndex--;
+							Console.SetCursorPosition(inputIndex, Console.CursorTop);
+						}
+					}
+					else if (keypress.Key == ConsoleKey.RightArrow)
+					{
+						if (inputIndex < input.Length)
+						{
+							inputIndex++;
+							Console.SetCursorPosition(inputIndex, Console.CursorTop);
+						}
+					}
+					else if (keypress.Key == ConsoleKey.Backspace && inputIndex > 0)
+					{
+						inputIndex--;
+						input = input.Remove(inputIndex,1);
+						echoInput(input + " ",inputIndex);
+					}
+					else if (keypress.Key == ConsoleKey.Delete && inputIndex < input.Length)
+					{
+						input = input.Remove(inputIndex,1);
+						echoInput(input + " ",inputIndex);
+					}
+					else if (keypress.Key == ConsoleKey.Escape)
+					{
+						Console.WriteLine();
+						input = "";
+						break;
+					}
+					else if (keypress.Key == ConsoleKey.Enter)
+					{
+						break;
+					}
+					else
+					{
+						input = input.Insert(inputIndex,keypress.KeyChar.ToString());
+						inputIndex++;
+						echoInput(input,inputIndex);
+					}
+				}
+				
+				lastCommand = input;
+				
+                Log.Info("Command Input: {0}", input);
 
-                Log.Info("Command Input: {0}", line);
-
-                var parts = line.Split(' ');
+                var parts = input.Split(' ');
 
                 switch (parts[0].ToLowerInvariant())
                 {
@@ -248,12 +312,12 @@ namespace KMPServer
                             Log.Info("ipBinding - The IP address the server should bind to. Defaults to binding to all available IPs.");
                             Log.Info("port - The port used for connecting to the server.");
                             Log.Info("httpPort - The port used for viewing server information from a web browser.");
-                            Log.Info("httpBroadcast - ?"); // missing setting information
+                            Log.Info("httpBroadcast - Enable simple http server for viewing server information from  a web browser.");
                             Log.Info("maxClients - The maximum number of players that can be connected to the server simultaneously.");
 
                             Log.Info("screenshotInterval - The minimum time a client must wait after sharing a screenshot before they can share another one.");
                             Log.Info("autoRestart - If true, the server will attempt to restart after catching an unhandled exception.");
-                            Log.Info("autoHost - If true, the server will start hosting immediately rather than requiring the admin to enter the 'H' command.");
+                            Log.Info("autoHost - If true, the server will start hosting immediately rather than requiring the admin to enter the '/start' command.");
                             Log.Info("saveScreenshots - If true, the server will save all screenshots to the KMPScreenshots folder.");
                             Log.Info("hostIPV6 - If true, the server will be listening on a IPv6 address.");
 						    
@@ -287,7 +351,7 @@ namespace KMPServer
                         }
                         else if (parts.Length < 3)
                         {
-                            Log.Info("Invalid usage. Usage is /set [key] [value]");
+                            Log.Info("Invalid usage. Usage is /set [key] [value] or /set help");
                         }
                         else
                         {
@@ -319,6 +383,13 @@ namespace KMPServer
                         break;
                 }
             }
+		}
+		
+		private static void echoInput(string line, int index)
+		{
+			Console.SetCursorPosition(0, Console.CursorTop);
+			Console.Write(line);
+			Console.SetCursorPosition(index, Console.CursorTop);	
 		}
 
 		private static void startServer(ServerSettings.ConfigStore settings)
