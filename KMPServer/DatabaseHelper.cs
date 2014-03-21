@@ -18,7 +18,7 @@ namespace KMPServer
     internal class DatabaseHelper
     {
         #region Constants
-        private const String SQLITE_INIT_SQL = "PRAGMA auto_vacuum = 1;PRAGMA synchronous = 0;";
+        private const String SQLITE_INIT_SQL = "PRAGMA synchronous = 0; PRAGMA auto_vacuum = 1;";
         #endregion
 
         #region Diagnostics
