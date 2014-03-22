@@ -29,6 +29,11 @@ bin
 # Windows clutter
 *.db
 
+# Performance report files
+*.psess
+*.vsp
+*.vspx
+
 # don't distribute KSP binaries
 Assembly-CSharp.dll
 Assembly-CSharp-firstpass.dll
