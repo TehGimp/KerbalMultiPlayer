@@ -68,7 +68,8 @@ namespace KMPServer
         /// <returns>DatabaseHelper for Database</returns>
         internal static DatabaseHelper CreateForMySQL(String connectionString)
         {
-            return new DatabaseHelper(connectionString, DatabaseAttributes.MySQL | DatabaseAttributes.MyISAM);
+            // Not entirely sure of the right set of Attributes to apply to MySQL, but this should ensure that connections are being released to the pool
+            return new DatabaseHelper(connectionString, DatabaseAttributes.MySQL | DatabaseAttributes.MyISAM | DatabaseAttributes.KeepRef);
         }
         #endregion
 
@@ -157,7 +158,8 @@ namespace KMPServer
         {
             if (Interlocked.Decrement(ref DatabaseUsers) == 0)
             {
-                if(ReadRefDb == conn && conn != null)
+                /* If the connection is the reference object, or we are not keeping reference, dispose */
+                if((ReadRefDb == conn || (Attributes & DatabaseAttributes.KeepRef) == DatabaseAttributes.Nothing) && conn != null)
                     conn.Dispose();
             }
             return o;
