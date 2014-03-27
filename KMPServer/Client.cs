@@ -603,5 +603,9 @@ namespace KMPServer
 				parent.clientActivityLevelChanged(this);
 		}
 
+	    public override string ToString()
+	    {
+	        return username;
+	    }
 	}
 }
