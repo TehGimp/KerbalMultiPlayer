@@ -52,6 +52,7 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="DatabaseHelper.cs" />
     <Compile Include="DBExtensions.cs" />
     <Compile Include="Logger.cs" />
     <Compile Include="Client.cs" />

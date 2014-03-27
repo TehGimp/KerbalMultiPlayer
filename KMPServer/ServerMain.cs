@@ -20,20 +20,9 @@ namespace KMPServer
 
 		static void Main(string[] args)
 		{
-            if (!System.IO.Directory.Exists(Server.REQUIRED_MODS_PATH))
+            if (!System.IO.Directory.Exists(Server.MODS_PATH))
             {
-                System.IO.Directory.CreateDirectory(Server.REQUIRED_MODS_PATH);
-            }
-            if(!System.IO.Directory.Exists(Server.OPTIONAL_MODS_PATH)){
-                System.IO.Directory.CreateDirectory(Server.OPTIONAL_MODS_PATH);
-            }
-            if (!System.IO.Directory.Exists(Server.REQUIRED_EXACT_MODS_PATH))
-            {
-                System.IO.Directory.CreateDirectory(Server.REQUIRED_EXACT_MODS_PATH);
-            }
-            if (!System.IO.Directory.Exists(Server.OPTIONAL_EXACT_MODS_PATH))
-            {
-                System.IO.Directory.CreateDirectory(Server.OPTIONAL_EXACT_MODS_PATH);
+                System.IO.Directory.CreateDirectory(Server.MODS_PATH);
             }
 			settings = new ServerSettings.ConfigStore();
 			ServerSettings.readFromFile(settings);
@@ -105,9 +94,11 @@ namespace KMPServer
             Log.Info("/whitelist [add|del] [user] to update whitelist.");
             Log.Info("/admin [add|del] [user] to update admin list.");
             Log.Info("/mode [sandbox|career] to set server game mode.");
-            Log.Info("/modgen - Auto-generate a KMPModControl.txt file using what you have placed in the server's 'Mods' directory.\n");
+            Log.Info("/dbdiag to run database performance diagnostics.");
+			Log.Info("/modgen [blacklist|whitelist] [sha] to generate a KMPModControl.txt from the 'Mods' directory.");
+			Log.Info("\tYou can use blacklist or whitelist mode, defaulting to blacklist.");
+			Log.Info("\tYou can optionally specify sha to force required versions.");
             Log.Info("/quit to exit, or /start to begin the server.");
-            Log.Info("");
 
             //Check for missing files, try and copy from KSP installation if possible.
             string[] RequiredFiles = { "Assembly-CSharp.dll", "Assembly-CSharp-firstpass.dll", "UnityEngine.dll" };
@@ -143,23 +134,86 @@ namespace KMPServer
                 foreach (var f in missingFiles) { Log.Error(f); }
                 Log.Error("Please place them in the KMP server directory. See README.txt for more information.");
             }
-
+			
+			string lastCommand = "";
             bool running = true;
 
             while (running)
             {
-                var line = Console.ReadLine();
+				ConsoleKeyInfo keypress;
+				int inputIndex = 0;
+				var input = "";
+				
+				while (true)
+				{
+					keypress = Console.ReadKey();
+					if (keypress.Key == ConsoleKey.UpArrow)
+					{
+						input = lastCommand;
+						inputIndex = input.Length;
+						echoInput(input,inputIndex);
+					}
+					else if (keypress.Key == ConsoleKey.DownArrow)
+					{
+						//do nothing, but prevent key from counting as input
+					}
+					else if (keypress.Key == ConsoleKey.LeftArrow)
+					{
+						if (inputIndex > 0)
+						{
+							inputIndex--;
+							Console.SetCursorPosition(inputIndex, Console.CursorTop);
+						}
+					}
+					else if (keypress.Key == ConsoleKey.RightArrow)
+					{
+						if (inputIndex < input.Length)
+						{
+							inputIndex++;
+							Console.SetCursorPosition(inputIndex, Console.CursorTop);
+						}
+					}
+					else if (keypress.Key == ConsoleKey.Backspace && inputIndex > 0)
+					{
+						inputIndex--;
+						input = input.Remove(inputIndex,1);
+						echoInput(input + " ",inputIndex);
+					}
+					else if (keypress.Key == ConsoleKey.Delete && inputIndex < input.Length)
+					{
+						input = input.Remove(inputIndex,1);
+						echoInput(input + " ",inputIndex);
+					}
+					else if (keypress.Key == ConsoleKey.Escape)
+					{
+						Console.WriteLine();
+						input = "";
+						break;
+					}
+					else if (keypress.Key == ConsoleKey.Enter)
+					{
+						break;
+					}
+					else
+					{
+						input = input.Insert(inputIndex,keypress.KeyChar.ToString());
+						inputIndex++;
+						echoInput(input,inputIndex);
+					}
+				}
+				
+				lastCommand = input;
+				
+                Log.Info("Command Input: {0}", input);
 
-                Log.Info("Command Input: {0}", line);
-
-                var parts = line.Split(' ');
+                var parts = input.Split(' ');
 
                 switch (parts[0].ToLowerInvariant())
                 {
                     case "/quit":
                         return;
                     case "/modgen":
-                        Server.writeModControl(true, settings);
+                        Server.writeModControlCommand(parts);
                         break;
                     case "/whitelist":
                         if (parts.Length != 3)
@@ -253,57 +307,62 @@ namespace KMPServer
                         break;
 
                     case "/set":
-                        if (parts.Length < 3) {
-							Log.Info("Invalid usage. Usage is /set [key] [value]");
-                        }
-                        else if (parts[1].Equals("help"))
+                        if (parts.Length > 1 && parts[1].Equals("help"))
                         {
-                            Log.Info("ipBinding - The IP address the server should bind to. Defaults to binding to all available IPs." + Environment.NewLine);
+                            Log.Info("ipBinding - The IP address the server should bind to. Defaults to binding to all available IPs.");
                             Log.Info("port - The port used for connecting to the server.");
                             Log.Info("httpPort - The port used for viewing server information from a web browser.");
-                            Log.Info("httpBroadcast - ?"); // missing setting information
-                            Log.Info("maxClients - The maximum number of players that can be connected to the server simultaneously." + Environment.NewLine);
+                            Log.Info("httpBroadcast - Enable simple http server for viewing server information from  a web browser.");
+                            Log.Info("maxClients - The maximum number of players that can be connected to the server simultaneously.");
 
-                            Log.Info("screenshotInterval - The minimum time a client must wait after sharing a screenshot before they can share another one." + Environment.NewLine);
-                            Log.Info("autoRestart - If true, the server will attempt to restart after catching an unhandled exception." + Environment.NewLine);
-                            Log.Info("autoHost - If true, the server will start hosting immediately rather than requiring the admin to enter the 'H' command." + Environment.NewLine);
-                            Log.Info("saveScreenshots - If true, the server will save all screenshots to the KMPScreenshots folder." + Environment.NewLine);
-                            Log.Info("hostIPV6 - If true, the server will be listening on a IPv6 address." + Environment.NewLine);
-                            Log.Info("cheatsEnabled - If true, enable cheats." + Environment.NewLine);
-                            Log.Info("allowPiracy - If true, a player can take control of another player's ship if they can accomplish manual docking (very difficult)." + Environment.NewLine);
-                            Log.Info("backupInterval - Time, in minutes, between universe database backups." + Environment.NewLine);
-                            Log.Info("maxDirtyBackups - The maximum number of backups the server will perform before forcing database optimization (which otherwise happens only when the server is empty)." + Environment.NewLine);
-                            Log.Info("updatesPerSecond - CHANGING THIS VALUE IS NOT RECOMMENDED - The number of updates that will be received from all clients combined per second. The higher you set this number, the more frequently clients will send updates. As the number of active clients increases, the frequency of updates will decrease to not exceed this many updates per second. " + Environment.NewLine + "WARNING: If this value is set too high then players will be more likely to be disconnected due to lag, while if it is set too low the gameplay experience will degrade significantly." + Environment.NewLine);
-                            Log.Info("joinMessage - A message shown to players when they join the server." + Environment.NewLine);
-                            Log.Info("serverInfo - A message displayed to anyone viewing server information in a browser." + Environment.NewLine);
-                            Log.Info("serverMotd - A message displayed to users when they login to the server that can be changed while the server is running." + Environment.NewLine);
-                            Log.Info("serverRules - A message displayed to users when they ask to view the server's rules." + Environment.NewLine);
-                            Log.Info("totalInactiveShips - The maximum number of inactive ships in the server." + Environment.NewLine);
-                            Log.Info("LogLevel - Log verbosity. Choose from: Debug, Activity, Info, Notice, Warning, or Error" + Environment.NewLine);
-                            Log.Info("whitelisted - If true, enable whitelist." + Environment.NewLine);
-                            Log.Info("screenshotHeight - The height of screenshots took by players." + Environment.NewLine);
-                            Log.Info("screenshotWidth - The width of screenshots took by players." + Environment.NewLine);
-                            Log.Info("profanityFilter - Enable/disable the built-in profanity filter" + Environment.NewLine);
-                            Log.Info("safetyBubbleRadius - The radius of the 'safety cylinder' which prevents collisions near KSC." + Environment.NewLine);
-                            Log.Info("autoDekessler - If true, server will clean up all debris in 'autoDekesslerTime'." + Environment.NewLine);
-                            Log.Info("autoDekesslerTime - Time, in minutes, that the server will clean up all debris." + Environment.NewLine);
-                            Log.Info("profanityWords - Replaces the first word with the second." + Environment.NewLine);
-                            Log.Info("consoleScale - Changes the window size of the scale. Defaults to 1.0, requires restart." + Environment.NewLine);
-                            Log.Info("checkAllModFiles - If true, all files in the Mods directories are used during the /modgen command. Otherwise, only .dll and .cfg files are used." + Environment.NewLine);
+                            Log.Info("screenshotInterval - The minimum time a client must wait after sharing a screenshot before they can share another one.");
+                            Log.Info("autoRestart - If true, the server will attempt to restart after catching an unhandled exception.");
+                            Log.Info("autoHost - If true, the server will start hosting immediately rather than requiring the admin to enter the '/start' command.");
+                            Log.Info("saveScreenshots - If true, the server will save all screenshots to the KMPScreenshots folder.");
+                            Log.Info("hostIPV6 - If true, the server will be listening on a IPv6 address.");
+						    
+							Log.Info("useMySQL - If true, the server will use the configured MySQL connection string instead of the built-in SQLite database to store the universe.");
+							Log.Info("mySQLConnString - The connection string to use when using a MySQL server to host the universe database.");
+                            Log.Info("backupInterval - Time, in minutes, between universe database backups.");
+                            Log.Info("maxDirtyBackups - The maximum number of backups the server will perform before forcing database optimization (which otherwise happens only when the server is empty).");
+                            Log.Info("updatesPerSecond - CHANGING THIS VALUE IS NOT RECOMMENDED - The number of updates that will be received from all clients combined per second. The higher you set this number, the more frequently clients will send updates. As the number of active clients increases, the frequency of updates will decrease to not exceed this many updates per second. " + "WARNING: If this value is set too high then players will be more likely to be disconnected due to lag, while if it is set too low the gameplay experience will degrade significantly.");
+						
+                        	Log.Info("totalInactiveShips - CHANGING THIS VALUE IS NOT RECOMMENDED - The maximum number of inactive ships that can be updated by clients simultaneously.");    
+							Log.Info("consoleScale - Changes the window size of the scale. Defaults to 1.0, requires restart.");	
+							Log.Info("LogLevel - Log verbosity. Choose from: Debug, Activity, Info, Notice, Warning, or Error.");	
+							Log.Info("maximumLogs - The maximum number of log files to store.");	
+							Log.Info("screenshotHeight - The height of screenshots sent by players, in pixels.");
+						
+							Log.Info("autoDekessler - If true, server will clean up all debris in 'autoDekesslerTime'.");
+                            Log.Info("autoDekesslerTime - Time, in minutes, that the server will clean up all debris.");
+                        	Log.Info("profanityFilter - If true, enables the built-in profanity filter.");    
+							Log.Info("profanityWords - List of profanity replacements. Replaces the first word with the second.");
+							Log.Info("whitelisted - If true, enables the player whitelist.");
+						
+							Log.Info("joinMessage - A message shown to players when they join the server.");
+                            Log.Info("serverInfo - A message displayed to anyone viewing server information in a browser.");
+                            Log.Info("serverMotd - A message displayed to users when they login to the server that can be changed while the server is running.");
+                            Log.Info("serverRules - A message displayed to users when they ask to view the server's rules.");
+                            Log.Info("safetyBubbleRadius - The radius of the 'safety cylinder' which prevents collisions near KSC.");
+							
+							Log.Info("cheatsEnabled - If true, enable KSP's built-in debug cheats.");
+                            Log.Info("allowPiracy - If true, a player can take control of another player's ship if they can accomplish manual docking (very difficult).");
+                            Log.Info("freezeTimeWhenServerIsEmpty - If true, universe time is frozen when the server is empty (otherwise universe time runs continuously once a single player joins the server).");
                         }
                         else if (parts.Length < 3)
                         {
-                            Log.Info("Invalid usage. Usage is /set [key] [value]");
+                            Log.Info("Invalid usage. Usage is /set [key] [value] or /set help");
                         }
                         else
                         {
                             string val = String.Join(" ", parts.Skip(2).ToArray());
-                            if (settings.Contains(parts[1]))
+                            string setKey = settings.MatchCaseInsensitive(parts[1]);
+                            if (settings.Contains(setKey))
                             {
                                 try
                                 {
-                                    ServerSettings.modifySetting(settings, parts[1], val);
-                                    Log.Info("{0} changed to {1}", parts[1], val);
+                                    ServerSettings.modifySetting(settings, setKey, val);
+                                    Log.Info("{0} changed to {1}", setKey, val);
                                     ServerSettings.writeToFile(settings);
                                 }
                                 catch
@@ -324,6 +383,13 @@ namespace KMPServer
                         break;
                 }
             }
+		}
+		
+		private static void echoInput(string line, int index)
+		{
+			Console.SetCursorPosition(0, Console.CursorTop);
+			Console.Write(line);
+			Console.SetCursorPosition(index, Console.CursorTop);	
 		}
 
 		private static void startServer(ServerSettings.ConfigStore settings)

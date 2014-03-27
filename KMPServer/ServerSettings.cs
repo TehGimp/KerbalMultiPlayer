@@ -34,34 +34,40 @@ namespace KMPServer
 			public int httpPort = 8081;
 			public bool httpBroadcast = true;
 			public int maxClients = 8;
+			
 			public int screenshotInterval = 3000;
 			public bool autoRestart = false;
 			public bool autoHost = false;
 			public bool saveScreenshots = true;
 			public bool hostIPv6 = false;
+			
 			public bool useMySQL = false;
 			public string mySQLConnString = "";
 			public int backupInterval = 5;
 			public int maxDirtyBackups = 36;
 			public float updatesPerSecond = 60;
+			
 			public byte totalInactiveShips = 100;
 			public float consoleScale = 1.0f;
 			public Log.LogLevels LogLevel = Log.LogLevels.Info;
 			public int maximumLogs = 100;
 			public int screenshotHeight = 600;
+			
 			public bool autoDekessler = false;
 			public int autoDekesslerTime = 30;
 			public bool profanityFilter = true;
             public string profanityWords = "fuck:kerp,fucker:kerper,fucking:kerping,faggot:kerpot,shit:kerp,cunt:kump,piss:heph,fag:olp,dick:derp,cock:beet,asshole:hepderm,nigger:haggar";
 			public bool whitelisted = false;
+			
 			public String joinMessage = String.Empty;
 			public String serverInfo = String.Empty;
 			public String serverMotd = String.Empty;
 			public String serverRules = String.Empty;
 			public double safetyBubbleRadius = 2000d;
+			
 			public bool cheatsEnabled = true;
             public bool allowPiracy = false;
-            public bool checkAllModFiles = false;
+			public bool freezeTimeWhenServerIsEmpty = false;
 			public int gameMode = 0;
 
 			private IEnumerable<KeyValuePair<string, string>> _profanity = null;
@@ -74,11 +80,13 @@ namespace KMPServer
 						try
 						{
 							//Uses a Enumerable KVP instead of a dictionary to avoid an extra conversion.
-							_profanity = profanityWords.Split(',').Select(ws =>
-							{
-								var wx = ws.Split(':');
-								return new KeyValuePair<string, string>(wx[0], wx[1]);
-							});
+                            _profanity = profanityWords
+                                .Split(new[] { ',' }, StringSplitOptions.RemoveEmptyEntries)
+                                .Select(x => x.Split(new[] { ':' }, StringSplitOptions.RemoveEmptyEntries))
+                                .ToDictionary(
+                                    s => s.Length > 0 ? s[0] : null,
+                                    s => s.Length > 1 ? s[1] : ""
+                                );  
 						}
 						catch
 						{
@@ -131,6 +139,16 @@ namespace KMPServer
 			public bool Contains(String sKey)
 			{
 				return ServerSettings.Contains(typeof(ServerSettings.ConfigStore), sKey);
+			}
+
+			public string MatchCaseInsensitive (String sKey)
+			{
+				foreach (string fieldName in typeof(ConfigStore).GetFields().Select(field => field.Name)) {
+					if (fieldName.ToLowerInvariant () == sKey.ToLowerInvariant ()) {
+						return fieldName;
+					}
+				}
+				return "";
 			}
 		}
 

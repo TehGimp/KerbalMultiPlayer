@@ -45,12 +45,27 @@ namespace KMP
             ModDirectory = LoadedPath.Substring(0, LoadedPath.IndexOf('/'));
         }
 
-        public void ComputeSHA(System.IO.FileStream stream)
-        {
-            System.Security.Cryptography.SHA256Managed sha = new System.Security.Cryptography.SHA256Managed();
-            byte[] hash = sha.ComputeHash(stream);
-            SHA256 = BitConverter.ToString(hash).Replace("-", String.Empty);
-        }
+		public void HandleHash(System.Object state)
+		{
+			try {
+				using (System.IO.Stream hashStream = new System.IO.FileStream(FullPath, System.IO.FileMode.Open, System.IO.FileAccess.Read, System.IO.FileShare.ReadWrite))
+				{
+					using (System.Security.Cryptography.SHA256Managed sha = new System.Security.Cryptography.SHA256Managed()) {
+						byte[] hash = sha.ComputeHash(hashStream);
+						SHA256 = BitConverter.ToString(hash).Replace("-", String.Empty);
+					}
+					Log.Debug("Added and hashed: " + ModPath + "=" + SHA256);
+				}
+			}
+			catch (Exception e) {
+				Log.Debug("Failed to hash: " + ModPath + ", exception: " + e.Message.ToString());
+			}
+			if (Interlocked.Decrement(ref KMPManager.numberOfFilesToCheck) == 0)
+			{
+				Log.Debug("All SHA hashing completed!");
+				KMPManager.ShaFinishedEvent.Set();
+			}
+		}
     }
 	
 	[KSPAddon(KSPAddon.Startup.Instantly, true)]
@@ -82,30 +97,6 @@ namespace KMP
 			public int currentSubspaceID;
 			public Guid vesselID;
 		}
-
-        public class OutputData
-        {
-            public String output;
-        }
-        public class ModFileStream
-        {
-            public LoadedFileInfo File;
-            public System.IO.FileStream Stream;
-
-            public void HandleHash(System.Object state)
-            {
-                File.ComputeSHA(Stream);
-                LoadedModfiles.Add(File); // add all data about this file to the mod file list
-                Stream.Close();
-                Stream.Dispose();
-                Log.Debug("Added and hashed: " + File.ModPath + "=" + File.SHA256);
-				if (Interlocked.Decrement(ref numberOfFilesToCheck) == 0)
-				{
-					Log.Debug("All SHA hashing completed!");
-					ShaFinishedEvent.Set();
-				}
-            }
-        }
 
 		//Singleton
 
@@ -162,10 +153,10 @@ namespace KMP
 		
 		public static object interopInQueueLock = new object();
 		
+		public int numberOfShips = 0;
 		public int gameMode = 0; //0=Sandbox, 1=Career
 		public bool gameCheatsEnabled = false; //Allow built-in KSP cheats
 		public bool gameArrr = false; //Allow private vessels to be taken if other user can successfully dock manually
-        public bool checkAllModFiles = false;
 		public static int numberOfFilesToCheck = 0;
 		public static ManualResetEvent ShaFinishedEvent;
 		
@@ -182,9 +173,11 @@ namespace KMP
 		private bool isSkewingTime = false;
 		private Int64 offsetSyncTick = 0; //The difference between the servers system clock and ours.
 		private Int64 latencySyncTick = 0; //The network lag detected by NTP.
+		private Int64 estimatedServerLag = 0; //The server lag detected by NTP.
 		private List<Int64> listClientTimeSyncLatency = new List<Int64>(); //Holds old sync time messages so we can filter bad ones
 		private List<Int64> listClientTimeSyncOffset = new List<Int64>(); //Holds old sync time messages so we can filter bad ones
-		public List<float> listClientTimeWarp = new List<float>(); //Holds the average time skew so we can tell the server how badly we are lagging.
+		private List<float> listClientTimeWarp = new List<float>(); //Holds the average time skew so we can tell the server how badly we are lagging.
+		public float listClientTimeWarpAverage = 1; //Uses this varible to avoid locking the queue.
 		private bool isTimeSyncronized;
 		public bool displayNTP = false; //Show NTP stats on the client
 		private const Int64 SYNC_TIME_LATENCY_FILTER = 5000000; //500 milliseconds, Must receive reply within this time or the message is discarded
@@ -192,6 +185,7 @@ namespace KMP
 		private const int SYNC_TIME_VALID_COUNT = 4; //Number of SYNC_TIME's to receive until time is valid.
 		private const int MAX_TIME_SYNC_HISTORY = 10; //The last 10 SYNC_TIME's are used for the offset filter.
 		private ScreenMessage skewMessage;
+		private ScreenMessage vesselLoadedMessage;
 
 		private Queue<KMPVesselUpdate> vesselUpdateQueue = new Queue<KMPVesselUpdate>();
 		private Queue<KMPVesselUpdate> newVesselUpdateQueue = new Queue<KMPVesselUpdate>();
@@ -212,14 +206,16 @@ namespace KMP
 		private string newHost = "localhost";
 		private string newPort = "2076";
 		private string newFamiliar = "Server";
-		
-		private bool blockConnections = false;
-		private bool forceQuit = false;
+
+		public bool forceQuit = false;
 		public bool delayForceQuit = true;
-		private bool gameRunning = false;
+		public bool gameStart = false;
+		public bool terminateConnection = true;
+		public bool gameRunning = false;
 		private bool activeTermination = false;
 		
 		private bool clearEditorPartList = false;
+		private bool closePauseMenu = false;
 		
 		//Vessel dictionaries
 		public Dictionary<Guid, Vessel.Situations> sentVessels_Situations = new Dictionary<Guid, Vessel.Situations>();
@@ -267,6 +263,7 @@ namespace KMP
 		private Vessel lastEVAVessel = null;
 		private bool showServerSync = false;
 		private bool inGameSyncing = false;
+		private List<Guid> vesselUpdatesLoaded = new List<Guid>();
 
 		private bool configRead = false;
 
@@ -368,17 +365,40 @@ namespace KMP
 				if (syncing)
 				{
 					ScreenMessages.PostScreenMessage("Synchronizing universe, please wait...",1f,ScreenMessageStyle.UPPER_CENTER);
-					ScreenMessages.PostScreenMessage("Loaded vessels: " + FlightGlobals.Vessels.Count,0.04f,ScreenMessageStyle.UPPER_RIGHT);
+					if (vesselLoadedMessage != null) {
+						vesselLoadedMessage.duration = 0f;
+					}
+					if (!inGameSyncing) {
+						if (numberOfShips != 0) {
+							vesselLoadedMessage = ScreenMessages.PostScreenMessage("Sync progress: " + vesselUpdatesLoaded.Count + "/" + numberOfShips + " (" + (vesselUpdatesLoaded.Count * 100 / numberOfShips) + "%)",1f,ScreenMessageStyle.UPPER_RIGHT);
+						}
+					} else {
+						vesselLoadedMessage = ScreenMessages.PostScreenMessage("Loaded vessels: " + FlightGlobals.Vessels.Count,1f,ScreenMessageStyle.UPPER_RIGHT);
+					}
 				}
 				
 				if (!isInFlight && HighLogic.LoadedScene == GameScenes.TRACKSTATION)
 				{
-					foreach (object button in GameObject.FindObjectsOfType(typeof(ScreenSafeUIButton)))
-					{
-						ScreenSafeUIButton ssUIButton = (ScreenSafeUIButton) button;
-						if (ssUIButton.tooltip == "Terminate") ssUIButton.Unlock();
-						if (ssUIButton.tooltip == "Fly") ssUIButton.Unlock();
-					}
+					try {
+						SpaceTracking st = (SpaceTracking) GameObject.FindObjectOfType(typeof(SpaceTracking));
+						
+						if (st.mainCamera.target.vessel != null && (serverVessels_IsMine[st.mainCamera.target.vessel.id] || !serverVessels_IsPrivate[st.mainCamera.target.vessel.id]))
+						{
+							//Public/owned vessel
+							st.FlyButton.Unlock();
+							st.DeleteButton.Unlock();
+							if (st.mainCamera.target.vessel.mainBody.bodyName == "Kerbin" && (st.mainCamera.target.vessel.situation == Vessel.Situations.LANDED || st.mainCamera.target.vessel.situation == Vessel.Situations.SPLASHED))
+								st.RecoverButton.Unlock();
+							else st.RecoverButton.Lock();
+						}
+						else
+						{
+							//Private unowned vessel
+							st.FlyButton.Lock();
+							st.DeleteButton.Lock();
+							st.RecoverButton.Lock();
+						}
+					} catch {}
 				}
 				
 				if (lastWarpRate != TimeWarp.CurrentRate)
@@ -498,11 +518,14 @@ namespace KMP
 				//If in flight, check remote vessels, set position variable for docking-mode position updates
 				if (isInFlight)
 				{
+					VesselRecoveryButton vrb = null;
+					try { vrb = (VesselRecoveryButton) GameObject.FindObjectOfType(typeof(VesselRecoveryButton)); } catch {}
 					if (controlsLocked)
 					{
-						//Prevent EVA'ing crew
+						//Prevent EVA'ing crew or vessel recovery
 						lockCrewGUI();
 						Log.Debug("il: " + InputLockManager.PrintLockStack());
+						if (vrb != null) vrb.ssuiButton.Lock();
 					}
 					else 
 					{
@@ -512,6 +535,8 @@ namespace KMP
 							InputLockManager.RemoveControlLock("KMP_ChatActive");
 						}
 						unlockCrewGUI();
+						if (vrb != null && FlightGlobals.ActiveVessel.mainBody.bodyName == "Kerbin" && (FlightGlobals.ActiveVessel.situation == Vessel.Situations.LANDED || FlightGlobals.ActiveVessel.situation == Vessel.Situations.SPLASHED)) vrb.ssuiButton.Unlock();
+						else if (vrb != null) vrb.ssuiButton.Lock();
 					}
 					checkRemoteVesselIntegrity();
 					activeVesselPosition = FlightGlobals.ship_CoM;
@@ -723,7 +748,7 @@ namespace KMP
 		
 		public void disconnect(string message = "")
 		{
-			blockConnections = true;
+			KMPClientMain.handshakeCompleted = false;
 			forceQuit = delayForceQuit; //If we get disconnected straight away, we should forceQuit anyway.
 			if (HighLogic.LoadedSceneIsFlight || HighLogic.LoadedSceneIsEditor)
 			{
@@ -740,6 +765,9 @@ namespace KMP
 			else KMPClientMain.SetMessage("Disconnected: " + message);
             saveGlobalSettings();
 			gameRunning = false;
+			terminateConnection = true;
+			//Clear any left over locks.
+			InputLockManager.ClearControlLocks();
 		}
 		
 		private void writePluginUpdate()
@@ -1962,7 +1990,7 @@ namespace KMP
 			if (vessel_update.getProtoVesselNode() != null) serverVessels_ProtoVessels[vessel_update.id] = vessel_update.getProtoVesselNode();
 			
 			//Apply update if able
-			if (isInFlightOrTracking)
+			if (isInFlightOrTracking || syncing)
 			{
 				if (vessel_update.relativeTo == Guid.Empty && (vessel_update.id != FlightGlobals.ActiveVessel.id || (serverVessels_InUse[vessel_update.id] || (serverVessels_IsPrivate[vessel_update.id] && !serverVessels_IsMine[vessel_update.id]))))
 				{
@@ -2077,6 +2105,11 @@ namespace KMP
 												
 												if (FlightGlobals.ActiveVessel.mainBody == update_body && vessel_update.relTime == RelativeTime.PRESENT)
 												{
+													if (!extant_vessel.loaded)
+													{
+														Log.Debug("Skipped full update, vessel not loaded");
+														return;
+													}
 													Log.Debug("full update");
 													if (serverVessels_InPresent.ContainsKey(vessel_update.id) ? !serverVessels_InPresent[vessel_update.id] : true)
 													{
@@ -2664,9 +2697,16 @@ namespace KMP
 		private void addRemoteVessel(ProtoVessel protovessel, Guid vessel_id, KMPVessel kvessel = null, KMPVesselUpdate update = null, double distance = 501d)
 		{
 			if (vessel_id == FlightGlobals.ActiveVessel.id && (serverVessels_InUse.ContainsKey(vessel_id) ? !serverVessels_InUse.ContainsKey(vessel_id) : false)) return;
-			if (serverVessels_LoadDelay.ContainsKey(vessel_id) ? serverVessels_LoadDelay[vessel_id] <= UnityEngine.Time.realtimeSinceStartup : false) return;
+			if (serverVessels_LoadDelay.ContainsKey(vessel_id) ? serverVessels_LoadDelay[vessel_id] >= UnityEngine.Time.realtimeSinceStartup : false) return;
 			serverVessels_LoadDelay[vessel_id] = UnityEngine.Time.realtimeSinceStartup + 5f;
-			Log.Debug("addRemoteVessel: " + vessel_id.ToString());
+			Log.Debug("addRemoteVessel: " + vessel_id.ToString() + ", name: " + protovessel.vesselName.ToString() + ", type: " + protovessel.vesselType.ToString());
+			if (protovessel.vesselType == VesselType.Flag) {
+				Invoke("ClearFlagLock", 5f);
+			}
+			if (!vesselUpdatesLoaded.Contains(vessel_id)) //This can be moved elsewhere in addRemoteVessel (or applyVesselUpdate) to help track issues with loading a specific vessel
+            {
+                vesselUpdatesLoaded.Add(vessel_id);
+            }
 			Vector3 newWorldPos = Vector3.zero, newOrbitVel = Vector3.zero;
 			bool setTarget = false, wasLoaded = false, wasActive = false;
 			Vessel oldVessel = null;
@@ -2732,7 +2772,7 @@ namespace KMP
 					}
 				}
 
-                if (isInSafetyBubble(protovessel.position, body, protovessel.altitude)) //refuse to load anything too close to the KSC
+                if (isProtoVesselInSafetyBubble(protovessel)) //refuse to load anything too close to the KSC
 				{
 					Log.Debug("Tried to load vessel too close to KSC");
 					return;
@@ -3195,37 +3235,16 @@ namespace KMP
             LoadedModfiles = new List<LoadedFileInfo>();
             try
             {
-                List<UrlDir.UrlFile> files = GameDatabase.Instance.root.AllFiles.ToList(); // add all plugin files
-                files.AddRange(GameDatabase.Instance.root.AllConfigFiles); // add all config files
-                List<string> filenames = files.ConvertAll(x => x.fullPath);
-                List<string> ls = System.IO.Directory.GetFiles(KSPUtil.ApplicationRootPath + "GameData", "*.*", System.IO.SearchOption.AllDirectories).ToList(); // add files that weren't immediately loaded (e.g. files that plugins use later)
-                filenames.AddRange(ls);
+                List<string> filenames = System.IO.Directory.GetFiles(KSPUtil.ApplicationRootPath + "GameData", "*.dll", System.IO.SearchOption.AllDirectories).ToList(); // add files that weren't immediately loaded (e.g. files that plugins use later)
                 filenames = filenames.ConvertAll(x => new System.IO.DirectoryInfo(x).FullName);
                 filenames = filenames.Distinct(StringComparer.CurrentCultureIgnoreCase).ToList();
-                List<ModFileStream> FileStreams = new List<ModFileStream>();
+                ShaFinishedEvent = new ManualResetEvent(false);
+                numberOfFilesToCheck = filenames.Count;
                 foreach (string file in filenames)
                 {
-                    try
-                    {
-                        ModFileStream Entry = new ModFileStream();
-                        Entry.File = new LoadedFileInfo(file);
-                        Entry.Stream = new System.IO.FileStream(file, System.IO.FileMode.Open, System.IO.FileAccess.Read, System.IO.FileShare.Read);
-                        FileStreams.Add(Entry);
-                    }
-                    catch (Exception e)
-                    {
-                        Log.Debug("Error in part hashing, 1st section: {0}", e.Message);
-                    }
-                }
-				ShaFinishedEvent = new ManualResetEvent(false);
-				numberOfFilesToCheck = FileStreams.Count;
-				try {
-                    for (int i = 0; i <= FileStreams.Count; i++) {
-	                    ThreadPool.QueueUserWorkItem(new WaitCallback(FileStreams.ElementAt(i).HandleHash));
-                    }
-                }
-                catch (Exception e) {
-                        Log.Debug("Error in part hashing, 2nd section: {0}", e.Message);
+                    LoadedFileInfo Entry = new LoadedFileInfo(file);
+                    LoadedModfiles.Add(Entry);
+                    ThreadPool.QueueUserWorkItem(new WaitCallback(Entry.HandleHash));
                 }
             }
             catch (Exception e)
@@ -3417,13 +3436,19 @@ namespace KMP
 				GameEvents.onFlightReady.Add(this.OnFlightReady);
 				MapView.EnterMapView();
 				MapView.MapCamera.SetTarget("Kerbin");
-				StartCoroutine(sendSubspaceSyncRequest(-1,true));
+				Invoke("sendInitialSyncRequest",0.5f);
 				Invoke("handleSyncTimeout",300f);
 				docking = false;
 			}
 			delayForceQuit = false;
 		}
-			
+		
+		private void sendInitialSyncRequest()
+		{
+			if (isInFlightOrTracking) StartCoroutine(sendSubspaceSyncRequest(-1,true));
+			else Invoke("sendInitialSyncRequest",0.25f);
+		}
+		
 		private void OnFlightReady()
 		{
 			removeKMPControlLocks ();
@@ -3443,14 +3468,18 @@ namespace KMP
 		
 		public void HandleSyncCompleted()
 		{
-			SyncTime();
-			if (!forceQuit && syncing && !inGameSyncing && gameRunning) Invoke("finishSync",5f);
-			else
-			{
-				Invoke("finishInGameSync",1f);
+			if (gameRunning && !forceQuit && syncing) {
+				if (!inGameSyncing) {
+					SyncTime ();
+					Invoke ("finishSync", 5f);
+					CancelInvoke ("handleSyncTimeout");
+				} else {
+					Invoke ("finishInGameSync", 1f);
+				}
 			}
+
 		}
-		
+
 		private void finishInGameSync()
 		{
 			syncing = false;
@@ -3460,13 +3489,11 @@ namespace KMP
 		
 		private void handleSyncTimeout()
 		{
-			if (!forceQuit && syncing && gameRunning) {
-				disconnect("Sync Timeout");
-				KMPClientMain.sendConnectionEndMessage("Sync Timeout");
-				KMPClientMain.endSession = true;
-				forceQuit = true;
-				KMPClientMain.SetMessage("Disconnected: Sync timeout");
-			}
+			disconnect("Sync Timeout");
+			KMPClientMain.sendConnectionEndMessage("Sync Timeout");
+			KMPClientMain.endSession = true;
+			forceQuit = true;
+			KMPClientMain.SetMessage("Disconnected: Sync timeout");
 		}
 		
 		private void finishSync()
@@ -3477,6 +3504,12 @@ namespace KMP
 				StartCoroutine(returnToSpaceCenter());
 				//Disable debug logging once synced unless explicitly enabled
 			}
+		}
+
+		private void ClearFlagLock()
+		{
+			Log.Debug("Clearing flag locks");
+			InputLockManager.RemoveControlLock("Flag_NoInterruptWhileDeploying");
 		}
 
 		private void krakensBaneWarp(double krakensTick = 0) {
@@ -3559,6 +3592,9 @@ namespace KMP
 				double currentErrorMs = Math.Round (currentError * 1000, 2);
 
 				if (Math.Abs (currentError) > 5) {
+					if (skewMessage != null) {
+						skewMessage.duration = 0f;
+					}
 					if (isInFlight) {
 						krakensBaneWarp(skewTargetTick + timeFromLastSyncSecondsAdjusted);
 					} else {
@@ -3586,8 +3622,10 @@ namespace KMP
 				if (UnityEngine.Time.realtimeSinceStartup > lastSubspaceLockChange + 10f) {
 					float requestedRate = (1 / timeWarpRate) * skewSubspaceSpeed;
 					listClientTimeWarp.Add(requestedRate);
+					listClientTimeWarpAverage = listClientTimeWarp.Average();
 				} else {
 					listClientTimeWarp.Add(skewSubspaceSpeed);
+					listClientTimeWarpAverage = listClientTimeWarp.Average();
 				}
 
 				//Keeps the last 10 seconds (300 update steps) of clock speed history to report to the server
@@ -3629,7 +3667,18 @@ namespace KMP
 					long offsetSyncTickMilliseconds = tempOffsetSyncTick / 10000;
 					skewMessageText += offsetSyncTickMilliseconds + "ms.\n";
 					//Current subspace speed
-					skewMessageText += "Subspace Speed: " + Math.Round(skewSubspaceSpeed, 3) + "x.";
+					skewMessageText += "Subspace Speed: " + Math.Round(skewSubspaceSpeed, 3) + "x.\n";
+					//Estimated server lag
+					skewMessageText += "Server lag: ";
+					long tempServerLag = estimatedServerLag;
+					long serverLagSeconds = tempServerLag / 10000000;
+					tempServerLag -= serverLagSeconds * 10000000;
+					if (serverLagSeconds > 0) {
+						skewMessageText += serverLagSeconds + "s, ";
+					}
+					long serverLagMilliseconds = tempServerLag / 10000;
+					skewMessageText += serverLagMilliseconds + "ms.\n";
+					
 					skewMessage = ScreenMessages.PostScreenMessage(skewMessageText, 1f, ScreenMessageStyle.UPPER_RIGHT);
 				}
 			}
@@ -3651,6 +3700,7 @@ namespace KMP
 			//Fancy NTP algorithm
 			Int64 clientLatency = (clientReceive - clientSend) - (serverSend - serverReceive);
 			Int64 clientOffset = ((serverReceive - clientSend) + (serverSend - clientReceive))/2;
+			estimatedServerLag = serverSend - serverReceive;
 
 			//If time is synced, throw out outliers.
 			if (isTimeSyncronized) {
@@ -3726,7 +3776,26 @@ namespace KMP
 			{
 				if (!gameRunning) return;
 				
-				try { if (PauseMenu.isOpen && syncing) PauseMenu.Close(); } catch { }
+				try {
+					if (PauseMenu.isOpen && syncing) {
+						if (KMPClientMain.tcpClient != null ) {
+							PauseMenu.Close();
+						} else {
+							disconnect("Connection terminated during sync");
+							forceQuit = true;
+						}
+					}
+					else
+					{
+						if (PauseMenu.isOpen && closePauseMenu)
+						{
+							closePauseMenu = false;
+							PauseMenu.Close();
+						}
+					}
+				} catch (Exception e) {
+					Log.Debug("Exception thrown in Update(), catch 1, Exception: {0}", e.ToString());
+				}
 				
 				if (FlightDriver.Pause) FlightDriver.SetPause(false);
 				if (gameCheatsEnabled == false) {
@@ -3744,6 +3813,7 @@ namespace KMP
                 //Find an instance of the game's PlanetariumCamera
                 if (planetariumCam == null)
                     planetariumCam = (PlanetariumCamera)FindObjectOfType(typeof(PlanetariumCamera));
+				
 				if (Input.GetKeyDown(KeyCode.F2))
 				{
 					isGameHUDHidden = !isGameHUDHidden;
@@ -3756,19 +3826,27 @@ namespace KMP
                     StartCoroutine(shareScreenshot());
                     
 				if (Input.GetKeyDown(KMPGlobalSettings.instance.screenshotToggleKey) && !isGameHUDHidden && KMPToggleButtonState)
-		    KMPScreenshotDisplay.windowEnabled = !KMPScreenshotDisplay.windowEnabled;
-
+					KMPScreenshotDisplay.windowEnabled = !KMPScreenshotDisplay.windowEnabled;
+				
                 if (Input.GetKeyDown(KMPGlobalSettings.instance.chatTalkKey))
                 {
                     KMPChatDX.showInput = true;
                     //DISABLE SHIP CONTROL
                     InputLockManager.SetControlLock(ControlTypes.All,"KMP_ChatActive");
                 }
+				
+				if (Input.GetKeyDown(KeyCode.Escape) && KMPChatDX.showInput)
+				{
+					KMPChatDX.showInput = false;
+					//ENABLE SHIP CONTROL
+					InputLockManager.RemoveControlLock("KMP_ChatActive");
+					closePauseMenu = true;
+				}
 
 				if (Input.GetKeyDown(KMPGlobalSettings.instance.chatHideKey) && !isGameHUDHidden && KMPToggleButtonState)
                 {
-		    KMPGlobalSettings.instance.chatDXWindowEnabled = !KMPGlobalSettings.instance.chatDXWindowEnabled;
-                    if (KMPGlobalSettings.instance.chatDXWindowEnabled) KMPChatDX.enqueueChatLine("Press Chat key (" + (KMPGlobalSettings.instance.chatTalkKey == KeyCode.BackQuote ? "~" : KMPGlobalSettings.instance.chatTalkKey.ToString()) + ") to send a message");
+		    		KMPGlobalSettings.instance.chatDXWindowEnabled = !KMPGlobalSettings.instance.chatDXWindowEnabled;
+                    //if (KMPGlobalSettings.instance.chatDXWindowEnabled) KMPChatDX.enqueueChatLine("Press Chat key (" + (KMPGlobalSettings.instance.chatTalkKey == KeyCode.BackQuote ? "~" : KMPGlobalSettings.instance.chatTalkKey.ToString()) + ") to send a message");
                 }
 
                 if (Input.anyKeyDown)
@@ -3839,7 +3917,7 @@ namespace KMP
                         }
                     }
                 }
-			} catch (Exception ex) { Log.Debug("Exception thrown in Update(), catch 1, Exception: {0}", ex.ToString()); Log.Debug ("u err: " + ex.Message + " " + ex.StackTrace); }
+			} catch (Exception ex) { Log.Debug("Exception thrown in Update(), catch 2, Exception: {0}", ex.ToString()); Log.Debug ("u err: " + ex.Message + " " + ex.StackTrace); }
 		}
 
 		public void OnGUI()
@@ -3866,9 +3944,6 @@ namespace KMP
 				KMPToggleButtonInitialized = true;
 			}
 
-			if (blockConnections && !KMPClientMain.connectionThreadRunning)
-				blockConnections = false;
-
 			if (forceQuit && !delayForceQuit)
 			{
 				Log.Debug("Force quit");
@@ -3877,7 +3952,18 @@ namespace KMP
 				if (HighLogic.LoadedScene != GameScenes.MAINMENU)
 					HighLogic.LoadScene(GameScenes.MAINMENU);
 			}
-			
+
+			if (terminateConnection) {
+				KMPClientMain.clearConnectionState();
+				terminateConnection = false;
+			}
+
+			if (HighLogic.LoadedScene == GameScenes.MAINMENU && gameRunning && !delayForceQuit) {
+				//This should fire when you exit the game from the space center screen
+				disconnect("Quit");
+				terminateConnection = true;
+			}
+
 			//Init info display options
 			if (KMPInfoDisplay.layoutOptions == null)
 				KMPInfoDisplay.layoutOptions = new GUILayoutOption[6];
@@ -3959,8 +4045,6 @@ namespace KMP
 				GUI.skin = HighLogic.Skin;
 			}
 			
-			if (!KMPConnectionDisplay.windowEnabled && HighLogic.LoadedScene == GameScenes.MAINMENU) KMPClientMain.clearConnectionState();
-			
 			KMPConnectionDisplay.windowEnabled = (HighLogic.LoadedScene == GameScenes.MAINMENU) && globalUIToggle;
 
             
@@ -4038,11 +4122,11 @@ namespace KMP
 
 			
 		    if(!gameRunning)
-     	    {
+                    {
          		//close the windows if not connected to a server 
        	 	    KMPScreenshotDisplay.windowEnabled = false;
       		    KMPGlobalSettings.instance.chatDXWindowEnabled = false;
- 		    }
+                    }
 			
 			if (KMPScreenshotDisplay.windowEnabled && !isGameHUDHidden && KMPToggleButtonState)
 			{
@@ -4273,7 +4357,6 @@ namespace KMP
 					{
                         disconnect();
 						KMPClientMain.sendConnectionEndMessage("Quit");
-						KMPClientMain.clearConnectionState();
 						KMPClientMain.intentionalConnectionEnd = true;
 						KMPClientMain.endSession = true;
 						gameRunning = false;
@@ -4365,9 +4448,14 @@ namespace KMP
 		{
 			if (GUILayout.Button("<- Back"))
 			{
-				showConnectionWindow = false;
-				MainMenu m = (MainMenu)FindObjectOfType(typeof(MainMenu));
-				m.envLogic.GoToStage(1);
+                /* If the add menu is visible, turn that off first */
+                if (addPressed) addPressed = false;
+                else
+                {
+                    showConnectionWindow = false;
+                    MainMenu m = (MainMenu)FindObjectOfType(typeof(MainMenu));
+                    m.envLogic.GoToStage(1);
+                }
 			}
 			if(!configRead)
 			{
@@ -4379,10 +4467,12 @@ namespace KMP
 				KMPClientMain.verifyShipsDirectory();
 				isVerified = true;
 			}
-			if (KMPClientMain.handshakeCompleted && KMPClientMain.tcpClient != null && !blockConnections)
+			if (KMPClientMain.handshakeCompleted && KMPClientMain.tcpClient != null && !gameRunning && gameStart)
 			{
-				if (KMPClientMain.tcpClient.Connected && !gameRunning)
-				{
+					gameStart = false;
+					gameRunning = true;
+
+					Console.WriteLine ("Game started.");
 					//Clear dictionaries
 					sentVessels_Situations.Clear();
 		
@@ -4407,12 +4497,15 @@ namespace KMP
 					listClientTimeSyncLatency.Clear ();
 					listClientTimeSyncOffset.Clear ();
 					listClientTimeWarp.Clear ();
+					//Request rate 1x subspace rate straight away.
+					listClientTimeWarp.Add(1);
+					listClientTimeWarpAverage = 1;
 	
 					newFlags.Clear();
 					
 					//Start MP game
 					KMPConnectionDisplay.windowEnabled = false;
-					gameRunning = true;
+					KMPInfoDisplay.infoDisplayOptions = false;
 					//This is to revert manually setting it to 1. Users won't know about this setting.
 					//Let's remove this somewhere around July 2014.
 					if (GameSettings.PHYSICS_FRAME_DT_LIMIT == 1.0f) {
@@ -4430,7 +4523,8 @@ namespace KMP
 					HighLogic.CurrentGame.Title = "KMP";
 					HighLogic.CurrentGame.Description = "Kerbal Multi Player session";
 					HighLogic.CurrentGame.flagURL = "KMP/Flags/default";
-					
+					vesselUpdatesLoaded.Clear();
+
 					if (gameMode == 1) //Career mode
 						HighLogic.CurrentGame.Mode = Game.Modes.CAREER;
 					
@@ -4438,7 +4532,7 @@ namespace KMP
 					GameEvents.onFlightReady.Add(this.OnFirstFlightReady);
 					syncing = true;
 					HighLogic.CurrentGame.Start();
-					
+
 					if (HasModule("ResearchAndDevelopment"))
 					{
 						Log.Debug("Erasing scenario modules");
@@ -4486,7 +4580,6 @@ namespace KMP
 					KMPGlobalSettings.instance.chatDXWindowEnabled = true;
 					
 					return;
-				}
 			}
 			
 			GUILayout.BeginHorizontal();
@@ -4497,121 +4590,176 @@ namespace KMP
 					GUILayoutOption[] name_options = new GUILayoutOption[1];
 					name_options[0] = GUILayout.MaxWidth(240);
 					GUILayout.Label("Server Name:");
-					newFamiliar = GUILayout.TextField(newFamiliar, name_options);
+					newFamiliar = GUILayout.TextField(newFamiliar, name_options).Trim();
 						
 						
 					GUILayout.EndHorizontal();
 
 					GUILayout.BeginHorizontal();
 					GUILayoutOption[] field_options = new GUILayoutOption[1];
-					field_options[0] = GUILayout.MaxWidth(50);
+					field_options[0] = GUILayout.MaxWidth(120);
 					GUILayout.Label("Address:");
 					newHost = GUILayout.TextField(newHost);
 					GUILayout.Label("Port:");
 					newPort = GUILayout.TextField(newPort, field_options);
-					
-					bool addHostPressed = GUILayout.Button("Add",field_options);
-					if (addHostPressed)
-					{
-						KMPClientMain.SetServer(newHost.Trim());
-						Dictionary<String, String[]> favorites = KMPClientMain.GetFavorites();
-						String[] sArr = {newHost.Trim(), newPort.Trim(), KMPClientMain.GetUsername()};
 
-						if (favorites.ContainsKey(newFamiliar.Trim()))
-						{
-							ScreenMessages.PostScreenMessage("Server name taken", 300f, ScreenMessageStyle.UPPER_CENTER);
-						}
-						else if(favorites.ContainsValue(sArr))
-						{
-							ScreenMessages.PostScreenMessage("This server already exists", 300f, ScreenMessageStyle.UPPER_CENTER);
-						}
-						else
-						{
-							favorites.Add(newFamiliar.Trim(), sArr);
+                    GUILayout.EndHorizontal();
+                    GUILayout.BeginHorizontal();
+                    // Fetch favourites
+                    Dictionary<String, String[]> favorites = KMPClientMain.GetFavorites();
 
-							//Close the add server bar after a server has been added and select the new server
-							addPressed = false;
-							KMPConnectionDisplay.activeHostname = newHost.Trim()+":"+newPort.Trim();
-							KMPConnectionDisplay.activeFamiliar = newFamiliar;
-							KMPClientMain.SetFavorites(favorites);
-						}
-					}
-					GUILayout.EndHorizontal();
+                    bool favoriteItemExists = favorites.ContainsKey(newFamiliar);
+                    GUI.enabled = !favoriteItemExists;
+					bool addHostPressed = GUILayout.Button("New",field_options);
+                    GUI.enabled = favoriteItemExists;
+                    bool editHostPressed = GUILayout.Button("Replace", field_options);
+                    GUI.enabled = true;
+                    bool cancelEdit = GUILayout.Button("Cancel", field_options);
+                    if (cancelEdit)
+                    {
+                        addPressed = false; /* Return to previous screen */ 
+                    }else if (addHostPressed && !favoriteItemExists) // Probably don't need these extra checks, but there is no harm
+                    {
+                        KMPClientMain.SetServer(newHost.Trim());
+                        String[] sArr = { newHost.Trim(), newPort.Trim(), KMPClientMain.GetUsername() };
+
+                        if (favorites.ContainsKey(newFamiliar))
+                        {
+                            ScreenMessages.PostScreenMessage("Server name taken", 300f, ScreenMessageStyle.UPPER_CENTER);
+                        }
+                        else if (favorites.ContainsValue(sArr))
+                        {
+                            // Is this ever true? Arrays are compared by reference are they not ? - NC
+                            ScreenMessages.PostScreenMessage("This server already exists", 300f, ScreenMessageStyle.UPPER_CENTER);
+                        }
+                        else
+                        {
+                            favorites.Add(newFamiliar, sArr);
+
+                            //Close the add server bar after a server has been added and select the new server
+                            addPressed = false;
+                            // Personal preference, change back if you don't like, Gimp. - NC
+                            KMPConnectionDisplay.activeFamiliar = String.Empty;
+                            KMPConnectionDisplay.activeFamiliar = String.Empty;
+                            KMPClientMain.SetFavorites(favorites);
+                        }
+                    }
+                    else if(editHostPressed && favoriteItemExists)
+                    {
+                        KMPClientMain.SetServer(newHost.Trim());
+                        String[] sArr = { newHost.Trim(), newPort.Trim(), KMPClientMain.GetUsername() };
+                        favorites[newFamiliar] = sArr;
+                        addPressed = false;
+                        // Disable the active familar after this stage, because otherwise the controls feel sticky and confusing
+                        KMPConnectionDisplay.activeFamiliar = String.Empty;
+                        KMPConnectionDisplay.activeFamiliar = String.Empty;
+                        KMPClientMain.SetFavorites(favorites); // I would love to have this as a seperate object in the manager, no more getting and setting. 
+                    }
+                    GUILayout.EndHorizontal();
 					GUILayout.EndVertical();
 				}
 			GUILayout.EndHorizontal();
-			
-			GUILayout.BeginHorizontal();
-			
-				GUILayoutOption[] connection_list_options = new GUILayoutOption[1];
-				connection_list_options[0] = GUILayout.MinWidth(290);
-			
-				GUILayout.BeginVertical(connection_list_options);
 
-					GUILayout.BeginHorizontal();
-						GUILayoutOption[] label_options = new GUILayoutOption[1];
-						label_options[0] = GUILayout.MinWidth(75);
-						GUILayout.Label("Username:", label_options);
-						KMPClientMain.SetUsername(GUILayout.TextField(KMPClientMain.GetUsername()));
-					GUILayout.EndHorizontal();
-			
-					KMPConnectionDisplay.scrollPos = GUILayout.BeginScrollView(KMPConnectionDisplay.scrollPos, connection_list_options);
-						foreach (String familiar in KMPClientMain.GetFavorites().Keys)
-						{
-							if (!String.IsNullOrEmpty(familiar))
-								connectionButton(familiar);
-						}
-					GUILayout.EndScrollView();
-			
-				GUILayout.EndVertical();
-			
-				GUILayoutOption[] pane_options = new GUILayoutOption[1];
-				pane_options[0] = GUILayout.MaxWidth(50);
-			
-				GUILayout.BeginVertical(pane_options);
-			
-					bool allowConnect = true;
-					if (String.IsNullOrEmpty(KMPConnectionDisplay.activeFamiliar) || String.IsNullOrEmpty(KMPClientMain.GetUsername()))
-						allowConnect = false;
-			
-					if (!allowConnect)
-						GUI.enabled = false;
+            /* Add window now reoccupies the Connection Settings space */
+            if (!addPressed)
+            {
+                GUILayout.BeginHorizontal();
 
-					bool connectPressed = GUILayout.Button("Connect");
-					GUI.enabled = true;
-			
-					if (connectPressed && allowConnect)
-					{
-						KMPClientMain.SetMessage("");
-						KMPClientMain.SetServer(KMPConnectionDisplay.activeHostname);
-						KMPClientMain.Connect();
-					}
-					
-					if (KMPClientMain.GetFavorites().Count < 1) addPressed = true;
-					
-					addPressed = GUILayout.Toggle(
-						addPressed,
-						"Add Server",
-						GUI.skin.button);
-					
-					if (String.IsNullOrEmpty(KMPConnectionDisplay.activeFamiliar)) GUI.enabled = false;
-					bool deletePressed = GUILayout.Button("Remove");
-					if (deletePressed)
-					{
-						Dictionary<String, String[]> favorites = KMPClientMain.GetFavorites();
-						if (favorites.ContainsKey(KMPConnectionDisplay.activeFamiliar))
-						{
-							favorites.Remove(KMPConnectionDisplay.activeFamiliar);
-							KMPConnectionDisplay.activeHostname = "";
-							KMPConnectionDisplay.activeFamiliar = "";
-							KMPClientMain.SetFavorites(favorites);
-						}
-					}
-					GUI.enabled = true;
-			
-				GUILayout.EndVertical();
-			
-			GUILayout.EndHorizontal();
+                GUILayoutOption[] connection_list_options = new GUILayoutOption[1];
+                connection_list_options[0] = GUILayout.MinWidth(290);
+
+                GUILayout.BeginVertical(connection_list_options);
+
+                GUILayout.BeginHorizontal();
+                GUILayoutOption[] label_options = new GUILayoutOption[1];
+                label_options[0] = GUILayout.MinWidth(75);
+                GUILayout.Label("Username:", label_options);
+                KMPClientMain.SetUsername(GUILayout.TextField(KMPClientMain.GetUsername()));
+                GUILayout.EndHorizontal();
+
+                KMPConnectionDisplay.scrollPos = GUILayout.BeginScrollView(KMPConnectionDisplay.scrollPos, connection_list_options);
+                foreach (String familiar in KMPClientMain.GetFavorites().Keys)
+                {
+                    if (!String.IsNullOrEmpty(familiar))
+                        connectionButton(familiar);
+                }
+                GUILayout.EndScrollView();
+
+                GUILayout.EndVertical();
+
+                GUILayoutOption[] pane_options = new GUILayoutOption[1];
+                pane_options[0] = GUILayout.MaxWidth(50);
+
+                GUILayout.BeginVertical(pane_options);
+
+                bool allowConnect = true;
+                if (String.IsNullOrEmpty(KMPConnectionDisplay.activeFamiliar) || String.IsNullOrEmpty(KMPClientMain.GetUsername()))
+                    allowConnect = false;
+
+                if (!allowConnect)
+                    GUI.enabled = false;
+
+                bool connectPressed = GUILayout.Button("Connect");
+                GUI.enabled = true;
+
+                if (connectPressed && allowConnect)
+                {
+                    KMPClientMain.SetMessage("");
+                    KMPClientMain.SetServer(KMPConnectionDisplay.activeHostname);
+                    KMPClientMain.Connect();
+                }
+
+                if (KMPClientMain.GetFavorites().Count < 1) addPressed = true;
+
+                addPressed = GUILayout.Toggle(
+                    addPressed,
+                    (String.IsNullOrEmpty(KMPConnectionDisplay.activeFamiliar)) ?
+                    "Add Server" : "Edit",
+                    GUI.skin.button);
+                
+                Dictionary<String, String[]> favorites = KMPClientMain.GetFavorites();
+
+
+                if (String.IsNullOrEmpty(KMPConnectionDisplay.activeFamiliar)) GUI.enabled = false;
+                bool deletePressed = GUILayout.Button("Remove");
+                if (deletePressed)
+                {
+                    if (favorites.ContainsKey(KMPConnectionDisplay.activeFamiliar))
+                    {
+                        favorites.Remove(KMPConnectionDisplay.activeFamiliar);
+                        KMPConnectionDisplay.activeHostname = "";
+                        KMPConnectionDisplay.activeFamiliar = "";
+                        KMPClientMain.SetFavorites(favorites);
+                    }
+                }
+                GUI.enabled = true;
+
+                /* Add is a toggle after all */
+                if (addPressed && !deletePressed)
+                {
+                    /* If add is pressed and a server is selected, apply it's values to the edit controls */
+                    if (!String.IsNullOrEmpty(KMPConnectionDisplay.activeFamiliar) && favorites.ContainsKey(KMPConnectionDisplay.activeFamiliar))
+                    {
+                        newFamiliar = KMPConnectionDisplay.activeFamiliar;
+                        if (KMPConnectionDisplay.activeHostname.Contains(":"))
+                        {
+                            var tokens = KMPConnectionDisplay.activeHostname.Split(':');
+                            newHost = tokens[0];
+                            newPort = tokens[1];
+                        }
+                    }
+                    else //Defaults
+                    {
+                        newHost = "localhost";
+                        newPort = "2076";
+                        newFamiliar = "Server";
+                    }
+                }
+
+                GUILayout.EndVertical();
+
+                GUILayout.EndHorizontal();
+            }
 			
 			GUILayout.BeginHorizontal();
 				GUILayout.BeginVertical();
@@ -4796,7 +4944,6 @@ namespace KMP
             KMPChatDX.setStyle();
 
             GUILayout.FlexibleSpace();
-
 
             foreach (KMPChatDX.ChatLine line in KMPChatDX.chatLineQueue)
             {
@@ -5210,6 +5357,30 @@ namespace KMP
 			Vector3d projectedPos = pos + (Vector3d.Normalize(kscNormal)*projectionDistance);
 			
 			return Vector3d.Distance(kscPosition, projectedPos) < safetyBubbleRadius;
+		}
+
+		private bool isProtoVesselInSafetyBubble(ProtoVessel protovessel) {
+			//When vessels are landed, position is 0,0,0 - So we need to check lat/long
+			ConfigNode protoVesselNode = new ConfigNode();
+			protovessel.Save(protoVesselNode);
+			CelestialBody kerbinBody = FlightGlobals.Bodies.Find (b => b.name == "Kerbin");
+			//If not kerbin, we aren't in the safety bubble.
+			if (protoVesselNode.GetNode("ORBIT").GetValue("REF") != "1") {
+				return false;
+			}
+			//If we aren't landed, use the vector3 check above.
+			if (!protovessel.landed) {
+				return isInSafetyBubble (protovessel.position, kerbinBody, protovessel.altitude);
+			}
+			//Check our distance
+			double protoVesselLat;
+			double protoVesselLong;
+			Double.TryParse(protoVesselNode.GetValue("lat"), out protoVesselLat);
+			Double.TryParse(protoVesselNode.GetValue("long"), out protoVesselLong);
+			Vector3d kscPosition = kerbinBody.GetWorldSurfacePosition(-0.102668048654,-74.5753856554,60);
+			Vector3d protoVesselPosition = kerbinBody.GetWorldSurfacePosition(protoVesselLat, protoVesselLong, protovessel.altitude);
+			double vesselDistance = Vector3d.Distance(kscPosition, protoVesselPosition);
+			return vesselDistance < safetyBubbleRadius;
 		}
 		
 		public double horizontalDistanceToSafetyBubbleEdge()

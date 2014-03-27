@@ -73,19 +73,17 @@ namespace KMPServer
 		public object sharedCraftLock = new object();
 		public object sendOutgoingMessagesLock = new object();
 
-		private byte[] receiveBuffer = new byte[8192];
-		private int receiveIndex = 0;
-		private int receiveHandleIndex = 0;
+
+		public byte[] currentMessage; //Switches between holding header and message data.
+		public int currentBytesToReceive; //Switches between the bytes needed for a complete header or message.
+		public bool currentMessageHeaderRecieved; //If false, receiving header, if true, reciving message.
+		public KMPCommon.ClientMessageID currentMessageID;
+
 		private bool isServerSendingData = false;
 		private byte[] splitMessageData;
 		private int splitMessageReceiveIndex;
 
-		private byte[] currentMessageHeader = new byte[KMPCommon.MSG_HEADER_LENGTH];
-		private int currentMessageHeaderIndex;
-		private byte[] currentMessageData;
-		private int currentMessageDataIndex;
 
-		public KMPCommon.ClientMessageID currentMessageID;
 
 		public ConcurrentQueue<byte[]> queuedOutMessagesHighPriority;
 		public ConcurrentQueue<byte[]> queuedOutMessagesSplit;
@@ -220,11 +218,12 @@ namespace KMPServer
 			{
 				if (tcpClient != null)
 				{
-					currentMessageHeaderIndex = 0;
-					currentMessageDataIndex = 0;
-					receiveIndex = 0;
-					receiveHandleIndex = 0;
-					tcpClient.GetStream().BeginRead(receiveBuffer, receiveIndex, receiveBuffer.Length - receiveIndex, asyncReceive,	receiveBuffer);
+					currentMessage = new byte[KMPCommon.MSG_HEADER_LENGTH]; //The first data we want to receive is the header size.
+					currentMessageHeaderRecieved = false; //This is set to true while receiving the actual message and not its header.
+					currentBytesToReceive = KMPCommon.MSG_HEADER_LENGTH; //We want to receive just the header.
+					StateObject state = new StateObject();
+					state.workClient = tcpClient;
+					tcpClient.GetStream().BeginRead(currentMessage, 0, currentBytesToReceive, new AsyncCallback(asyncReceive), state);
 				}
 			}
 			catch (InvalidOperationException)
@@ -245,148 +244,59 @@ namespace KMPServer
 			}
 		}
 
-		private void asyncReceive(IAsyncResult result)
+		private void asyncReceive(IAsyncResult ar)
 		{
-            try
-            {
-                if (tcpClient.Connected)
-                {
-                    var stream = tcpClient.GetStream();
-                    int read = stream.EndRead(result);
-
-                    if (read > 0)
-                    {
-                        receiveIndex += read;
-                        //Console.WriteLine("Got data: " + System.Text.Encoding.ASCII.GetString(receiveBuffer));
-                        updateReceiveTimestamp();
-                        handleReceive();
-                    }
-
-                    if (tcpClient.Connected)
-                    {
-                        tcpClient.GetStream().BeginRead(
-                            receiveBuffer,
-                            receiveIndex,
-                            receiveBuffer.Length - receiveIndex,
-                            asyncReceive,
-                            receiveBuffer);
-                    }
-                }
-                else
-                {
-                    tcpClient.Close();
-                }
-            }
-            catch (InvalidOperationException) {
-				//parent.disconnectClient(this, "InvalidOperationException");
-				Log.Debug("Caught InvalidOperationException for player " + this.username + " in asyncReceive");
-				//parent.markClientForDisconnect(this);
-			}
-            catch (System.IO.IOException) {
-				//parent.disconnectClient(this, "IOException");
-				Log.Debug("Caught IOException for player " + this.username + " in asyncReceive");
-				//parent.markClientForDisconnect(this);
-			}
-            catch (NullReferenceException) { } // ignore,  gets thrown after a disconnect
-            catch (ThreadAbortException) { }
-            catch (Exception e)
-            {
-                parent.passExceptionToMain(e);
-            }
-
-		}
-
-		private void handleReceive()
-		{
-	
-			while (receiveHandleIndex < receiveIndex)
-			{
-
-				//Read header bytes
-				if (currentMessageHeaderIndex < KMPCommon.MSG_HEADER_LENGTH)
-				{
-					//Determine how many header bytes can be read
-					int bytes_to_read = Math.Min(receiveIndex - receiveHandleIndex, KMPCommon.MSG_HEADER_LENGTH - currentMessageHeaderIndex);
-
-					//Read header bytes
-					Array.Copy(receiveBuffer, receiveHandleIndex, currentMessageHeader, currentMessageHeaderIndex, bytes_to_read);
-
-					//Advance buffer indices
-					currentMessageHeaderIndex += bytes_to_read;
-					receiveHandleIndex += bytes_to_read;
-
-					//Handle header
-					if (currentMessageHeaderIndex >= KMPCommon.MSG_HEADER_LENGTH)
-					{
-						int id_int = KMPCommon.intFromBytes(currentMessageHeader, 0);
-
-						//Make sure the message id section of the header is a valid value
-						if (id_int >= 0 && id_int < Enum.GetValues(typeof(KMPCommon.ClientMessageID)).Length)
-							currentMessageID = (KMPCommon.ClientMessageID)id_int;
-						else
+			try {
+				// Retrieve the state object and the client socket 
+				// from the asynchronous state object.
+				StateObject state = (StateObject)ar.AsyncState;
+				TcpClient client = state.workClient;
+				int bytesRead = client.GetStream().EndRead(ar); // Read data from the remote device directly into the message buffer.
+				updateReceiveTimestamp();
+				currentBytesToReceive -= bytesRead; //Decrement how many bytes we have read.
+				if (bytesRead > 0) { //This is just a shortcut really
+					if (!currentMessageHeaderRecieved) {
+						//We are receiving just the header
+						if (currentBytesToReceive == 0) {
+							//We have recieved the full message header, lets process it.
+							currentMessageID = (KMPCommon.ClientMessageID)BitConverter.ToInt32(currentMessage, 0);
+							currentBytesToReceive = BitConverter.ToInt32(currentMessage, 4);
+							if (currentBytesToReceive == 0) {
+								//We received the header of a empty message, process it and reset the buffers.
+								messageReceived(currentMessageID, null);
+								currentMessageID = KMPCommon.ClientMessageID.NULL;
+								currentBytesToReceive = KMPCommon.MSG_HEADER_LENGTH;
+								currentMessage = new byte[currentBytesToReceive];
+							} else {
+								//We received the header of a non-empty message, Let's give it a buffer and read again.
+								currentMessage = new byte[currentBytesToReceive];
+								currentMessageHeaderRecieved = true;
+							}
+						}
+					} else {
+						if (currentBytesToReceive == 0) {
+							//We have received all the message data, lets decompress and process it
+							byte[] decompressedData = KMPCommon.Decompress(currentMessage);
+							messageReceived(currentMessageID, decompressedData);
+							currentMessageHeaderRecieved = false;
 							currentMessageID = KMPCommon.ClientMessageID.NULL;
-						
-						int data_length = KMPCommon.intFromBytes(currentMessageHeader, 4);
-
-                        if (data_length > KMPCommon.MAX_MESSAGE_SIZE)
-                        {
-                            throw new InvalidOperationException("Client fed bad data");
-                        }
-
-						if (data_length > 0)
-						{
-							//Init message data buffer
-							currentMessageData = new byte[data_length];
-							currentMessageDataIndex = 0;
-						}
-						else
-						{
-							currentMessageData = null;
-							//Handle received message
-							messageReceived(currentMessageID, null);
-
-							//Prepare for the next header read
-							currentMessageHeaderIndex = 0;
+							currentBytesToReceive = KMPCommon.MSG_HEADER_LENGTH;
+							currentMessage = new byte[currentBytesToReceive];
 						}
 					}
+
 				}
-
-				if (currentMessageData != null)
-				{
-					//Read data bytes
-					if (currentMessageDataIndex < currentMessageData.Length)
-					{
-						//Determine how many data bytes can be read
-						int bytes_to_read = Math.Min(receiveIndex - receiveHandleIndex, currentMessageData.Length - currentMessageDataIndex);
-
-						//Read data bytes
-						Array.Copy(receiveBuffer, receiveHandleIndex, currentMessageData, currentMessageDataIndex, bytes_to_read);
-
-						//Advance buffer indices
-						currentMessageDataIndex += bytes_to_read;
-						receiveHandleIndex += bytes_to_read;
-						
-						//Handle data
-						if (currentMessageDataIndex >= currentMessageData.Length)
-						{
-							//Handle received message
-							byte[] messageData = KMPCommon.Decompress(currentMessageData);
-							if (messageData != null) messageReceived(currentMessageID, messageData);
-							//Consider adding re-request here
-
-							currentMessageData = null;
-
-							//Prepare for the next header read
-							currentMessageHeaderIndex = 0;
-						}
-					}
+				if (currentBytesToReceive < 0) {
+					throw new System.IO.IOException("You somehow managed to read more bytes then we asked for. Good for you. Open this up on the bugtracker now.");
 				}
-
+				if (client != null) {
+					client.GetStream().BeginRead(currentMessage, currentMessage.Length - currentBytesToReceive, currentBytesToReceive, new AsyncCallback(asyncReceive), state);
+				}
 			}
-
-			//Once all receive bytes have been handled, reset buffer indices to use the whole buffer again
-			receiveHandleIndex = 0;
-			receiveIndex = 0;
+			catch (Exception e) {
+				//Basically, If anything goes wrong at all the stream is broken and there is no way to recover from it.
+				Log.Debug("Exception thrown in ReceiveCallback(), catch 1, Exception: {0}", e.ToString());
+			}
 		}
 
 		//Async send
@@ -427,32 +337,32 @@ namespace KMPServer
 
 		private void messageReceived (KMPCommon.ClientMessageID id, byte[] data)
 		{
-				if (id == KMPCommon.ClientMessageID.SPLIT_MESSAGE) {
-						if (splitMessageReceiveIndex == 0) {
-							//New split message
-								int split_message_length = KMPCommon.intFromBytes (data, 4);
-								splitMessageData = new byte[8 + split_message_length];
-								data.CopyTo (splitMessageData, 0);
-								splitMessageReceiveIndex = data.Length;
-						} else {
-								//Continued split message
-								data.CopyTo (splitMessageData, splitMessageReceiveIndex);
-								splitMessageReceiveIndex = splitMessageReceiveIndex + data.Length;
-						}
-						//Check if we have filled the byte array, if so, handle the message.
-						if (splitMessageReceiveIndex == splitMessageData.Length) {
-								//Parse the message and feed it into the client queue
-								KMPCommon.ClientMessageID joined_message_id = (KMPCommon.ClientMessageID)KMPCommon.intFromBytes (splitMessageData, 0);
-								int joined_message_length = KMPCommon.intFromBytes (splitMessageData, 4);
-								byte[] joined_message_data = new byte[joined_message_length];
-								Array.Copy (splitMessageData, 8, joined_message_data, 0, joined_message_length);
-								byte[] joined_message_data_decompressed = KMPCommon.Decompress (joined_message_data);
-								parent.queueClientMessage (this, joined_message_id, joined_message_data_decompressed);
-								splitMessageReceiveIndex = 0;
-						}
+			if (id == KMPCommon.ClientMessageID.SPLIT_MESSAGE) {
+				if (splitMessageReceiveIndex == 0) {
+					//New split message
+					int split_message_length = KMPCommon.intFromBytes (data, 4);
+					splitMessageData = new byte[8 + split_message_length];
+					data.CopyTo (splitMessageData, 0);
+					splitMessageReceiveIndex = data.Length;
 				} else {
-						parent.queueClientMessage (this, id, data);
+					//Continued split message
+					data.CopyTo (splitMessageData, splitMessageReceiveIndex);
+					splitMessageReceiveIndex = splitMessageReceiveIndex + data.Length;
 				}
+				//Check if we have filled the byte array, if so, handle the message.
+				if (splitMessageReceiveIndex == splitMessageData.Length) {
+					//Parse the message and feed it into the client queue
+					KMPCommon.ClientMessageID joined_message_id = (KMPCommon.ClientMessageID)KMPCommon.intFromBytes (splitMessageData, 0);
+					int joined_message_length = KMPCommon.intFromBytes (splitMessageData, 4);
+					byte[] joined_message_data = new byte[joined_message_length];
+					Array.Copy (splitMessageData, 8, joined_message_data, 0, joined_message_length);
+					byte[] joined_message_data_decompressed = KMPCommon.Decompress (joined_message_data);
+					parent.queueClientMessage (this, joined_message_id, joined_message_data_decompressed);
+					splitMessageReceiveIndex = 0;
+				}
+			} else {
+				parent.queueClientMessage (this, id, data);
+			}
 		}
 
 		public void sendOutgoingMessages()
@@ -528,7 +438,7 @@ namespace KMPServer
 					split_index = split_index + bytes_to_read;
 				}
 				//Return the first split message if we just split.
-				Log.Debug("Split message into "  + queuedOutMessagesSplit.Count.ToString());
+				//Log.Debug("Split message into "  + queuedOutMessagesSplit.Count.ToString());
 				queuedOutMessagesSplit.TryDequeue(out next_message);
 			}
 		}
@@ -607,5 +517,11 @@ namespace KMPServer
 	    {
 	        return username;
 	    }
+	}
+
+	public class StateObject
+	{
+		// Client socket.
+		public TcpClient workClient = null;
 	}
 }

@@ -1,16 +1,13 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
 
 using UnityEngine;
 
-
 namespace KMP
 {
-    class KMPChatDX
+    internal class KMPChatDX
     {
-
         /* New Chat */
 
         public const int MAX_CHAT_OUT_QUEUE = 4;
@@ -31,7 +28,10 @@ namespace KMP
 
         public static float editorOffsetX = 255;
         public static float editorOffsetY = 20;
-
+		
+		public static float flightOffsetX = 40;
+        public static float flightOffsetY = 20;
+		
         public static GameScenes lastScene = GameScenes.MAINMENU;
 
         public static bool showInput = false;
@@ -54,33 +54,35 @@ namespace KMP
             public String name;
             public String message;
             public Color color;
-			public bool isAdmin;
+            public bool isAdmin;
 
             public ChatLine(String line)
             {
                 this.color = Color.yellow;
                 this.name = "";
                 this.message = line;
-				this.isAdmin = false;
+                this.isAdmin = false;
 
                 //Check if the message has a name
-                if (line.Length > 3 && (line.First() == '<' || (line.StartsWith("["+KMPCommon.ADMIN_MARKER+"]") && line.Contains('<'))))
+                if (line.Length > 3 && (line.First() == '<' || (line.StartsWith("[" + KMPCommon.ADMIN_MARKER + "]") && line.Contains('<'))))
                 {
-					int name_start = line.IndexOf('<');
+                    int name_start = line.IndexOf('<');
                     int name_end = line.IndexOf('>');
-					int name_length = name_end - name_start - 1;
+                    int name_length = name_end - name_start - 1;
                     if (name_length > 0)
                     {
-                        this.name = line.Substring(name_start+1, name_length);
+                        this.name = line.Substring(name_start + 1, name_length);
                         this.message = line.Substring(name_end + 1);
 
                         if (this.name == "Server")
                             this.color = Color.magenta;
-						else if (line.StartsWith("["+KMPCommon.ADMIN_MARKER+"]")) {
-							this.color = Color.red;
-							this.isAdmin = true;
-						} else this.color = KMPVessel.generateActiveColor(name) * NAME_COLOR_SATURATION_FACTOR
-                            + Color.white * (1.0f - NAME_COLOR_SATURATION_FACTOR);
+                        else if (line.StartsWith("[" + KMPCommon.ADMIN_MARKER + "]"))
+                        {
+                            this.color = Color.red;
+                            this.isAdmin = true;
+                        }
+                        else this.color = KMPVessel.generateActiveColor(name) * NAME_COLOR_SATURATION_FACTOR
+                          + Color.white * (1.0f - NAME_COLOR_SATURATION_FACTOR);
                     }
                 }
             }
@@ -92,29 +94,36 @@ namespace KMP
             {
                 switch (HighLogic.LoadedScene)
                 {
-
                     case GameScenes.TRACKSTATION:
                         windowPos.x = chatboxX + trackerOffsetX;
                         windowPos.y = chatboxY + trackerOffsetY;
 
                         return windowPos;
+
                     case GameScenes.SPH:
                         windowPos.x = chatboxX + editorOffsetX;
                         windowPos.y = chatboxY + editorOffsetY;
 
                         return windowPos;
+
                     case GameScenes.EDITOR:
                         windowPos.x = chatboxX + editorOffsetX;
                         windowPos.y = chatboxY + editorOffsetY;
 
                         return windowPos;
+					
+                    case GameScenes.FLIGHT:
+                        windowPos.x = chatboxX + flightOffsetX;
+                        windowPos.y = chatboxY + flightOffsetY;
+
+                        return windowPos;
+					
                     default:
                         windowPos.x = chatboxX;
                         windowPos.y = chatboxY;
 
                         return windowPos;
                 }
-
             }
             else
             {
@@ -124,9 +133,44 @@ namespace KMP
 
         public static void enqueueChatLine(String line)
         {
-            ChatLine chat_line = new ChatLine(line);
-
-            chatLineQueue.Enqueue(chat_line);
+			Color lineColor = Color.yellow;
+			bool colorSet = false;
+			foreach (String singleLine in line.Split('\n'))
+			{
+				string choppedLine = "";
+				foreach (String word in singleLine.Split(' '))
+				{
+					//if (GUI.skin.GetStyle("Box").CalcSize(new GUIContent(choppedLine + word)).x > chatboxWidth)
+					if (choppedLine.Length + word.Length > chatboxWidth / 7) //Kludgy but works relatively reliably
+					{
+			            ChatLine chat_line = new ChatLine(choppedLine.Substring(0,choppedLine.Length-1));
+						if (!colorSet)
+						{
+							lineColor = chat_line.color;
+							colorSet = true;
+						}
+						else
+						{
+							chat_line.color = lineColor;	
+						}
+			            chatLineQueue.Enqueue(chat_line);
+						choppedLine = word + " ";
+					}
+					else
+					{
+						choppedLine += word + " ";
+					}
+				}
+				if (choppedLine.Length > 0)
+				{
+					ChatLine chat_line = new ChatLine(choppedLine.Substring(0,choppedLine.Length-1));
+					if (colorSet)
+					{
+						chat_line.color = lineColor;
+					}
+		            chatLineQueue.Enqueue(chat_line);
+				}
+			}
             while (chatLineQueue.Count > MAX_CHAT_LINES)
                 chatLineQueue.Dequeue();
 
@@ -140,8 +184,6 @@ namespace KMP
             chatStyle.wordWrap = true;
             chatStyle.padding.left = 5;
             chatStyle.fixedWidth = chatboxWidth;
-
         }
-
     }
 }

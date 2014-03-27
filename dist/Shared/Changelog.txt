@@ -1,0 +1,363 @@
+Changelog
+========
+###v0.1.5.1
+TehGimp
+ * Shrunk default safety-cylinder radius to 2000m
+ * Tweaked rendezvous smoothing behaviour for better in-game performance
+ * Optimized database performance during cleanup operations, which should address recent server slowdown/lag issues
+ * Optimized server object serialization to increase overall performance
+ * Fixed some bugs affecting the reliability of career-mode data (more fixes by trafalg & xterm91)
+ * Fixed possible NREs when changing part opacity affecting game performance
+ * Fixed server crash in some situations where a client doesn't disconnect cleanly
+ * Fixed EVAs near KSC being sent to the server even when in safety bubble
+godarklight
+ * Simplified KMP client<->plugin messaging
+Dazoe
+ * Added option for alternative GUI skin
+ * Ship control is now blocked while entering a chat message
+ * Updated compilation scrips
+ * Fixed server can crash with a poorly formed "/set" command
+Yilmas
+ * Added "/lockship" server admin command for manually changing vessel privacy
+trafalg
+ * Fixed various bugs causing loss of science points and career progress
+xterm91
+ * Fixed another bug causing loss of science points and career progress
+
+###v0.1.5.0
+TehGimp
+ * Added career-mode support
+ * Added MySQL server database support (together w/ PhonicUK)
+ * Added private-vessel hijacking prevention and preserved old behaviour as new "piracy" server mode option
+ * Added sync-bailout for quitting game if initial universe sync fails
+ * Added loaded vessel counter during universe syncing, and in-game syncing notifications
+ * Added explanatory tooltips to sync buttons
+ * Improved rendezvous smoothing behaviour & added a periodic orbit re-sync to ensure both players have a consistent game state
+ * Fixed suborbital vessels could pass through celestial bodies and re-appear if you synced past the time of their collision
+ * Fixed crewed vessels could fail to load on high-traffic servers
+ * Fixed issues where your own vessel could appear as "occupied" until you reconnected to the server and some privacy-lock bugs
+ * Fixed a bug where vessels could be loaded repeatedly in situations where they shouldn't be
+ * Fixed some other orbital sync logic issues and improved rendezvous orbital sync performance
+ * Fixed some docking bugs
+ * Fixed some rarer universe sync bugs
+ * Fixed various vessel loading bugs that could affect game performance
+ * Fixed a very-rare server crash
+godarklight
+ * Added subassembly sharing
+ * Improved netcode performance via message prioritization
+ * Improved screenshot viewer UI
+ * Improved disconnection messaging
+ * Improved log file naming conventions
+ * Fixed various issues with server-side mod control
+ * Fixed various minor connection bugs
+PhonicUK
+ * Added MySQL server database support (together w/ TehGimp)
+ryannathans
+ * Added server-side mod control (together w/ godarklight)
+ * Fixed various issues with server-side mod control
+ruarai
+ * Added server command logging
+ * Fixed server was exiting on a "/stop" command
+dazoe
+ * UDP connection now listens on same IP and port as TCP
+
+###v0.1.4.2
+TehGimp
+ * Fixed client bug where VAB buttons could become locked out
+
+###v0.1.4.1 [KSP 0.23]
+NOTE:
+* 0.1.4.1 is not compatible with previous versions of KMP
+TehGimp
+ * KSP 0.23 support
+ * Updated !debug chat command to work with updated client logger from ruarai
+ * Fixed various new KMP bugs in 0.23
+PhonicUK
+ * Added multi-line MOTD support
+ruarai
+ * Improved client logging behaviour
+RockyTV
+ * Fixed !rcon command only working with a lowercase username
+godarklight
+ * Code cleanup & additional testing
+
+###v0.1.4.0
+NOTE:
+* 0.1.4.0 is not compatible with previous versions of KMP
+* 0.1.4.0 will replace your client settings file & your server list will be reset
+TehGimp
+ * Added spectator mode (with Landmine130) allowing most private/in-use vessels to be viewed in-game
+ * Stargazer Jeb has been replaced by an orbital SyncPlate, leaving Jeb free for flights
+ * Changed universe sync protocol to prevent issues with "perma-syncing"
+ * Retooled vessel loading/unloading to correct various rendezvous, EVA, & near-surface positioning bugs
+ * Improved vessel positioning accuracy (thanks Landmine 130), & rendezvous positioning accuracy
+ * Updated safety bubble to improve performance and ensure reliability
+ * Updated new client cheat protection (from Wetmelon) to block remaining built-in cheats
+ * Updated universe backups with a changeable interval
+ * The server can now perform a partial universe optimization when players are still connected in order to reclaim memory
+ * Fixed issues preventing rendezvous positioning mode from starting correctly
+ * Fixed issues with positioning vessels at medium range near a surface
+ * Fixed near-surface vessel rotations could be off by ~45-90 degrees in some cases
+ * Fixed duplicated vessels appearing during near-surface gameplay with another nearby player
+ * Fixed issues with Sync button status not being correct in all cases, & with players momentarily appearing to be in the wrong timeframe (past vs future)
+ * Fixed remaining known issues with "gumby Kerbals" & other EVA issues
+ * Fixed vessels destroyed locally causing performance issues when KMP tries to continuously reload them
+ * Fixed clients that weren't fully connected occupied a server slot, making it easier to perform a DOS attack on a KMP server
+ * Fixed possible server crash while sending commands via certain remote terminals
+ * Fixed vessel status changes not being reliably received
+ * Fixed translation bug with rendezvous positioning, improved rendezvous smoothing
+ * Fixed Start Flight button in Tracking Station unavailable until Jeb is clicked
+ * Fixed assorted initial universe sync bugs
+ * Fixed various chat commands not being processed correctly
+ * Fixed "invalid save" errors
+ * Fixed KMP interfering with single-player gameplay
+ * Fixed remote players adding maneuver nodes could cause their vessel to be duplicated or misplaced
+ * Fixed issues with offset chat positions being saved incorrectly
+ * Fixed various new docking issues now that "kicked" player auto-spectates final vessel
+ * Fixed can EVA private Kerbals while spectating
+ * Fixed could not receive updates for the active vessel from other players
+ * Fixed issues with vessels getting stuck in an invalid "vessel occupied" status
+ * Tweaked startup messages for plugin/server to mention KMP dev team
+ * Code cleanup
+Wetmelon
+ * Removed limit on number of favourite servers
+ * KMP now hides UI when F2 is pressed
+ * Added simple cheat protection
+ * Added favourite server "nicknames"
+ * Added better validation to server parameter setting
+ * Added client installation validation
+ * Added setting for disabling server info hosting
+ * Improved error handling for various server commands
+ * Improved client config reading
+ * Updated client config to only save to disk when changed
+ * Fixed editor lock issues preventing VAB/SPH buttons from working correctly
+ * Fixed issues with privacy lock GUI display
+ * Fixed client not loading all settings correctly
+Jumba
+ * Added saved positioning preferences to chat
+ * Chat now highlights messages from the server
+ * Updated chat to auto-update position on certain screens
+PhonicUK
+ * Updated profanity filter with new configuration options
+godarklight
+ * Added IPv6 support, fixed various IPv6 related connectivity issues
+ * Added IPv4 fallback for IPv6-enabled systems
+ * Made new client cheat control feature (from Wetmelon) a server-controlled setting
+ * Vastly improved performance & connection stability for users with less bandwidth
+ * Improved client logging
+ * Added modding info to README
+ * Added compilation documentation
+ * Fixed F2 toggle for KMP can get out fo sync with main KSP GUI toggle
+Landmine130
+ * Added spectator mode (with TehGimp) and warp handling for spectators
+ * Fixed position/velocity/orbit updates not processed for spectated vessels
+ * Fixed throttle not animated while viewing another player in spectator mode
+ * Fixed warping while spectating causes issues
+ * Fixed initial sync never ends if player is throttled up
+ruarai
+ * Added secondary server universe backup & improved error handling when saving universe to disk
+ * Improved server commands, added missing command information
+ * Improved server logging
+ * Improved client logging
+ * Added compilation documentation
+ * Added server console scaling
+ * Addressed some common problems with compiling KMP from source code
+ryannathans
+ * Added /deleteship server command
+ * Added compilation documentation
+ * Code cleanup
+RockyTV
+ * Added admin list functionality to server
+ * Updated logging
+ * Fixed new !whereami chat command not reporting correct IP
+butterkitty
+ * Added new auto-dekessler feature to server to keep popular servers clean
+ * Fixed /quit & /stop doing the same thing
+krzys-h
+ * Added !rcon command for admins, server logs sent to admin players
+ * Added highlight for server admins in chat
+dplarina
+ * Add server section now closes after adding a server
+ * Fixed connection window flickers while entering text
+alvaro-cuesta
+ * Fixed player could bind mouse0 to KMP hotkeys
+JoshJ5Hawk
+ * Added new !bubble chat command for getting bubble radius & distance to edge
+kmclarnon
+ * Added !whereami chat command
+hashashin
+ * Added compilation documentation
+
+###v0.1.3.1
+TehGimp
+ * Sync is now only available when the throttle is down, so the resulting lack of thrust won't be a surprise
+ * Updated client with basic error handling for when config files are damaged
+ * Adjusted NullReferenceException flood check to take a more representative sample of debug logs
+ * Updated privacy protection to prevent targeting a private vessel (further updates by Landmine130)--previously only docking ports were protected
+ * Fixed UDP connection not being correctly established
+ * Fixed syncing during EVA causing various unusual bugs
+ * Fixed syncing producing duplicate vessels
+ * Fixed a bug with server sometimes sending incorrect privacy status flags
+ * Fixed a problem with various server commands being unable to correctly match guid's (/dekessler, /register, /update all affected)
+ * Fixed new /motd, /rules, /setinfo server commands always converting input to lower case
+ * Fixed bad server commands could potentially crash server
+ * Fixed an issue with handling multiple users that have the same auth token (i.e. alternate usernames)
+ * Fixed an issue with clients not identifying themselves correctly via UDP
+ * Code cleanup
+Wetmelon
+ * Installation checks to assist users with install issues
+ * Fixed issue where client doesn't finish intializing when config files aren't found
+ialexryan
+ * Converted all chat commands to "!" syntax
+ * Updated chat command help ("!help") with missing commands
+Landmine130
+ * Updated privacy protection so you *can* target a private vessel until you come within 500 meters range
+
+###v0.1.3.0
+NOTE:
+* 0.1.3.0 is not compatible with previous versions of KMP
+* 0.1.3.0 will replace your client settings file & your server list will be reset
+TehGimp
+ * The safety bubble is no longer a semi-sphere. It is now cylinder-shaped with the cap at 35km over KSC, and the radius is controlled by the server and can be changed freely.
+ * Incoming vessel updates from other players are now processed while you are at the Tracking Station (though newly created vessels may not become immediately available)
+ * Drastically reduced universe disk/memory usage (thanks Hashashin)
+ * Added rudimentary error handling for corrupt compressed messages & fixed other compression issues
+ * Anyone can Terminate debris, regardless of "owner"
+ * Added new /dekessler server command for removing old debris
+ * Slightly increased lock window size to correct rendering issues
+ * Newly created databases will now have a slightly smaller long-term size
+ * Improved disconnection messaging
+ * The client debug log is now disabled after the initial universe sync is completed, since it grows quite large in a normal game session--use "/debug" in chat after syncing to re-enable the client debug log when testing
+ * Fixed "Gumby Kerbal" bugs
+ * Fixed an issue with destroyed vessels being continuously recreated and destroyed again
+ * Fixed same-subspace time-sync destroying in-atmo vessels
+ * Fixed some cases of vessels not loading upon reconnect
+ * Fixed some issues with null data / client not ready messages
+ * Fixed issues with in-atmo debris being constantly reported as destroyed
+ * Fixed issues with client sending full vessel structure on every update outside of the "safety bubble"
+ * Fixed maneuver nodes appeared to jump to other orbits when making adjustments
+ * Fixed a UI issue with displaying unavailable vessels in the Tracking Station
+ * Fixed a few other minor errors
+ * Project management stuff
+ * Changed some debug messaging to ease researching certain gameplay issues		
+PhonicUK
+ * Overhauled user banning functionality
+ * Profanity filter
+ * Multiple major refactors to improve long-term project maintainability
+ * Initial groundwork for MySQL database support for servers
+ * Chat messages are now passed through the server
+ * Improved information shown to user when the server has difficulty starting			
+ * Improved client (dis)connection information
+Jumba
+ * All new, completely overhauled "ChatDX" chat interface
+ * Added new ghost checks
+ * Updated /clearclients disconnect method
+Wetmelon
+ * Refactored server command handling code
+ * Updated Kick messaging
+ * XML client settings file
+ * New /listships server command for displaying universe vessel information
+ * New /countships server command for displaying universe vessel information
+ * New /say server command
+ * Client MOTD display improvements
+ * Fixed kerbalEVA & Flag not included in default parts list
+ * Fixed cannot change LogLevel without fully restarting server
+ * Fixed bug with continually reloading client settings
+ * Code cleanup
+ * & created KMP Extractor utility to ease installation
+rekcon
+ * Added dynamic safety-bubble radius
+ * Refactored code to prevent certain client errors
+ * Refactored exception handling
+ * Fixed some connectivity issues	
+velusip
+ * Monomake support
+ * Numerous project improvements (renames, git settings, README contributions)
+AIMaster
+ * Code refactors for long-term project maintenance
+ * Fixed some suboptimal SQL
+ * Code cleanup
+JoshH5Hawk
+ * Added new !motd and !rules chat commands
+ * Added /setinfo, /motd, and /rules server commands for changing info, motd, or rules without restarting server
+ruarai
+ * Improved server messages for certain errors
+ * & created KMP Launcher tool
+Hashashin
+ * Drastically reduced universe disk/memory usage
+ * Created KMPbot dev team support robot
+Timestorm
+ * Fixed some connectivity issues
+Xjph
+ * Fixed can bind Mouse0 to major keys
+RcColes
+ * Fixed servers can be added to favourites list more than once
+Wayneoween
+ * Code cleanup
+benjamg
+ * Code cleanup
+KMPbot
+ * Refreshments
+/u/mitchkombat
+ * New KMP flag! =D
+/u/TheCampfireHeadphase
+ * New alt KMP flag!
+
+###v0.1.2.0
+NOTE: 0.1.2.0 is not compatible with previous versions of KMP
+* Added automatic backup of universe database to help prevent crashes from causing permanent damage
+* Larger network messages are now compressed to conserve bandwidth and improve initial load times
+* New server and client* chat help commands (thanks to RockyTV & JoshJ5Hawk)
+* Improved server universe database performance dramatically (thanks to wuselfuzz!)
+* Improved server performance over TCP (thanks to Odin & PhonicUK)
+* Improved same* subspace time* sync performance (helps address "bubble Kraken" issues & "too slow" disconnections)
+* Server now shows what IP new clients are connecting from (thanks to PhonicUK)
+* Added "/clearclients" server command to manually remove ghosted clients (thanks to ShadedFox & Jumba)
+* Fixed major issues with many database commands following SQL* injection patches (thanks to rekcon!)
+* Fixed chat messages displayed as "errors" in server (thanks to Jumba)
+* Fixed cannot set screenshotHeight (thanks to RockyTV)
+* Fixed Info window hotkey (thanks to ruarai)
+* Fixed issue where in some locales server log would not include newlines (thanks to ruarai)
+* Fixed server crash when database backup fails (thanks to ruarai)
+* Fixed server can be crashed by unexpected clients connecting (thanks to ShadedFox)
+* Fixed server crash when attempting to send data to a just* disconnected client (thanks to PhonicUK)
+* Fixed first connection attempt to a server often failed
+* Fixed minor issues with craft* sharing commands
+* Fixed rare issues with some clients being unable to load all vessels from server (other cases still exist)
+* Fixed a crash when certain server chat commands fail
+* Fixed a couple more common server crashes
+* Removed some deprecated code (thanks to Wetmelon)
+
+###v0.1.1.3
+* Corrected numerous ghosting issues and server crashes
+* Even more ghosting issue and crash fixes (thanks to Jumba)
+* Improved same* subspace time* sync to help prevent unexpected time changes outside the KSC "safety bubble"
+* The server now gives clear instructions at startup if required libraries are missing (thanks to ruarai)
+
+###v0.1.1.2
+* Fixed clicking on a craft in Tracking Station can cause an "Unexpected error *  re* synchronizing" message/sync
+* Fixed chat/viewer windows stay open after being disconnected (thanks to RcColes)
+
+###v0.1.1.1
+* Corrected localization regressions in server
+* Updated client to remove UDP connection requirement
+
+###v0.1.1
+* Server admins can now create a whitelist of approved players (thanks to PhonicUK)
+* The server can now be bound to a specific IP address (thanks to PhonicUK)
+* Server startup has been changed (thanks to PhonicUK)
+* Server can now be configured using command* line arguments (thanks to PhonicUK)
+* Fixed potential security issues affecting 'universe' integrity (thanks to PhonicUK)
+* Fixed server can crash when a player is disconnected
+* Fixed server can crash when unable to write 'universe' to disk
+* Fixed invalid chars in entered server hostname can break client GUI
+* Fixed a bug where remote vessels that were inside the KSC "safety bubble" could sometimes still appear
+* Changed server settings format to something more sane (thanks to PhonicUK)
+* Improvements to server logging (thanks to PhonicUK)
+* Other minor changes & bugfixes
+
+###v0.1.0.4
+* Day 1 critical updates (server only) to fix dependency & localization issues
+
+###v0.1.0 [KSP 0.22]
+* Initial release
