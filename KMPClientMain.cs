@@ -2309,7 +2309,6 @@ namespace KMP
 					split_index = split_index + bytes_to_read;
 				}
 				//Return the first split message if we just split.
-				Log.Debug("Split message into "  + queuedOutMessagesSplit.Count.ToString());
 				next_message = queuedOutMessagesSplit.Dequeue ();
 			}
 		}
@@ -2489,7 +2488,6 @@ namespace KMP
 			catch (Exception e)
 			{
 				Log.Debug("Exception thrown in asyncUDPSend(), catch 1, Exception: {0}", e.ToString());
-				gameManager.disconnect ("Disconnected: Send Error");
 			}
 		}
 
