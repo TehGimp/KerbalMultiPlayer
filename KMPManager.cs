@@ -2892,7 +2892,7 @@ namespace KMP
 	            {
                   Log.Debug("Exception thrown in loadProtovessel(), catch 1, Exception: {0}", e.ToString());
 	            }
-				//if (!created_vessel.loaded) created_vessel.Load();
+				if (!created_vessel.loaded) created_vessel.Load();
 				
 				Log.Debug(created_vessel.id.ToString() + " initializing: ProtoParts=" + protovessel.protoPartSnapshots.Count + ",Parts=" + created_vessel.Parts.Count + ",Sit=" + created_vessel.situation.ToString() + ",type=" + created_vessel.vesselType + ",alt=" + protovessel.altitude);
 				
@@ -4653,7 +4653,7 @@ namespace KMP
 					GUILayout.BeginVertical();
 					GUILayout.BeginHorizontal();
 					GUILayoutOption[] name_options = new GUILayoutOption[1];
-					name_options[0] = GUILayout.MaxWidth(240);
+					name_options[0] = GUILayout.MaxWidth(300);
 					GUILayout.Label("Server Name:");
 					newFamiliar = GUILayout.TextField(newFamiliar, name_options).Trim();
 						
@@ -4662,7 +4662,7 @@ namespace KMP
 
 					GUILayout.BeginHorizontal();
 					GUILayoutOption[] field_options = new GUILayoutOption[1];
-					field_options[0] = GUILayout.MaxWidth(120);
+					field_options[0] = GUILayout.MaxWidth(60);
 					GUILayout.Label("Address:");
 					newHost = GUILayout.TextField(newHost);
 					GUILayout.Label("Port:");
@@ -4672,14 +4672,17 @@ namespace KMP
                     GUILayout.BeginHorizontal();
                     // Fetch favourites
                     Dictionary<String, String[]> favorites = KMPClientMain.GetFavorites();
-
+    
+                    GUILayoutOption[] btn_options = new GUILayoutOption[1];
+                    btn_options[0] = GUILayout.MaxWidth(126);
+                
                     bool favoriteItemExists = favorites.ContainsKey(newFamiliar);
                     GUI.enabled = !favoriteItemExists;
-					bool addHostPressed = GUILayout.Button("New",field_options);
+					bool addHostPressed = GUILayout.Button("New",btn_options);
                     GUI.enabled = favoriteItemExists;
-                    bool editHostPressed = GUILayout.Button("Replace", field_options);
+                    bool editHostPressed = GUILayout.Button("Save", btn_options);
                     GUI.enabled = true;
-                    bool cancelEdit = GUILayout.Button("Cancel", field_options);
+                    bool cancelEdit = GUILayout.Button("Cancel", btn_options);
                     if (cancelEdit)
                     {
                         addPressed = false; /* Return to previous screen */ 
@@ -4717,7 +4720,6 @@ namespace KMP
                         addPressed = false;
                         // Disable the active familar after this stage, because otherwise the controls feel sticky and confusing
                         KMPConnectionDisplay.activeFamiliar = String.Empty;
-                        KMPConnectionDisplay.activeFamiliar = String.Empty;
                         KMPClientMain.SetFavorites(favorites); // I would love to have this as a seperate object in the manager, no more getting and setting. 
                     }
                     GUILayout.EndHorizontal();
@@ -4730,8 +4732,9 @@ namespace KMP
             {
                 GUILayout.BeginHorizontal();
 
-                GUILayoutOption[] connection_list_options = new GUILayoutOption[1];
+                GUILayoutOption[] connection_list_options = new GUILayoutOption[2];
                 connection_list_options[0] = GUILayout.MinWidth(290);
+                connection_list_options[1] = GUILayout.MinHeight(140);
 
                 GUILayout.BeginVertical(connection_list_options);
 
@@ -4754,6 +4757,9 @@ namespace KMP
 
                 GUILayoutOption[] pane_options = new GUILayoutOption[1];
                 pane_options[0] = GUILayout.MaxWidth(50);
+                
+                GUILayoutOption[] pane_btn_options = new GUILayoutOption[1];
+                pane_btn_options[0] = GUILayout.Width(80);
 
                 GUILayout.BeginVertical(pane_options);
 
@@ -4764,7 +4770,7 @@ namespace KMP
                 if (!allowConnect)
                     GUI.enabled = false;
 
-                bool connectPressed = GUILayout.Button("Connect");
+                bool connectPressed = GUILayout.Button("Connect",pane_btn_options);
                 GUI.enabled = true;
 
                 if (connectPressed && allowConnect)
@@ -4780,13 +4786,13 @@ namespace KMP
                     addPressed,
                     (String.IsNullOrEmpty(KMPConnectionDisplay.activeFamiliar)) ?
                     "Add Server" : "Edit",
-                    GUI.skin.button);
+                    GUI.skin.button,pane_btn_options);
                 
                 Dictionary<String, String[]> favorites = KMPClientMain.GetFavorites();
 
 
                 if (String.IsNullOrEmpty(KMPConnectionDisplay.activeFamiliar)) GUI.enabled = false;
-                bool deletePressed = GUILayout.Button("Remove");
+                bool deletePressed = GUILayout.Button("Remove",pane_btn_options);
                 if (deletePressed)
                 {
                     if (favorites.ContainsKey(KMPConnectionDisplay.activeFamiliar))
