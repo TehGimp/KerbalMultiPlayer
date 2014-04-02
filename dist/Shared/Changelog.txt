@@ -1,8 +1,10 @@
 Changelog
 ========
-###v0.1.5.2
+###v0.1.5.2 [KSP 0.23.5]
+NOTE:
+* 0.1.5.2 is not compatible with previous versions of KMP
 godarklight
- * Updated to support KSP 0.23.5
+ * KSP 0.23.5 support
  * Overhauled time-synchronization code to allow for much tighter sync and less "jumpy" behaviour for lagging users
  * Implemented major improvements to network code via message prioritization and splitting
  * Improved mod control with deferred SHA hash checking
