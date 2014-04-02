@@ -708,6 +708,13 @@ namespace KMP
 							dmodule.captureRange = (enabled ? 1 : -1) * absCaptureRange;
 							dmodule.isEnabled = enabled;
 						}
+                        if (module is ModuleGrappleNode)
+                         {
+                             ModuleGrappleNode gmodule = (ModuleGrappleNode) module;
+                             float absCaptureRange = Math.Abs(gmodule.captureRange);
+                             gmodule.captureRange = (enabled ? 1 : -1) * absCaptureRange;
+                             gmodule.isEnabled = enabled;
+                         }
 					}
 				}
 			}	
@@ -1124,6 +1131,13 @@ namespace KMP
 						dmodule.captureRange = absCaptureRange;
 						dmodule.isEnabled = true;
 					}
+                    if (module is ModuleGrappleNode)
+                    {
+                        ModuleGrappleNode gmodule = (ModuleGrappleNode) module;
+                        float absCaptureRange = Math.Abs(gmodule.captureRange);
+                        gmodule.captureRange = absCaptureRange;
+                        gmodule.isEnabled = true;
+                    }
 				}
 			}
 			

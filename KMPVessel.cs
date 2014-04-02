@@ -124,7 +124,7 @@ namespace KMP
             private set;
             get;
         }
-		
+
         public OrbitRenderer orbitRenderer
         {
             private set;
@@ -190,14 +190,7 @@ namespace KMP
 			ownerName = owner_name;
 			id = _id;
 
-			//Build the name of the game object
-			System.Text.StringBuilder sb = new StringBuilder();
-			sb.Append(vesselName);
-//			sb.Append(" (");
-//			sb.Append(ownerName);
-//			sb.Append(')');
-
-			gameObj = new GameObject(sb.ToString());
+			gameObj = new GameObject(vesselName);
 			gameObj.layer = 9;
 
 			generateActiveColor();
