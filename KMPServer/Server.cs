@@ -1828,75 +1828,69 @@ namespace KMPServer
         {
             try
             {
-                HttpListener listener = (HttpListener)result.AsyncState;
+                var listener = (HttpListener)result.AsyncState;
 
                 HttpListenerContext context = listener.EndGetContext(result);
-                //HttpListenerRequest request = context.Request;
 
-                HttpListenerResponse response = context.Response;
-
-                //Build response string
-                StringBuilder response_builder = new StringBuilder();
-
-                response_builder.Append("Version: ");
-                response_builder.Append(KMPCommon.PROGRAM_VERSION);
-                response_builder.Append('\n');
-
-                response_builder.Append("Port: ");
-                response_builder.Append(settings.port);
-                response_builder.Append('\n');
-
-                response_builder.Append("Num Players: ");
-                response_builder.Append(activeClientCount());
-                response_builder.Append('/');
-                response_builder.Append(settings.maxClients);
-                response_builder.Append('\n');
-
-                response_builder.Append("Players: ");
-
-                bool first = true;
-
-                foreach (var client in clients.ToList().Where(c => c.isReady))
+                string responseText = string.Empty;
+                if (context.Request.Url.PathAndQuery.StartsWith("/json"))
                 {
-                    if (first)
-                        first = false;
-                    else
-                        response_builder.Append(", ");
-
-                    response_builder.Append(client.username);
+                    responseText = new PublicServerInfo(settings).GetJSON();
                 }
+                else
+                {
+                    //Build response string
+                    var response_builder = new StringBuilder();
 
-                response_builder.Append('\n');
+                    response_builder.Append("Version: ");
+                    response_builder.Append(KMPCommon.PROGRAM_VERSION);
+                    response_builder.Append('\n');
 
-                response_builder.Append("Information: ");
-                response_builder.Append(settings.serverInfo);
-                response_builder.Append('\n');
+                    response_builder.Append("Port: ");
+                    response_builder.Append(settings.port);
+                    response_builder.Append('\n');
 
-                response_builder.Append("Updates per Second: ");
-                response_builder.Append(settings.updatesPerSecond);
-                response_builder.Append('\n');
+                    response_builder.Append("Num Players: ");
+                    response_builder.Append(activeClientCount());
+                    response_builder.Append('/');
+                    response_builder.Append(settings.maxClients);
+                    response_builder.Append('\n');
 
-                response_builder.Append("Inactive Ship Limit: ");
-                response_builder.Append(settings.totalInactiveShips);
-                response_builder.Append('\n');
+                    response_builder.Append("Players: ");
+                    response_builder.Append(string.Join(", ", clients.ToList().Where(c=>c.isReady)));
 
-                response_builder.Append("Screenshot Height: ");
-                response_builder.Append(settings.screenshotSettings.maxHeight);
-                response_builder.Append('\n');
+                    response_builder.Append('\n');
 
-                response_builder.Append("Screenshot Save: ");
-                response_builder.Append(settings.saveScreenshots);
-                response_builder.Append('\n');
+                    response_builder.Append("Information: ");
+                    response_builder.Append(settings.serverInfo);
+                    response_builder.Append('\n');
 
-                response_builder.Append("Whitelisted: ");
-                response_builder.Append(settings.whitelisted);
-                response_builder.Append('\n');
+                    response_builder.Append("Updates per Second: ");
+                    response_builder.Append(settings.updatesPerSecond);
+                    response_builder.Append('\n');
 
-                //Send response
-                byte[] buffer = System.Text.Encoding.UTF8.GetBytes(response_builder.ToString());
-                response.ContentLength64 = buffer.LongLength;
-                response.OutputStream.Write(buffer, 0, buffer.Length);
-                response.OutputStream.Close();
+                    response_builder.Append("Inactive Ship Limit: ");
+                    response_builder.Append(settings.totalInactiveShips);
+                    response_builder.Append('\n');
+
+                    response_builder.Append("Screenshot Height: ");
+                    response_builder.Append(settings.screenshotSettings.maxHeight);
+                    response_builder.Append('\n');
+
+                    response_builder.Append("Screenshot Save: ");
+                    response_builder.Append(settings.saveScreenshots);
+                    response_builder.Append('\n');
+
+                    response_builder.Append("Whitelisted: ");
+                    response_builder.Append(settings.whitelisted);
+                    response_builder.Append('\n');
+
+                    responseText = response_builder.ToString();
+                }
+                byte[] buffer = Encoding.UTF8.GetBytes(responseText);
+                context.Response.ContentLength64 = buffer.LongLength;
+                context.Response.OutputStream.Write(buffer, 0, buffer.Length);
+                context.Response.OutputStream.Close();
 
                 //Begin listening for the next http request
                 listener.BeginGetContext(asyncHTTPCallback, listener);
@@ -3881,7 +3875,7 @@ namespace KMPServer
             return settings.admins.Contains(username);
         }
 
-        private int activeClientCount()
+		public int activeClientCount()
         {
             return clients.Where(cl => cl.isReady).Count();
         }
