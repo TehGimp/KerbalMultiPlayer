@@ -2833,7 +2833,7 @@ namespace KMP
 	            {
                   Log.Debug("Exception thrown in loadProtovessel(), catch 1, Exception: {0}", e.ToString());
 	            }
-				if (!created_vessel.loaded) created_vessel.Load();
+				//if (!created_vessel.loaded) created_vessel.Load();
 				
 				Log.Debug(created_vessel.id.ToString() + " initializing: ProtoParts=" + protovessel.protoPartSnapshots.Count + ",Parts=" + created_vessel.Parts.Count + ",Sit=" + created_vessel.situation.ToString() + ",type=" + created_vessel.vesselType + ",alt=" + protovessel.altitude);
 				
