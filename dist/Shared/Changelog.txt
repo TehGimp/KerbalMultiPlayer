@@ -40,7 +40,7 @@ godarklight
  * Code cleanup
 TehGimp
  * Major improvements to database performance, particularly for MySQL databases
- * Switch vessel destruction flag to a timestamp and updated all related logic accordingly
+ * Switched vessel destruction flag to a timestamp and updated all related logic accordingly
  * Server will now purge destroyed vessels periodically to reduce on-disk footprint
  * The chat-entry box can now be closed by pressing "Esc"
  * Tracking Station "Recover"/"Terminate"/"Fly" buttons are now reliably set correctly for all vessels and also respect Privacy Lock settings

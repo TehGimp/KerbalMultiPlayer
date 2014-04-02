@@ -152,11 +152,38 @@ Server Commands (after /start)
 
 Enabling Mods
 -------------
-Mods are now controlled from the server using the KMPModControl.txt file in the server directory.
-  This file will be automatically created if it is missing. Further instructions for setting up mod
-  control are detailed in KMPModControl.txt. You can auto-generate the mod-control file by placing
-  all desired server mod files into the "Mods" folder (as they would appear in [KSP]/GameData) and
-  using the "/modgen" server command.
+KMP allows server-side mod control (although any mods that store data, like Kethane, will be local
+  to individual players). Add mods to your server at your own risk. The old (prior to v0.1.5.0)
+  system, which uses the KMPPartsList.txt file on the client's installation, is no longer in
+  effect. Instead, server admins configure their servers' KMPModControl.txt file to their
+  specifications, and clients that do not meet the mod requirements will not be allowed to connect.
+
+The simplest way for a server admin to configure mods is to copy all of the mods you want into the
+  [KMP Server]/Mods/ directory of the server, and then type "/modgen". The server will
+  automatically put part-adding mods (like Kethane/MechJeb) into the required section, and place
+  non-part-adding mods (like Kerbal Alarm Clock) into the optional section.
+
+The default config will allow all mods, but will only allow stock parts. Typing "/modgen" will
+  still allow all mods, but it will also include the parts it found from the server and put them in
+  the required section.
+
+If you want to be even more restrictive, you can type "/modgen whitelist", which is similar to the
+  above "/modgen", but it bans all mods (DLLs) that are not in the [KMP Server]/Mods/ directory.
+
+The step up from "/modgen whitelist" is "/modgen whitelist sha". This performs exactly the same as
+  "/modgen whitelist", but it also enforces the DLL's hash signature - players must have the
+  *exact* same version of the file as the server in order to connect.
+
+ * default: Recommended for unmodded public servers that do not care about cheat mods.
+ * /modgen: Recommended for modded public servers, and servers that do not care about cheat mods.
+ * /modgen whitelist: Recommended for public servers that want to ban cheat mods.
+ * /modgen whitelist sha: Not recommended, but it's there if you want total control over mods.
+
+After you run /modgen, you no longer have to keep the mods on the server. The mods are not loaded
+  into the server in any way. The KMPModControl.txt file is documented if you want to set it up
+  manually, but keep in mind that part-adding mods should be in the required section, otherwise
+  users will receive lots of "Unable to load ship, missing parts" dialog boxes when they don't have
+  a specific mod part.
 
 
 Source available at: https://github.com/TehGimp/KerbalMultiPlayer
