@@ -93,7 +93,7 @@ namespace KMPServer
             Log.Info("    /set help for information about each setting.");
             Log.Info("/whitelist [add|del] [user] to update whitelist.");
             Log.Info("/admin [add|del] [user] to update admin list.");
-            Log.Info("/mode [sandbox|career] to set server game mode.");
+            Log.Info("/mode [sandbox|career|coop] to set server game mode.");
             Log.Info("/dbdiag to run database performance diagnostics.");
 			Log.Info("/modgen [blacklist|whitelist] [sha] to generate a KMPModControl.txt from the 'Mods' directory.");
 			Log.Info("\tYou can use blacklist or whitelist mode, defaulting to blacklist.");
@@ -301,6 +301,10 @@ namespace KMPServer
                             case "career":
                                 settings.gameMode = 1;
                                 Log.Info("Game mode set to career");
+                                break;
+                            case "coop":
+                                settings.gameMode = 2;
+                                Log.Info("Game mode set to co-op career");
                                 break;
                         }
                         ServerSettings.writeToFile(settings);

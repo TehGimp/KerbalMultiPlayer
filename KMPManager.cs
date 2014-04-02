@@ -155,7 +155,7 @@ namespace KMP
 		public static object interopInQueueLock = new object();
 		
 		public int numberOfShips = 0;
-		public int gameMode = 0; //0=Sandbox, 1=Career
+		public int gameMode = 0; //0=Sandbox, 1=Career, 2=Co-op career
 		public bool gameCheatsEnabled = false; //Allow built-in KSP cheats
 		public bool gameArrr = false; //Allow private vessels to be taken if other user can successfully dock manually
 		public static int numberOfFilesToCheck = 0;
@@ -4576,7 +4576,7 @@ namespace KMP
 					HighLogic.CurrentGame.flagURL = "KMP/Flags/default";
 					vesselUpdatesLoaded.Clear();
 
-					if (gameMode == 1) //Career mode
+					if (gameMode != 0) //Career mode
 						HighLogic.CurrentGame.Mode = Game.Modes.CAREER;
 					
 					GamePersistence.SaveGame("persistent",HighLogic.SaveFolder,SaveMode.OVERWRITE);
@@ -4594,7 +4594,7 @@ namespace KMP
 						//at least for #578).
 					}
 					
-					if (gameMode == 1)
+					if (gameMode != 0)
 					{
 						var proto = HighLogic.CurrentGame.AddProtoScenarioModule(typeof(ResearchAndDevelopment), GameScenes.SPACECENTER, GameScenes.EDITOR, GameScenes.FLIGHT, GameScenes.TRACKSTATION, GameScenes.SPH);
 	                    proto.Load(ScenarioRunner.fetch);

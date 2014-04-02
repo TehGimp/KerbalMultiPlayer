@@ -58,6 +58,9 @@ namespace KMPServer
                 case 1:
                     GameMode = "Career";
                     break;
+                case 2:
+                    GameMode = "Co-op Career";
+                    break;
             }
 
             BubbleRadius = settings.safetyBubbleRadius;

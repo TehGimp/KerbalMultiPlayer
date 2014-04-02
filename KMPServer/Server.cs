@@ -2258,13 +2258,13 @@ namespace KMPServer
                 {
                     Log.Activity("Received scenario update from {0}", cl.username);
                     object result = Database.ExecuteScalar("SELECT ID FROM kmpScenarios WHERE PlayerID = @playerID AND Name = @name;",
-                        "playerID", cl.playerID,
+                        "playerID", (settings.gameMode == 2 ? -1 : cl.playerID),
                         "name", scenario_update.name);
                     if (result == null)
                     {
                         Database.ExecuteNonQuery("INSERT INTO kmpScenarios (PlayerID, Name, Tick, UpdateMessage)" +
                             " VALUES (@playerID, @name, @tick, @updateMessage);",
-                        "playerID", cl.playerID,
+                        "playerID", (settings.gameMode == 2 ? -1 : cl.playerID),
                         "name", scenario_update.name,
                         "tick", scenario_update.tick.ToString("0.0").Replace(",", "."),
                         "updateMessage", data);
@@ -2275,6 +2275,14 @@ namespace KMPServer
                             "id", Convert.ToInt32(result),
                             "tick", scenario_update.tick.ToString("0.0").Replace(",", "."),
                             "updateMessage", data);
+                    }
+                    if (settings.gameMode == 2)
+                    {
+                        //Send updates to other players
+                        foreach (Client client in clients)
+                        {
+                            if (client.playerID != cl.playerID) sendScenarios(client);
+                        }
                     }
                 }
             }
@@ -3227,14 +3235,13 @@ namespace KMPServer
             cl.hasReceivedScenarioModules = true;
             Database.ExecuteReader("SELECT UpdateMessage FROM kmpScenarios WHERE PlayerID = @playerID" +
                 //Only include career ScenarioModules if game server is set to career mode
-                (settings.gameMode != 1 ? " AND Name NOT IN ('ResearchAndDevelopment','ProgressTracking')" : ""),
+                (settings.gameMode == 0 ? " AND Name NOT IN ('ResearchAndDevelopment','ProgressTracking');" : ";"),
                 record => {
                     byte[] data = GetDataReaderBytes(record, 0);
                     Log.Activity("Sending scenario update to player {0}", cl.username);
                     sendScenarioMessage(cl, data);
                 },
-                "playerID", cl.playerID);
-
+                "playerID", (settings.gameMode == 2 ? -1 : cl.playerID));
         }
 
         private void sendSyncMessage(Client cl, double tick)
