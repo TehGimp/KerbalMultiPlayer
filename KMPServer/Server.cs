@@ -3638,7 +3638,7 @@ namespace KMPServer
         {
             try
             {
-				int vesselCount = Convert.ToInt32(Database.ExecuteScalar("SELECT COUNT(*) FROM kmpVessel;"));
+				int vesselCount = Convert.ToInt32(Database.ExecuteScalar("SELECT COUNT(*) FROM kmpSubspace s INNER JOIN kmpVessel v ON v.Subspace = s.ID AND v.Destroyed IS NULL;"));
 				if (vesselCount > 0)
 				{
 	                Log.Info("Attempting to optimize database...");

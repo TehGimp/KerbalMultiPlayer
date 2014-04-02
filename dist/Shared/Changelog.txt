@@ -11,13 +11,16 @@ godarklight
  * Improved MySQL database performance
  * Vastly improved initial universe sync performance
  * Switched SQLite to use built-in disk caching instead of an in-memory database with periodic disk backup, drastically reduces RAM usage on SQLite servers
+ * Vessels inside the "safety bubble" are now partially transparent until they leave the bubble and join the shared universe
  * Added native SQLite libraries for Mac servers
  * Added loaded vessel counter while synchronizing
  * Added initial support for KSP Toolbar mod
  * Added "!ntp" chat command for displaying time-sync debug information
  * Added connection pooling for SQLite
+ * Added small "backup" safety-bubbles near the launch pad and runway spawn points
  * Updated server to ignore case for configuration variable names
  * Server will now selectively ignore unimportant messages if it is lagging behind real-time
+ * Fixed coloured orbits for vessels controlled by active players
  * Fixed VAB could be locked out while playing KMP
  * Fixed warping into the range of another player can cause a vessel to explode
  * Fixed client would display multiple duplicates of a vessel controlled by another player
