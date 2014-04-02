@@ -117,6 +117,7 @@ namespace KMP
 		public const float IDLE_DELAY = 120.0f;
 		public const float PLUGIN_DATA_WRITE_INTERVAL = 0.333f;
 		public const float GLOBAL_SETTINGS_SAVE_INTERVAL = 10.0f;
+        public const double MIN_SAFETY_BUBBLE_DISTANCE = 100d;
         public const double SAFETY_BUBBLE_CEILING = 35000d;
 		public const float SCENARIO_UPDATE_INTERVAL = 30.0f;
 		
@@ -268,6 +269,7 @@ namespace KMP
 		private bool configRead = false;
 
 		public double safetyBubbleRadius = 2000d;
+        private bool safetyTransparency;
 		private bool isVerified = false;
 		private ToolbarButtonWrapper KMPToggleButton;
 		private bool KMPToggleButtonState = true;
@@ -524,6 +526,33 @@ namespace KMP
 						checkVesselPrivacy(possible_target);
 					}
 				}
+
+                //Reset the safety bubble transparency setting so it works when we go back into flight.
+                if (!isInFlight)
+                {
+                    safetyTransparency = false;
+                }
+
+                //Let's let the user know they are actually inside the bubble.
+                if (FlightGlobals.fetch.activeVessel != null)
+                {
+                    Vessel activeVessel = FlightGlobals.fetch.activeVessel;
+                    if (isInSafetyBubble(activeVessel.GetWorldPos3D(), activeVessel.mainBody, activeVessel.altitude) != safetyTransparency)
+                    {
+                        safetyTransparency = !safetyTransparency;
+                        foreach (Part part in FlightGlobals.fetch.activeVessel.parts)
+                        {
+                            if (safetyTransparency)
+                            {
+                                setPartOpacity(part, 0.75f);
+                            }
+                            else
+                            {
+                                setPartOpacity(part, 1f);
+                            }
+                        }
+                    }
+                }
 
 				writeUpdates();
 				
@@ -5363,47 +5392,39 @@ namespace KMP
 			return window;
 		}
 		
-		private bool isInSafetyBubble(Vector3d pos, CelestialBody body, double altitude)
-		{
-			//Assume Kerbin if body isn't supplied for some reason
-			if (body == null) body = FlightGlobals.Bodies.Find(b => b.name == "Kerbin");
+        private bool isInSafetyBubble(Vector3d pos, CelestialBody body, double altitude)
+        {
+            //Assume Kerbin if body isn't supplied for some reason
+            if (body == null)
+                body = FlightGlobals.Bodies.Find(b => b.name == "Kerbin");
 			
-			//If not at Kerbin or past ceiling we're definitely clear
-			if (body.name != "Kerbin" || altitude > SAFETY_BUBBLE_CEILING)
-				return false;
+            //If not at Kerbin or past ceiling we're definitely clear
+            if (body.name != "Kerbin" || altitude > SAFETY_BUBBLE_CEILING)
+                return false;
 			
-			//Cylindrical safety bubble -- project vessel position to a plane positioned at KSC with normal pointed away from surface
-			Vector3d kscNormal = body.GetSurfaceNVector(-0.102668048654,-74.5753856554);
-			Vector3d kscPosition = body.GetWorldSurfacePosition(-0.102668048654,-74.5753856554,60);
-			double projectionDistance = Vector3d.Dot(kscNormal, (pos - kscPosition)) * -1;
-			Vector3d projectedPos = pos + (Vector3d.Normalize(kscNormal)*projectionDistance);
-			
-			return Vector3d.Distance(kscPosition, projectedPos) < safetyBubbleRadius;
-		}
+            //Cylindrical safety bubble -- project vessel position to a plane positioned at KSC with normal pointed away from surface
+            Vector3d kscNormal = body.GetSurfaceNVector(-0.102668048654, -74.5753856554);
+            Vector3d kscPosition = body.GetWorldSurfacePosition(-0.102668048654, -74.5753856554, 60);
+            Vector3d landingPadPosition = body.GetWorldSurfacePosition(-0.0971978130377757, 285.44237039111, 60);
+            Vector3d runwayPosition = body.GetWorldSurfacePosition(-0.0486001121594686, 285.275552559723, 60);
+            double projectionDistance = Vector3d.Dot(kscNormal, (pos - kscPosition)) * -1;
+            double landingPadDistance = Vector3d.Distance(pos, landingPadPosition);
+            double runwayDistance = Vector3d.Distance(pos, runwayPosition);
+            Vector3d projectedPos = pos + (Vector3d.Normalize(kscNormal) * projectionDistance);
+            return Vector3d.Distance(kscPosition, projectedPos) < safetyBubbleRadius || runwayDistance < MIN_SAFETY_BUBBLE_DISTANCE || landingPadDistance < MIN_SAFETY_BUBBLE_DISTANCE;
+        }
 
-		private bool isProtoVesselInSafetyBubble(ProtoVessel protovessel) {
-			//When vessels are landed, position is 0,0,0 - So we need to check lat/long
-			ConfigNode protoVesselNode = new ConfigNode();
-			protovessel.Save(protoVesselNode);
-			CelestialBody kerbinBody = FlightGlobals.Bodies.Find (b => b.name == "Kerbin");
-			//If not kerbin, we aren't in the safety bubble.
-			if (protoVesselNode.GetNode("ORBIT").GetValue("REF") != "1") {
-				return false;
-			}
-			//If we aren't landed, use the vector3 check above.
-			if (!protovessel.landed) {
-				return isInSafetyBubble (protovessel.position, kerbinBody, protovessel.altitude);
-			}
-			//Check our distance
-			double protoVesselLat;
-			double protoVesselLong;
-			Double.TryParse(protoVesselNode.GetValue("lat"), out protoVesselLat);
-			Double.TryParse(protoVesselNode.GetValue("long"), out protoVesselLong);
-			Vector3d kscPosition = kerbinBody.GetWorldSurfacePosition(-0.102668048654,-74.5753856554,60);
-			Vector3d protoVesselPosition = kerbinBody.GetWorldSurfacePosition(protoVesselLat, protoVesselLong, protovessel.altitude);
-			double vesselDistance = Vector3d.Distance(kscPosition, protoVesselPosition);
-			return vesselDistance < safetyBubbleRadius;
-		}
+        private bool isProtoVesselInSafetyBubble(ProtoVessel protovessel)
+        {
+            //If not kerbin, we aren't in the safety bubble.
+            if (protovessel.orbitSnapShot.ReferenceBodyIndex != FlightGlobals.Bodies.FindIndex(body => body.bodyName == "Kerbin"))
+            {
+                return false;
+            }
+            CelestialBody kerbinBody = FlightGlobals.Bodies.Find(b => b.name == "Kerbin");
+            Vector3d protoVesselPosition = kerbinBody.GetWorldSurfacePosition(protovessel.latitude, protovessel.longitude, protovessel.altitude);
+            return isInSafetyBubble(protoVesselPosition, kerbinBody, protovessel.altitude);
+        }
 		
 		public double horizontalDistanceToSafetyBubbleEdge()
 		{
