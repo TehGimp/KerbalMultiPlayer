@@ -1,8 +1,10 @@
 GAME
 {
-	version = 0.22.0
+	version = 0.23.5
 	Title = KMP (SANDBOX)
 	Description = No description available.
+	linkURL = 
+	linkCaption = 
 	Mode = 0
 	Status = 1
 	scene = 7
@@ -16,7 +18,7 @@ GAME
 			CanAutoSave = False
 			CanUseMap = True
 			CanSwitchVesselsNear = True
-			CanSwitchVesselsFar = False
+			CanSwitchVesselsFar = True
 			CanTimeWarpHigh = True
 			CanTimeWarpLow = False
 			CanEVA = True
@@ -63,6 +65,19 @@ GAME
 	}
 	SCENARIO
 	{
+		name = ScenarioDiscoverableObjects
+		scene = 7, 8, 5
+		 = 559298752
+		sizeCurve
+		{
+			key = 0 0 1.5 1.5
+			key = 0.3 0.45 0.875 0.875
+			key = 0.7 0.55 0.875 0.875
+			key = 1 1 1.5 1.5
+		}
+	}
+	SCENARIO
+	{
 		name = ProgressTracking
 		scene = 5, 7, 8
 		Progress
@@ -71,7 +86,7 @@ GAME
 	}
 	FLIGHTSTATE
 	{
-		version = 0.22.0
+		version = 0.23.5
 		UT = 0.0
 		activeVessel = 0
 		VESSEL
@@ -162,6 +177,20 @@ GAME
 				Custom08 = False, 0
 				Custom09 = False, 0
 				Custom10 = False, 0
+			}
+			DISCOVERY
+			{
+				state = -1
+				lastObservedTime = 0
+				lifetime = Infinity
+				refTime = Infinity
+				size = 2
+			}
+			FLIGHTPLAN
+			{
+			}
+			CTRLSTATE
+			{
 			}
 		}
 	}

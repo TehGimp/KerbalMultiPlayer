@@ -79,13 +79,13 @@ namespace KMP
 			Log.Debug("Client Initialized.");
 		}
 		
-		public struct VesselEntry
+		public class VesselEntry
 		{
 			public KMPVessel vessel;
 			public float lastUpdateTime;
 		}
 
-		public struct VesselStatusInfo
+		public class VesselStatusInfo
 		{
 			public string ownerName;
 			public string vesselName;
@@ -791,7 +791,7 @@ namespace KMP
 		{
 			if (!syncing && isInFlight && !warping
                 && !isInSafetyBubble(FlightGlobals.ship_position,FlightGlobals.ActiveVessel.mainBody,FlightGlobals.ActiveVessel.altitude)
-			    && !isObserving)
+			    && !isObserving && !FlightGlobals.ActiveVessel.packed)
 			{
 				lastTick = Planetarium.GetUniversalTime();
 				//Write vessel status
@@ -1582,7 +1582,7 @@ namespace KMP
 				{
 					Log.Debug("Killing vessel immediately: " + vessel.id);
 					try { vessel.Die(); } catch {}
-					try { FlightGlobals.Vessels.Remove(vessel); } catch {}
+					//try { FlightGlobals.Vessels.Remove(vessel); } catch {}
 					StartCoroutine(destroyVesselOnNextUpdate(vessel));
 				} else StartCoroutine(killVesselOnNextUpdate(vessel));
 			}
@@ -1595,7 +1595,7 @@ namespace KMP
 			{
 				Log.Debug("Killing vessel");
 				try { vessel.Die(); } catch {}
-				try { FlightGlobals.Vessels.Remove(vessel); } catch {}
+				//try { FlightGlobals.Vessels.Remove(vessel); } catch {}
 				StartCoroutine(destroyVesselOnNextUpdate(vessel));
 			}
 		}
@@ -2030,10 +2030,10 @@ namespace KMP
 								serverVessels_LastUpdateDistanceTime[vessel_update.id] = new KeyValuePair<double, double>(vessel_update.distance,Planetarium.GetUniversalTime() + 0.75f);
 								if (extant_vessel != null)
 								{
-									Log.Debug("vessel found: " + extant_vessel.id);
+									//Log.Debug("vessel found: " + extant_vessel.id);
 									if (extant_vessel.vesselType != VesselType.Flag) //Special treatment for flags
 									{
-										vessel.vesselRef = extant_vessel;
+										//vessel.vesselRef = extant_vessel;
 										float ourDistance = 3000f;
 										if (!extant_vessel.loaded)
 										{
@@ -2713,7 +2713,7 @@ namespace KMP
 			try
 			{
 				//Ensure this vessel isn't already loaded
-				oldVessel = FlightGlobals.Vessels.Find (v => v.id == vessel_id);
+				oldVessel = FlightGlobals.fetch.vessels.Find (v => v.id == vessel_id);
 				if (oldVessel != null) {
 					wasLoaded = oldVessel.loaded;
 					if (protovessel.vesselType == VesselType.EVA && wasLoaded)
@@ -2791,7 +2791,7 @@ namespace KMP
 								part.Rigidbody.detectCollisions = false;
 								part.explosionPotential = 0;
 							}
-							oldVessel.id = Guid.Empty;
+							//oldVessel.id = Guid.Empty;
 							serverVessels_InUse[oldVessel.id] = false;
 							serverVessels_IsPrivate[oldVessel.id] = false;
 							serverVessels_IsMine[oldVessel.id] = true;
@@ -2815,7 +2815,7 @@ namespace KMP
 			{
 				Log.Debug("Killing vessel");
 				try { oldVessel.Die(); } catch {}
-				try { FlightGlobals.Vessels.Remove(oldVessel); } catch {}
+				//try { FlightGlobals.Vessels.Remove(oldVessel); } catch {}
 				StartCoroutine(destroyVesselOnNextUpdate(oldVessel));
 			}
 			serverVessels_LoadDelay[vessel_id] = UnityEngine.Time.realtimeSinceStartup + 5f;
@@ -2837,7 +2837,7 @@ namespace KMP
 				
 				Log.Debug(created_vessel.id.ToString() + " initializing: ProtoParts=" + protovessel.protoPartSnapshots.Count + ",Parts=" + created_vessel.Parts.Count + ",Sit=" + created_vessel.situation.ToString() + ",type=" + created_vessel.vesselType + ",alt=" + protovessel.altitude);
 				
-				vessels[vessel_id.ToString()].vessel.vesselRef = created_vessel;
+				//vessels[vessel_id.ToString()].vessel.vesselRef = created_vessel;
 				serverVessels_PartCounts[vessel_id] = created_vessel.Parts.Count;
 				serverVessels_Parts[vessel_id] = new List<Part>();
 				serverVessels_Parts[vessel_id].AddRange(created_vessel.Parts);
@@ -3280,8 +3280,15 @@ namespace KMP
 		
 		private void setMidDocking()
 		{
-			writePrimaryUpdate();
-			Invoke("setFinishDocking",2f);
+            if (!FlightGlobals.ActiveVessel.packed)
+            {
+                writePrimaryUpdate();
+                Invoke("setFinishDocking", 2f);
+            }
+            else
+            {
+                Invoke("setMidDocking", 2f);
+            }
 		}
 		
 		private void setFinishDocking()
@@ -4519,7 +4526,6 @@ namespace KMP
 					HighLogic.CurrentGame.Parameters.Flight.CanQuickLoad = false;
 					HighLogic.CurrentGame.Parameters.Flight.CanRestart = false;
 					HighLogic.CurrentGame.Parameters.Flight.CanTimeWarpLow = false;
-					HighLogic.CurrentGame.Parameters.Flight.CanSwitchVesselsFar = false;
 					HighLogic.CurrentGame.Title = "KMP";
 					HighLogic.CurrentGame.Description = "Kerbal Multi Player session";
 					HighLogic.CurrentGame.flagURL = "KMP/Flags/default";

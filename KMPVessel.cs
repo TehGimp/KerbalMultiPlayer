@@ -173,13 +173,13 @@ namespace KMP
 				return referenceUT + (UnityEngine.Time.fixedTime - referenceFixedTime) * info.timeScale;
 			}
 		}
-		
-		public Vessel vesselRef
-		{
-			set;
-            get;
-		}
-		
+        public Vessel vesselRef
+        {
+            get
+            {
+                return FlightGlobals.fetch.vessels.Find(v => v.id == id);
+            }
+        }
         //Methods
 
         public KMPVessel(String vessel_name, String owner_name, Guid _id)
@@ -375,6 +375,7 @@ namespace KMP
 			if (!orbitValid)
 				return;
 
+
             gameObj.transform.localPosition = worldPosition;
 
             Vector3 scaled_pos = ScaledSpace.LocalToScaledSpace(worldPosition);
@@ -486,7 +487,7 @@ namespace KMP
 			}
 
 			line.SetColors(color, color);
-			orbitRenderer.orbitColor = color * 0.5f;
+			orbitRenderer.driver.orbitColor = color * 0.5f;
 
 			if (force_hide || !orbitValid)
 				orbitRenderer.drawIcons = OrbitRenderer.DrawIcons.NONE;
