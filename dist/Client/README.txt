@@ -3,7 +3,7 @@ KMP Client README
 
 About
 -----
-KMP is a mod for v0.23 of Kerbal Space Program that adds a multiplayer game
+KMP is a mod for v0.23.5 of Kerbal Space Program that adds a multiplayer game
 option. In a KMP game you can freely interact with other players and do all the
 Kerbally things you'd normally do in KSP, but with friends (or strangers)
 playing in the same universe, at the same time. See the FAQ for more

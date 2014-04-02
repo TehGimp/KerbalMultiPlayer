@@ -1,5 +1,90 @@
 Changelog
 ========
+###v0.1.5.2
+godarklight
+ * Updated to support KSP 0.23.5
+ * Overhauled time-synchronization code to allow for much tighter sync and less "jumpy" behaviour for lagging users
+ * Implemented major improvements to network code via message prioritization and splitting
+ * Improved mod control with deferred SHA hash checking
+ * Improved MySQL database performance
+ * Vastly improved initial universe sync performance
+ * Switched SQLite to use built-in disk caching instead of an in-memory database with periodic disk backup, drastically reduces RAM usage on SQLite servers
+ * Added native SQLite libraries for Mac servers
+ * Added loaded vessel counter while synchronizing
+ * Added initial support for KSP Toolbar mod
+ * Added "!ntp" chat command for displaying time-sync debug information
+ * Added connection pooling for SQLite
+ * Updated server to ignore case for configuration variable names
+ * Server will now selectively ignore unimportant messages if it is lagging behind real-time
+ * Fixed VAB could be locked out while playing KMP
+ * Fixed warping into the range of another player can cause a vessel to explode
+ * Fixed client would display multiple duplicates of a vessel controlled by another player
+ * Fixed bug affecting full structure vessel updates & other sync issues
+ * Fixed time-sync issues could cause an FPS drop every ~14 seconds
+ * Fixed docked vessels sometimes becoming "fused" & inseparable (w/ TehGimp)
+ * Fixed bugs affecting EVA & ground vehicle positioning near other players
+ * Fixed bugs affecting basic connection process, maintaining a connection, & disconnecting cleanly
+ * Fixed bugs affecting IPv6 connectivity under Windows
+ * Fixed bugs where another player's nearby vessel might not load while in atmosphere
+ * Fixed bugs that could cause duplicate vessels to be loaded, often causing an explosion
+ * Fixed bugs that reduced server database performance
+ * Fixed various bugs in server-side mod control
+ * Fixed various NRE bugs
+ * Fixed options menu left open if you disconnect from a server and then connect again
+ * Fixed server messages not getting special colour in chat
+ * Fixed KMP changing FRAME_DT_LIMIT setting even for non-KMP games
+ * Fixed user can't quit KMP cleanly if initial universe sync fails
+ * Fixed server could potentially save multiple entries for a single user name
+ * Code cleanup
+TehGimp
+ * Major improvements to database performance, particularly for MySQL databases
+ * Switch vessel destruction flag to a timestamp and updated all related logic accordingly
+ * Server will now purge destroyed vessels periodically to reduce on-disk footprint
+ * The chat-entry box can now be closed by pressing "Esc"
+ * Tracking Station "Recover"/"Terminate"/"Fly" buttons are now reliably set correctly for all vessels and also respect Privacy Lock settings
+ * Improved optimization of database while active players are connected to server
+ * Improved chat offset positioning while in-flight
+ * Improved logging of certain common server errors
+ * Added automatic server upgrade for old MySQL databases so they can benefit from godarklight's improvements
+ * Added setting for allowing a persistent universe vs freezing universe if server is empty
+ * Added simple command history to server console
+ * Fixed "/set help" not working & updated help text
+ * Fixed various major bugs where initial universe sync could potentially skip some vessels
+ * Fixed major bug with assigning a warping player to a new subspace
+ * Fixed server crash when still sending messages to a player during disconnection
+ * Fixed database optimization showing error messages for an empty universe
+ * Fixed MySQL connection bugs can crash server
+ * Fixed localization bugs in server database queries
+ * Fixed multi-line chat messages pushing chat off-screen
+ * Fixed minor database upgrade bugs
+ * Fixed minor bugs with new vessel load counter
+ * Fixed server wouldn't create new SQLite DBs when connection pooling is active
+ * Fixed "database is locked" errors for SQLite DBs when connection pooling is active
+ * Documentation updates
+ * Code cleanup
+nevercast
+ * Overhauled database code to add an abstraction layer & improve queries
+ * Updated connection window to make favourite server management more sensible
+ * Implemented smarter handling of database connections
+ * Added database diagnostics
+ * Fixed SQLite maintaining a single open connection at all times
+ * Fixed bug where profanity filter could crash server
+ * Fixed bug with releasing old MySQL database connections
+ * Major code cleanup
+kkotowick
+ * Overhauled server-side mod control system
+ * Added automatic server-side mod control file generation
+ * Added optional enforcement of mod files via SHA hashes
+dazoe
+ * Added KMP to the main KSP menus
+ * Updated KMP plugin to load via KSPAddon attribute instead of old "unit test" bootstrap
+ruarai
+ * Added JSON server info to complement existing human-readable server info page (w/ Leo_Verto)
+Leo_Verto
+ * Assisted with adding JSON server info to complement existing human-readable server info page (w/ ruarai)
+hashashin
+ * Fixed issue where KMP window IDs could potentially conflict with other mods
+
 ###v0.1.5.1
 TehGimp
  * Shrunk default safety-cylinder radius to 2000m
