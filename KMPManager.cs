@@ -269,6 +269,7 @@ namespace KMP
 		private bool configRead = false;
 
 		public double safetyBubbleRadius = 2000d;
+        private bool safetyTransparency;
 		private bool isVerified = false;
 		private ToolbarButtonWrapper KMPToggleButton;
 		private bool KMPToggleButtonState = true;
@@ -525,6 +526,33 @@ namespace KMP
 						checkVesselPrivacy(possible_target);
 					}
 				}
+
+                //Reset the safety bubble transparency setting so it works when we go back into flight.
+                if (!isInFlight)
+                {
+                    safetyTransparency = false;
+                }
+
+                //Let's let the user know they are actually inside the bubble.
+                if (FlightGlobals.fetch.activeVessel != null)
+                {
+                    Vessel activeVessel = FlightGlobals.fetch.activeVessel;
+                    if (isInSafetyBubble(activeVessel.GetWorldPos3D(), activeVessel.mainBody, activeVessel.altitude) != safetyTransparency)
+                    {
+                        safetyTransparency = !safetyTransparency;
+                        foreach (Part part in FlightGlobals.fetch.activeVessel.parts)
+                        {
+                            if (safetyTransparency)
+                            {
+                                setPartOpacity(part, 0.75f);
+                            }
+                            else
+                            {
+                                setPartOpacity(part, 1f);
+                            }
+                        }
+                    }
+                }
 
 				writeUpdates();
 				
