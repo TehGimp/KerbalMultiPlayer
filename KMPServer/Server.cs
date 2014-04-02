@@ -292,6 +292,11 @@ namespace KMPServer
 
             //0.23 parts
             partList.Add("RAPIER"); partList.Add("Large.Crewed.Lab");
+            
+            //0.23.5 parts
+            partList.Add("GrapplingDevice"); partList.Add("LaunchEscapeSystem"); partList.Add("MassiveBooster"); partList.Add("PotatoRoid"); partList.Add("Size2LFB");
+            partList.Add("Size3AdvancedEngine"); partList.Add("size3Decoupler"); partList.Add("Size3EngineCluster"); partList.Add("Size3LargeTank"); partList.Add("Size3MediumTank");
+            partList.Add("Size3SmallTank"); partList.Add("Size3to2Adapter");
 
             return partList;
             //foreach(string part in partList) writer.WriteLine(part);
@@ -328,7 +333,7 @@ namespace KMPServer
                     {
                         //Remove the Mods/ part, Change path seperators to the unix ones.
                         string trimmedModFile = modFile.Remove(0, MODS_PATH.Length + 1);
-                        if (!trimmedModFile.ToLowerInvariant().StartsWith("squad") && !trimmedModFile.ToLowerInvariant().StartsWith("kmp") && !trimmedModFile.ToLowerInvariant().StartsWith("000_toolbar"))
+                        if (!trimmedModFile.ToLowerInvariant().StartsWith("squad") && !trimmedModFile.ToLowerInvariant().StartsWith("nasamission") && !trimmedModFile.ToLowerInvariant().StartsWith("kmp") && !trimmedModFile.ToLowerInvariant().StartsWith("000_toolbar"))
                             if (trimmedModFile.ToLowerInvariant().EndsWith(".cfg"))
                             {
                                 using (StreamReader sr = new StreamReader(modFile))
@@ -381,7 +386,7 @@ namespace KMPServer
                 foreach (string modFile in lsFiles)
                 {
                     string trimmedModFile = modFile.Remove(0, MODS_PATH.Length + 1).Replace("\\", "/");
-                    if (!trimmedModFile.ToLowerInvariant().StartsWith("squad") && !trimmedModFile.ToLowerInvariant().StartsWith("kmp") && !trimmedModFile.ToLowerInvariant().StartsWith("000_toolbar") && trimmedModFile.ToLowerInvariant().EndsWith(".dll"))
+                    if (!trimmedModFile.ToLowerInvariant().StartsWith("squad") && !trimmedModFile.ToLowerInvariant().StartsWith("nasamission") && !trimmedModFile.ToLowerInvariant().StartsWith("kmp") && !trimmedModFile.ToLowerInvariant().StartsWith("000_toolbar") && trimmedModFile.ToLowerInvariant().EndsWith(".dll"))
                     {
                         result += modFile.Remove(0, MODS_PATH.Length + 1).Replace("\\", "/") + "\n"; //Remove the starting parth and add it to the list.
                     }
@@ -500,7 +505,7 @@ namespace KMPServer
                 foreach (string file in ls)
                 {
                     //We add Squad files manually in generatePartsList above.
-                    if (!file.ToLowerInvariant().StartsWith("squad") && file.Substring(file.Length - 4).Equals(".cfg", StringComparison.InvariantCultureIgnoreCase)) // check if config file (only place where parts are located)
+                    if (!file.ToLowerInvariant().StartsWith("squad") && !file.ToLowerInvariant().StartsWith("nasamission") && file.Substring(file.Length - 4).Equals(".cfg", StringComparison.InvariantCultureIgnoreCase)) // check if config file (only place where parts are located)
                     {
                         using (StreamReader sr = new StreamReader(file))
                         {
