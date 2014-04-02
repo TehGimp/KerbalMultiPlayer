@@ -362,20 +362,35 @@ namespace KMP
 				if (HighLogic.LoadedScene == GameScenes.LOADING || !gameRunning)
 					return; //Don't do anything while the game is loading or not in KMP game
 				
-				if (syncing)
-				{
-					ScreenMessages.PostScreenMessage("Synchronizing universe, please wait...",1f,ScreenMessageStyle.UPPER_CENTER);
-					if (vesselLoadedMessage != null) {
-						vesselLoadedMessage.duration = 0f;
-					}
-					if (!inGameSyncing) {
-						if (numberOfShips != 0) {
-							vesselLoadedMessage = ScreenMessages.PostScreenMessage("Sync progress: " + vesselUpdatesLoaded.Count + "/" + numberOfShips + " (" + (vesselUpdatesLoaded.Count * 100 / numberOfShips) + "%)",1f,ScreenMessageStyle.UPPER_RIGHT);
-						}
-					} else {
-						vesselLoadedMessage = ScreenMessages.PostScreenMessage("Loaded vessels: " + FlightGlobals.Vessels.Count,1f,ScreenMessageStyle.UPPER_RIGHT);
-					}
-				}
+                if (syncing)
+                {
+                    if (vesselLoadedMessage != null)
+                    {
+                        vesselLoadedMessage.duration = 0f;
+                    }
+                    if (isTimeSyncronized)
+                    {
+                        if (!inGameSyncing)
+                        {
+                            if (numberOfShips != 0)
+                            {
+                                vesselLoadedMessage = ScreenMessages.PostScreenMessage("Synchronizing vessels: " + vesselUpdatesLoaded.Count + "/" + numberOfShips + " (" + (vesselUpdatesLoaded.Count * 100 / numberOfShips) + "%)", 1f, ScreenMessageStyle.UPPER_RIGHT);
+                            }
+                            else
+                            {
+                                vesselLoadedMessage = ScreenMessages.PostScreenMessage("Synchronized new universe!", 1f, ScreenMessageStyle.UPPER_RIGHT);
+                            }
+                        }
+                        else
+                        {
+                            vesselLoadedMessage = ScreenMessages.PostScreenMessage("Synchronizing vessels: " + FlightGlobals.Vessels.Count, 1f, ScreenMessageStyle.UPPER_RIGHT);
+                        }
+                    }
+                    else
+                    {
+                        vesselLoadedMessage = ScreenMessages.PostScreenMessage("Synchronizing to server clock: " + listClientTimeSyncOffset.Count + "/" + SYNC_TIME_VALID_COUNT + " (" + (listClientTimeSyncOffset.Count * 100 / SYNC_TIME_VALID_COUNT) + "%)", 1f, ScreenMessageStyle.UPPER_RIGHT);
+                    }
+                }
 				
 				if (!isInFlight && HighLogic.LoadedScene == GameScenes.TRACKSTATION)
 				{
@@ -1933,6 +1948,11 @@ namespace KMP
 					}
 				}
 			}
+
+            if (!vesselUpdatesLoaded.Contains(vessel_update.id)) //This can be moved elsewhere in addRemoteVessel (or applyVesselUpdate) to help track issues with loading a specific vessel
+            {
+                vesselUpdatesLoaded.Add(vessel_update.id);
+            }
 			
 			Vector3 oldPosition = vessel.worldPosition;
 			
@@ -2703,10 +2723,6 @@ namespace KMP
 			if (protovessel.vesselType == VesselType.Flag) {
 				Invoke("ClearFlagLock", 5f);
 			}
-			if (!vesselUpdatesLoaded.Contains(vessel_id)) //This can be moved elsewhere in addRemoteVessel (or applyVesselUpdate) to help track issues with loading a specific vessel
-            {
-                vesselUpdatesLoaded.Add(vessel_id);
-            }
 			Vector3 newWorldPos = Vector3.zero, newOrbitVel = Vector3.zero;
 			bool setTarget = false, wasLoaded = false, wasActive = false;
 			Vessel oldVessel = null;
