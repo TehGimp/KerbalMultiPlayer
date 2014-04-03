@@ -4598,15 +4598,11 @@ namespace KMP
 					syncing = true;
 					HighLogic.CurrentGame.Start();
 
-					if (HasModule("ResearchAndDevelopment"))
-					{
-						Log.Debug("Erasing scenario modules");
-						HighLogic.CurrentGame.scenarios.Clear();
-						//This is done because scenarios is not cleared properly even when a new game is started, and it was causing bugs in KMP.
-						//Instead of clearing scenarios, KSP appears to set the moduleRefs of each module to null, which is what was causing KMP bugs #578, 
-						//and could be the cause of #579 (but closing KSP after disconnecting from a server, before connecting again, prevented it from happening, 
-						//at least for #578).
-					}
+					HighLogic.CurrentGame.scenarios.Clear();
+					//This is done because scenarios is not cleared properly even when a new game is started, and it was causing bugs in KMP.
+					//Instead of clearing scenarios, KSP appears to set the moduleRefs of each module to null, which is what was causing KMP bugs #578, 
+					//and could be the cause of #579 (but closing KSP after disconnecting from a server, before connecting again, prevented it from happening, 
+					//at least for #578).
 					
                     var proto = HighLogic.CurrentGame.AddProtoScenarioModule(typeof(ScenarioDiscoverableObjects), GameScenes.SPACECENTER, GameScenes.FLIGHT, GameScenes.TRACKSTATION);
                     proto.Load(ScenarioRunner.fetch);
