@@ -2037,7 +2037,7 @@ namespace KMP
 				serverVessels_IsPrivate[vessel_update.id] = vessel_update.isPrivate;
 				serverVessels_IsMine[vessel_update.id] = vessel_update.isMine;
 				Log.Debug("status flags updated: " + (vessel_update.state == State.ACTIVE) + " " + vessel_update.isSyncOnlyUpdate + " " + vessel_update.isPrivate + " " + vessel_update.isMine);
-				if (vessel_update.situation == Situation.DESTROYED && vessel_update.id != FlightGlobals.ActiveVessel.id)
+				if (vessel_update.situation == Situation.DESTROYED && (isInFlight ? vessel_update.id != FlightGlobals.ActiveVessel.id : true))
 				{
 					Log.Debug("Vessel reported destroyed, killing vessel");
 					Vessel extant_vessel = FlightGlobals.Vessels.Find(v => v.id == vessel_update.id);
@@ -3834,6 +3834,7 @@ namespace KMP
 		{
 			if (FlightGlobals.ActiveVessel.GetVesselCrew().Count > 0 && KerbalGUIManager.ActiveCrew.Count < 1)
 			{
+                FlightGlobals.ActiveVessel.DespawnCrew();
 			    FlightGlobals.ActiveVessel.SpawnCrew();
 				FlightEVA.fetch.EnableInterface();
 			}
@@ -4405,7 +4406,7 @@ namespace KMP
                         if (isInFlight ? FlightGlobals.ActiveVessel.ctrlState.mainThrottle == 0f : true)
                             tooltip = "Sync to the future";
                         else
-                            tooltip = "Can't sync while throttled up";
+                            tooltip = "Can't sync - throttle";
                     } 
                     else
                     {
