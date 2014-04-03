@@ -4395,7 +4395,7 @@ namespace KMP
 				
 				GUIStyle syncButtonStyle = new GUIStyle(GUI.skin.button);
 				string tooltip = showServerSync ? "Sync to the future" : "Already fully synced";
-				if (showServerSync && (FlightGlobals.ActiveVessel == null || FlightGlobals.ActiveVessel.ctrlState.mainThrottle == 0f) && !isObserving)
+				if (showServerSync && (!isInFlight || FlightGlobals.ActiveVessel.ctrlState.mainThrottle == 0f) && !isObserving)
 				{
 					syncButtonStyle.normal.textColor = new Color(0.28f, 0.86f, 0.94f);
 					syncButtonStyle.hover.textColor = new Color(0.48f, 0.96f, 0.96f);
