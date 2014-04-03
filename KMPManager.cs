@@ -2870,6 +2870,7 @@ namespace KMP
 		private IEnumerator<WaitForFixedUpdate> loadProtovessel(Vessel oldVessel, Vector3 newWorldPos, Vector3 newOrbitVel, bool wasLoaded, bool wasActive, bool setTarget, ProtoVessel protovessel, Guid vessel_id, KMPVessel kvessel = null, KMPVesselUpdate update = null, double distance = 501d)
 		{
 			yield return new WaitForFixedUpdate();
+            Log.Debug("Loading protovessel: {0}", vessel_id.ToString());
 			if (oldVessel != null && !wasActive)
 			{
 				Log.Debug("Killing vessel");
@@ -2892,8 +2893,11 @@ namespace KMP
 	            {
                   Log.Debug("Exception thrown in loadProtovessel(), catch 1, Exception: {0}", e.ToString());
 	            }
+                
 				if (!created_vessel.loaded) created_vessel.Load();
-				
+                
+				created_vessel.SpawnCrew();
+                
 				Log.Debug(created_vessel.id.ToString() + " initializing: ProtoParts=" + protovessel.protoPartSnapshots.Count + ",Parts=" + created_vessel.Parts.Count + ",Sit=" + created_vessel.situation.ToString() + ",type=" + created_vessel.vesselType + ",alt=" + protovessel.altitude);
 				
 				//vessels[vessel_id.ToString()].vessel.vesselRef = created_vessel;
@@ -3568,7 +3572,6 @@ namespace KMP
 			{
 				ScreenMessages.PostScreenMessage("Universe synchronized",1f,ScreenMessageStyle.UPPER_RIGHT);
 				StartCoroutine(returnToSpaceCenter());
-				//Disable debug logging once synced unless explicitly enabled
 			}
 		}
 
@@ -3744,7 +3747,7 @@ namespace KMP
 					}
 					long serverLagMilliseconds = tempServerLag / 10000;
 					skewMessageText += serverLagMilliseconds + "ms.\n";
-					
+                    
 					skewMessage = ScreenMessages.PostScreenMessage(skewMessageText, 1f, ScreenMessageStyle.UPPER_RIGHT);
 				}
 			}
@@ -4394,8 +4397,22 @@ namespace KMP
 					StartCoroutine(shareScreenshot());
 				
 				GUIStyle syncButtonStyle = new GUIStyle(GUI.skin.button);
-				string tooltip = showServerSync ? "Sync to the future" : "Already fully synced";
-				if (showServerSync && (!isInFlight || FlightGlobals.ActiveVessel.ctrlState.mainThrottle == 0f) && !isObserving)
+				string tooltip = "";
+                if (!syncing)
+                {
+                    if (showServerSync) 
+                    {
+                        if (isInFlight ? FlightGlobals.ActiveVessel.ctrlState.mainThrottle == 0f : true)
+                            tooltip = "Sync to the future";
+                        else
+                            tooltip = "Can't sync while throttled up";
+                    } 
+                    else
+                    {
+                        tooltip = "Already fully synced";   
+                    }
+                }
+				if (showServerSync && (isInFlight ? FlightGlobals.ActiveVessel.ctrlState.mainThrottle == 0f : true) && !isObserving)
 				{
 					syncButtonStyle.normal.textColor = new Color(0.28f, 0.86f, 0.94f);
 					syncButtonStyle.hover.textColor = new Color(0.48f, 0.96f, 0.96f);
@@ -4538,7 +4555,7 @@ namespace KMP
 					gameStart = false;
 					gameRunning = true;
 
-					Console.WriteLine ("Game started.");
+					Console.WriteLine("Game started.");
 					//Clear dictionaries
 					sentVessels_Situations.Clear();
 		
