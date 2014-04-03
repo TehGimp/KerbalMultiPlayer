@@ -126,15 +126,15 @@ namespace KMP
 		public const double PRIVATE_VESSEL_MIN_TARGET_DISTANCE = 500d;
 		
 		//Rendezvous smoothing
-		public const double SMOOTH_RENDEZ_UPDATE_MAX_DIFFPOS_SQRMAG_INCREASE_SCALE = 50d;
-		public const double SMOOTH_RENDEZ_UPDATE_MAX_DIFFVEL_SQRMAG_INCREASE_SCALE = 50d;
-		public const double SMOOTH_RENDEZ_UPDATE_EXPIRE = 7.5d;
+		public const double SMOOTH_RENDEZ_UPDATE_MAX_DIFFPOS_SQRMAG_INCREASE_SCALE = 100d;
+		public const double SMOOTH_RENDEZ_UPDATE_MAX_DIFFVEL_SQRMAG_INCREASE_SCALE = 100d;
+		public const double SMOOTH_RENDEZ_UPDATE_EXPIRE = 5d;
 		public const double SMOOTH_RENDEZ_UPDATE_MIN_DELAY = 0.1d;
 		
-		public const int ALLOW_RENDEZ_OBT_UPDATE_LIMIT = 100;
-		public const double RENDEZ_OBT_UPDATE_RELPOS_MIN_SQRMAG = 40000d;
-		public const double RENDEZ_OBT_UPDATE_RELVEL_MIN_SQRMAG = 40000d;
-		public const double RENDEZ_OBT_UPDATE_SCALE_FACTOR = 0.40d;
+		public const int ALLOW_RENDEZ_OBT_UPDATE_LIMIT = 250;
+		public const double RENDEZ_OBT_UPDATE_RELPOS_MIN_SQRMAG = 62500d;
+		public const double RENDEZ_OBT_UPDATE_RELVEL_MIN_SQRMAG = 62500d;
+		public const double RENDEZ_OBT_UPDATE_SCALE_FACTOR = 0.35d;
 		
 		public const ControlTypes BLOCK_ALL_CONTROLS = ControlTypes.ALL_SHIP_CONTROLS | ControlTypes.ACTIONS_ALL | ControlTypes.EVA_INPUT | ControlTypes.TIMEWARP | ControlTypes.MISC | ControlTypes.GROUPS_ALL | ControlTypes.CUSTOM_ACTION_GROUPS;
 		
@@ -4608,9 +4608,12 @@ namespace KMP
 						//at least for #578).
 					}
 					
+                    var proto = HighLogic.CurrentGame.AddProtoScenarioModule(typeof(ScenarioDiscoverableObjects), GameScenes.SPACECENTER, GameScenes.FLIGHT, GameScenes.TRACKSTATION);
+                    proto.Load(ScenarioRunner.fetch);
+                
 					if (gameMode == 1)
 					{
-						var proto = HighLogic.CurrentGame.AddProtoScenarioModule(typeof(ResearchAndDevelopment), GameScenes.SPACECENTER, GameScenes.EDITOR, GameScenes.FLIGHT, GameScenes.TRACKSTATION, GameScenes.SPH);
+						proto = HighLogic.CurrentGame.AddProtoScenarioModule(typeof(ResearchAndDevelopment), GameScenes.SPACECENTER, GameScenes.EDITOR, GameScenes.FLIGHT, GameScenes.TRACKSTATION, GameScenes.SPH);
 	                    proto.Load(ScenarioRunner.fetch);
 						proto = HighLogic.CurrentGame.AddProtoScenarioModule(typeof(ProgressTracking), GameScenes.SPACECENTER, GameScenes.FLIGHT, GameScenes.TRACKSTATION);
 	                    proto.Load(ScenarioRunner.fetch);

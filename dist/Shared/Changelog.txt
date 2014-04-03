@@ -53,6 +53,8 @@ TehGimp
  * Added automatic server upgrade for old MySQL databases so they can benefit from godarklight's improvements
  * Added setting for allowing a persistent universe vs freezing universe if server is empty
  * Added simple command history to server console
+ * Tweaked rendezvous smoothing behaviour
+ * Fixed asteroids not spawning in KMP games
  * Fixed "/set help" not working & updated help text
  * Fixed various major bugs where initial universe sync could potentially skip some vessels
  * Fixed major bug with assigning a warping player to a new subspace
