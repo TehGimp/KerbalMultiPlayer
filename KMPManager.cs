@@ -271,7 +271,7 @@ namespace KMP
 		public double safetyBubbleRadius = 2000d;
         private bool safetyTransparency;
 		private bool isVerified = false;
-		private ToolbarButtonWrapper KMPToggleButton;
+        private IButton KMPToggleButton;
 		private bool KMPToggleButtonState = true;
 		private bool KMPToggleButtonInitialized;
 		
@@ -3997,11 +3997,11 @@ namespace KMP
 		{
 			//KSP Toolbar integration - Can't chuck it in the bootstrap because Toolbar does not instantate early enough.
 			if (!KMPToggleButtonInitialized) {
-				if (ToolbarButtonWrapper.ToolbarManagerPresent) {
-					KMPToggleButton = ToolbarButtonWrapper.TryWrapToolbarButton ("KMP", "Toggle");
+                if (ToolbarManager.ToolbarAvailable) {
+                    KMPToggleButton = ToolbarManager.Instance.add ("KMP", "Toggle");
 					KMPToggleButton.TexturePath = "KMP/KMPButton/KMPEnabled";
 					KMPToggleButton.ToolTip = "Toggle KMP Windows";
-					KMPToggleButton.AddButtonClickHandler ((e) =>
+                    KMPToggleButton.OnClick += ((e) =>
 					{
 						KMPToggleButtonState = !KMPToggleButtonState;
 						KMPToggleButton.TexturePath = KMPToggleButtonState ? "KMP/KMPButton/KMPEnabled" : "KMP/KMPButton/KMPDisabled";
