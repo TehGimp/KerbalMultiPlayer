@@ -1947,7 +1947,7 @@ namespace KMP
 				
 			if (vessel == null) {
 				//Add the vessel to the dictionary
-				vessel = new KMPVessel(vessel_update.name, vessel_update.player, vessel_update.id);
+				vessel = new KMPVessel(vessel_update.name, vessel_update.player, vessel_update.id, vessel_update.bodyName);
 				entry = new VesselEntry();
 				entry.vessel = vessel;
 				entry.lastUpdateTime = UnityEngine.Time.realtimeSinceStartup;

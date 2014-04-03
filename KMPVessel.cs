@@ -182,7 +182,7 @@ namespace KMP
         }
         //Methods
 
-        public KMPVessel(String vessel_name, String owner_name, Guid _id)
+        public KMPVessel(String vessel_name, String owner_name, Guid _id, string body_name)
         {
 			info = new KMPVesselInfo();
 
@@ -198,6 +198,7 @@ namespace KMP
             line = gameObj.AddComponent<LineRenderer>();
             orbitRenderer = gameObj.AddComponent<OrbitRenderer>();
 			orbitRenderer.driver = new OrbitDriver();
+            orbitRenderer.celestialBody = FlightGlobals.Bodies.Find(b => b.bodyName == body_name);
 			
             line.transform.parent = gameObj.transform;
             line.transform.localPosition = Vector3.zero;
