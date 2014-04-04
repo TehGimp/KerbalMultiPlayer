@@ -1061,7 +1061,7 @@ namespace KMP
 			if (vessel == null) return;
 			KMPVesselUpdate update = getVesselUpdate(vessel);
 			update.situation = Situation.DESTROYED;
-			update.state = FlightGlobals.ActiveVessel.id == vessel.id ? State.ACTIVE : State.INACTIVE;
+			update.state = State.INACTIVE;
 			update.isDockUpdate = isDocking;
 			update.clearProtoVessel();
 			byte[] update_bytes = KSP.IO.IOUtils.SerializeToBinary(update);
@@ -1140,12 +1140,12 @@ namespace KMP
                     }
 				}
 			}
-			
+            
 			//Check for new/forced update
 			if (!forceFullUpdate //not a forced update
 			    && !docking //not in the middle of a docking event
 			    && (serverVessels_PartCounts.ContainsKey(vessel.id) ? 
-			    	(vessel.id != FlightGlobals.ActiveVessel.id || (UnityEngine.Time.realtimeSinceStartup - lastFullProtovesselUpdate) < FULL_PROTOVESSEL_UPDATE_TIMEOUT) //not active vessel, or full protovessel timeout hasn't passed
+			    	((isInFlight ? vessel.id != FlightGlobals.ActiveVessel.id : true) || (UnityEngine.Time.realtimeSinceStartup - lastFullProtovesselUpdate) < FULL_PROTOVESSEL_UPDATE_TIMEOUT) //not active vessel, or full protovessel timeout hasn't passed
 			    	: false)) //have a serverVessels_PartCounts entry
 			{
 				if ((serverVessels_PartCounts.ContainsKey(vessel.id) ? serverVessels_PartCounts[vessel.id] == vessel.Parts.Count : false) //Part count is the same
@@ -1174,19 +1174,19 @@ namespace KMP
 			{
 				//New vessel or forced protovessel update
 				update = new KMPVesselUpdate(vessel);
-				if (vessel.id == FlightGlobals.ActiveVessel.id) 
+				if (isInFlight && vessel.id == FlightGlobals.ActiveVessel.id) 
 				{
 					Log.Debug("First or forced proto update for active vessel: " + vessel.id);
 					lastFullProtovesselUpdate = UnityEngine.Time.realtimeSinceStartup;
 				}
                 if (!vessel.packed) serverVessels_PartCounts[vessel.id] = vessel.Parts.Count;
 			}
-			
+            
 			if (isInSafetyBubble(vessel.GetWorldPos3D(),vessel.mainBody,vessel.altitude)) update.clearProtoVessel();
 			
 			//Track vessel situation
 			sentVessels_Situations[vessel.id] = vessel.situation;
-			
+
 			//Set privacy lock
 			if (serverVessels_IsPrivate.ContainsKey(vessel.id)) update.isPrivate = serverVessels_IsPrivate[vessel.id];
 			else update.isPrivate = false;
@@ -1213,7 +1213,7 @@ namespace KMP
 					newFlags[vessel.id] = UnityEngine.Time.realtimeSinceStartup;
 				}
 			}
-			
+            
 			Vector3 pos = vessel.mainBody.transform.InverseTransformPoint(vessel.GetWorldPos3D());
 			Vector3 dir = vessel.mainBody.transform.InverseTransformDirection(vessel.transform.up);
 			Vector3 vel = vessel.mainBody.transform.InverseTransformDirection(vessel.GetObtVelocity());
@@ -1237,7 +1237,7 @@ namespace KMP
 				update.w_pos[1] = vessel.latitude;
 				update.w_pos[2] = vessel.longitude;
 			}
-			
+            
 			//Determine situation
 			if ((vessel.loaded && vessel.GetTotalMass() <= 0.0) || (vessel.vesselType == VesselType.Debris && vessel.situation == Vessel.Situations.SUB_ORBITAL))
 				update.situation = Situation.DESTROYED;
@@ -1290,8 +1290,8 @@ namespace KMP
 
 				}
 			}
-
-			if (vessel.id == FlightGlobals.ActiveVessel.id)
+            
+			if (isInFlight && vessel.id == FlightGlobals.ActiveVessel.id)
 			{
 				update.state = State.ACTIVE;
 				//Set vessel details since it's the active vessel
@@ -1310,9 +1310,8 @@ namespace KMP
 			
 			//Reset vessel privacy locks in case they were changed
 			checkVesselPrivacy(vessel);
-			
+            
 			return update;
-
 		}
 
 		private KMPVesselDetail getVesselDetail(Vessel vessel)
