@@ -226,41 +226,41 @@ namespace KMP
             pos = new float[3];
             dir = new float[3];
             vel = new float[3];
-			o_vel = new double[3];
-			s_vel = new double[3];
-			w_pos = new double[3];
-			rot = new float[4];
-			id = _vessel.id;
-			if (_vessel.packed)
-			{
-				flightCtrlState = new KMPFlightCtrlState(new FlightCtrlState());	
-			}
-			else
-			{
-				flightCtrlState = new KMPFlightCtrlState(_vessel.ctrlState);
-				if (includeProtoVessel)
-				{
-					protoVesselNode = new ConfigNode();
-					ProtoVessel proto;
-					try
-					{
-						proto = new ProtoVessel(_vessel);
-					}
-					catch (Exception e)
-					{
-					    Log.Debug("Exception thrown in InitKMPVesselUpdate(), catch 1, Exception: {0}", e.ToString());
-						proto = null;
-					}
-					if (proto != null)
-					{
-						foreach (ProtoCrewMember crewMember in proto.GetVesselCrew())
-						{
-							crewMember.KerbalRef = null;
-						}
-						proto.Save(protoVesselNode);
-					}
-				}
-			}
+            o_vel = new double[3];
+            s_vel = new double[3];
+            w_pos = new double[3];
+            rot = new float[4];
+            id = _vessel.id;
+            if (_vessel.packed)
+            {
+                flightCtrlState = new KMPFlightCtrlState(new FlightCtrlState());
+            }
+            else
+            {
+                flightCtrlState = new KMPFlightCtrlState(_vessel.ctrlState);
+            }
+            if (includeProtoVessel)
+            {
+                protoVesselNode = new ConfigNode();
+                ProtoVessel proto;
+                try
+                {
+                    proto = new ProtoVessel(_vessel);
+                }
+                catch (Exception e)
+                {
+                    Log.Debug("Exception thrown in InitKMPVesselUpdate(), catch 1, Exception: {0}", e.ToString());
+                    proto = null;
+                }
+                if (proto != null)
+                {
+                    foreach (ProtoCrewMember crewMember in proto.GetVesselCrew())
+                    {
+                        crewMember.KerbalRef = null;
+                    }
+                    proto.Save(protoVesselNode);
+                }
+            }
         }
 		
 		public ConfigNode getProtoVesselNode()
