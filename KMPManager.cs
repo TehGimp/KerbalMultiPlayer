@@ -1068,15 +1068,35 @@ namespace KMP
 			enqueuePluginInteropMessage(KMPCommon.PluginInteropMessageID.PRIMARY_PLUGIN_UPDATE, update_bytes);	
 		}
 		
-		private void sendVesselMessage(Vessel vessel, bool isDocking = false)
-		{
-			Log.Debug("sendVesselMessage");
-			KMPVesselUpdate update = getVesselUpdate(vessel, true);
-			update.state = isInFlight ? (FlightGlobals.ActiveVessel.id == vessel.id ? State.ACTIVE : State.INACTIVE) : State.INACTIVE;
-			update.isDockUpdate = isDocking;
-			byte[] update_bytes = KSP.IO.IOUtils.SerializeToBinary(update);
-			enqueuePluginInteropMessage(KMPCommon.PluginInteropMessageID.PRIMARY_PLUGIN_UPDATE, update_bytes);	
-		}
+        private void sendVesselMessage(Vessel vessel, bool isDocking = false)
+        {
+            if (vessel.loaded)
+            {
+                Log.Debug("sendVesselMessage");
+                KMPVesselUpdate update = getVesselUpdate(vessel, true);
+                update.state = isInFlight ? (FlightGlobals.ActiveVessel.id == vessel.id ? State.ACTIVE : State.INACTIVE) : State.INACTIVE;
+                update.isDockUpdate = isDocking;
+                byte[] update_bytes = KSP.IO.IOUtils.SerializeToBinary(update);
+                enqueuePluginInteropMessage(KMPCommon.PluginInteropMessageID.PRIMARY_PLUGIN_UPDATE, update_bytes);
+            }
+            else
+            {
+                Log.Debug("sendVesselMessage - Attempting to load vessel");
+                vessel.Load();
+                StartCoroutine(sendVesselMessageOnNextFixedUpdate(vessel, isDocking));
+            }
+        }
+
+        private IEnumerator<WaitForFixedUpdate> sendVesselMessageOnNextFixedUpdate(Vessel vessel, bool isDocking = false)
+        {
+            yield return new WaitForFixedUpdate();
+            Log.Debug("sendVesselMessage - Next update, Status: " + vessel.loaded);
+            KMPVesselUpdate update = getVesselUpdate(vessel, true);
+            update.state = isInFlight ? (FlightGlobals.ActiveVessel.id == vessel.id ? State.ACTIVE : State.INACTIVE) : State.INACTIVE;
+            update.isDockUpdate = isDocking;
+            byte[] update_bytes = KSP.IO.IOUtils.SerializeToBinary(update);
+            enqueuePluginInteropMessage(KMPCommon.PluginInteropMessageID.PRIMARY_PLUGIN_UPDATE, update_bytes);
+        }
 		
 		private void sendScenarios()
 		{
