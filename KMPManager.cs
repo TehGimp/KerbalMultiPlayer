@@ -126,15 +126,15 @@ namespace KMP
 		public const double PRIVATE_VESSEL_MIN_TARGET_DISTANCE = 500d;
 		
 		//Rendezvous smoothing
-		public const double SMOOTH_RENDEZ_UPDATE_MAX_DIFFPOS_SQRMAG_INCREASE_SCALE = 50d;
-		public const double SMOOTH_RENDEZ_UPDATE_MAX_DIFFVEL_SQRMAG_INCREASE_SCALE = 50d;
-		public const double SMOOTH_RENDEZ_UPDATE_EXPIRE = 7.5d;
+		public const double SMOOTH_RENDEZ_UPDATE_MAX_DIFFPOS_SQRMAG_INCREASE_SCALE = 100d;
+		public const double SMOOTH_RENDEZ_UPDATE_MAX_DIFFVEL_SQRMAG_INCREASE_SCALE = 100d;
+		public const double SMOOTH_RENDEZ_UPDATE_EXPIRE = 5d;
 		public const double SMOOTH_RENDEZ_UPDATE_MIN_DELAY = 0.1d;
 		
-		public const int ALLOW_RENDEZ_OBT_UPDATE_LIMIT = 100;
-		public const double RENDEZ_OBT_UPDATE_RELPOS_MIN_SQRMAG = 40000d;
-		public const double RENDEZ_OBT_UPDATE_RELVEL_MIN_SQRMAG = 40000d;
-		public const double RENDEZ_OBT_UPDATE_SCALE_FACTOR = 0.40d;
+		public const int ALLOW_RENDEZ_OBT_UPDATE_LIMIT = 250;
+		public const double RENDEZ_OBT_UPDATE_RELPOS_MIN_SQRMAG = 62500d;
+		public const double RENDEZ_OBT_UPDATE_RELVEL_MIN_SQRMAG = 62500d;
+		public const double RENDEZ_OBT_UPDATE_SCALE_FACTOR = 0.35d;
 		
 		public const ControlTypes BLOCK_ALL_CONTROLS = ControlTypes.ALL_SHIP_CONTROLS | ControlTypes.ACTIONS_ALL | ControlTypes.EVA_INPUT | ControlTypes.TIMEWARP | ControlTypes.MISC | ControlTypes.GROUPS_ALL | ControlTypes.CUSTOM_ACTION_GROUPS;
 		
@@ -155,7 +155,7 @@ namespace KMP
 		public static object interopInQueueLock = new object();
 		
 		public int numberOfShips = 0;
-		public int gameMode = 0; //0=Sandbox, 1=Career, 2=Co-op career
+		public int gameMode = 0; //0=Sandbox, 1=Career
 		public bool gameCheatsEnabled = false; //Allow built-in KSP cheats
 		public bool gameArrr = false; //Allow private vessels to be taken if other user can successfully dock manually
 		public static int numberOfFilesToCheck = 0;
@@ -271,7 +271,7 @@ namespace KMP
 		public double safetyBubbleRadius = 2000d;
         private bool safetyTransparency;
 		private bool isVerified = false;
-		private ToolbarButtonWrapper KMPToggleButton;
+        private IButton KMPToggleButton;
 		private bool KMPToggleButtonState = true;
 		private bool KMPToggleButtonInitialized;
 		
@@ -708,6 +708,13 @@ namespace KMP
 							dmodule.captureRange = (enabled ? 1 : -1) * absCaptureRange;
 							dmodule.isEnabled = enabled;
 						}
+                        if (module is ModuleGrappleNode)
+                         {
+                             ModuleGrappleNode gmodule = (ModuleGrappleNode) module;
+                             float absCaptureRange = Math.Abs(gmodule.captureRange);
+                             gmodule.captureRange = (enabled ? 1 : -1) * absCaptureRange;
+                             gmodule.isEnabled = enabled;
+                         }
 					}
 				}
 			}	
@@ -1054,7 +1061,7 @@ namespace KMP
 			if (vessel == null) return;
 			KMPVesselUpdate update = getVesselUpdate(vessel);
 			update.situation = Situation.DESTROYED;
-			update.state = FlightGlobals.ActiveVessel.id == vessel.id ? State.ACTIVE : State.INACTIVE;
+			update.state = State.INACTIVE;
 			update.isDockUpdate = isDocking;
 			update.clearProtoVessel();
 			byte[] update_bytes = KSP.IO.IOUtils.SerializeToBinary(update);
@@ -1124,14 +1131,21 @@ namespace KMP
 						dmodule.captureRange = absCaptureRange;
 						dmodule.isEnabled = true;
 					}
+                    if (module is ModuleGrappleNode)
+                    {
+                        ModuleGrappleNode gmodule = (ModuleGrappleNode) module;
+                        float absCaptureRange = Math.Abs(gmodule.captureRange);
+                        gmodule.captureRange = absCaptureRange;
+                        gmodule.isEnabled = true;
+                    }
 				}
 			}
-			
+            
 			//Check for new/forced update
 			if (!forceFullUpdate //not a forced update
 			    && !docking //not in the middle of a docking event
 			    && (serverVessels_PartCounts.ContainsKey(vessel.id) ? 
-			    	(vessel.id != FlightGlobals.ActiveVessel.id || (UnityEngine.Time.realtimeSinceStartup - lastFullProtovesselUpdate) < FULL_PROTOVESSEL_UPDATE_TIMEOUT) //not active vessel, or full protovessel timeout hasn't passed
+			    	((isInFlight ? vessel.id != FlightGlobals.ActiveVessel.id : true) || (UnityEngine.Time.realtimeSinceStartup - lastFullProtovesselUpdate) < FULL_PROTOVESSEL_UPDATE_TIMEOUT) //not active vessel, or full protovessel timeout hasn't passed
 			    	: false)) //have a serverVessels_PartCounts entry
 			{
 				if ((serverVessels_PartCounts.ContainsKey(vessel.id) ? serverVessels_PartCounts[vessel.id] == vessel.Parts.Count : false) //Part count is the same
@@ -1160,19 +1174,19 @@ namespace KMP
 			{
 				//New vessel or forced protovessel update
 				update = new KMPVesselUpdate(vessel);
-				if (vessel.id == FlightGlobals.ActiveVessel.id) 
+				if (isInFlight && vessel.id == FlightGlobals.ActiveVessel.id) 
 				{
 					Log.Debug("First or forced proto update for active vessel: " + vessel.id);
 					lastFullProtovesselUpdate = UnityEngine.Time.realtimeSinceStartup;
 				}
                 if (!vessel.packed) serverVessels_PartCounts[vessel.id] = vessel.Parts.Count;
 			}
-			
+            
 			if (isInSafetyBubble(vessel.GetWorldPos3D(),vessel.mainBody,vessel.altitude)) update.clearProtoVessel();
 			
 			//Track vessel situation
 			sentVessels_Situations[vessel.id] = vessel.situation;
-			
+
 			//Set privacy lock
 			if (serverVessels_IsPrivate.ContainsKey(vessel.id)) update.isPrivate = serverVessels_IsPrivate[vessel.id];
 			else update.isPrivate = false;
@@ -1199,7 +1213,7 @@ namespace KMP
 					newFlags[vessel.id] = UnityEngine.Time.realtimeSinceStartup;
 				}
 			}
-			
+            
 			Vector3 pos = vessel.mainBody.transform.InverseTransformPoint(vessel.GetWorldPos3D());
 			Vector3 dir = vessel.mainBody.transform.InverseTransformDirection(vessel.transform.up);
 			Vector3 vel = vessel.mainBody.transform.InverseTransformDirection(vessel.GetObtVelocity());
@@ -1223,7 +1237,7 @@ namespace KMP
 				update.w_pos[1] = vessel.latitude;
 				update.w_pos[2] = vessel.longitude;
 			}
-			
+            
 			//Determine situation
 			if ((vessel.loaded && vessel.GetTotalMass() <= 0.0) || (vessel.vesselType == VesselType.Debris && vessel.situation == Vessel.Situations.SUB_ORBITAL))
 				update.situation = Situation.DESTROYED;
@@ -1276,8 +1290,8 @@ namespace KMP
 
 				}
 			}
-
-			if (vessel.id == FlightGlobals.ActiveVessel.id)
+            
+			if (isInFlight && vessel.id == FlightGlobals.ActiveVessel.id)
 			{
 				update.state = State.ACTIVE;
 				//Set vessel details since it's the active vessel
@@ -1296,9 +1310,8 @@ namespace KMP
 			
 			//Reset vessel privacy locks in case they were changed
 			checkVesselPrivacy(vessel);
-			
+            
 			return update;
-
 		}
 
 		private KMPVesselDetail getVesselDetail(Vessel vessel)
@@ -1933,7 +1946,7 @@ namespace KMP
 				
 			if (vessel == null) {
 				//Add the vessel to the dictionary
-				vessel = new KMPVessel(vessel_update.name, vessel_update.player, vessel_update.id);
+				vessel = new KMPVessel(vessel_update.name, vessel_update.player, vessel_update.id, vessel_update.bodyName);
 				entry = new VesselEntry();
 				entry.vessel = vessel;
 				entry.lastUpdateTime = UnityEngine.Time.realtimeSinceStartup;
@@ -2023,7 +2036,7 @@ namespace KMP
 				serverVessels_IsPrivate[vessel_update.id] = vessel_update.isPrivate;
 				serverVessels_IsMine[vessel_update.id] = vessel_update.isMine;
 				Log.Debug("status flags updated: " + (vessel_update.state == State.ACTIVE) + " " + vessel_update.isSyncOnlyUpdate + " " + vessel_update.isPrivate + " " + vessel_update.isMine);
-				if (vessel_update.situation == Situation.DESTROYED && vessel_update.id != FlightGlobals.ActiveVessel.id)
+				if (vessel_update.situation == Situation.DESTROYED && (isInFlight ? vessel_update.id != FlightGlobals.ActiveVessel.id : true))
 				{
 					Log.Debug("Vessel reported destroyed, killing vessel");
 					Vessel extant_vessel = FlightGlobals.Vessels.Find(v => v.id == vessel_update.id);
@@ -2856,6 +2869,7 @@ namespace KMP
 		private IEnumerator<WaitForFixedUpdate> loadProtovessel(Vessel oldVessel, Vector3 newWorldPos, Vector3 newOrbitVel, bool wasLoaded, bool wasActive, bool setTarget, ProtoVessel protovessel, Guid vessel_id, KMPVessel kvessel = null, KMPVesselUpdate update = null, double distance = 501d)
 		{
 			yield return new WaitForFixedUpdate();
+            Log.Debug("Loading protovessel: {0}", vessel_id.ToString());
 			if (oldVessel != null && !wasActive)
 			{
 				Log.Debug("Killing vessel");
@@ -2878,8 +2892,11 @@ namespace KMP
 	            {
                   Log.Debug("Exception thrown in loadProtovessel(), catch 1, Exception: {0}", e.ToString());
 	            }
-				//if (!created_vessel.loaded) created_vessel.Load();
-				
+                
+				if (!created_vessel.loaded) created_vessel.Load();
+                
+				created_vessel.SpawnCrew();
+                
 				Log.Debug(created_vessel.id.ToString() + " initializing: ProtoParts=" + protovessel.protoPartSnapshots.Count + ",Parts=" + created_vessel.Parts.Count + ",Sit=" + created_vessel.situation.ToString() + ",type=" + created_vessel.vesselType + ",alt=" + protovessel.altitude);
 				
 				//vessels[vessel_id.ToString()].vessel.vesselRef = created_vessel;
@@ -3554,7 +3571,6 @@ namespace KMP
 			{
 				ScreenMessages.PostScreenMessage("Universe synchronized",1f,ScreenMessageStyle.UPPER_RIGHT);
 				StartCoroutine(returnToSpaceCenter());
-				//Disable debug logging once synced unless explicitly enabled
 			}
 		}
 
@@ -3730,7 +3746,7 @@ namespace KMP
 					}
 					long serverLagMilliseconds = tempServerLag / 10000;
 					skewMessageText += serverLagMilliseconds + "ms.\n";
-					
+                    
 					skewMessage = ScreenMessages.PostScreenMessage(skewMessageText, 1f, ScreenMessageStyle.UPPER_RIGHT);
 				}
 			}
@@ -3817,6 +3833,7 @@ namespace KMP
 		{
 			if (FlightGlobals.ActiveVessel.GetVesselCrew().Count > 0 && KerbalGUIManager.ActiveCrew.Count < 1)
 			{
+                FlightGlobals.ActiveVessel.DespawnCrew();
 			    FlightGlobals.ActiveVessel.SpawnCrew();
 				FlightEVA.fetch.EnableInterface();
 			}
@@ -3983,11 +4000,11 @@ namespace KMP
 		{
 			//KSP Toolbar integration - Can't chuck it in the bootstrap because Toolbar does not instantate early enough.
 			if (!KMPToggleButtonInitialized) {
-				if (ToolbarButtonWrapper.ToolbarManagerPresent) {
-					KMPToggleButton = ToolbarButtonWrapper.TryWrapToolbarButton ("KMP", "Toggle");
+                if (ToolbarManager.ToolbarAvailable) {
+                    KMPToggleButton = ToolbarManager.Instance.add ("KMP", "Toggle");
 					KMPToggleButton.TexturePath = "KMP/KMPButton/KMPEnabled";
 					KMPToggleButton.ToolTip = "Toggle KMP Windows";
-					KMPToggleButton.AddButtonClickHandler ((e) =>
+                    KMPToggleButton.OnClick += ((e) =>
 					{
 						KMPToggleButtonState = !KMPToggleButtonState;
 						KMPToggleButton.TexturePath = KMPToggleButtonState ? "KMP/KMPButton/KMPEnabled" : "KMP/KMPButton/KMPDisabled";
@@ -4380,8 +4397,22 @@ namespace KMP
 					StartCoroutine(shareScreenshot());
 				
 				GUIStyle syncButtonStyle = new GUIStyle(GUI.skin.button);
-				string tooltip = showServerSync ? "Sync to the future" : "Already fully synced";
-				if (showServerSync && isInFlight && FlightGlobals.ActiveVessel.ctrlState.mainThrottle == 0f && !isObserving)
+				string tooltip = "";
+                if (!syncing)
+                {
+                    if (showServerSync) 
+                    {
+                        if (isInFlight ? FlightGlobals.ActiveVessel.ctrlState.mainThrottle == 0f : true)
+                            tooltip = "Sync to the future";
+                        else
+                            tooltip = "Can't sync - throttle";
+                    } 
+                    else
+                    {
+                        tooltip = "Already fully synced";   
+                    }
+                }
+				if (showServerSync && (isInFlight ? FlightGlobals.ActiveVessel.ctrlState.mainThrottle == 0f : true) && !isObserving)
 				{
 					syncButtonStyle.normal.textColor = new Color(0.28f, 0.86f, 0.94f);
 					syncButtonStyle.hover.textColor = new Color(0.48f, 0.96f, 0.96f);
@@ -4524,7 +4555,7 @@ namespace KMP
 					gameStart = false;
 					gameRunning = true;
 
-					Console.WriteLine ("Game started.");
+					Console.WriteLine("Game started.");
 					//Clear dictionaries
 					sentVessels_Situations.Clear();
 		
@@ -4584,19 +4615,18 @@ namespace KMP
 					syncing = true;
 					HighLogic.CurrentGame.Start();
 
-					if (HasModule("ResearchAndDevelopment"))
-					{
-						Log.Debug("Erasing scenario modules");
-						HighLogic.CurrentGame.scenarios.Clear();
-						//This is done because scenarios is not cleared properly even when a new game is started, and it was causing bugs in KMP.
-						//Instead of clearing scenarios, KSP appears to set the moduleRefs of each module to null, which is what was causing KMP bugs #578, 
-						//and could be the cause of #579 (but closing KSP after disconnecting from a server, before connecting again, prevented it from happening, 
-						//at least for #578).
-					}
+					HighLogic.CurrentGame.scenarios.Clear();
+					//This is done because scenarios is not cleared properly even when a new game is started, and it was causing bugs in KMP.
+					//Instead of clearing scenarios, KSP appears to set the moduleRefs of each module to null, which is what was causing KMP bugs #578, 
+					//and could be the cause of #579 (but closing KSP after disconnecting from a server, before connecting again, prevented it from happening, 
+					//at least for #578).
 					
+                    var proto = HighLogic.CurrentGame.AddProtoScenarioModule(typeof(ScenarioDiscoverableObjects), GameScenes.SPACECENTER, GameScenes.FLIGHT, GameScenes.TRACKSTATION);
+                    proto.Load(ScenarioRunner.fetch);
+                
 					if (gameMode != 0)
 					{
-						var proto = HighLogic.CurrentGame.AddProtoScenarioModule(typeof(ResearchAndDevelopment), GameScenes.SPACECENTER, GameScenes.EDITOR, GameScenes.FLIGHT, GameScenes.TRACKSTATION, GameScenes.SPH);
+						proto = HighLogic.CurrentGame.AddProtoScenarioModule(typeof(ResearchAndDevelopment), GameScenes.SPACECENTER, GameScenes.EDITOR, GameScenes.FLIGHT, GameScenes.TRACKSTATION, GameScenes.SPH);
 	                    proto.Load(ScenarioRunner.fetch);
 						proto = HighLogic.CurrentGame.AddProtoScenarioModule(typeof(ProgressTracking), GameScenes.SPACECENTER, GameScenes.FLIGHT, GameScenes.TRACKSTATION);
 	                    proto.Load(ScenarioRunner.fetch);
@@ -4639,7 +4669,7 @@ namespace KMP
 					GUILayout.BeginVertical();
 					GUILayout.BeginHorizontal();
 					GUILayoutOption[] name_options = new GUILayoutOption[1];
-					name_options[0] = GUILayout.MaxWidth(240);
+					name_options[0] = GUILayout.MaxWidth(300);
 					GUILayout.Label("Server Name:");
 					newFamiliar = GUILayout.TextField(newFamiliar, name_options).Trim();
 						
@@ -4648,7 +4678,7 @@ namespace KMP
 
 					GUILayout.BeginHorizontal();
 					GUILayoutOption[] field_options = new GUILayoutOption[1];
-					field_options[0] = GUILayout.MaxWidth(120);
+					field_options[0] = GUILayout.MaxWidth(60);
 					GUILayout.Label("Address:");
 					newHost = GUILayout.TextField(newHost);
 					GUILayout.Label("Port:");
@@ -4658,14 +4688,17 @@ namespace KMP
                     GUILayout.BeginHorizontal();
                     // Fetch favourites
                     Dictionary<String, String[]> favorites = KMPClientMain.GetFavorites();
-
+    
+                    GUILayoutOption[] btn_options = new GUILayoutOption[1];
+                    btn_options[0] = GUILayout.MaxWidth(126);
+                
                     bool favoriteItemExists = favorites.ContainsKey(newFamiliar);
                     GUI.enabled = !favoriteItemExists;
-					bool addHostPressed = GUILayout.Button("New",field_options);
+					bool addHostPressed = GUILayout.Button("New",btn_options);
                     GUI.enabled = favoriteItemExists;
-                    bool editHostPressed = GUILayout.Button("Replace", field_options);
+                    bool editHostPressed = GUILayout.Button("Save", btn_options);
                     GUI.enabled = true;
-                    bool cancelEdit = GUILayout.Button("Cancel", field_options);
+                    bool cancelEdit = GUILayout.Button("Cancel", btn_options);
                     if (cancelEdit)
                     {
                         addPressed = false; /* Return to previous screen */ 
@@ -4703,7 +4736,6 @@ namespace KMP
                         addPressed = false;
                         // Disable the active familar after this stage, because otherwise the controls feel sticky and confusing
                         KMPConnectionDisplay.activeFamiliar = String.Empty;
-                        KMPConnectionDisplay.activeFamiliar = String.Empty;
                         KMPClientMain.SetFavorites(favorites); // I would love to have this as a seperate object in the manager, no more getting and setting. 
                     }
                     GUILayout.EndHorizontal();
@@ -4716,8 +4748,9 @@ namespace KMP
             {
                 GUILayout.BeginHorizontal();
 
-                GUILayoutOption[] connection_list_options = new GUILayoutOption[1];
+                GUILayoutOption[] connection_list_options = new GUILayoutOption[2];
                 connection_list_options[0] = GUILayout.MinWidth(290);
+                connection_list_options[1] = GUILayout.MinHeight(140);
 
                 GUILayout.BeginVertical(connection_list_options);
 
@@ -4740,6 +4773,9 @@ namespace KMP
 
                 GUILayoutOption[] pane_options = new GUILayoutOption[1];
                 pane_options[0] = GUILayout.MaxWidth(50);
+                
+                GUILayoutOption[] pane_btn_options = new GUILayoutOption[1];
+                pane_btn_options[0] = GUILayout.Width(80);
 
                 GUILayout.BeginVertical(pane_options);
 
@@ -4750,7 +4786,7 @@ namespace KMP
                 if (!allowConnect)
                     GUI.enabled = false;
 
-                bool connectPressed = GUILayout.Button("Connect");
+                bool connectPressed = GUILayout.Button("Connect",pane_btn_options);
                 GUI.enabled = true;
 
                 if (connectPressed && allowConnect)
@@ -4766,13 +4802,13 @@ namespace KMP
                     addPressed,
                     (String.IsNullOrEmpty(KMPConnectionDisplay.activeFamiliar)) ?
                     "Add Server" : "Edit",
-                    GUI.skin.button);
+                    GUI.skin.button,pane_btn_options);
                 
                 Dictionary<String, String[]> favorites = KMPClientMain.GetFavorites();
 
 
                 if (String.IsNullOrEmpty(KMPConnectionDisplay.activeFamiliar)) GUI.enabled = false;
-                bool deletePressed = GUILayout.Button("Remove");
+                bool deletePressed = GUILayout.Button("Remove",pane_btn_options);
                 if (deletePressed)
                 {
                     if (favorites.ContainsKey(KMPConnectionDisplay.activeFamiliar))

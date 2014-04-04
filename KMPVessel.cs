@@ -124,7 +124,7 @@ namespace KMP
             private set;
             get;
         }
-		
+
         public OrbitRenderer orbitRenderer
         {
             private set;
@@ -182,7 +182,7 @@ namespace KMP
         }
         //Methods
 
-        public KMPVessel(String vessel_name, String owner_name, Guid _id)
+        public KMPVessel(String vessel_name, String owner_name, Guid _id, string body_name)
         {
 			info = new KMPVesselInfo();
 
@@ -190,14 +190,7 @@ namespace KMP
 			ownerName = owner_name;
 			id = _id;
 
-			//Build the name of the game object
-			System.Text.StringBuilder sb = new StringBuilder();
-			sb.Append(vesselName);
-//			sb.Append(" (");
-//			sb.Append(ownerName);
-//			sb.Append(')');
-
-			gameObj = new GameObject(sb.ToString());
+			gameObj = new GameObject(vesselName);
 			gameObj.layer = 9;
 
 			generateActiveColor();
@@ -205,6 +198,7 @@ namespace KMP
             line = gameObj.AddComponent<LineRenderer>();
             orbitRenderer = gameObj.AddComponent<OrbitRenderer>();
 			orbitRenderer.driver = new OrbitDriver();
+            orbitRenderer.celestialBody = FlightGlobals.Bodies.Find(b => b.bodyName == body_name);
 			
             line.transform.parent = gameObj.transform;
             line.transform.localPosition = Vector3.zero;
