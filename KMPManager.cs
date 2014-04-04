@@ -3517,7 +3517,7 @@ namespace KMP
 					}
 				warping = true;
 				}
-				Log.Debug("sending: " + TimeWarp.CurrentRate + ", " + Planetarium.GetUniversalTime());
+				//Log.Debug("sending: " + TimeWarp.CurrentRate + ", " + Planetarium.GetUniversalTime());
 				byte[] update_bytes = new byte[12]; //warp rate float (4) + current tick double (8)
 				BitConverter.GetBytes(TimeWarp.CurrentRate).CopyTo(update_bytes, 0);
 				BitConverter.GetBytes(Planetarium.GetUniversalTime()).CopyTo(update_bytes, 4);
@@ -3676,17 +3676,20 @@ namespace KMP
 		{
 			if (syncing || warping) return;
 
-			if (HighLogic.LoadedScene == GameScenes.EDITOR || HighLogic.LoadedScene == GameScenes.SPH) return; //Time does not advance in the VAB or SPH
-
-			if (!isInFlightOrTracking && isSkewingTime) {
-				isSkewingTime = false;
-				Time.timeScale = 1f;
-				return;
-			}
+            //Time does not advance in the VAB, SPH or victim selection screen.
+            if (HighLogic.LoadedScene == GameScenes.EDITOR || HighLogic.LoadedScene == GameScenes.SPH)
+            {
+                if (isSkewingTime)
+                {
+                    isSkewingTime = false;
+                    Time.timeScale = 1f;
+                }
+                return;
+            }
 
 
 			//This brings the computers MET timer in to line with the server.
-			if (isInFlightOrTracking && isTimeSyncronized && skewServerTime != 0 && skewTargetTick != 0) {
+			if (isTimeSyncronized && skewServerTime != 0 && skewTargetTick != 0) {
 				long timeFromLastSync = (DateTime.UtcNow.Ticks + offsetSyncTick) - skewServerTime;
 				double timeFromLastSyncSeconds = (double)timeFromLastSync / 10000000;
 				double timeFromLastSyncSecondsAdjusted = timeFromLastSyncSeconds * skewSubspaceSpeed;
@@ -3743,7 +3746,7 @@ namespace KMP
 					}
 					//Current clock error in milliseconds
 					String skewMessageText;
-					skewMessageText = "Clock error: " + currentErrorMs + "ms.\n";
+					skewMessageText = "\n\nClock error: " + currentErrorMs + "ms.\n";
 					skewMessageText += "Game speed: " + Math.Round(Time.timeScale, 3) + "x.\n";
 					//Current client latency detected by NTP (latency - server processing time)
 					long latencySyncTickMs = latencySyncTick / 10000;
@@ -3780,6 +3783,7 @@ namespace KMP
 					}
 					long serverLagMilliseconds = tempServerLag / 10000;
 					skewMessageText += serverLagMilliseconds + "ms.\n";
+                    skewMessageText += "Universe Time: " + Planetarium.GetUniversalTime() + "\n";
                     
 					skewMessage = ScreenMessages.PostScreenMessage(skewMessageText, 1f, ScreenMessageStyle.UPPER_RIGHT);
 				}

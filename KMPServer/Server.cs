@@ -2047,7 +2047,7 @@ namespace KMPServer
 
                     newSubspace = Convert.ToInt32(Database.ExecuteScalar("INSERT INTO kmpSubspace (LastTick) VALUES (@tick);" + (settings.useMySQL ?
                         "SELECT LAST_INSERT_ID();" :
-                        "SELECT last_insert_rowid();"),"tick", 0d.ToString("0.0").Replace(",", ".")));
+                        "SELECT last_insert_rowid();"),"tick", newsubspacetick.ToString("0.0").Replace(",", ".")));
                     
                     cl.currentSubspaceID = newSubspace;
                     Log.Debug("Adding new time sync data for subspace {0}", newSubspace);
@@ -2056,7 +2056,7 @@ namespace KMPServer
                     subSpaceMasterSpeed.Add(cl.currentSubspaceID, 1f);
                     cl.warping = false;
                     sendSubspace(cl, true, true);
-                    cl.lastTick = -1d;
+                    cl.lastTick = newsubspacetick;
                     Log.Activity("{0} set to new subspace {1}", cl.username, newSubspace);
                 }
             }
