@@ -1070,15 +1070,12 @@ namespace KMP
 		
 		private void sendVesselMessage(Vessel vessel, bool isDocking = false)
 		{
-			if (isInFlight)
-			{
-				Log.Debug("sendVesselMessage");
-				KMPVesselUpdate update = getVesselUpdate(vessel, true);
-				update.state = FlightGlobals.ActiveVessel.id == vessel.id ? State.ACTIVE : State.INACTIVE;
-				update.isDockUpdate = isDocking;
-				byte[] update_bytes = KSP.IO.IOUtils.SerializeToBinary(update);
-				enqueuePluginInteropMessage(KMPCommon.PluginInteropMessageID.PRIMARY_PLUGIN_UPDATE, update_bytes);	
-			}
+			Log.Debug("sendVesselMessage");
+			KMPVesselUpdate update = getVesselUpdate(vessel, true);
+			update.state = isInFlight ? (FlightGlobals.ActiveVessel.id == vessel.id ? State.ACTIVE : State.INACTIVE) : State.INACTIVE;
+			update.isDockUpdate = isDocking;
+			byte[] update_bytes = KSP.IO.IOUtils.SerializeToBinary(update);
+			enqueuePluginInteropMessage(KMPCommon.PluginInteropMessageID.PRIMARY_PLUGIN_UPDATE, update_bytes);	
 		}
 		
 		private void sendScenarios()
@@ -3459,6 +3456,16 @@ namespace KMP
 			sendRemoveVesselMessage(vessel,false);
 			sendScenarios();
 		}
+        
+        private void OnNewVesselCreated(Vessel vessel)
+        {
+            Log.Debug("OnNewVesselCreated");
+            if (vessel.vesselType == VesselType.SpaceObject && !serverVessels_RemoteID.ContainsKey(vessel.id))
+            {
+                Log.Debug("New space object!");
+                sendVesselMessage(vessel, false);
+            }
+        }
 			
 		private void OnTimeWarpRateChanged()
 		{
@@ -3539,7 +3546,7 @@ namespace KMP
 		{
 			if (gameRunning && !forceQuit && syncing) {
 				if (!inGameSyncing) {
-					SyncTime ();
+					SyncTime();
 					Invoke ("finishSync", 5f);
 					CancelInvoke ("handleSyncTimeout");
 				} else {
@@ -4148,6 +4155,7 @@ namespace KMP
 					GameEvents.onGUIRnDComplexDespawn.Remove(this.OnGUIRnDComplexDespawn);
 					GameEvents.OnTechnologyResearched.Remove(this.OnTechnologyResearched);
 					GameEvents.onVesselRecovered.Remove(this.OnVesselRecovered);
+                    GameEvents.onNewVesselCreated.Remove(this.OnNewVesselCreated);
 				}
         catch (Exception e) {
               Log.Debug("Exception thrown in drawGUI(), catch 1, Exception: {0}", e.ToString());
@@ -4655,6 +4663,7 @@ namespace KMP
 					GameEvents.onGUIRnDComplexDespawn.Add(this.OnGUIRnDComplexDespawn);
 					GameEvents.OnTechnologyResearched.Add(this.OnTechnologyResearched);
 					GameEvents.onVesselRecovered.Add(this.OnVesselRecovered);
+                    GameEvents.onNewVesselCreated.Add(this.OnNewVesselCreated);
 					writePluginData();
 					//Make sure user knows how to use new chat
 					KMPChatDX.enqueueChatLine("Press Chat key (" + (KMPGlobalSettings.instance.chatTalkKey == KeyCode.BackQuote ? "~" : KMPGlobalSettings.instance.chatTalkKey.ToString()) + ") to send a message");

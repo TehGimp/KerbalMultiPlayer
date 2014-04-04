@@ -3661,23 +3661,16 @@ namespace KMPServer
 	                        earliestClearTick = Convert.ToDouble(Database.ExecuteScalar("SELECT MIN(LastTick) FROM kmpSubspace WHERE ID IN (@subspaceids);",
 	                            "subspaceids", subspaceIDs));
 	                    }
+					
+                        //Clear anything before that
+	                    double earliestClearSubspaceTick = Convert.ToDouble(Database.ExecuteScalar("SELECT MIN(s.LastTick) FROM kmpSubspace s INNER JOIN kmpVessel v ON v.Subspace = s.ID AND (v.Destroyed IS NULL OR v.Destroyed > @minTick);",
+	                        "minTick", earliestClearTick.ToString("0.0").Replace(",", ".")));
 						
-	                    //Clear anything before that
-                        try
-                        {
-    	                    double earliestClearSubspaceTick = Convert.ToDouble(Database.ExecuteScalar("SELECT MIN(s.LastTick) FROM kmpSubspace s INNER JOIN kmpVessel v ON v.Subspace = s.ID AND (v.Destroyed IS NULL OR v.Destroyed > @minTick);",
-    	                        "minTick", earliestClearTick.ToString("0.0").Replace(",", ".")));
-    						
-    	                    Database.ExecuteNonQuery("DELETE FROM kmpSubspace WHERE LastTick < @minSubTick;" +
-    	                        " DELETE FROM kmpVesselUpdateHistory WHERE Tick < @minTick;" +
-    	                        " DELETE FROM kmpVessel WHERE Destroyed IS NOT NULL AND Destroyed < @minTick;",
-    	                    "minTick", earliestClearTick.ToString("0.0").Replace(",", "."),
-    	                    "minSubTick", earliestClearSubspaceTick.ToString("0.0").Replace(",", "."));
-                        }
-                        catch (Exception ex)
-                        {
-                             Log.Debug("Couldn't optimize database with active players: {0}", ex.Message);
-                        }
+	                    Database.ExecuteNonQuery("DELETE FROM kmpSubspace WHERE LastTick < @minSubTick;" +
+	                        " DELETE FROM kmpVesselUpdateHistory WHERE Tick < @minTick;" +
+	                        " DELETE FROM kmpVessel WHERE Destroyed IS NOT NULL AND Destroyed < @minTick;",
+	                    "minTick", earliestClearTick.ToString("0.0").Replace(",", "."),
+	                    "minSubTick", earliestClearSubspaceTick.ToString("0.0").Replace(",", "."));
 	                }
 	                else
 	                {
@@ -3710,7 +3703,7 @@ namespace KMPServer
             }
             catch (Exception ex)
             {
-                Log.Error("Couldn't optimize database: {0}", ex.Message);
+                Log.Debug("Couldn't optimize database: {0}", ex.Message);
             }
         }
 
