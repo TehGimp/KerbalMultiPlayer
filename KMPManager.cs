@@ -124,6 +124,7 @@ namespace KMP
 		public const float FULL_PROTOVESSEL_UPDATE_TIMEOUT = 45f;
 
 		public const double PRIVATE_VESSEL_MIN_TARGET_DISTANCE = 500d;
+        public const string SYNC_PLATE_ID = "14ccd14d-32d3-4f51-a021-cb020ca9cbfe";
 		
 		//Rendezvous smoothing
 		public const double SMOOTH_RENDEZ_UPDATE_MAX_DIFFPOS_SQRMAG_INCREASE_SCALE = 100d;
@@ -842,7 +843,7 @@ namespace KMP
 		{
 			if (!syncing && isInFlight && !warping
                 && !isInSafetyBubble(FlightGlobals.ship_position,FlightGlobals.ActiveVessel.mainBody,FlightGlobals.ActiveVessel.altitude)
-			    && !isObserving && !FlightGlobals.ActiveVessel.packed)
+			    && !isObserving && !FlightGlobals.ActiveVessel.packed && FlightGlobals.ActiveVessel.id.ToString() != SYNC_PLATE_ID)
 			{
 				lastTick = Planetarium.GetUniversalTime();
 				//Write vessel status
@@ -965,7 +966,7 @@ namespace KMP
 
 				foreach (Vessel vessel in FlightGlobals.Vessels)
 				{
-					if (vessel != FlightGlobals.ActiveVessel && vessel.loaded && !vessel.name.Contains(" [Past]") && !vessel.name.Contains(" [Future]"))
+					if (vessel != FlightGlobals.ActiveVessel && vessel.loaded && !vessel.name.Contains(" [Past]") && !vessel.name.Contains(" [Future]") && vessel.id.ToString() != SYNC_PLATE_ID)
 					{
 						float distance = (float)Vector3d.Distance(vessel.GetWorldPos3D(), FlightGlobals.ship_position);
 						if (distance < INACTIVE_VESSEL_RANGE)
@@ -1068,15 +1069,35 @@ namespace KMP
 			enqueuePluginInteropMessage(KMPCommon.PluginInteropMessageID.PRIMARY_PLUGIN_UPDATE, update_bytes);	
 		}
 		
-		private void sendVesselMessage(Vessel vessel, bool isDocking = false)
-		{
-			Log.Debug("sendVesselMessage");
-			KMPVesselUpdate update = getVesselUpdate(vessel, true);
-			update.state = isInFlight ? (FlightGlobals.ActiveVessel.id == vessel.id ? State.ACTIVE : State.INACTIVE) : State.INACTIVE;
-			update.isDockUpdate = isDocking;
-			byte[] update_bytes = KSP.IO.IOUtils.SerializeToBinary(update);
-			enqueuePluginInteropMessage(KMPCommon.PluginInteropMessageID.PRIMARY_PLUGIN_UPDATE, update_bytes);	
-		}
+        private void sendVesselMessage(Vessel vessel, bool isDocking = false)
+        {
+            if (vessel.loaded)
+            {
+                Log.Debug("sendVesselMessage");
+                KMPVesselUpdate update = getVesselUpdate(vessel, true);
+                update.state = isInFlight ? (FlightGlobals.ActiveVessel.id == vessel.id ? State.ACTIVE : State.INACTIVE) : State.INACTIVE;
+                update.isDockUpdate = isDocking;
+                byte[] update_bytes = KSP.IO.IOUtils.SerializeToBinary(update);
+                enqueuePluginInteropMessage(KMPCommon.PluginInteropMessageID.PRIMARY_PLUGIN_UPDATE, update_bytes);
+            }
+            else
+            {
+                Log.Debug("sendVesselMessage - Attempting to load vessel");
+                vessel.Load();
+                StartCoroutine(sendVesselMessageOnNextFixedUpdate(vessel, isDocking));
+            }
+        }
+
+        private IEnumerator<WaitForFixedUpdate> sendVesselMessageOnNextFixedUpdate(Vessel vessel, bool isDocking = false)
+        {
+            yield return new WaitForFixedUpdate();
+            Log.Debug("sendVesselMessage - Next update, Status: " + vessel.loaded);
+            KMPVesselUpdate update = getVesselUpdate(vessel, true);
+            update.state = isInFlight ? (FlightGlobals.ActiveVessel.id == vessel.id ? State.ACTIVE : State.INACTIVE) : State.INACTIVE;
+            update.isDockUpdate = isDocking;
+            byte[] update_bytes = KSP.IO.IOUtils.SerializeToBinary(update);
+            enqueuePluginInteropMessage(KMPCommon.PluginInteropMessageID.PRIMARY_PLUGIN_UPDATE, update_bytes);
+        }
 		
 		private void sendScenarios()
 		{
@@ -1969,6 +1990,12 @@ namespace KMP
 
 		private void applyVesselUpdate(KMPVesselUpdate vessel_update, KMPVessel vessel)
 		{
+            if (vessel_update.id.ToString() == SYNC_PLATE_ID)
+            {
+                Log.Debug("Refusing to update sync plate");
+                return;
+            }
+
 			serverVessels_RemoteID[vessel_update.id] = vessel_update.kmpID;
 			
 			//Find the CelestialBody that matches the one in the update
