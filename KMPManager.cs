@@ -593,7 +593,6 @@ namespace KMP
 					{
 						//Prevent EVA'ing crew or vessel recovery
 						lockCrewGUI();
-						Log.Debug("il: " + InputLockManager.PrintLockStack());
 						if (vrb != null) vrb.ssuiButton.Lock();
 					}
 					else 
@@ -1077,7 +1076,7 @@ namespace KMP
 		private void sendRemoveVesselMessage(Vessel vessel, bool isDocking = false)
 		{
 			Log.Debug("sendRemoveVesselMessage");
-			if (vessel == null) return;
+			if (vessel == null || vessel.id.ToString() == SYNC_PLATE_ID) return;
 			KMPVesselUpdate update = getVesselUpdate(vessel, false, true);
 			update.situation = Situation.DESTROYED;
 			update.state = State.INACTIVE;
@@ -1087,15 +1086,19 @@ namespace KMP
 			enqueuePluginInteropMessage(KMPCommon.PluginInteropMessageID.PRIMARY_PLUGIN_UPDATE, update_bytes);	
 		}
 		
-        private void sendVesselMessage(Vessel vessel, bool isDocking = false, int giveUp = 0)
+        private void sendVesselMessage(Vessel vessel, bool isDocking = false, int giveUp = 0, bool forceActive = false)
         {
+            if (vessel.id.ToString() == SYNC_PLATE_ID) return;
             if (giveUp < MAX_VESSEL_LOAD_ATTEMPTS)
             {
                 if (vessel.loaded)
                 {
                     Log.Debug("sendVesselMessage");
                     KMPVesselUpdate update = getVesselUpdate(vessel, true);
-                    update.state = isInFlight ? (FlightGlobals.ActiveVessel.id == vessel.id ? State.ACTIVE : State.INACTIVE) : State.INACTIVE;
+                    if (forceActive)
+                        update.state = State.ACTIVE;
+                    else
+                        update.state = isInFlight ? (FlightGlobals.ActiveVessel.id == vessel.id ? State.ACTIVE : State.INACTIVE) : State.INACTIVE;
                     update.isDockUpdate = isDocking;
                     byte[] update_bytes = KSP.IO.IOUtils.SerializeToBinary(update);
                     enqueuePluginInteropMessage(KMPCommon.PluginInteropMessageID.PRIMARY_PLUGIN_UPDATE, update_bytes);
@@ -2116,9 +2119,9 @@ namespace KMP
 			//Apply update if able
 			if (isInFlightOrTracking || syncing)
 			{
-				if (vessel_update.relativeTo == Guid.Empty && (vessel_update.id != FlightGlobals.ActiveVessel.id || (serverVessels_InUse[vessel_update.id] || (serverVessels_IsPrivate[vessel_update.id] && !serverVessels_IsMine[vessel_update.id]))))
+				if (vessel_update.relativeTo == Guid.Empty && (isInFlight && vessel_update.id != FlightGlobals.ActiveVessel.id || (serverVessels_InUse[vessel_update.id] || (serverVessels_IsPrivate[vessel_update.id] && !serverVessels_IsMine[vessel_update.id]))))
 				{
-					if (vessel_update.id == FlightGlobals.ActiveVessel.id && vessel_update.relTime == RelativeTime.PAST) {
+					if (isInFlight && vessel_update.id == FlightGlobals.ActiveVessel.id && vessel_update.relTime == RelativeTime.PAST) {
 						kickToTrackingStation();
 						return;
 					}
@@ -2159,13 +2162,16 @@ namespace KMP
 									{
 										//vessel.vesselRef = extant_vessel;
 										float ourDistance = 3000f;
-										if (!extant_vessel.loaded)
-										{
-											if (KMPVessel.situationIsOrbital(vessel_update.situation))
-												ourDistance = Vector3.Distance(extant_vessel.orbit.getPositionAtUT(Planetarium.GetUniversalTime()), FlightGlobals.ship_position);
-											else ourDistance = Vector3.Distance(oldPosition, FlightGlobals.ship_position);
-										}
+                                        if (isInFlight)
+                                        {
+    										if (!extant_vessel.loaded)
+    										{
+    											if (KMPVessel.situationIsOrbital(vessel_update.situation))
+    												ourDistance = Vector3.Distance(extant_vessel.orbit.getPositionAtUT(Planetarium.GetUniversalTime()), FlightGlobals.ship_position);
+    											else ourDistance = Vector3.Distance(oldPosition, FlightGlobals.ship_position);
+    										}
 										else ourDistance = Vector3.Distance(extant_vessel.GetWorldPos3D(), FlightGlobals.ship_position);
+                                        }
 										bool countMismatch = false;
 										ProtoVessel protovessel = null;
 										if (serverVessels_ProtoVessels.ContainsKey(vessel_update.id))
@@ -2214,7 +2220,7 @@ namespace KMP
 													//Update orbit whenever out of sync or other vessel in past/future, or not in docking range
 						  							if (!throttled && !extant_vessel.loaded ||
 												    	(vessel_update.relTime == RelativeTime.PRESENT && (ourDistance > (INACTIVE_VESSEL_RANGE+500f))) || 
-						  								(vessel_update.relTime != RelativeTime.PRESENT && Math.Abs(tick-vessel_update.tick) > 1.5d && vessel_update.id != FlightGlobals.ActiveVessel.id))
+						  								(vessel_update.relTime != RelativeTime.PRESENT && Math.Abs(tick-vessel_update.tick) > 1.5d && isInFlight && vessel_update.id != FlightGlobals.ActiveVessel.id))
 													{
 														if (!syncExtantVesselOrbit(vessel,vessel_update.tick,extant_vessel,vessel_update.w_pos[0]))
 														{
@@ -2227,7 +2233,7 @@ namespace KMP
 													}
 												}
 												
-												if (FlightGlobals.ActiveVessel.mainBody == update_body && vessel_update.relTime == RelativeTime.PRESENT)
+												if (isInFlight && FlightGlobals.ActiveVessel.mainBody == update_body && vessel_update.relTime == RelativeTime.PRESENT)
 												{
 													if (!extant_vessel.loaded)
 													{
@@ -2366,7 +2372,7 @@ namespace KMP
 														}
 													}
 												}
-												else if (FlightGlobals.ActiveVessel.mainBody == vessel.mainBody)
+												else if (isInFlight && FlightGlobals.ActiveVessel.mainBody == vessel.mainBody)
 												{
 													Log.Debug("update from past/future");
 													
@@ -2441,7 +2447,7 @@ namespace KMP
 				}
 				else
 				{
-					if (vessel_update.id == FlightGlobals.ActiveVessel.id)
+					if (isInFlight && vessel_update.id == FlightGlobals.ActiveVessel.id)
 					{
 						Log.Debug("Relative update: " + vessel_update.relativeTo);
 						//This is our vessel!
@@ -3448,7 +3454,7 @@ namespace KMP
 		private void OnCrewOnEva(GameEvents.FromToAction<Part,Part> data)
 		{
 			Log.Debug("EVA event");
-			if (data.from.vessel != null) sendVesselMessage(data.from.vessel);
+			if (data.from.vessel != null) sendVesselMessage(data.from.vessel, false, 0, true);
 		}
 		
 		private void OnCrewBoardVessel(GameEvents.FromToAction<Part,Part> data)
