@@ -120,6 +120,7 @@ namespace KMP
         public const double MIN_SAFETY_BUBBLE_DISTANCE = 100d;
         public const double SAFETY_BUBBLE_CEILING = 35000d;
 		public const float SCENARIO_UPDATE_INTERVAL = 30.0f;
+        public const int MAX_VESSEL_LOAD_ATTEMPTS = 3;
 		
 		public const float FULL_PROTOVESSEL_UPDATE_TIMEOUT = 45f;
 
@@ -191,7 +192,9 @@ namespace KMP
 
 		private Queue<KMPVesselUpdate> vesselUpdateQueue = new Queue<KMPVesselUpdate>();
 		private Queue<KMPVesselUpdate> newVesselUpdateQueue = new Queue<KMPVesselUpdate>();
-		
+        
+        private Queue<KMPScenarioUpdate> scenarioUpdateQueue = new Queue<KMPScenarioUpdate>();
+        
 		GUIStyle playerNameStyle, vesselNameStyle, stateTextStyle, chatLineStyle, screenshotDescriptionStyle;
 		private bool isEditorLocked = false;
 
@@ -260,6 +263,8 @@ namespace KMP
 		private bool warping = false;
 		private bool syncing = false;
 		private bool docking = false;
+        private bool vesselsLoaded = false;
+        private bool sdoReceived = false;
 		private float lastWarpRate = 1f;
 		private int chatMessagesWaiting = 0;
 		private Vessel lastEVAVessel = null;
@@ -365,6 +370,14 @@ namespace KMP
 				if (HighLogic.LoadedScene == GameScenes.LOADING || !gameRunning)
 					return; //Don't do anything while the game is loading or not in KMP game
 				
+                //Queue a time sync if needed
+                 if (UnityEngine.Time.realtimeSinceStartup > lastTimeSyncTime + SYNC_TIME_INTERVAL) {
+                     SyncTime();
+                 }
+    
+                 //Do the Phys-warp NTP time sync dance.
+                 SkewTime();
+                
                 if (syncing)
                 {
                     if (vesselLoadedMessage != null)
@@ -429,6 +442,12 @@ namespace KMP
 					writeUpdates();
 					return;
 				}
+                
+                foreach (Vessel vessel in FlightGlobals.Vessels.Where(v => v.vesselType == VesselType.SpaceObject && !serverVessels_RemoteID.ContainsKey(v.id)))
+                {
+                    Log.Debug("New space object!");
+                    sendVesselMessage(vessel, false);
+                }
 				
 				if (EditorPartList.Instance != null && clearEditorPartList)
 				{
@@ -436,6 +455,11 @@ namespace KMP
 					EditorPartList.Instance.Refresh();
 				}
 				
+                while (scenarioUpdateQueue.Count > 0 && vesselsLoaded)
+                {
+                    applyScenarioUpdate(scenarioUpdateQueue.Dequeue());
+                }
+
 				if (syncing) lastScenarioUpdateTime = UnityEngine.Time.realtimeSinceStartup;
 				else if ((UnityEngine.Time.realtimeSinceStartup-lastScenarioUpdateTime) >= SCENARIO_UPDATE_INTERVAL)
 				{
@@ -593,7 +617,9 @@ namespace KMP
 				{
 					handleVesselUpdate(vesselUpdateQueue.Dequeue());
 				}
-
+    
+                if (HighLogic.CurrentGame.flightState.universalTime < Planetarium.GetUniversalTime()) HighLogic.CurrentGame.flightState.universalTime = Planetarium.GetUniversalTime();
+                
 				processClientInterop();
 				
 				//Update the displayed player orbit positions
@@ -637,14 +663,6 @@ namespace KMP
 				foreach (String key in delete_list)
 					playerStatus.Remove(key);
 
-				//Queue a time sync if needed
-				if (UnityEngine.Time.realtimeSinceStartup > lastTimeSyncTime + SYNC_TIME_INTERVAL) {
-					SyncTime();
-				}
-
-				//Do the Phys-warp NTP time sync dance.
-				SkewTime();
-				
 				//Prevent cases of remaining unfixed NREs from remote vessel updates from creating an inconsistent game state
 				if (HighLogic.fetch.log.Count > 500 && isInFlight && !syncing)
 				{
@@ -1060,7 +1078,7 @@ namespace KMP
 		{
 			Log.Debug("sendRemoveVesselMessage");
 			if (vessel == null) return;
-			KMPVesselUpdate update = getVesselUpdate(vessel);
+			KMPVesselUpdate update = getVesselUpdate(vessel, false, true);
 			update.situation = Situation.DESTROYED;
 			update.state = State.INACTIVE;
 			update.isDockUpdate = isDocking;
@@ -1069,34 +1087,33 @@ namespace KMP
 			enqueuePluginInteropMessage(KMPCommon.PluginInteropMessageID.PRIMARY_PLUGIN_UPDATE, update_bytes);	
 		}
 		
-        private void sendVesselMessage(Vessel vessel, bool isDocking = false)
+        private void sendVesselMessage(Vessel vessel, bool isDocking = false, int giveUp = 0)
         {
-            if (vessel.loaded)
+            if (giveUp < MAX_VESSEL_LOAD_ATTEMPTS)
             {
-                Log.Debug("sendVesselMessage");
-                KMPVesselUpdate update = getVesselUpdate(vessel, true);
-                update.state = isInFlight ? (FlightGlobals.ActiveVessel.id == vessel.id ? State.ACTIVE : State.INACTIVE) : State.INACTIVE;
-                update.isDockUpdate = isDocking;
-                byte[] update_bytes = KSP.IO.IOUtils.SerializeToBinary(update);
-                enqueuePluginInteropMessage(KMPCommon.PluginInteropMessageID.PRIMARY_PLUGIN_UPDATE, update_bytes);
-            }
-            else
-            {
-                Log.Debug("sendVesselMessage - Attempting to load vessel");
-                vessel.Load();
-                StartCoroutine(sendVesselMessageOnNextFixedUpdate(vessel, isDocking));
+                if (vessel.loaded)
+                {
+                    Log.Debug("sendVesselMessage");
+                    KMPVesselUpdate update = getVesselUpdate(vessel, true);
+                    update.state = isInFlight ? (FlightGlobals.ActiveVessel.id == vessel.id ? State.ACTIVE : State.INACTIVE) : State.INACTIVE;
+                    update.isDockUpdate = isDocking;
+                    byte[] update_bytes = KSP.IO.IOUtils.SerializeToBinary(update);
+                    enqueuePluginInteropMessage(KMPCommon.PluginInteropMessageID.PRIMARY_PLUGIN_UPDATE, update_bytes);
+                }
+                else
+                {
+                    Log.Debug("sendVesselMessage - attempting to load");
+                    try { vessel.Load(); } catch { }
+                    StartCoroutine(sendVesselMessageOnNextFixedUpdate(vessel, isDocking, giveUp));
+                }
             }
         }
 
-        private IEnumerator<WaitForFixedUpdate> sendVesselMessageOnNextFixedUpdate(Vessel vessel, bool isDocking = false)
+        private IEnumerator<WaitForFixedUpdate> sendVesselMessageOnNextFixedUpdate(Vessel vessel, bool isDocking = false, int giveUp = 0)
         {
             yield return new WaitForFixedUpdate();
             Log.Debug("sendVesselMessage - Next update, Status: " + vessel.loaded);
-            KMPVesselUpdate update = getVesselUpdate(vessel, true);
-            update.state = isInFlight ? (FlightGlobals.ActiveVessel.id == vessel.id ? State.ACTIVE : State.INACTIVE) : State.INACTIVE;
-            update.isDockUpdate = isDocking;
-            byte[] update_bytes = KSP.IO.IOUtils.SerializeToBinary(update);
-            enqueuePluginInteropMessage(KMPCommon.PluginInteropMessageID.PRIMARY_PLUGIN_UPDATE, update_bytes);
+            sendVesselMessage(vessel, isDocking, giveUp + 1);
         }
 		
 		private void sendScenarios()
@@ -1118,7 +1135,7 @@ namespace KMP
 			}
 		}
 		
-		private KMPVesselUpdate getVesselUpdate(Vessel vessel, bool forceFullUpdate = false)
+		private KMPVesselUpdate getVesselUpdate(Vessel vessel, bool forceFullUpdate = false, bool idOnlyUpdate = false)
 		{
 			if (vessel == null || vessel.mainBody == null)
 				return null;
@@ -1159,8 +1176,12 @@ namespace KMP
 				}
 			}
             
+            if (idOnlyUpdate)
+            {
+                update = new KMPVesselUpdate(vessel,false);
+            }
 			//Check for new/forced update
-			if (!forceFullUpdate //not a forced update
+			else if (!forceFullUpdate //not a forced update
 			    && !docking //not in the middle of a docking event
 			    && (serverVessels_PartCounts.ContainsKey(vessel.id) ? 
 			    	((isInFlight ? vessel.id != FlightGlobals.ActiveVessel.id : true) || (UnityEngine.Time.realtimeSinceStartup - lastFullProtovesselUpdate) < FULL_PROTOVESSEL_UPDATE_TIMEOUT) //not active vessel, or full protovessel timeout hasn't passed
@@ -1217,7 +1238,6 @@ namespace KMP
 			update.player = playerName;
 			update.id = vessel.id;
 			update.tick = Planetarium.GetUniversalTime();
-			update.crewCount = vessel.GetCrewCount();
 			
 			if (serverVessels_RemoteID.ContainsKey(vessel.id)) update.kmpID = serverVessels_RemoteID[vessel.id];
 			else
@@ -1231,6 +1251,10 @@ namespace KMP
 					newFlags[vessel.id] = UnityEngine.Time.realtimeSinceStartup;
 				}
 			}
+            
+            if (idOnlyUpdate) return update;
+            
+            update.crewCount = vessel.GetCrewCount();
             
 			Vector3 pos = vessel.mainBody.transform.InverseTransformPoint(vessel.GetWorldPos3D());
 			Vector3 dir = vessel.mainBody.transform.InverseTransformDirection(vessel.transform.up);
@@ -1893,40 +1917,54 @@ namespace KMP
 			if (obj is KMPScenarioUpdate)
 			{
 				KMPScenarioUpdate update = (KMPScenarioUpdate) obj;
-				bool loaded = false;
-				foreach (ProtoScenarioModule proto in HighLogic.CurrentGame.scenarios)
-				{
-					if (proto != null && proto.moduleName == update.name && proto.moduleRef != null && update.getScenarioNode() != null)
-					{
-						Log.Debug("Loading scenario data for existing module: " + update.name);
-						if (update.name == "ResearchAndDevelopment")
-						{
-							ResearchAndDevelopment rd = (ResearchAndDevelopment) proto.moduleRef;
-							Log.Debug("pre-R&D: {0}", rd.Science);
-						}
-						try
-						{
-							proto.moduleRef.Load(update.getScenarioNode());
-						} catch (Exception e) { KMPClientMain.sendConnectionEndMessage("Error in handling scenario data. Please restart your client. "); Log.Debug(e.ToString());  }
-						if (update.name == "ResearchAndDevelopment")
-						{
-							ResearchAndDevelopment rd = (ResearchAndDevelopment) proto.moduleRef;
-							Log.Debug("post-R&D: {0}", rd.Science);
-						}
-						loaded = true;
-						break;
-					}
-				}
-				if (!loaded)
-				{
-					Log.Debug("Loading new scenario module data: " + update.name);
-					ProtoScenarioModule newScenario = new ProtoScenarioModule(update.getScenarioNode());
-					newScenario.Load(ScenarioRunner.fetch);
-				}
-				clearEditorPartList = true;
-			}
+                scenarioUpdateQueue.Enqueue(update);
+            }
 		}
 		
+        private void applyScenarioUpdate(KMPScenarioUpdate update)
+        {
+            bool loaded = false;
+            foreach (ProtoScenarioModule proto in HighLogic.CurrentGame.scenarios)
+            {
+                if (proto != null && proto.moduleName == update.name && proto.moduleRef != null && update.getScenarioNode() != null)
+                {
+                    Log.Debug("Loading scenario data for existing module: " + update.name);
+                    if (update.name == "ResearchAndDevelopment")
+                    {
+                        ResearchAndDevelopment rd = (ResearchAndDevelopment) proto.moduleRef;
+                        Log.Debug("pre-R&D: {0}", rd.Science);
+                    }
+                    try
+                    {
+                        proto.moduleRef.Load(update.getScenarioNode());
+                    } catch (Exception e) { KMPClientMain.sendConnectionEndMessage("Error in handling scenario data. Please restart your client. "); Log.Debug(e.ToString());  }
+                    if (update.name == "ResearchAndDevelopment")
+                    {
+                        ResearchAndDevelopment rd = (ResearchAndDevelopment) proto.moduleRef;
+                        Log.Debug("post-R&D: {0}", rd.Science);
+                    }
+                    loaded = true;
+                    break;
+                }
+            }
+            if (!loaded)
+            {
+                Log.Debug("Loading new scenario module data: " + update.name);
+                ProtoScenarioModule newScenario = new ProtoScenarioModule(update.getScenarioNode());
+                //var proto = HighLogic.CurrentGame.AddProtoScenarioModule(newScenario.GetType(), GameScenes.SPACECENTER, GameScenes.FLIGHT, GameScenes.TRACKSTATION);
+                HighLogic.CurrentGame.scenarios.Add(newScenario);
+                newScenario.Load(ScenarioRunner.fetch);
+                if (update.name == "ScenarioDiscoverableObjects")
+                {
+                    ScenarioDiscoverableObjects sdo = (ScenarioDiscoverableObjects) newScenario.moduleRef;
+                    sdo.spawnInterval *= (playerStatus.Count()+1); //Throttle spawn rate based on number of players (at connection time)
+                    sdo.debugSpawnProbability();
+                    sdoReceived = true;
+                }
+            }
+            clearEditorPartList = true;   
+        }
+        
 		private void handleVesselUpdate(KMPVesselUpdate vessel_update)
 		{
 			Log.Debug("handleVesselUpdate");
@@ -3484,14 +3522,14 @@ namespace KMP
 			sendScenarios();
 		}
         
+        private void OnKnowledgeChanged(GameEvents.HostedFromToAction<IDiscoverable,DiscoveryLevels> data)
+        {
+            Invoke("sendScenarios",1f);
+        }
+        
         private void OnNewVesselCreated(Vessel vessel)
         {
             Log.Debug("OnNewVesselCreated");
-            if (vessel.vesselType == VesselType.SpaceObject && !serverVessels_RemoteID.ContainsKey(vessel.id))
-            {
-                Log.Debug("New space object!");
-                sendVesselMessage(vessel, false);
-            }
         }
 			
 		private void OnTimeWarpRateChanged()
@@ -3574,10 +3612,10 @@ namespace KMP
 			if (gameRunning && !forceQuit && syncing) {
 				if (!inGameSyncing) {
 					SyncTime();
-					Invoke ("finishSync", 5f);
-					CancelInvoke ("handleSyncTimeout");
+					Invoke("beginFinishSync", 1f);
+					CancelInvoke("handleSyncTimeout");
 				} else {
-					Invoke ("finishInGameSync", 1f);
+					Invoke("finishInGameSync", 1f);
 				}
 			}
 
@@ -3598,12 +3636,28 @@ namespace KMP
 			forceQuit = true;
 			KMPClientMain.SetMessage("Disconnected: Sync timeout");
 		}
+        
+        private void beginFinishSync()
+        {
+            if (!forceQuit && syncing && gameRunning)
+            {
+                vesselsLoaded = true;
+                ScreenMessages.PostScreenMessage("Universe synchronized",1f,ScreenMessageStyle.UPPER_RIGHT);
+                Invoke("finishSync", 3f);
+            }
+        }
 		
 		private void finishSync()
 		{
 			if (!forceQuit && syncing && gameRunning)
 			{
-				ScreenMessages.PostScreenMessage("Universe synchronized",1f,ScreenMessageStyle.UPPER_RIGHT);
+                if (HighLogic.CurrentGame.scenarios.Where(psm => psm.moduleName == "ScenarioDiscoverableObjects").Count() < 1)
+                {
+                    Log.Debug("Didn't receive sdo, creating");
+                    var proto = HighLogic.CurrentGame.AddProtoScenarioModule(typeof(ScenarioDiscoverableObjects), GameScenes.SPACECENTER, GameScenes.FLIGHT, GameScenes.TRACKSTATION);
+                    proto.Load(ScenarioRunner.fetch);
+                    sdoReceived = true;
+                }
 				StartCoroutine(returnToSpaceCenter());
 			}
 		}
@@ -3672,7 +3726,7 @@ namespace KMP
 		} catch (Exception e) { Log.Debug("Exception thrown in krakensBaneWarp(), catch 1, Exception: {0}", e.ToString()); Log.Debug("error during sync: " + e.Message + " " + e.StackTrace); }
 		}
 
-		private void SkewTime ()
+		private void SkewTime()
 		{
 			if (syncing || warping) return;
 
@@ -4186,6 +4240,7 @@ namespace KMP
 					GameEvents.onGUIRnDComplexDespawn.Remove(this.OnGUIRnDComplexDespawn);
 					GameEvents.OnTechnologyResearched.Remove(this.OnTechnologyResearched);
 					GameEvents.onVesselRecovered.Remove(this.OnVesselRecovered);
+                    GameEvents.onKnowledgeChanged.Remove(this.OnKnowledgeChanged);
                     GameEvents.onNewVesselCreated.Remove(this.OnNewVesselCreated);
 				}
         catch (Exception e) {
@@ -4651,6 +4706,8 @@ namespace KMP
 					
 					GamePersistence.SaveGame("persistent",HighLogic.SaveFolder,SaveMode.OVERWRITE);
 					GameEvents.onFlightReady.Add(this.OnFirstFlightReady);
+                    vesselsLoaded = false;
+                    sdoReceived = false;
 					syncing = true;
 					HighLogic.CurrentGame.Start();
 
@@ -4659,13 +4716,10 @@ namespace KMP
 					//Instead of clearing scenarios, KSP appears to set the moduleRefs of each module to null, which is what was causing KMP bugs #578, 
 					//and could be the cause of #579 (but closing KSP after disconnecting from a server, before connecting again, prevented it from happening, 
 					//at least for #578).
-					
-                    var proto = HighLogic.CurrentGame.AddProtoScenarioModule(typeof(ScenarioDiscoverableObjects), GameScenes.SPACECENTER, GameScenes.FLIGHT, GameScenes.TRACKSTATION);
-                    proto.Load(ScenarioRunner.fetch);
                 
 					if (gameMode == 1)
 					{
-						proto = HighLogic.CurrentGame.AddProtoScenarioModule(typeof(ResearchAndDevelopment), GameScenes.SPACECENTER, GameScenes.EDITOR, GameScenes.FLIGHT, GameScenes.TRACKSTATION, GameScenes.SPH);
+						var proto = HighLogic.CurrentGame.AddProtoScenarioModule(typeof(ResearchAndDevelopment), GameScenes.SPACECENTER, GameScenes.EDITOR, GameScenes.FLIGHT, GameScenes.TRACKSTATION, GameScenes.SPH);
 	                    proto.Load(ScenarioRunner.fetch);
 						proto = HighLogic.CurrentGame.AddProtoScenarioModule(typeof(ProgressTracking), GameScenes.SPACECENTER, GameScenes.FLIGHT, GameScenes.TRACKSTATION);
 	                    proto.Load(ScenarioRunner.fetch);
@@ -4694,6 +4748,7 @@ namespace KMP
 					GameEvents.onGUIRnDComplexDespawn.Add(this.OnGUIRnDComplexDespawn);
 					GameEvents.OnTechnologyResearched.Add(this.OnTechnologyResearched);
 					GameEvents.onVesselRecovered.Add(this.OnVesselRecovered);
+                    GameEvents.onKnowledgeChanged.Add(this.OnKnowledgeChanged);
                     GameEvents.onNewVesselCreated.Add(this.OnNewVesselCreated);
 					writePluginData();
 					//Make sure user knows how to use new chat

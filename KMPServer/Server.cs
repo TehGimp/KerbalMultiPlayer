@@ -2256,7 +2256,7 @@ namespace KMPServer
 
                 if (scenario_update != null)
                 {
-                    Log.Activity("Received scenario update from {0}", cl.username);
+                    Log.Debug("Received scenario update '{1}' from {0}", cl.username, scenario_update.name);
                     object result = Database.ExecuteScalar("SELECT ID FROM kmpScenarios WHERE PlayerID = @playerID AND Name = @name;",
                         "playerID", cl.playerID,
                         "name", scenario_update.name);
