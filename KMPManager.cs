@@ -858,9 +858,22 @@ namespace KMP
 
 		private void writePrimaryUpdate()
 		{
-			if (!syncing && isInFlight && !warping
-                && !isInSafetyBubble(FlightGlobals.ship_position,FlightGlobals.ActiveVessel.mainBody,FlightGlobals.ActiveVessel.altitude)
-			    && !isObserving && !FlightGlobals.ActiveVessel.packed && FlightGlobals.ActiveVessel.id.ToString() != SYNC_PLATE_ID)
+            bool activeVesselOk = false;
+            bool activeVesselIsInBubble = false;
+            bool activeVesselLoaded = false;
+            bool activeVesselPacked = false;
+            bool activeVesselIsSyncPlate = false;
+
+            if (FlightGlobals.ActiveVessel != null)
+            {
+                activeVesselOk = true;
+                activeVesselIsInBubble = isInSafetyBubble(FlightGlobals.ship_position, FlightGlobals.ActiveVessel.mainBody, FlightGlobals.ActiveVessel.altitude);
+                activeVesselLoaded = FlightGlobals.ActiveVessel.loaded;
+                activeVesselPacked = FlightGlobals.ActiveVessel.packed;
+                activeVesselIsSyncPlate = (FlightGlobals.ActiveVessel.id.ToString() != SYNC_PLATE_ID);
+            }
+
+            if (!syncing && isInFlight && !warping && !isObserving && activeVesselOk && !activeVesselIsInBubble && activeVesselLoaded && !activeVesselPacked && !activeVesselIsSyncPlate)
 			{
 				lastTick = Planetarium.GetUniversalTime();
 				//Write vessel status
