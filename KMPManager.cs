@@ -663,31 +663,6 @@ namespace KMP
 				foreach (String key in delete_list)
 					playerStatus.Remove(key);
 
-				//Prevent cases of remaining unfixed NREs from remote vessel updates from creating an inconsistent game state
-				if (HighLogic.fetch.log.Count > 500 && isInFlight && !syncing)
-				{
-					bool forceResync = false; int nreCount = 0;
-					foreach (HighLogic.LogEntry logEntry in HighLogic.fetch.log.GetRange(HighLogic.fetch.log.Count-100,100))
-			        {
-						if (logEntry.condition.Contains("NullReferenceException")) nreCount++;
-						if (nreCount >= 25)
-						{
-							forceResync = true;
-							break;
-						}
-					}
-					if (forceResync)
-					{
-						Log.Debug("Resynced due to NRE flood");
-						ScreenMessages.PostScreenMessage("Unexpected error! Re-syncing...");
-						GameEvents.onFlightReady.Remove(this.OnFlightReady);
-						HighLogic.CurrentGame = GamePersistence.LoadGame("start",HighLogic.SaveFolder,false,true);
-						HighLogic.CurrentGame.Start();
-						docking = true;
-						syncing = true;
-						Invoke("OnFirstFlightReady",1f);	
-					}
-				}
 			} catch (Exception ex) { Log.Debug("Exception thrown in updateStep(), catch 4, Exception: {0}", ex.ToString()); Log.Debug("uS err: " + ex.Message + " " + ex.StackTrace); }
 		}
 
