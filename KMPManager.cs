@@ -822,12 +822,17 @@ namespace KMP
 
 			if (!docking) writePrimaryUpdate();
 			
-			//nearby vessels
-            if (isInFlight
-			    && !syncing && !warping
-			    && !isInSafetyBubble(FlightGlobals.ship_position,FlightGlobals.ActiveVessel.mainBody,FlightGlobals.ActiveVessel.altitude)
-			    && (serverVessels_IsMine.ContainsKey(FlightGlobals.ActiveVessel.id) ? serverVessels_IsMine[FlightGlobals.ActiveVessel.id] : true))
-			{
+            bool activeVesselOk = false;
+            bool activeVesselIsInBubble = false;
+            bool activeVesselIsMine = false;
+            if (FlightGlobals.ActiveVessel != null)
+            {
+                activeVesselOk = true;
+                activeVesselIsInBubble = isInSafetyBubble(FlightGlobals.ship_position, FlightGlobals.ActiveVessel.mainBody, FlightGlobals.ActiveVessel.altitude);
+                activeVesselIsMine = (serverVessels_IsMine.ContainsKey(FlightGlobals.ActiveVessel.id) ? serverVessels_IsMine[FlightGlobals.ActiveVessel.id] : true);
+            }
+            if (isInFlight && !syncing && !warping && activeVesselOk && !activeVesselIsInBubble && activeVesselIsMine) {
+                //nearby vessels
 				writeSecondaryUpdates();
 			}
 		}
