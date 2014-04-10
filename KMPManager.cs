@@ -920,11 +920,22 @@ namespace KMP
 
 					switch (HighLogic.LoadedScene)
 					{
-						case GameScenes.FLIGHT:
-							if (serverVessels_IsMine.ContainsKey(FlightGlobals.ActiveVessel.id) ? serverVessels_IsMine[FlightGlobals.ActiveVessel.id] : true)
-								status_array[1] = "Preparing/launching from KSC";
-							else
-								status_array[1] = "Spectating " + FlightGlobals.ActiveVessel.vesselName;
+                        case GameScenes.FLIGHT:
+                            if (FlightGlobals.ActiveVessel != null)
+                            {
+                                if (serverVessels_IsMine.ContainsKey(FlightGlobals.ActiveVessel.id) ? serverVessels_IsMine[FlightGlobals.ActiveVessel.id] : true)
+                                {
+                                    status_array[1] = "Preparing/launching from KSC";
+                                }
+                                else
+                                {
+                                    status_array[1] = "Spectating " + FlightGlobals.ActiveVessel.vesselName;
+                                }
+                            }
+                            else
+                            {
+                                status_array[1] = "Preparing/launching from KSC";
+                            }
 							break;
 						case GameScenes.SPACECENTER:
 							status_array[1] = "At Space Center";
