@@ -3760,7 +3760,7 @@ namespace KMP
 					if (skewMessage != null) {
 						skewMessage.duration = 0f;
 					}
-					if (isInFlight) {
+					if (isInFlight && FlightGlobals.ActiveVessel != null) {
 						krakensBaneWarp(skewTargetTick + timeFromLastSyncSecondsAdjusted);
 					} else {
 						Planetarium.SetUniversalTime(skewTargetTick + timeFromLastSyncSecondsAdjusted);
