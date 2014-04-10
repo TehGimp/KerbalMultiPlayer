@@ -174,6 +174,7 @@ namespace KMP
 		public float lastSubspaceLockChange = 0.0f;
 
 		//NTP-style time syncronize settings
+        private bool forceNTP = false;
 		private bool isSkewingTime = false;
 		private Int64 offsetSyncTick = 0; //The difference between the servers system clock and ours.
 		private Int64 latencySyncTick = 0; //The network lag detected by NTP.
@@ -372,7 +373,7 @@ namespace KMP
 					return; //Don't do anything while the game is loading or not in KMP game
 				
                 //Queue a time sync if needed
-                 if (UnityEngine.Time.realtimeSinceStartup > lastTimeSyncTime + SYNC_TIME_INTERVAL) {
+                 if (isTimeSyncronized && (UnityEngine.Time.realtimeSinceStartup > lastTimeSyncTime + SYNC_TIME_INTERVAL)) {
                      SyncTime();
                  }
     
@@ -3583,12 +3584,23 @@ namespace KMP
 		{
 			if (syncing && !forceQuit)
 			{
-				Log.Debug("Requesting initial sync");
+				
 				GameEvents.onFlightReady.Remove(this.OnFirstFlightReady);
 				GameEvents.onFlightReady.Add(this.OnFlightReady);
 				MapView.EnterMapView();
 				MapView.MapCamera.SetTarget("Kerbin");
-				Invoke("sendInitialSyncRequest",0.5f);
+                if (isTimeSyncronized)
+                {
+                    //Called from dockedKickToTrackingStation
+                    Log.Debug("Requesting dockedKickToTrackingStation sync");
+                    Invoke("sendInitialSyncRequest",0.5f);
+                }
+                else
+                {
+                    //Called after the initial connection, After time is synced NTP will request the vessels.
+                    Log.Debug("Requesting initial clock sync");
+                    SyncTime();
+                }
 				Invoke("handleSyncTimeout",300f);
 				docking = false;
 			}
@@ -3622,7 +3634,6 @@ namespace KMP
 		{
 			if (gameRunning && !forceQuit && syncing) {
 				if (!inGameSyncing) {
-					SyncTime();
 					Invoke("beginFinishSync", 1f);
 					CancelInvoke("handleSyncTimeout");
 				} else {
@@ -3739,7 +3750,11 @@ namespace KMP
 
 		private void SkewTime()
 		{
-			if (syncing || warping) return;
+            if ((syncing || warping) && !forceNTP)
+            {
+                return;
+            }
+            forceNTP = false;
 
             //Time does not advance in the VAB, SPH or victim selection screen.
             if (HighLogic.LoadedScene == GameScenes.EDITOR || HighLogic.LoadedScene == GameScenes.SPH)
@@ -3891,7 +3906,11 @@ namespace KMP
 				offsetSyncTick = (Int64)listClientTimeSyncOffset.Average();
 				latencySyncTick = (Int64)listClientTimeSyncLatency.Average();
 				isTimeSyncronized = true;
+                forceNTP = true;
 				Log.Debug("Initial client time syncronized: " + (latencySyncTick/10000).ToString() + "ms latency, " + (offsetSyncTick/10000).ToString() + "ms offset");
+                Log.Debug("Requesting initial vessel sync");
+                //Start the initial sync after the time is synced.
+                Invoke("sendInitialSyncRequest",0.5f);
 			}
 
 			if (listClientTimeSyncOffset.Count > MAX_TIME_SYNC_HISTORY) {
