@@ -392,7 +392,11 @@ namespace KMP
                         {
                             if (numberOfShips != 0)
                             {
-                                vesselLoadedMessage = ScreenMessages.PostScreenMessage("Synchronizing vessels: " + vesselUpdatesLoaded.Count + "/" + numberOfShips + " (" + (vesselUpdatesLoaded.Count * 100 / numberOfShips) + "%)", 1f, ScreenMessageStyle.UPPER_RIGHT);
+                                if (!vesselsLoaded) {
+                                    vesselLoadedMessage = ScreenMessages.PostScreenMessage("Synchronizing vessels: " + vesselUpdatesLoaded.Count + "/" + numberOfShips + " (" + (vesselUpdatesLoaded.Count * 100 / numberOfShips) + "%)", 1f, ScreenMessageStyle.UPPER_RIGHT);
+                                } else {
+                                    vesselLoadedMessage = ScreenMessages.PostScreenMessage("Universe synchronized!",1f,ScreenMessageStyle.UPPER_RIGHT);
+                                }
                             }
                             else
                             {
@@ -3664,7 +3668,6 @@ namespace KMP
             if (!forceQuit && syncing && gameRunning)
             {
                 vesselsLoaded = true;
-                ScreenMessages.PostScreenMessage("Universe synchronized",1f,ScreenMessageStyle.UPPER_RIGHT);
                 Invoke("finishSync", 3f);
             }
         }
