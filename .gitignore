@@ -4,6 +4,7 @@
 *.a
 *.moc
 .git
+*.orig
 
 # Logs etc.
 **/*.log
