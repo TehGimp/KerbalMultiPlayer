@@ -846,7 +846,7 @@ namespace KMP
                 activeVesselIsInBubble = isInSafetyBubble(FlightGlobals.ship_position, FlightGlobals.ActiveVessel.mainBody, FlightGlobals.ActiveVessel.altitude);
                 activeVesselLoaded = FlightGlobals.ActiveVessel.loaded;
                 activeVesselPacked = FlightGlobals.ActiveVessel.packed;
-                activeVesselIsSyncPlate = (FlightGlobals.ActiveVessel.id.ToString() != SYNC_PLATE_ID);
+                activeVesselIsSyncPlate = (FlightGlobals.ActiveVessel.id.ToString() == SYNC_PLATE_ID);
             }
 
             if (!syncing && isInFlight && !warping && !isObserving && activeVesselOk && !activeVesselIsInBubble && activeVesselLoaded && !activeVesselPacked && !activeVesselIsSyncPlate)
