@@ -3628,9 +3628,12 @@ namespace KMP
 		}
 		
 		private void setNotWarping()
-		{
-			warping = false;	
-		}
+        {
+            if (TimeWarp.CurrentRate <= 1)
+            {
+                warping = false;	
+            }
+        }
 		
 		private void OnFirstFlightReady()
 		{
