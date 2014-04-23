@@ -231,6 +231,7 @@ namespace KMP
 		public Dictionary<Guid, int> serverVessels_PartCounts = new Dictionary<Guid, int>();
 		public Dictionary<Guid, List<Part>> serverVessels_Parts = new Dictionary<Guid, List<Part>>();
 		public Dictionary<Guid, ConfigNode> serverVessels_ProtoVessels = new Dictionary<Guid, ConfigNode>();
+        public Dictionary<int, string> serverKerbals_AssignedKerbals = new Dictionary<int, string>();
 		
 		public Dictionary<Guid, bool> serverVessels_InUse = new Dictionary<Guid, bool>();
 		public Dictionary<Guid, bool> serverVessels_IsPrivate = new Dictionary<Guid, bool>();
@@ -2656,12 +2657,38 @@ namespace KMP
 			int applicants = 0;
 			while (crewEnum.MoveNext())
 				if (crewEnum.Current.rosterStatus == ProtoCrewMember.RosterStatus.AVAILABLE) applicants++;
-		
+
 			foreach (ConfigNode partNode in protoNode.GetNodes("PART"))
 			{
+                int currentCrewIndex = 0;
 				foreach (string crew in partNode.GetValues("crew"))
 				{
+                    string protoVesselID = protoNode.GetValue("pid");
 					int crewValue = Convert.ToInt32(crew);
+                    KMP.Log.Debug("Protovessel: " + protoVesselID + " crew value " + crewValue);
+                    if (serverKerbals_AssignedKerbals.ContainsKey(crewValue))
+                    {
+                        KMP.Log.Debug("Kerbal taken!");
+                        if (serverKerbals_AssignedKerbals[crewValue] != protoVesselID)
+                        {
+                            //Assign a new kerbal, this one already belongs to another ship.
+                            int freeKerbal = 0;
+                            while (serverKerbals_AssignedKerbals.ContainsKey(freeKerbal))
+                            {
+                                freeKerbal++;
+                            }
+                            partNode.SetValue("crew", freeKerbal.ToString(), currentCrewIndex);
+                            KMP.Log.Debug("Fixing duplicate kerbal reference, changing kerbal " + currentCrewIndex + " to " + freeKerbal);
+                            crewValue = freeKerbal;
+                            serverKerbals_AssignedKerbals[crewValue] = protoVesselID;
+                            currentCrewIndex++;
+                        }
+                    }
+                    else
+                    {
+                        serverKerbals_AssignedKerbals[crewValue] = protoVesselID;
+                    }
+
 					crewValue++;
 					if (crewValue > applicants)
 					{
@@ -3007,7 +3034,7 @@ namespace KMP
                 {
                     Log.Debug("Exception thrown in loadProtovessel(), catch 1, Exception: {0}", e.ToString());
                 }
-
+                /*
                 if (!created_vessel.loaded)
                     created_vessel.Load();
 
@@ -3015,6 +3042,7 @@ namespace KMP
                 {
                     created_vessel.SpawnCrew();
                 }
+                */
                 
                 Log.Debug(created_vessel.id.ToString() + " initializing: ProtoParts=" + protovessel.protoPartSnapshots.Count + ",Parts=" + created_vessel.Parts.Count + ",Sit=" + created_vessel.situation.ToString() + ",type=" + created_vessel.vesselType + ",alt=" + protovessel.altitude);
 				
@@ -4746,6 +4774,7 @@ namespace KMP
 					serverVessels_PartCounts.Clear();
 					serverVessels_Parts.Clear();
 					serverVessels_ProtoVessels.Clear();
+                serverKerbals_AssignedKerbals.Clear();
 					
 					serverVessels_InUse.Clear();
 					serverVessels_IsPrivate.Clear();
