@@ -3761,10 +3761,22 @@ namespace KMP
 			{
                 if (HighLogic.CurrentGame.scenarios.Where(psm => psm.moduleName == "ScenarioDiscoverableObjects").Count() < 1)
                 {
-                    Log.Debug("Didn't receive sdo, creating");
+                    Log.Debug("Didn't receive SDO, creating");
                     var proto = HighLogic.CurrentGame.AddProtoScenarioModule(typeof(ScenarioDiscoverableObjects), GameScenes.SPACECENTER, GameScenes.FLIGHT, GameScenes.TRACKSTATION);
                     proto.Load(ScenarioRunner.fetch);
                     sdoReceived = true;
+                }
+                if (HighLogic.CurrentGame.scenarios.Where(psm => psm.moduleName == "ResearchAndDevelopment").Count() < 1 && gameMode == 1)
+                {
+                    Log.Debug("Didn't receive R&D, creating");
+                    var proto = HighLogic.CurrentGame.AddProtoScenarioModule(typeof(ResearchAndDevelopment), GameScenes.SPACECENTER, GameScenes.EDITOR, GameScenes.FLIGHT, GameScenes.TRACKSTATION, GameScenes.SPH);
+                    proto.Load(ScenarioRunner.fetch);
+                    if (HighLogic.CurrentGame.scenarios.Where(psm => psm.moduleName == "ProgressTracking").Count() < 1)
+                    {
+                        proto = HighLogic.CurrentGame.AddProtoScenarioModule(typeof(ProgressTracking), GameScenes.SPACECENTER, GameScenes.FLIGHT, GameScenes.TRACKSTATION);
+                        proto.Load(ScenarioRunner.fetch);
+                    }
+                    clearEditorPartList = true;
                 }
 				StartCoroutine(returnToSpaceCenter());
 			}
@@ -4838,15 +4850,6 @@ namespace KMP
 					//Instead of clearing scenarios, KSP appears to set the moduleRefs of each module to null, which is what was causing KMP bugs #578, 
 					//and could be the cause of #579 (but closing KSP after disconnecting from a server, before connecting again, prevented it from happening, 
 					//at least for #578).
-                
-					if (gameMode == 1)
-					{
-						var proto = HighLogic.CurrentGame.AddProtoScenarioModule(typeof(ResearchAndDevelopment), GameScenes.SPACECENTER, GameScenes.EDITOR, GameScenes.FLIGHT, GameScenes.TRACKSTATION, GameScenes.SPH);
-	                    proto.Load(ScenarioRunner.fetch);
-						proto = HighLogic.CurrentGame.AddProtoScenarioModule(typeof(ProgressTracking), GameScenes.SPACECENTER, GameScenes.FLIGHT, GameScenes.TRACKSTATION);
-	                    proto.Load(ScenarioRunner.fetch);
-						clearEditorPartList = true;
-					}
 					
 					for (int i=0; i<50;)
 					{
