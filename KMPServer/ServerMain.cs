@@ -94,7 +94,6 @@ namespace KMPServer
             Log.Info("/whitelist [add|del] [user] to update whitelist.");
             Log.Info("/admin [add|del] [user] to update admin list.");
             Log.Info("/mode [sandbox|career] to set server game mode.");
-            Log.Info("/dbdiag to run database performance diagnostics.");
 			Log.Info("/modgen [blacklist|whitelist] [sha] to generate a KMPModControl.txt from the 'Mods' directory.");
 			Log.Info("\tYou can use blacklist or whitelist mode, defaulting to blacklist.");
 			Log.Info("\tYou can optionally specify sha to force required versions.");
