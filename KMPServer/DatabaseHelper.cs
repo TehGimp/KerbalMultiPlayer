@@ -25,6 +25,7 @@ namespace KMPServer
         private Stopwatch stateChangeWatch = new Stopwatch();
         private Stopwatch queryWatch = new Stopwatch();
         private int connectionOpenCount = 0;
+        private int connectionCloseCount = 0;
         private int connectionQueryCount = 0;
         private DbConnection ReadRefDb = null;
 
@@ -46,6 +47,11 @@ namespace KMPServer
         public int TotalDatabaseOpens
         {
             get { return connectionOpenCount; }
+        }
+        
+        public int TotalDatabaseCloses
+        {
+            get { return connectionCloseCount; }
         }
 
         #endregion
@@ -156,11 +162,20 @@ namespace KMPServer
         /// <returns>Passthrough object</returns>
         private T Finish<T>(T o, DbConnection conn)
         {
+            if((ReadRefDb != conn || (Attributes & DatabaseAttributes.KeepRef) == DatabaseAttributes.Nothing) && conn != null)
+            {
+                connectionCloseCount++;
+                conn.Dispose();
+            }
+            
             if (Interlocked.Decrement(ref DatabaseUsers) == 0)
             {
                 /* If the connection is the reference object, or we are not keeping reference, dispose */
                 if((ReadRefDb == conn || (Attributes & DatabaseAttributes.KeepRef) == DatabaseAttributes.Nothing) && conn != null)
+                {
+                    connectionCloseCount++;
                     conn.Dispose();
+                }
             }
             return o;
         }
@@ -369,9 +384,10 @@ namespace KMPServer
 
         public override string ToString()
         {
-            return String.Format("DatabaseHelper connected to {0}. Total Queries: {1}, Total State Changes: {2}, Time Spent On Query: {3}, Time Spent On State: {4}, Avg. Query: {5}, Avg. State Change: {6}",
+            return String.Format("DatabaseHelper connected to {0}. Total Queries: {1}, Total Database Opens: {2}, Total Database Closes: {7}, Time Spent On Query: {3}, Time Spent On State: {4}, Avg. Query: {5}, Avg. State Change: {6}",
                 ConnectionString, TotalServicedQueries, TotalDatabaseOpens, TimeSpentOnQuery, TimeSpentChangingState,
-                 new TimeSpan(TimeSpentOnQuery.Ticks / TotalServicedQueries == 0 ? 1 : TotalServicedQueries), new TimeSpan(TimeSpentChangingState.Ticks / TotalDatabaseOpens == 0 ? 1 : TotalDatabaseOpens));
+                 new TimeSpan(TimeSpentOnQuery.Ticks / TotalServicedQueries == 0 ? 1 : TotalServicedQueries), new TimeSpan(TimeSpentChangingState.Ticks / TotalDatabaseOpens == 0 ? 1 : TotalDatabaseOpens),
+                   TotalDatabaseCloses);
         }
 
     }
