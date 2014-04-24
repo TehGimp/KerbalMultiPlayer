@@ -148,6 +148,7 @@ namespace KMP
 
 		public Dictionary<String, VesselEntry> vessels = new Dictionary<string, VesselEntry>();
 		public SortedDictionary<String, VesselStatusInfo> playerStatus = new SortedDictionary<string, VesselStatusInfo>();
+        public PauseMenu pauseMenu;
 		public RenderingManager renderManager;
 		public PlanetariumCamera planetariumCam;
         public static List<LoadedFileInfo> LoadedModfiles;
@@ -662,31 +663,6 @@ namespace KMP
 				foreach (String key in delete_list)
 					playerStatus.Remove(key);
 
-				//Prevent cases of remaining unfixed NREs from remote vessel updates from creating an inconsistent game state
-				if (HighLogic.fetch.log.Count > 500 && isInFlight && !syncing)
-				{
-					bool forceResync = false; int nreCount = 0;
-					foreach (HighLogic.LogEntry logEntry in HighLogic.fetch.log.GetRange(HighLogic.fetch.log.Count-100,100))
-			        {
-						if (logEntry.condition.Contains("NullReferenceException")) nreCount++;
-						if (nreCount >= 25)
-						{
-							forceResync = true;
-							break;
-						}
-					}
-					if (forceResync)
-					{
-						Log.Debug("Resynced due to NRE flood");
-						ScreenMessages.PostScreenMessage("Unexpected error! Re-syncing...");
-						GameEvents.onFlightReady.Remove(this.OnFlightReady);
-						HighLogic.CurrentGame = GamePersistence.LoadGame("start",HighLogic.SaveFolder,false,true);
-						HighLogic.CurrentGame.Start();
-						docking = true;
-						syncing = true;
-						Invoke("OnFirstFlightReady",1f);	
-					}
-				}
 			} catch (Exception ex) { Log.Debug("Exception thrown in updateStep(), catch 4, Exception: {0}", ex.ToString()); Log.Debug("uS err: " + ex.Message + " " + ex.StackTrace); }
 		}
 
@@ -858,9 +834,22 @@ namespace KMP
 
 		private void writePrimaryUpdate()
 		{
-			if (!syncing && isInFlight && !warping
-                && !isInSafetyBubble(FlightGlobals.ship_position,FlightGlobals.ActiveVessel.mainBody,FlightGlobals.ActiveVessel.altitude)
-			    && !isObserving && !FlightGlobals.ActiveVessel.packed && FlightGlobals.ActiveVessel.id.ToString() != SYNC_PLATE_ID)
+            bool activeVesselOk = false;
+            bool activeVesselIsInBubble = false;
+            bool activeVesselLoaded = false;
+            bool activeVesselPacked = false;
+            bool activeVesselIsSyncPlate = false;
+
+            if (FlightGlobals.ActiveVessel != null)
+            {
+                activeVesselOk = true;
+                activeVesselIsInBubble = isInSafetyBubble(FlightGlobals.ship_position, FlightGlobals.ActiveVessel.mainBody, FlightGlobals.ActiveVessel.altitude);
+                activeVesselLoaded = FlightGlobals.ActiveVessel.loaded;
+                activeVesselPacked = FlightGlobals.ActiveVessel.packed;
+                activeVesselIsSyncPlate = (FlightGlobals.ActiveVessel.id.ToString() == SYNC_PLATE_ID);
+            }
+
+            if (!syncing && isInFlight && !warping && !isObserving && activeVesselOk && !activeVesselIsInBubble && activeVesselLoaded && !activeVesselPacked && !activeVesselIsSyncPlate)
 			{
 				lastTick = Planetarium.GetUniversalTime();
 				//Write vessel status
@@ -3937,32 +3926,33 @@ namespace KMP
 			}
 		}
 		
-		public void Update()
-		{
-			try
-			{
-				if (!gameRunning) return;
+        public void Update()
+        {
+            try
+            {
+                if (!gameRunning)
+                    return;
 				
-				try {
-					if (PauseMenu.isOpen && syncing) {
-						if (KMPClientMain.tcpClient != null ) {
-							PauseMenu.Close();
-						} else {
-							disconnect("Connection terminated during sync");
-							forceQuit = true;
-						}
-					}
-					else
-					{
-						if (PauseMenu.isOpen && closePauseMenu)
-						{
-							closePauseMenu = false;
-							PauseMenu.Close();
-						}
-					}
-				} catch (Exception e) {
-					Log.Debug("Exception thrown in Update(), catch 1, Exception: {0}", e.ToString());
-				}
+                if (pauseMenu != null)
+                {
+                    if (PauseMenu.isOpen && syncing)
+                    {
+                        if (KMPClientMain.tcpClient != null)
+                        {
+                            closePauseMenu = true;
+                        }
+                        else
+                        {
+                            disconnect("Connection terminated during sync");
+                            forceQuit = true;
+                        }
+                    }
+                    if (PauseMenu.isOpen && closePauseMenu)
+                    {
+                        closePauseMenu = false;
+                        PauseMenu.Close();
+                    }
+                }
 				
 				if (FlightDriver.Pause) FlightDriver.SetPause(false);
 				if (gameCheatsEnabled == false) {
@@ -3972,6 +3962,10 @@ namespace KMP
 					CheatOptions.NoCrashDamage = false;
 					Destroy(FindObjectOfType(typeof(DebugToolbar)));
 				}
+
+                //Find an instance of the game's PauseMenu
+                if (pauseMenu == null)
+                    pauseMenu = (PauseMenu)FindObjectOfType(typeof(PauseMenu));
 
                 //Find an instance of the game's RenderingManager
                 if (renderManager == null)
