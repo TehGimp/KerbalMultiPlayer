@@ -2653,11 +2653,6 @@ namespace KMP
 		
 		private void checkProtoNodeCrew(ConfigNode protoNode)
 		{
-			IEnumerator<ProtoCrewMember> crewEnum = HighLogic.CurrentGame.CrewRoster.GetEnumerator();
-			int applicants = 0;
-			while (crewEnum.MoveNext())
-				if (crewEnum.Current.rosterStatus == ProtoCrewMember.RosterStatus.AVAILABLE) applicants++;
-
 			foreach (ConfigNode partNode in protoNode.GetNodes("PART"))
 			{
                 int currentCrewIndex = 0;
@@ -2678,7 +2673,10 @@ namespace KMP
                                 freeKerbal++;
                             }
                             partNode.SetValue("crew", freeKerbal.ToString(), currentCrewIndex);
-                            KMP.Log.Debug("Fixing duplicate kerbal reference, changing kerbal " + currentCrewIndex + " to " + freeKerbal);
+                            CheckCrewMemberExists(freeKerbal);
+                            HighLogic.CurrentGame.CrewRoster[freeKerbal].rosterStatus = ProtoCrewMember.RosterStatus.ASSIGNED;
+                            HighLogic.CurrentGame.CrewRoster[freeKerbal].seatIdx = currentCrewIndex;
+                            Log.Debug("Fixing duplicate kerbal reference, changing kerbal " + currentCrewIndex + " to " + freeKerbal);
                             crewValue = freeKerbal;
                             serverKerbals_AssignedKerbals[crewValue] = protoVesselID;
                             currentCrewIndex++;
@@ -2687,25 +2685,40 @@ namespace KMP
                     else
                     {
                         serverKerbals_AssignedKerbals[crewValue] = protoVesselID;
+                        CheckCrewMemberExists(crewValue);
+                        HighLogic.CurrentGame.CrewRoster[crewValue].rosterStatus = ProtoCrewMember.RosterStatus.ASSIGNED;
+                        HighLogic.CurrentGame.CrewRoster[crewValue].seatIdx = currentCrewIndex;
                     }
-
 					crewValue++;
-					if (crewValue > applicants)
-					{
-						Log.Debug("Adding crew applicants");
-						for (int i = 0; i < (crewValue-applicants);)
-						{
-							ProtoCrewMember protoCrew = CrewGenerator.RandomCrewMemberPrototype();
-							if (!HighLogic.CurrentGame.CrewRoster.ExistsInRoster(protoCrew.name))
-							{
-								HighLogic.CurrentGame.CrewRoster.AddCrewMember(protoCrew);
-								i++;
-							}
-						}
-					}
 				}
 			}	
 		}
+
+        private void CheckCrewMemberExists(int kerbalID)
+        {
+            IEnumerator<ProtoCrewMember> crewEnum = HighLogic.CurrentGame.CrewRoster.GetEnumerator();
+            int applicants = 0;
+            while (crewEnum.MoveNext())
+            {
+                if (crewEnum.Current.rosterStatus == ProtoCrewMember.RosterStatus.AVAILABLE)
+                    applicants++;
+            }
+
+            if (kerbalID > applicants)
+            {
+                Log.Debug("Adding crew applicants");
+                for (int i = 0; i < (kerbalID - applicants);)
+                {
+                    ProtoCrewMember protoCrew = CrewGenerator.RandomCrewMemberPrototype();
+                    if (!HighLogic.CurrentGame.CrewRoster.ExistsInRoster(protoCrew.name))
+                    {
+                        HighLogic.CurrentGame.CrewRoster.AddCrewMember(protoCrew);
+                        i++;
+                    }
+                }
+            }
+
+        }
 		
 		private ProtoVessel syncOrbit(KMPVessel kvessel, double fromTick, ProtoVessel protovessel, double LAN)
 		{
@@ -3034,16 +3047,7 @@ namespace KMP
                 {
                     Log.Debug("Exception thrown in loadProtovessel(), catch 1, Exception: {0}", e.ToString());
                 }
-                /*
-                if (!created_vessel.loaded)
-                    created_vessel.Load();
 
-                if (created_vessel.vesselType != VesselType.EVA)
-                {
-                    created_vessel.SpawnCrew();
-                }
-                */
-                
                 Log.Debug(created_vessel.id.ToString() + " initializing: ProtoParts=" + protovessel.protoPartSnapshots.Count + ",Parts=" + created_vessel.Parts.Count + ",Sit=" + created_vessel.situation.ToString() + ",type=" + created_vessel.vesselType + ",alt=" + protovessel.altitude);
 				
                 //vessels[vessel_id.ToString()].vessel.vesselRef = created_vessel;
