@@ -3034,16 +3034,7 @@ namespace KMP
                 {
                     Log.Debug("Exception thrown in loadProtovessel(), catch 1, Exception: {0}", e.ToString());
                 }
-                /*
-                if (!created_vessel.loaded)
-                    created_vessel.Load();
 
-                if (created_vessel.vesselType != VesselType.EVA)
-                {
-                    created_vessel.SpawnCrew();
-                }
-                */
-                
                 Log.Debug(created_vessel.id.ToString() + " initializing: ProtoParts=" + protovessel.protoPartSnapshots.Count + ",Parts=" + created_vessel.Parts.Count + ",Sit=" + created_vessel.situation.ToString() + ",type=" + created_vessel.vesselType + ",alt=" + protovessel.altitude);
 				
                 //vessels[vessel_id.ToString()].vessel.vesselRef = created_vessel;
@@ -3623,7 +3614,7 @@ namespace KMP
         {
             Log.Debug("OnNewVesselCreated");
         }
-			
+        
 		private void OnTimeWarpRateChanged()
 		{
 			Log.Debug("OnTimeWarpRateChanged");
@@ -3746,8 +3737,24 @@ namespace KMP
         {
             if (!forceQuit && syncing && gameRunning)
             {
+                foreach (Vessel vessel in FlightGlobals.Vessels)
+                {
+                    if (!vessel.loaded && vessel.vesselType != VesselType.EVA && vessel.vesselType != VesselType.SpaceObject && vessel.state == Vessel.State.INACTIVE)
+                    {
+                        try
+                        {
+                            Log.Debug("Vessel TS load: {0}",vessel.vesselName);
+                            vessel.Load();
+                            vessel.SpawnCrew();
+                        }
+                        catch (Exception ex)
+                        {
+                            Log.Debug("Vessel TS load error: {2} {0} {1}",ex.Message,ex.StackTrace,vessel.vesselName);
+                        }
+                    }
+                }
                 vesselsLoaded = true;
-                Invoke("finishSync", 3f);
+                Invoke("finishSync", 5f);
             }
         }
 		
@@ -4018,7 +4025,7 @@ namespace KMP
 				writePluginUpdate();
 			}
 		}
-		
+        
 		private void clearCrewGUI()
 		{
 			while (KerbalGUIManager.ActiveCrew.Count > 0)
