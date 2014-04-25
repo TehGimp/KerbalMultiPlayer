@@ -3486,17 +3486,24 @@ namespace KMP
             Log.Debug("New count: " + ScaledSpace.Instance.scaledSpaceTransforms.Count);
         }
 		
-		private void OnPartCouple(GameEvents.FromToAction<Part,Part> data)
-		{
-			docking = true;
-			Log.Debug("Dock event: " + data.to.vessel.id + " " + data.from.vessel.id);
-			//Destroy old vessels for other players
-			removeDockedVessel(data.from.vessel);
-			removeDockedVessel(data.to.vessel);
-			//Fix displayed crew
-			clearCrewGUI();
-			Invoke("setMidDocking",2f);
-		}
+        private void OnPartCouple(GameEvents.FromToAction<Part,Part> data)
+        {
+            try
+            {
+                docking = true;
+                Log.Debug("Dock event: " + data.to.vessel.id + " " + data.from.vessel.id);
+                //Destroy old vessels for other players
+                removeDockedVessel(data.from.vessel);
+                removeDockedVessel(data.to.vessel);
+                //Fix displayed crew
+                clearCrewGUI();
+                Invoke("setMidDocking", 2f);
+            }
+            catch (Exception e)
+            {
+                Log.Debug("OnPartCouple threw exception: " + e);
+            }
+        }
 		
 		private void setMidDocking()
 		{
@@ -3526,173 +3533,283 @@ namespace KMP
 			serverVessels_ProtoVessels.Remove(vessel.id);
 		}
 		
-		private void OnPartUndock(Part data)
-		{
-			//docking = true;
-			Log.Debug("Undock event");
-			if (data.vessel != null)
-			{
-				serverVessels_PartCounts[data.vessel.id] = 0;
-				serverVessels_ProtoVessels.Remove(data.vessel.id);
-				serverVessels_InUse[data.vessel.id] = false;
-				serverVessels_IsMine[data.vessel.id] = true;
-				sendVesselMessage(data.vessel,true);
-			}
-			//Invoke("setFinishDocking",1f);
-		}
-		
-		private void OnCrewOnEva(GameEvents.FromToAction<Part,Part> data)
-		{
-			Log.Debug("EVA event");
-			if (data.from.vessel != null) sendVesselMessage(data.from.vessel, false, 0, true);
-		}
-		
-		private void OnCrewBoardVessel(GameEvents.FromToAction<Part,Part> data)
-		{
-			Log.Debug("End EVA event");
-			if (data.to.vessel != null) sendVesselMessage(data.to.vessel);
-			if (lastEVAVessel != null) sendRemoveVesselMessage(lastEVAVessel);
-		}
-		
-		private void OnVesselLoaded(Vessel data)
-		{
-			Log.Debug("Vessel loaded: " + data.id);
-			//data.distancePackThreshold = Vector3.Distance(data.orbit.getPositionAtUT(Planetarium.GetUniversalTime()), FlightGlobals.ship_position) + 100f;
-		}
-		
-		private void OnVesselTerminated(ProtoVessel data)
-		{
-            Log.Debug("Vessel termination: " + data.vesselID + " " + serverVessels_RemoteID.ContainsKey(data.vesselID) + " " + (HighLogic.LoadedScene == GameScenes.TRACKSTATION) + " " + (data.vesselType == VesselType.Debris || (serverVessels_IsMine.ContainsKey(data.vesselID) ? serverVessels_IsMine[data.vesselID] : true)));
-			if (serverVessels_RemoteID.ContainsKey(data.vesselID) //"activeTermination" only if this is remote vessel
-			    && HighLogic.LoadedScene == GameScenes.TRACKSTATION //and at TrackStation
-			    && (data.vesselType == VesselType.Debris || (serverVessels_IsMine.ContainsKey(data.vesselID) ? serverVessels_IsMine[data.vesselID] : true))) //and is debris or owned vessel
-			{
-				activeTermination = true;
-			}
-		}
-		
-		private void OnVesselDestroy(Vessel data)
-		{
-			if (!docking) //Don't worry about destruction events during docking, could be other player updating us
-			{
-				//Mark vessel to stay unloaded for a bit, to help prevent any performance impact from vessels that are still in-universe, but that can't load under current conditions
-				serverVessels_LoadDelay[data.id] = UnityEngine.Time.realtimeSinceStartup + 10f;
+        private void OnPartUndock(Part data)
+        {
+            try
+            {
+                //docking = true;
+                Log.Debug("Undock event");
+                if (data.vessel != null)
+                {
+                    serverVessels_PartCounts[data.vessel.id] = 0;
+                    serverVessels_ProtoVessels.Remove(data.vessel.id);
+                    serverVessels_InUse[data.vessel.id] = false;
+                    serverVessels_IsMine[data.vessel.id] = true;
+                    sendVesselMessage(data.vessel, true);
+                }
+                //Invoke("setFinishDocking",1f);
+            }
+            catch (Exception e)
+            {
+                Log.Debug("OnPartUndock threw exception: " + e);
+            }
+        }
+
+        private void OnCrewOnEva(GameEvents.FromToAction<Part,Part> data)
+        {
+            try
+            {
+                Log.Debug("EVA event");
+                if (data.from.vessel != null)
+                    sendVesselMessage(data.from.vessel, false, 0, true);
+            }
+            catch (Exception e)
+            {
+                Log.Debug("OnCrewOnEva threw exception: " + e);
+            }
+        }
+
+        private void OnCrewBoardVessel(GameEvents.FromToAction<Part,Part> data)
+        {
+            try
+            {
+                Log.Debug("End EVA event");
+                if (data.to.vessel != null)
+                    sendVesselMessage(data.to.vessel);
+                if (lastEVAVessel != null)
+                    sendRemoveVesselMessage(lastEVAVessel);
+            }
+            catch (Exception e)
+            {
+                Log.Debug("OnCrewBoardVessel threw exception: " + e);
+            }
+        }
+
+        private void OnVesselLoaded(Vessel data)
+        {
+            try
+            {
+                Log.Debug("Vessel loaded: " + data.id);
+                //data.distancePackThreshold = Vector3.Distance(data.orbit.getPositionAtUT(Planetarium.GetUniversalTime()), FlightGlobals.ship_position) + 100f;
+            }
+            catch (Exception e)
+            {
+                Log.Debug("OnVesselLoaded threw exception: " + e);
+            }
+        }
+
+        private void OnVesselTerminated(ProtoVessel data)
+        {
+            try
+            {
+                Log.Debug("Vessel termination: " + data.vesselID + " " + serverVessels_RemoteID.ContainsKey(data.vesselID) + " " + (HighLogic.LoadedScene == GameScenes.TRACKSTATION) + " " + (data.vesselType == VesselType.Debris || (serverVessels_IsMine.ContainsKey(data.vesselID) ? serverVessels_IsMine[data.vesselID] : true)));
+                if (serverVessels_RemoteID.ContainsKey(data.vesselID) //"activeTermination" only if this is remote vessel
+                    && HighLogic.LoadedScene == GameScenes.TRACKSTATION //and at TrackStation
+                    && (data.vesselType == VesselType.Debris || (serverVessels_IsMine.ContainsKey(data.vesselID) ? serverVessels_IsMine[data.vesselID] : true))) //and is debris or owned vessel
+                {
+                    activeTermination = true;
+                }
+            }
+            catch (Exception e)
+            {
+                Log.Debug("OnVesselTerminated threw exception: " + e);
+            }
+        }
+
+        private void OnVesselDestroy(Vessel data)
+        {
+            try
+            {
+                if (!docking) //Don't worry about destruction events during docking, could be other player updating us
+                {
+                    //Mark vessel to stay unloaded for a bit, to help prevent any performance impact from vessels that are still in-universe, but that can't load under current conditions
+                    serverVessels_LoadDelay[data.id] = UnityEngine.Time.realtimeSinceStartup + 10f;
 				
-				if (serverVessels_RemoteID.ContainsKey(data.id) //Send destroy message to server if  is a remote vessel
-			    	&& ((isInFlight && data.id == FlightGlobals.ActiveVessel.id) //and is in-flight/ours OR
-			    	|| (HighLogic.LoadedScene == GameScenes.TRACKSTATION //still at trackstation
-			    			&& activeTermination //and activeTermination is set
-			    			&& (data.vesselType == VesselType.Debris || (serverVessels_IsMine.ContainsKey(data.id) ? serverVessels_IsMine[data.id] : true))))) //and target is debris or owned vessel
-				{
-					activeTermination = false;
-					Log.Debug("Vessel destroyed: " + data.id);
-					sendRemoveVesselMessage(data);
-				}
-			}
-		}
-		
-		private void OnProgressComplete(ProgressNode data)
-		{
-			sendScenarios();
-		}
-		
-		private void OnProgressReached(ProgressNode data)
-		{
-			sendScenarios();
-		}
-					
-		private void OnGUIRnDComplexDespawn()
-		{
-			sendScenarios();
-		}
-		
-		private void OnTechnologyResearched(GameEvents.HostTargetAction<RDTech,RDTech.OperationResult> data)
-		{
-			sendScenarios();
-		}
-		
-		private void OnVesselRecovered(ProtoVessel data)
-		{
-			Vessel vessel = FlightGlobals.Vessels.Find(v => v.id == data.vesselID);
-			sendRemoveVesselMessage(vessel,false);
-			sendScenarios();
-		}
-        
+                    if (serverVessels_RemoteID.ContainsKey(data.id) //Send destroy message to server if  is a remote vessel
+                        && ((isInFlight && data.id == FlightGlobals.ActiveVessel.id) //and is in-flight/ours OR
+                        || (HighLogic.LoadedScene == GameScenes.TRACKSTATION //still at trackstation
+                        && activeTermination //and activeTermination is set
+                        && (data.vesselType == VesselType.Debris || (serverVessels_IsMine.ContainsKey(data.id) ? serverVessels_IsMine[data.id] : true))))) //and target is debris or owned vessel
+                    {
+                        activeTermination = false;
+                        Log.Debug("Vessel destroyed: " + data.id);
+                        sendRemoveVesselMessage(data);
+                    }
+                }
+            }
+            catch (Exception e)
+            {
+                Log.Debug("OnVesselDestroy threw exception: " + e);
+            }
+        }
+
+        private void OnProgressComplete(ProgressNode data)
+        {
+            try
+            {
+                sendScenarios();
+            }
+            catch (Exception e)
+            {
+                Log.Debug("OnProgressComplete threw exception: " + e);
+            }
+        }
+
+        private void OnProgressReached(ProgressNode data)
+        {
+            try
+            {
+                sendScenarios();
+            }
+            catch (Exception e)
+            {
+                Log.Debug("OnProgressReached threw exception: " + e);
+            }
+        }
+
+        private void OnGUIRnDComplexDespawn()
+        {
+            try
+            {
+                sendScenarios();
+            }
+            catch (Exception e)
+            {
+                Log.Debug("OnGUIRnDComplexDespawn threw exception: " + e);
+            }
+        }
+
+        private void OnTechnologyResearched(GameEvents.HostTargetAction<RDTech,RDTech.OperationResult> data)
+        {
+            try
+            {
+                sendScenarios();
+            }
+            catch (Exception e)
+            {
+                Log.Debug("OnTechnologyResearched threw exception: " + e);
+            }
+        }
+
+        private void OnVesselRecovered(ProtoVessel data)
+        {
+            try
+            {
+                Vessel vessel = FlightGlobals.Vessels.Find(v => v.id == data.vesselID);
+                sendRemoveVesselMessage(vessel, false);
+                sendScenarios();
+            }
+            catch (Exception e)
+            {
+                Log.Debug("OnVesselRecovered threw exception: " + e);
+            }
+        }
+
         private void OnKnowledgeChanged(GameEvents.HostedFromToAction<IDiscoverable,DiscoveryLevels> data)
         {
-            Invoke("sendScenarios",1f);
+            try
+            {
+                Invoke("sendScenarios", 1f);
+            }
+            catch (Exception e)
+            {
+                Log.Debug("OnKnowledgeChanged threw exception: " + e);
+            }
         }
-        
+
         private void OnNewVesselCreated(Vessel vessel)
         {
-            Log.Debug("OnNewVesselCreated");
+            try
+            {
+                Log.Debug("OnNewVesselCreated");
+            }
+            catch (Exception e)
+            {
+                Log.Debug("OnNewVesselCreated threw exception: " + e);
+            }
         }
-			
-		private void OnTimeWarpRateChanged()
-		{
-			Log.Debug("OnTimeWarpRateChanged");
-			if (TimeWarp.WarpMode == TimeWarp.Modes.LOW) TimeWarp.SetRate(0,true);
-			else
-			{
-				if (TimeWarp.CurrentRate <= 1) 
-				{
-					syncing = true;
-					inGameSyncing = true;
-					Invoke("setNotWarping",1f);
-					Log.Debug("done warping");
-				}
-				else
-				{
-					if (!warping) {
-						skewServerTime = 0;
-						skewTargetTick = 0;
-						writePrimaryUpdate (); //Ensure server catches any vessel switch before warp
-						Log.Debug("warping");
-					}
-				warping = true;
-				}
-				//Log.Debug("sending: " + TimeWarp.CurrentRate + ", " + Planetarium.GetUniversalTime());
-				byte[] update_bytes = new byte[12]; //warp rate float (4) + current tick double (8)
-				BitConverter.GetBytes(TimeWarp.CurrentRate).CopyTo(update_bytes, 0);
-				BitConverter.GetBytes(Planetarium.GetUniversalTime()).CopyTo(update_bytes, 4);
-				enqueuePluginInteropMessage(KMPCommon.PluginInteropMessageID.WARPING, update_bytes);
-			}
-		}
-		
-		private void setNotWarping()
+
+        private void OnTimeWarpRateChanged()
+        {
+            try
+            {
+                Log.Debug("OnTimeWarpRateChanged");
+                if (TimeWarp.WarpMode == TimeWarp.Modes.LOW)
+                    TimeWarp.SetRate(0, true);
+                else
+                {
+                    if (TimeWarp.CurrentRate <= 1)
+                    {
+                        syncing = true;
+                        inGameSyncing = true;
+                        Invoke("setNotWarping", 1f);
+                        Log.Debug("done warping");
+                    }
+                    else
+                    {
+                        if (!warping)
+                        {
+                            skewServerTime = 0;
+                            skewTargetTick = 0;
+                            writePrimaryUpdate(); //Ensure server catches any vessel switch before warp
+                            Log.Debug("warping");
+                        }
+                        warping = true;
+                    }
+                    //Log.Debug("sending: " + TimeWarp.CurrentRate + ", " + Planetarium.GetUniversalTime());
+                    byte[] update_bytes = new byte[12]; //warp rate float (4) + current tick double (8)
+                    BitConverter.GetBytes(TimeWarp.CurrentRate).CopyTo(update_bytes, 0);
+                    BitConverter.GetBytes(Planetarium.GetUniversalTime()).CopyTo(update_bytes, 4);
+                    enqueuePluginInteropMessage(KMPCommon.PluginInteropMessageID.WARPING, update_bytes);
+                }
+            }
+            catch (Exception e)
+            {
+                Log.Debug("OnTimeWarpRateChanged threw exception: " + e);
+            }
+        }
+
+        private void setNotWarping()
         {
             if (TimeWarp.CurrentRate <= 1)
             {
                 warping = false;	
             }
         }
-		
-		private void OnFirstFlightReady()
-		{
-			if (syncing && !forceQuit)
-			{
+
+        private void OnFirstFlightReady()
+        {
+            try
+            {
+                if (syncing && !forceQuit)
+                {
 				
-				GameEvents.onFlightReady.Remove(this.OnFirstFlightReady);
-				GameEvents.onFlightReady.Add(this.OnFlightReady);
-				MapView.EnterMapView();
-				MapView.MapCamera.SetTarget("Kerbin");
-                if (isTimeSyncronized)
-                {
-                    //Called from dockedKickToTrackingStation
-                    Log.Debug("Requesting dockedKickToTrackingStation sync");
-                    Invoke("sendInitialSyncRequest",0.5f);
+                    GameEvents.onFlightReady.Remove(this.OnFirstFlightReady);
+                    GameEvents.onFlightReady.Add(this.OnFlightReady);
+                    MapView.EnterMapView();
+                    MapView.MapCamera.SetTarget("Kerbin");
+                    if (isTimeSyncronized)
+                    {
+                        //Called from dockedKickToTrackingStation
+                        Log.Debug("Requesting dockedKickToTrackingStation sync");
+                        Invoke("sendInitialSyncRequest", 0.5f);
+                    }
+                    else
+                    {
+                        //Called after the initial connection, After time is synced NTP will request the vessels.
+                        Log.Debug("Requesting initial clock sync");
+                        SyncTime();
+                    }
+                    Invoke("handleSyncTimeout", 300f);
+                    docking = false;
                 }
-                else
-                {
-                    //Called after the initial connection, After time is synced NTP will request the vessels.
-                    Log.Debug("Requesting initial clock sync");
-                    SyncTime();
-                }
-				Invoke("handleSyncTimeout",300f);
-				docking = false;
-			}
-			delayForceQuit = false;
-		}
+                delayForceQuit = false;
+            }
+            catch (Exception e)
+            {
+                Log.Debug("OnFirstFlightReady threw exception: " + e);
+            }
+        }
 		
 		private void sendInitialSyncRequest()
 		{
@@ -3701,21 +3818,28 @@ namespace KMP
 		}
 		
 		private void OnFlightReady()
-		{
-			removeKMPControlLocks ();
-			//Ensure vessel uses only stock parts in lieu of proper mod support
-			if (!FlightGlobals.ActiveVessel.isEVA && !FlightGlobals.ActiveVessel.protoVessel.protoPartSnapshots.TrueForAll(pps => KMPClientMain.partList.Contains(pps.partName)))
-			{
-				Log.Debug("Loaded vessel has prohibited parts!");
-				foreach (ProtoPartSnapshot pps in FlightGlobals.ActiveVessel.protoVessel.protoPartSnapshots)
-					Log.Debug(pps.partName);
-				syncing = true;
-				GameEvents.onFlightReady.Add(this.OnFirstFlightReady);
-				GameEvents.onFlightReady.Remove(this.OnFlightReady);
-				HighLogic.CurrentGame.Start();
-				ScreenMessages.PostScreenMessage("Can't start flight - Vessel has prohibited parts! Sorry!",10f,ScreenMessageStyle.UPPER_CENTER);
-			}
-		}
+        {
+            try
+            {
+                removeKMPControlLocks();
+                //Ensure vessel uses only stock parts in lieu of proper mod support
+                if (!FlightGlobals.ActiveVessel.isEVA && !FlightGlobals.ActiveVessel.protoVessel.protoPartSnapshots.TrueForAll(pps => KMPClientMain.partList.Contains(pps.partName)))
+                {
+                    Log.Debug("Loaded vessel has prohibited parts!");
+                    foreach (ProtoPartSnapshot pps in FlightGlobals.ActiveVessel.protoVessel.protoPartSnapshots)
+                        Log.Debug(pps.partName);
+                    syncing = true;
+                    GameEvents.onFlightReady.Add(this.OnFirstFlightReady);
+                    GameEvents.onFlightReady.Remove(this.OnFlightReady);
+                    HighLogic.CurrentGame.Start();
+                    ScreenMessages.PostScreenMessage("Can't start flight - Vessel has prohibited parts! Sorry!", 10f, ScreenMessageStyle.UPPER_CENTER);
+                }
+            }
+            catch (Exception e)
+            {
+                Log.Debug("OnFlightReady threw exception: " + e);
+            }
+        }
 		
 		public void HandleSyncCompleted()
 		{
@@ -4027,13 +4151,20 @@ namespace KMP
 		}
 
 		private void OnGameSceneLoadRequested(GameScenes data)
-		{
-			Log.Debug("OnGameSceneLoadRequested");
-			if (gameRunning && (data == GameScenes.SPACECENTER || data == GameScenes.MAINMENU))
-			{
-				writePluginUpdate();
-			}
-		}
+        {
+            try
+            {
+                Log.Debug("OnGameSceneLoadRequested");
+                if (gameRunning && (data == GameScenes.SPACECENTER || data == GameScenes.MAINMENU))
+                {
+                    writePluginUpdate();
+                }
+            }
+            catch (Exception e)
+            {
+                Log.Debug("OnGameSceneLoadRequested threw exception: " + e);
+            }
+        }
 		
 		private void clearCrewGUI()
 		{
