@@ -3751,7 +3751,7 @@ namespace KMP
             if (!forceQuit && syncing && gameRunning)
             {
                 vesselsLoaded = true;
-                Invoke("finishSync", 3f);
+                Invoke("finishSync", 3f + (vesselUpdatesLoaded.Count / 75f));
             }
         }
 		
