@@ -2323,15 +2323,13 @@ namespace KMP
 															{
 																//Set velocity by surface velocity
 																Vector3d new_srf_vel = new Vector3d(vessel_update.s_vel[0],vessel_update.s_vel[1],vessel_update.s_vel[2]);
-																if (new_srf_vel.sqrMagnitude>1d) extant_vessel.ChangeWorldVelocity((-1 * extant_vessel.srf_velocity) + new_srf_vel);
-																else extant_vessel.ChangeWorldVelocity(-0.99f * extant_vessel.srf_velocity);
+																extant_vessel.ChangeWorldVelocity((-1 * extant_vessel.srf_velocity) + new_srf_vel);
 															}
 															else
 															{
 																//Set velocity by orbit velocity
 																Vector3d new_obt_vel = new Vector3d(vessel_update.o_vel[0],vessel_update.o_vel[1],vessel_update.o_vel[2]);
-																if (new_obt_vel.sqrMagnitude>1d) extant_vessel.ChangeWorldVelocity((-1 * extant_vessel.obt_velocity) + new_obt_vel);
-																else extant_vessel.ChangeWorldVelocity(-0.99f * extant_vessel.obt_velocity);
+																extant_vessel.ChangeWorldVelocity((-1 * extant_vessel.obt_velocity) + new_obt_vel);
 															}
 														}
 														
@@ -2977,7 +2975,7 @@ namespace KMP
 						if (body.atmosphere && body.maxAtmosphereAltitude > protovessel.altitude)
 						{
 							//In-atmo vessel--only load if within visible range
-							if (distance > 500d)
+							if (distance > 1000d)
 								return;
 						}
 					}
@@ -3008,7 +3006,6 @@ namespace KMP
 								part.Rigidbody.detectCollisions = false;
 								part.explosionPotential = 0;
 							}
-							//oldVessel.id = Guid.Empty;
 							serverVessels_InUse[oldVessel.id] = false;
 							serverVessels_IsPrivate[oldVessel.id] = false;
 							serverVessels_IsMine[oldVessel.id] = true;
