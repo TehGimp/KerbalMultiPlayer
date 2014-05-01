@@ -75,7 +75,9 @@ namespace KMPServer
         internal static DatabaseHelper CreateForMySQL(String connectionString)
         {
             // Not entirely sure of the right set of Attributes to apply to MySQL, but this should ensure that connections are being released to the pool
-            return new DatabaseHelper(connectionString, DatabaseAttributes.MySQL | DatabaseAttributes.MyISAM | DatabaseAttributes.KeepRef);
+            string additionalParams = "";
+            if (!connectionString.Contains("Pooling")) additionalParams = " Pooling=true; Max Pool Size=100;";
+            return new DatabaseHelper((connectionString + additionalParams), DatabaseAttributes.MySQL | DatabaseAttributes.MyISAM | DatabaseAttributes.KeepRef);
         }
         #endregion
 
