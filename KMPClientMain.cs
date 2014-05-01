@@ -1556,20 +1556,7 @@ namespace KMP
                             last_udp_send = lastUDPMessageSendTime;
                         }
 
-                        bool udp_should_be_connected =
-                            last_udp_ack > 0 && (stopwatch.ElapsedMilliseconds - last_udp_ack) < UDP_TIMEOUT_DELAY;
-
-                        if (udpConnected != udp_should_be_connected)
-                        {
-                            if (udp_should_be_connected)
-                                enqueueTextMessage("UDP connection established.", false, true);
-                            else
-                                enqueueTextMessage("UDP connection lost.", false, true);
-
-                            udpConnected = udp_should_be_connected;
-                            if ((stopwatch.ElapsedMilliseconds - last_udp_ack) > UDP_TIMEOUT_DELAY * 10)
-                                throw new Exception("UDP connection lost and could not be reconnected.");
-                        }
+                        udpConnected = last_udp_ack > 0 && (stopwatch.ElapsedMilliseconds - last_udp_ack) < UDP_TIMEOUT_DELAY;
 
                         //Send a probe message to try to establish a udp connection
                         if ((stopwatch.ElapsedMilliseconds - lastUDPProbeTime) > UDP_PROBE_DELAY) {
