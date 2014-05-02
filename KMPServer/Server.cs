@@ -111,8 +111,6 @@ namespace KMPServer
         private Boolean bHandleCommandsRunning = true;
 
         private int uncleanedBackups = 0;
-  
-        private String lastCommand = "";
         
         /// <summary>
         /// Database Helper Instance
@@ -838,69 +836,7 @@ namespace KMPServer
             {
                 while (bHandleCommandsRunning)
                 {
-                    ConsoleKeyInfo keypress;
-                    int inputIndex = 0;
-                    var input = "";
-                     
-                    while (true)
-                    {
-                        keypress = Console.ReadKey();
-                        if (keypress.Key == ConsoleKey.UpArrow)
-                        {
-                            input = lastCommand;
-                            inputIndex = input.Length;
-                            ServerMain.echoInput(input,inputIndex);
-                        }
-                        else if (keypress.Key == ConsoleKey.DownArrow)
-                        {
-                            //do nothing, but prevent key from counting as input
-                        }
-                        else if (keypress.Key == ConsoleKey.LeftArrow)
-                        {
-                            if (inputIndex > 0)
-                            {
-                                inputIndex--;
-                                Console.SetCursorPosition(inputIndex, Console.CursorTop);
-                            }
-                        }
-                        else if (keypress.Key == ConsoleKey.RightArrow)
-                        {
-                            if (inputIndex < input.Length)
-                            {
-                                inputIndex++;
-                                Console.SetCursorPosition(inputIndex, Console.CursorTop);
-                            }
-                        }
-                        else if (keypress.Key == ConsoleKey.Backspace && inputIndex > 0)
-                        {
-                            inputIndex--;
-                            input = input.Remove(inputIndex,1);
-                            ServerMain.echoInput(input + " ",inputIndex);
-                        }
-                        else if (keypress.Key == ConsoleKey.Delete && inputIndex < input.Length)
-                        {
-                            input = input.Remove(inputIndex,1);
-                            ServerMain.echoInput(input + " ",inputIndex);
-                        }
-                        else if (keypress.Key == ConsoleKey.Escape)
-                        {
-                            Console.WriteLine();
-                            input = "";
-                            break;
-                        }
-                        else if (keypress.Key == ConsoleKey.Enter)
-                        {
-                            break;
-                        }
-                        else
-                        {
-                            input = input.Insert(inputIndex,keypress.KeyChar.ToString());
-                            inputIndex++;
-                            ServerMain.echoInput(input,inputIndex);
-                        }
-                    }
-                    
-                    lastCommand = input;
+                    String input = ServerMain.getCommandInput();
                     processCommand(input);
                 }
             }
