@@ -384,7 +384,7 @@ namespace KMPServer
             }
 		}
 		
-		private static void echoInput(string line, int index)
+		public static void echoInput(string line, int index)
 		{
 			Console.SetCursorPosition(0, Console.CursorTop);
 			Console.Write(line);

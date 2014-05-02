@@ -101,9 +101,6 @@ namespace KMPServer
 
         public Stopwatch stopwatch = new Stopwatch();
 
-        // BOOM! TODO: Remove all this commented code. Just leaving here for first commit to show when it was removed
-        // public static DatabaseHelper universeDB;
-
         private bool backedUpSinceEmpty = false;
         private Dictionary<Guid, long> recentlyDestroyed = new Dictionary<Guid, long>();
         private Dictionary<int, double> subSpaceMasterTick = new Dictionary<int, double>();
@@ -114,7 +111,9 @@ namespace KMPServer
         private Boolean bHandleCommandsRunning = true;
 
         private int uncleanedBackups = 0;
-
+  
+        private String lastCommand = "";
+        
         /// <summary>
         /// Database Helper Instance
         /// </summary>
@@ -727,12 +726,12 @@ namespace KMPServer
                         if (activeClientCount() <= 0)
                         {
                             backedUpSinceEmpty = true;
-							if (settings.freezeTimeWhenServerIsEmpty)
-							{
-								subSpaceMasterTick.Clear();
-								subSpaceMasterTime.Clear();
-								subSpaceMasterSpeed.Clear();
-							}
+                         if (settings.freezeTimeWhenServerIsEmpty)
+                         {
+                             subSpaceMasterTick.Clear();
+                             subSpaceMasterTime.Clear();
+                             subSpaceMasterSpeed.Clear();
+                         }
                             CleanDatabase();
                         }
 
@@ -753,12 +752,12 @@ namespace KMPServer
             {
                 Log.Error("Fatal error accessing MySQL database, server session ended!");
                 Log.Error(e.Message);
-				Log.Debug(e.StackTrace);
+             Log.Debug(e.StackTrace);
             }
             catch (Exception e)
             {
                 Log.Error("Fatal error, server session ended! Exception: {0}", e.Message);
-				Log.Debug(e.StackTrace);
+             Log.Debug(e.StackTrace);
             }
         }
 
@@ -839,7 +838,69 @@ namespace KMPServer
             {
                 while (bHandleCommandsRunning)
                 {
-                    String input = Console.ReadLine();
+                    ConsoleKeyInfo keypress;
+                    int inputIndex = 0;
+                    var input = "";
+                     
+                    while (true)
+                    {
+                        keypress = Console.ReadKey();
+                        if (keypress.Key == ConsoleKey.UpArrow)
+                        {
+                            input = lastCommand;
+                            inputIndex = input.Length;
+                            ServerMain.echoInput(input,inputIndex);
+                        }
+                        else if (keypress.Key == ConsoleKey.DownArrow)
+                        {
+                            //do nothing, but prevent key from counting as input
+                        }
+                        else if (keypress.Key == ConsoleKey.LeftArrow)
+                        {
+                            if (inputIndex > 0)
+                            {
+                                inputIndex--;
+                                Console.SetCursorPosition(inputIndex, Console.CursorTop);
+                            }
+                        }
+                        else if (keypress.Key == ConsoleKey.RightArrow)
+                        {
+                            if (inputIndex < input.Length)
+                            {
+                                inputIndex++;
+                                Console.SetCursorPosition(inputIndex, Console.CursorTop);
+                            }
+                        }
+                        else if (keypress.Key == ConsoleKey.Backspace && inputIndex > 0)
+                        {
+                            inputIndex--;
+                            input = input.Remove(inputIndex,1);
+                            ServerMain.echoInput(input + " ",inputIndex);
+                        }
+                        else if (keypress.Key == ConsoleKey.Delete && inputIndex < input.Length)
+                        {
+                            input = input.Remove(inputIndex,1);
+                            ServerMain.echoInput(input + " ",inputIndex);
+                        }
+                        else if (keypress.Key == ConsoleKey.Escape)
+                        {
+                            Console.WriteLine();
+                            input = "";
+                            break;
+                        }
+                        else if (keypress.Key == ConsoleKey.Enter)
+                        {
+                            break;
+                        }
+                        else
+                        {
+                            input = input.Insert(inputIndex,keypress.KeyChar.ToString());
+                            inputIndex++;
+                            ServerMain.echoInput(input,inputIndex);
+                        }
+                    }
+                    
+                    lastCommand = input;
                     processCommand(input);
                 }
             }
@@ -3638,68 +3699,68 @@ namespace KMPServer
         {
             try
             {
-				int vesselCount = Convert.ToInt32(Database.ExecuteScalar("SELECT COUNT(*) FROM kmpSubspace s INNER JOIN kmpVessel v ON v.Subspace = s.ID AND v.Destroyed IS NULL;"));
-				if (vesselCount > 0)
-				{
-	                Log.Info("Attempting to optimize database...");
-	
-	                uncleanedBackups = 0;
-	
-	                if (clients != null && activeClientCount() > 0)
-	                {
-	                    //Get the oldest tick from any active player
-	                    double earliestClearTick = 2d;
-	
-	                    string subspaceIDs = "";
-	                    foreach (Client client in clients)
-	                    {
-	                        subspaceIDs += (String.IsNullOrEmpty(subspaceIDs) ? "" : ",") + client.currentSubspaceID.ToString("D");
-	                    }
-	
-	                    if (!String.IsNullOrEmpty(subspaceIDs))
-	                    {
-	                        earliestClearTick = Convert.ToDouble(Database.ExecuteScalar("SELECT MIN(LastTick) FROM kmpSubspace WHERE ID IN (@subspaceids);",
-	                            "subspaceids", subspaceIDs));
-	                    }
-					
+             int vesselCount = Convert.ToInt32(Database.ExecuteScalar("SELECT COUNT(*) FROM kmpSubspace s INNER JOIN kmpVessel v ON v.Subspace = s.ID AND v.Destroyed IS NULL;"));
+             if (vesselCount > 0)
+             {
+                 Log.Info("Attempting to optimize database...");
+ 
+                 uncleanedBackups = 0;
+ 
+                 if (clients != null && activeClientCount() > 0)
+                 {
+                     //Get the oldest tick from any active player
+                     double earliestClearTick = 2d;
+ 
+                     string subspaceIDs = "";
+                     foreach (Client client in clients)
+                     {
+                         subspaceIDs += (String.IsNullOrEmpty(subspaceIDs) ? "" : ",") + client.currentSubspaceID.ToString("D");
+                     }
+ 
+                     if (!String.IsNullOrEmpty(subspaceIDs))
+                     {
+                         earliestClearTick = Convert.ToDouble(Database.ExecuteScalar("SELECT MIN(LastTick) FROM kmpSubspace WHERE ID IN (@subspaceids);",
+                             "subspaceids", subspaceIDs));
+                     }
+                 
                         //Clear anything before that
-	                    double earliestClearSubspaceTick = Convert.ToDouble(Database.ExecuteScalar("SELECT MIN(s.LastTick) FROM kmpSubspace s INNER JOIN kmpVessel v ON v.Subspace = s.ID AND (v.Destroyed IS NULL OR v.Destroyed > @minTick);",
-	                        "minTick", earliestClearTick.ToString("0.0").Replace(",", ".")));
-						
-	                    Database.ExecuteNonQuery("DELETE FROM kmpSubspace WHERE LastTick < @minSubTick;" +
-	                        " DELETE FROM kmpVesselUpdateHistory WHERE Tick < @minTick;" +
-	                        " DELETE FROM kmpVessel WHERE Destroyed IS NOT NULL AND Destroyed < @minTick;",
-	                    "minTick", earliestClearTick.ToString("0.0").Replace(",", "."),
-	                    "minSubTick", earliestClearSubspaceTick.ToString("0.0").Replace(",", "."));
-	                }
-	                else
-	                {
-	                    //Clear all but the latest subspace
-						double earliestClearSubspaceTick;
-						
-						earliestClearSubspaceTick = Convert.ToDouble(
-		                        Database.ExecuteScalar("SELECT MIN(s.LastTick) FROM kmpSubspace s INNER JOIN kmpVessel v ON v.Subspace = s.ID AND v.Destroyed IS NULL;"));
-	                    
-	                    Database.ExecuteNonQuery("DELETE FROM kmpSubspace WHERE LastTick < @minSubTick;" +
-	                        " DELETE FROM kmpVesselUpdateHistory;" +
-	                        " DELETE FROM kmpVessel WHERE Destroyed IS NOT NULL;" +
-	                        " DELETE FROM kmpVesselUpdate WHERE Guid NOT IN (SELECT Guid FROM kmpVessel);" +
-	                        " DELETE FROM kmpVesselUpdate WHERE ID IN (SELECT ID FROM (SELECT ID FROM kmpVesselUpdate vu" +
-	                        "  WHERE Subspace != (SELECT ID FROM kmpSubspace WHERE LastTick = (SELECT MAX(LastTick) FROM kmpSubspace" +
-	                        "  WHERE ID IN (SELECT Subspace FROM kmpVesselUpdate vu2 WHERE vu2.Guid = vu.Guid)))) a);",
-	                        "minSubTick", earliestClearSubspaceTick.ToString("0.0").Replace(",", "."));
-	                }
-	
-	                if (!settings.useMySQL)
-	                {
-	                    lock (databaseVacuumLock)
-	                    {
-	                        Database.ExecuteNonQuery("VACUUM;");
-	                    }
-	                }
-	
-	                Log.Info("Optimized in-memory universe database.");
-				}
+                     double earliestClearSubspaceTick = Convert.ToDouble(Database.ExecuteScalar("SELECT MIN(s.LastTick) FROM kmpSubspace s INNER JOIN kmpVessel v ON v.Subspace = s.ID AND (v.Destroyed IS NULL OR v.Destroyed > @minTick);",
+                         "minTick", earliestClearTick.ToString("0.0").Replace(",", ".")));
+                     
+                     Database.ExecuteNonQuery("DELETE FROM kmpSubspace WHERE LastTick < @minSubTick;" +
+                         " DELETE FROM kmpVesselUpdateHistory WHERE Tick < @minTick;" +
+                         " DELETE FROM kmpVessel WHERE Destroyed IS NOT NULL AND Destroyed < @minTick;",
+                     "minTick", earliestClearTick.ToString("0.0").Replace(",", "."),
+                     "minSubTick", earliestClearSubspaceTick.ToString("0.0").Replace(",", "."));
+                 }
+                 else
+                 {
+                     //Clear all but the latest subspace
+                     double earliestClearSubspaceTick;
+                     
+                     earliestClearSubspaceTick = Convert.ToDouble(
+                             Database.ExecuteScalar("SELECT MIN(s.LastTick) FROM kmpSubspace s INNER JOIN kmpVessel v ON v.Subspace = s.ID AND v.Destroyed IS NULL;"));
+                     
+                     Database.ExecuteNonQuery("DELETE FROM kmpSubspace WHERE LastTick < @minSubTick;" +
+                         " DELETE FROM kmpVesselUpdateHistory;" +
+                         " DELETE FROM kmpVessel WHERE Destroyed IS NOT NULL;" +
+                         " DELETE FROM kmpVesselUpdate WHERE Guid NOT IN (SELECT Guid FROM kmpVessel);" +
+                         " DELETE FROM kmpVesselUpdate WHERE ID IN (SELECT ID FROM (SELECT ID FROM kmpVesselUpdate vu" +
+                         "  WHERE Subspace != (SELECT ID FROM kmpSubspace WHERE LastTick = (SELECT MAX(LastTick) FROM kmpSubspace" +
+                         "  WHERE ID IN (SELECT Subspace FROM kmpVesselUpdate vu2 WHERE vu2.Guid = vu.Guid)))) a);",
+                         "minSubTick", earliestClearSubspaceTick.ToString("0.0").Replace(",", "."));
+                 }
+ 
+                 if (!settings.useMySQL)
+                 {
+                     lock (databaseVacuumLock)
+                     {
+                         Database.ExecuteNonQuery("VACUUM;");
+                     }
+                 }
+ 
+                 Log.Info("Optimized in-memory universe database.");
+             }
             }
             catch (Exception ex)
             {
@@ -3818,7 +3879,7 @@ namespace KMPServer
             Log.Info("/setinfo [info] - Updates the server info seen on master server list");
             Log.Info("/motd [message] - Sets message of the day, leave blank for none");
             Log.Info("/rules [rules] - Sets server rules, leave blank for none");
-			Log.Info("/modgen [blacklist|whitelist] [sha] - Auto-generate a KMPModControl.txt file using what you have placed in the server's 'Mods' directory");
+         Log.Info("/modgen [blacklist|whitelist] [sha] - Auto-generate a KMPModControl.txt file using what you have placed in the server's 'Mods' directory");
             Log.Info("/say <-u username> [message] - Send a Server message <to specified user>");
             Log.Info("/help - Displays all commands in the server\n");
 
@@ -3875,7 +3936,7 @@ namespace KMPServer
             return settings.admins.Contains(username);
         }
 
-		public int activeClientCount()
+     public int activeClientCount()
         {
             return clients.Where(cl => cl.isReady).Count();
         }
