@@ -18,7 +18,7 @@ namespace KMPServer
 
 	    public static ServerSettings.ConfigStore settings;
   
-        public static string lastCommand = "";
+        public static List<string> recentCommands = new List<string>();
         
 		static void Main(string[] args)
 		{
@@ -324,7 +324,7 @@ namespace KMPServer
         public static String getCommandInput()
         {
             ConsoleKeyInfo keypress;
-            int inputIndex = 0;
+            int inputIndex = 0, historyIndex = recentCommands.Count;
             String input = "";
             
             while (true)
@@ -332,13 +332,23 @@ namespace KMPServer
                 keypress = Console.ReadKey();
                 if (keypress.Key == ConsoleKey.UpArrow)
                 {
-                    input = lastCommand;
-                    inputIndex = input.Length;
-                    echoInput(input,inputIndex);
+                    if (historyIndex > 0)
+                    {
+                        historyIndex--;
+                        input = recentCommands[historyIndex];
+                        inputIndex = input.Length;
+                        echoInput(input,inputIndex);
+                    }
                 }
                 else if (keypress.Key == ConsoleKey.DownArrow)
                 {
-                    //do nothing, but prevent key from counting as input
+                    if (historyIndex < recentCommands.Count - 1)
+                    {
+                        historyIndex++;
+                        input = recentCommands[historyIndex];
+                        inputIndex = input.Length;
+                        echoInput(input,inputIndex);
+                    }
                 }
                 else if (keypress.Key == ConsoleKey.LeftArrow)
                 {
@@ -385,15 +395,18 @@ namespace KMPServer
                 }
             }
             
-            lastCommand = input;
+            recentCommands.Add(input);
             
             Log.Info("Command Input: {0}", input);   
             
             return input;
         }
         
-		public static void echoInput(string line, int index)
+		private static void echoInput(string line, int index)
 		{
+            Console.SetCursorPosition(0, Console.CursorTop);
+            for (int i = 0; i < Console.WindowWidth; i++)
+                Console.Write(" ");
 			Console.SetCursorPosition(0, Console.CursorTop);
 			Console.Write(line);
 			Console.SetCursorPosition(index, Console.CursorTop);	
