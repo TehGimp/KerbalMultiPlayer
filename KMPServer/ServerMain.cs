@@ -366,16 +366,19 @@ namespace KMPServer
                         Console.SetCursorPosition(inputIndex, Console.CursorTop);
                     }
                 }
-                else if (keypress.Key == ConsoleKey.Backspace && inputIndex > 0)
+                else if (keypress.Key == ConsoleKey.Backspace)
                 {
-                    inputIndex--;
-                    input = input.Remove(inputIndex,1);
-                    echoInput(input + " ",inputIndex);
+                    if (inputIndex > 0)
+                    {
+                        inputIndex--;
+                        input = input.Remove(inputIndex,1);
+                        echoInput(input,inputIndex);
+                    }
                 }
                 else if (keypress.Key == ConsoleKey.Delete && inputIndex < input.Length)
                 {
                     input = input.Remove(inputIndex,1);
-                    echoInput(input + " ",inputIndex);
+                    echoInput(input,inputIndex);
                 }
                 else if (keypress.Key == ConsoleKey.Escape)
                 {
