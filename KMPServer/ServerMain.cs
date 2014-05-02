@@ -17,7 +17,9 @@ namespace KMPServer
 		public static Server server = null;
 
 	    public static ServerSettings.ConfigStore settings;
-
+  
+        public static List<string> recentCommands = new List<string>();
+        
 		static void Main(string[] args)
 		{
             if (!System.IO.Directory.Exists(Server.MODS_PATH))
@@ -134,76 +136,11 @@ namespace KMPServer
                 Log.Error("Please place them in the KMP server directory. See README.txt for more information.");
             }
 			
-			string lastCommand = "";
             bool running = true;
 
             while (running)
             {
-				ConsoleKeyInfo keypress;
-				int inputIndex = 0;
-				var input = "";
-				
-				while (true)
-				{
-					keypress = Console.ReadKey();
-					if (keypress.Key == ConsoleKey.UpArrow)
-					{
-						input = lastCommand;
-						inputIndex = input.Length;
-						echoInput(input,inputIndex);
-					}
-					else if (keypress.Key == ConsoleKey.DownArrow)
-					{
-						//do nothing, but prevent key from counting as input
-					}
-					else if (keypress.Key == ConsoleKey.LeftArrow)
-					{
-						if (inputIndex > 0)
-						{
-							inputIndex--;
-							Console.SetCursorPosition(inputIndex, Console.CursorTop);
-						}
-					}
-					else if (keypress.Key == ConsoleKey.RightArrow)
-					{
-						if (inputIndex < input.Length)
-						{
-							inputIndex++;
-							Console.SetCursorPosition(inputIndex, Console.CursorTop);
-						}
-					}
-					else if (keypress.Key == ConsoleKey.Backspace && inputIndex > 0)
-					{
-						inputIndex--;
-						input = input.Remove(inputIndex,1);
-						echoInput(input + " ",inputIndex);
-					}
-					else if (keypress.Key == ConsoleKey.Delete && inputIndex < input.Length)
-					{
-						input = input.Remove(inputIndex,1);
-						echoInput(input + " ",inputIndex);
-					}
-					else if (keypress.Key == ConsoleKey.Escape)
-					{
-						Console.WriteLine();
-						input = "";
-						break;
-					}
-					else if (keypress.Key == ConsoleKey.Enter)
-					{
-						break;
-					}
-					else
-					{
-						input = input.Insert(inputIndex,keypress.KeyChar.ToString());
-						inputIndex++;
-						echoInput(input,inputIndex);
-					}
-				}
-				
-				lastCommand = input;
-				
-                Log.Info("Command Input: {0}", input);
+				String input = getCommandInput();
 
                 var parts = input.Split(' ');
 
@@ -384,8 +321,92 @@ namespace KMPServer
             }
 		}
 		
-		public static void echoInput(string line, int index)
+        public static String getCommandInput()
+        {
+            ConsoleKeyInfo keypress;
+            int inputIndex = 0, historyIndex = recentCommands.Count;
+            String input = "";
+            
+            while (true)
+            {
+                keypress = Console.ReadKey();
+                if (keypress.Key == ConsoleKey.UpArrow)
+                {
+                    if (historyIndex > 0)
+                    {
+                        historyIndex--;
+                        input = recentCommands[historyIndex];
+                        inputIndex = input.Length;
+                        echoInput(input,inputIndex);
+                    }
+                }
+                else if (keypress.Key == ConsoleKey.DownArrow)
+                {
+                    if (historyIndex < recentCommands.Count - 1)
+                    {
+                        historyIndex++;
+                        input = recentCommands[historyIndex];
+                        inputIndex = input.Length;
+                        echoInput(input,inputIndex);
+                    }
+                }
+                else if (keypress.Key == ConsoleKey.LeftArrow)
+                {
+                    if (inputIndex > 0)
+                    {
+                        inputIndex--;
+                        Console.SetCursorPosition(inputIndex, Console.CursorTop);
+                    }
+                }
+                else if (keypress.Key == ConsoleKey.RightArrow)
+                {
+                    if (inputIndex < input.Length)
+                    {
+                        inputIndex++;
+                        Console.SetCursorPosition(inputIndex, Console.CursorTop);
+                    }
+                }
+                else if (keypress.Key == ConsoleKey.Backspace && inputIndex > 0)
+                {
+                    inputIndex--;
+                    input = input.Remove(inputIndex,1);
+                    echoInput(input + " ",inputIndex);
+                }
+                else if (keypress.Key == ConsoleKey.Delete && inputIndex < input.Length)
+                {
+                    input = input.Remove(inputIndex,1);
+                    echoInput(input + " ",inputIndex);
+                }
+                else if (keypress.Key == ConsoleKey.Escape)
+                {
+                    Console.WriteLine();
+                    input = "";
+                    break;
+                }
+                else if (keypress.Key == ConsoleKey.Enter)
+                {
+                    break;
+                }
+                else
+                {
+                    input = input.Insert(inputIndex,keypress.KeyChar.ToString());
+                    inputIndex++;
+                    echoInput(input,inputIndex);
+                }
+            }
+            
+            recentCommands.Add(input);
+            
+            Log.Info("Command Input: {0}", input);   
+            
+            return input;
+        }
+        
+		private static void echoInput(string line, int index)
 		{
+            Console.SetCursorPosition(0, Console.CursorTop);
+            for (int i = 0; i < Console.WindowWidth; i++)
+                Console.Write(" ");
 			Console.SetCursorPosition(0, Console.CursorTop);
 			Console.Write(line);
 			Console.SetCursorPosition(index, Console.CursorTop);	
