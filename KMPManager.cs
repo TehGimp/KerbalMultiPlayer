@@ -4189,11 +4189,12 @@ namespace KMP
 		
         public void Update()
         {
+            Log.WriteDelayedLog();
             try
             {
                 if (!gameRunning)
                     return;
-				
+
                 if (pauseMenu != null)
                 {
                     if (PauseMenu.isOpen && syncing)
