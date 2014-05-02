@@ -9,6 +9,11 @@ namespace KMP
 {
     public static class Log
     {
+        private static bool useDelayedLogging = false;
+        private static Queue<string> delayedDebugQueue = new Queue<string>();
+        private static Queue<string> delayedWarningQueue = new Queue<string>();
+        private static Queue<string> delayedErrorQueue = new Queue<string>();
+
         public enum LogLevels : int
         {
             Debug = 0,
@@ -23,7 +28,10 @@ namespace KMP
 
         private static void WriteLog(LogLevels level, string format, params object[] args)
         {
-            if (level < MinLogLevel) { return; }
+            if (level < MinLogLevel)
+            {
+                return;
+            }
 
             string output = string.Format("[{0}] : {1}", level.ToString(), string.Format(format, args));
 
@@ -33,16 +41,52 @@ namespace KMP
                 case LogLevels.Activity:
                 case LogLevels.Info:
                 case LogLevels.Notice:
-                    UnityEngine.Debug.Log(output);
+                    if (useDelayedLogging)
+                    {
+                        delayedDebugQueue.Enqueue(output);
+                    }
+                    else
+                    {
+                        UnityEngine.Debug.Log(output);
+                    }
                     break;
                 case LogLevels.Warning:
-                    UnityEngine.Debug.LogWarning(output);
+                    if (useDelayedLogging)
+                    {
+                        delayedWarningQueue.Enqueue(output);
+                    }
+                    else
+                    {
+                        UnityEngine.Debug.LogWarning(output);
+                    }
                     break;
                 case LogLevels.Error:
-                    UnityEngine.Debug.LogError(output);
+                    if (useDelayedLogging)
+                    {
+                        delayedErrorQueue.Enqueue(output);
+                    }
+                    else
+                    {
+                        UnityEngine.Debug.LogError(output);
+                    }
                     break;
             }
+        }
 
+        public static void WriteDelayedLog()
+        {
+            while (delayedDebugQueue.Count > 0)
+            {
+                UnityEngine.Debug.Log(delayedDebugQueue.Dequeue());
+            }
+            while (delayedWarningQueue.Count > 0)
+            {
+                UnityEngine.Debug.LogWarning(delayedWarningQueue.Dequeue());
+            }
+            while (delayedErrorQueue.Count > 0)
+            {
+                UnityEngine.Debug.LogError(delayedErrorQueue.Dequeue());
+            }
         }
 
         public static void Debug(string format, params object[] args)
@@ -74,7 +118,6 @@ namespace KMP
         {
             WriteLog(LogLevels.Error, format, args);
         }
-
     }
 }
 
