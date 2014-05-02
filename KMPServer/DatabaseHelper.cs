@@ -95,12 +95,6 @@ namespace KMPServer
         #endregion
 
         /// <summary>
-        /// The amount of queries currently using the database
-        /// </summary>
-        /// <remarks>Syncronize access to this integer!</remarks>
-        private int DatabaseUsers = 0;
-
-        /// <summary>
         /// Create a new Database Helper
         /// </summary>
         /// <param name="ConnectionString">Database Connection String</param>
@@ -147,15 +141,6 @@ namespace KMPServer
                 }
                 return null;
             }
-        }
-
-        // Do I use a lock? Monitor perhaps? Or I could just use a counter and interlock
-        /// <summary>
-        /// Database is in use 
-        /// </summary>
-        private void UseDB()
-        {
-            Interlocked.Increment(ref DatabaseUsers);
         }
 
         /// <summary>
@@ -309,7 +294,6 @@ namespace KMPServer
         /// <returns>Rows affected</returns>
         internal int ExecuteNonQuery(String query, params object[] parameters)
         {
-            UseDB();
             var connection = Connection;
             InitConnection(connection);
             return Finish(_ExecuteNonQuery(connection, query, parameters), connection);
@@ -323,7 +307,6 @@ namespace KMPServer
         /// <returns>Single result from Query</returns>
         internal object ExecuteScalar(String query, params object[] parameters)
         {
-            UseDB();
             var connection = Connection;
             InitConnection(connection);
             return Finish(_ExecuteScalar(connection, query, parameters), connection);
@@ -337,7 +320,6 @@ namespace KMPServer
         /// <param name="handler">Handler to invoke for each record</param>
         internal void ExecuteReader(String query, DbRecordHandler handler, params object[] parameters)
         {
-            UseDB();
             var connection = Connection;
             InitConnection(connection);
             _ExecuteReader(connection, query, handler, parameters);
