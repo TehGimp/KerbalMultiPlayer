@@ -19,6 +19,7 @@ namespace KMPServer
     {
         #region Constants
         private const String SQLITE_INIT_SQL = "PRAGMA synchronous = 0; PRAGMA auto_vacuum = 1;";
+        private const String MYSQL_CONN_PARAMS = " Pooling=true; Max Pool Size=100;";
         #endregion
 
         #region Diagnostics
@@ -27,7 +28,6 @@ namespace KMPServer
         private int connectionOpenCount = 0;
         private int connectionCloseCount = 0;
         private int connectionQueryCount = 0;
-        private DbConnection ReadRefDb = null;
 
         public TimeSpan TimeSpentChangingState
         {
@@ -76,7 +76,7 @@ namespace KMPServer
         {
             // Not entirely sure of the right set of Attributes to apply to MySQL, but this should ensure that connections are being released to the pool
             string additionalParams = "";
-            if (!connectionString.Contains("Pooling")) additionalParams = " Pooling=true; Max Pool Size=100;";
+            if (!connectionString.Contains("Pooling")) additionalParams = MYSQL_CONN_PARAMS;
             return new DatabaseHelper((connectionString + additionalParams), DatabaseAttributes.MySQL | DatabaseAttributes.MyISAM | DatabaseAttributes.KeepRef);
         }
         #endregion
@@ -134,7 +134,7 @@ namespace KMPServer
             get
             {
                 // Keep a single connection object during a reader operation
-                if ((Attributes & DatabaseAttributes.KeepRef) == DatabaseAttributes.KeepRef && ReadRefDb != null && ReadRefDb.State == ConnectionState.Open) return ReadRefDb;
+                //if ((Attributes & DatabaseAttributes.KeepRef) == DatabaseAttributes.KeepRef && ReadRefDb != null && ReadRefDb.State == ConnectionState.Open) return ReadRefDb;
                 stateChangeWatch.Start();
                 switch (Attributes & (DatabaseAttributes.SQLite | DatabaseAttributes.MySQL))
                 {
@@ -164,21 +164,9 @@ namespace KMPServer
         /// <returns>Passthrough object</returns>
         private T Finish<T>(T o, DbConnection conn)
         {
-            if((ReadRefDb != conn || (Attributes & DatabaseAttributes.KeepRef) == DatabaseAttributes.Nothing) && conn != null)
-            {
-                connectionCloseCount++;
-                conn.Dispose();
-            }
+            connectionCloseCount++;
+            conn.Dispose();
             
-            if (Interlocked.Decrement(ref DatabaseUsers) == 0)
-            {
-                /* If the connection is the reference object, or we are not keeping reference, dispose */
-                if((ReadRefDb == conn || (Attributes & DatabaseAttributes.KeepRef) == DatabaseAttributes.Nothing) && conn != null)
-                {
-                    connectionCloseCount++;
-                    conn.Dispose();
-                }
-            }
             return o;
         }
 
@@ -286,7 +274,6 @@ namespace KMPServer
         {
             try
             {
-                if ((Attributes & DatabaseAttributes.KeepRef) == DatabaseAttributes.KeepRef) ReadRefDb = connection;
                 queryWatch.Start();
                 using (var command = CreateCommand(connection, query, parameters))
                 {
@@ -308,7 +295,6 @@ namespace KMPServer
             }
             finally
             {
-                if ((Attributes & DatabaseAttributes.KeepRef) == DatabaseAttributes.KeepRef) ReadRefDb = null;
                 queryWatch.Stop();
             }
         }
