@@ -1326,7 +1326,7 @@ namespace KMPServer
                         }
                     }
                 }
-                Log.Info("Debris older than {0} minutes cleared from universe database, {1} vessels affected.", minsToKeep.toString("0.###"), clearedCount);
+                Log.Info("Debris older than {0} minutes cleared from universe database, {1} vessels affected.", minsToKeep.ToString("0.###"), clearedCount);
             }
             catch (Exception e)
             {
