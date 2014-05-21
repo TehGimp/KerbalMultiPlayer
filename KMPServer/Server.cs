@@ -1276,7 +1276,7 @@ namespace KMPServer
         //Clears old debris
         private void dekesslerServerCommand(String[] parts)
         {
-            int minsToKeep = 30;
+            double minsToKeep = 30;
             if (parts.Length == 2)
             {
                 String[] args = parts[1].Split(' ');
@@ -1326,7 +1326,7 @@ namespace KMPServer
                         }
                     }
                 }
-                Log.Info("Debris older than {0} minutes cleared from universe database, {1} vessels affected.", minsToKeep, clearedCount);
+                Log.Info("Debris older than {0} minutes cleared from universe database, {1} vessels affected.", minsToKeep.toString("0.###"), clearedCount);
             }
             catch (Exception e)
             {
