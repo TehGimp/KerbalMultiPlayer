@@ -1281,7 +1281,7 @@ namespace KMPServer
             {
                 String[] args = parts[1].Split(' ');
                 if (args.Length == 1)
-                    minsToKeep = Convert.ToInt32(args[0]);
+                    minsToKeep = Convert.ToDouble(args[0]);
                 else
                     Log.Info("Could not parse dekessler command. Format is \"/dekessler <mins>\"");
             }
