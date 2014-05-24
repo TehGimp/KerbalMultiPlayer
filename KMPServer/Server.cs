@@ -1311,19 +1311,12 @@ namespace KMPServer
                 foreach (Tuple<byte[], byte[], Guid> result in results)
                 {
                     KMPVesselUpdate vessel_update = (KMPVesselUpdate)ByteArrayToObject(result.Item1);
-                    if (vessel_update.tick < cutOffTick)
+                    ConfigNode protoVessel = (ConfigNode)ByteArrayToObject(result.Item2);
+                    string vesselType = protoVessel.GetValue("type", 0);
+                    if ((vessel_update.tick < cutOffTick && vesselType.Equals("Debris")) || vesselType.Equals("SpaceObject"))
                     {
-                        byte[] configNodeBytes = result.Item2;
-                        string s = Encoding.UTF8.GetString(configNodeBytes, 0, configNodeBytes.Length);
-                        if (s.IndexOf("type") > 0 && s.Length > s.IndexOf("type") + 20)
-                        {
-                            if (s.Substring(s.IndexOf("type"), 20).Contains("Debris"))
-                            {
-                                Database.ExecuteNonQuery("UPDATE kmpVessel SET Destroyed = 1 WHERE Guid = @guid",
-                                    "guid", result.Item3);
-                                clearedCount++;
-                            }
-                        }
+                        Database.ExecuteNonQuery("UPDATE kmpVessel SET Destroyed = 1 WHERE Guid = @guid", "guid", result.Item3);
+                        clearedCount++;
                     }
                 }
                 Log.Info("Debris older than {0} minutes cleared from universe database, {1} vessels affected.", minsToKeep, clearedCount);
