@@ -1919,7 +1919,6 @@ namespace KMPServer
             clientMessageQueue.Enqueue(message);
         }
 
-        private KMPCommon.ClientMessageID[] AllowNullDataMessages = { KMPCommon.ClientMessageID.SCREEN_WATCH_PLAYER, KMPCommon.ClientMessageID.CONNECTION_END, KMPCommon.ClientMessageID.ACTIVITY_UPDATE_IN_FLIGHT, KMPCommon.ClientMessageID.ACTIVITY_UPDATE_IN_GAME, KMPCommon.ClientMessageID.SYNC_TIME };
         private KMPCommon.ClientMessageID[] AllowClientNotReadyMessages = { KMPCommon.ClientMessageID.HANDSHAKE, KMPCommon.ClientMessageID.TEXT_MESSAGE, KMPCommon.ClientMessageID.SCREENSHOT_SHARE, KMPCommon.ClientMessageID.CONNECTION_END, KMPCommon.ClientMessageID.ACTIVITY_UPDATE_IN_FLIGHT, KMPCommon.ClientMessageID.ACTIVITY_UPDATE_IN_GAME, KMPCommon.ClientMessageID.PING, KMPCommon.ClientMessageID.UDP_PROBE, KMPCommon.ClientMessageID.WARPING, KMPCommon.ClientMessageID.SSYNC, KMPCommon.ClientMessageID.SYNC_TIME };
 
         public void handleMessage(Client cl, KMPCommon.ClientMessageID id, byte[] data)
@@ -1929,7 +1928,6 @@ namespace KMPServer
                 if (!cl.isValid)
                 { return; }
 
-                if (!AllowNullDataMessages.Contains(id) && data == null) { return; }
                 if (!AllowClientNotReadyMessages.Contains(id) && !cl.isReady) { return; }
 
                 try
@@ -2010,6 +2008,13 @@ namespace KMPServer
 
         private void HandleSSync(Client cl, byte[] data)
         {
+            //Message format: subspace request(4)
+            if (data != null ? data.Length != 4 : true)
+            {
+                Log.Debug("Malformed SSYNC message from player " + cl.playerID);
+                return;
+            }
+
             int subspaceID = KMPCommon.intFromBytes(data, 0);
             if (subspaceID == -1)
             {
@@ -2025,6 +2030,12 @@ namespace KMPServer
         private void HandleTimeSync(Client cl, byte[] data)
         {
             //Message format: clientsendtick(8), serverreceivetick(8), serversendtick(8). The server send tick gets added during actual sending.
+            if (data != null ? data.Length != 4 : true)
+            {
+                Log.Debug("Malformed TIME_SYNC message from player " + cl.playerID);
+                return;
+            }
+
             byte[] message_bytes = buildMessageArray(KMPCommon.ServerMessageID.SYNC_TIME, data); //This has already been rewritten in the queueClientMessage.
             cl.queueOutgoingMessage(message_bytes); //This is still re-written during the actual send.
             Log.Debug("{0} time sync request", cl.username);
@@ -2032,6 +2043,13 @@ namespace KMPServer
 
         private void HandleWarping(Client cl, byte[] data)
         {
+            //Message format: rate(4), new subspace tick(8)
+            if (data != null ? data.Length != 12 : true)
+            {
+                Log.Debug("Malformed WARPING message from player " + cl.playerID);
+                return;
+            }
+
             float rate = BitConverter.ToSingle(data, 0);
             double newsubspacetick = BitConverter.ToDouble(data, 4);
             if (cl.warping)
@@ -2052,7 +2070,6 @@ namespace KMPServer
                     subSpaceMasterSpeed.Add(cl.currentSubspaceID, 1f);
                     cl.warping = false;
                     sendSubspace(cl, true, true);
-                    cl.lastTick = newsubspacetick;
                     Log.Activity("{0} set to new subspace {1}", cl.username, newSubspace);
                 }
             }
@@ -2069,6 +2086,13 @@ namespace KMPServer
 
         private void HandleUDPProbe(Client cl, byte[] data)
         {
+            //Message format: current tick(8), average clock skew(4)
+            if (data != null ? data.Length != 12 : true)
+            {
+                Log.Debug("Malformed UDP_PROBE message from player " + cl.playerID);
+                return;
+            }
+
             double incomingTick = BitConverter.ToDouble(data, 0);
             double lastSubspaceTick = incomingTick;
 
@@ -2114,13 +2138,24 @@ namespace KMPServer
 
         private void HandleShareCraftFile(Client cl, byte[] data, UnicodeEncoding encoder)
         {
-            if (!(data.Length > 8 && (data.Length - 8) <= KMPCommon.MAX_CRAFT_FILE_BYTES)) { return; }
+            //Message format: type(4), name length(4), craft name(variable), craft data(varible)
+            if (data != null ? (data.Length < 8 || data.Length > KMPCommon.MAX_CRAFT_FILE_BYTES) : true)
+            {
+                Log.Debug("Malformed SHARE_CRAFT_FILE message from player " + cl.playerID + ", check 1");
+                return;
+            }
 
             //Read craft name length
             KMPCommon.CraftType craft_type = (KMPCommon.CraftType)KMPCommon.intFromBytes(data, 0);
             int craft_name_length = KMPCommon.intFromBytes(data, 4);
-            if (craft_name_length < data.Length - 8)
+
+            //Check name length data
+            if (data != null ? data.Length < (8 + craft_name_length) : true)
             {
+                Log.Debug("Malformed SHARE_CRAFT_FILE message from player " + cl.playerID + ", check 2");
+                return;
+            }
+
                 //Read craft name
                 String craft_name = encoder.GetString(data, 8, craft_name_length);
 
@@ -2162,21 +2197,28 @@ namespace KMPServer
                 sb.Append(cl.username);
                 sb.Append(" to get it.");
                 sendTextMessageToAll(sb.ToString());
-            }
         }
 
         private void HandleConnectionEnd(Client cl, byte[] data, UnicodeEncoding encoder)
         {
+            //Message format: reason(variable, optional)
             String message = String.Empty;
             if (data != null)
+            {
                 message = encoder.GetString(data, 0, data.Length); //Decode the message
+            }
 
             markClientForDisconnect(cl, message); //Disconnect the client
         }
 
         private void HandleScreenshotShare(Client cl, byte[] data)
         {
-            if (data.Length > settings.screenshotSettings.maxNumBytes) { return; }
+            //Message format: screenshot(variable)
+            if (data != null ? data.Length > settings.screenshotSettings.maxNumBytes : true)
+            {
+                Log.Debug("Malformed SCREENSHOT_SHARE message from player " + cl.playerID);
+                return;
+            }
 
             //Set the screenshot for the player
             lock (cl.screenshotLock)
@@ -2200,10 +2242,14 @@ namespace KMPServer
 
         private void HandleScreenWatchPlayer(Client cl, byte[] data, UnicodeEncoding encoder)
         {
-            String watch_name = String.Empty;
+            //Message format: name (variable)
+            if (data == null)
+            {
+                Log.Debug("Malformed SCREEN_WATCH_PLAYER message from player " + cl.playerID);
+                return;
+            }
 
-            if (data != null)
-                watch_name = encoder.GetString(data);
+            String watch_name = encoder.GetString(data);
 
             bool watch_name_changed = false;
 
@@ -2217,8 +2263,7 @@ namespace KMPServer
                 }
             }
 
-            if (watch_name_changed && watch_name.Length > 0
-                && watch_name != cl.username)
+            if (watch_name_changed && watch_name.Length > 0 && watch_name != cl.username)
             {
                 //Try to find the player the client is watching and send that player's current screenshot
                 Client watch_client = getClientByName(watch_name);
@@ -2229,15 +2274,21 @@ namespace KMPServer
                     {
                         screenshot = watch_client.screenshot;
                     }
-
                     if (screenshot != null)
+                    {
                         sendScreenshot(cl, watch_client.screenshot);
+                    }
                 }
             }
         }
 
         private void HandlePluginUpdate(Client cl, KMPCommon.ClientMessageID id, byte[] data)
         {
+            if (data == null)
+            {
+                Log.Debug("Malformed UPDATE message from player " + cl.playerID);
+                return;
+            }
             if (cl.isReady)
             {
                 sendPluginUpdateToAll(data, id == KMPCommon.ClientMessageID.SECONDARY_PLUGIN_UPDATE, cl);
@@ -2246,6 +2297,11 @@ namespace KMPServer
 
         private void HandleScenarioUpdate(Client cl, byte[] data)
         {
+            if (data == null)
+            {
+                Log.Debug("Malformed SCENARIO_UPDATE message from player " + cl.playerID + ", check 1");
+                return;
+            }
             if (cl.isReady)
             {
                 var scenario_update = ByteArrayToObject<KMPScenarioUpdate>(data);
@@ -2254,39 +2310,64 @@ namespace KMPServer
                 {
                     Log.Debug("Received scenario update '{1}' from {0}", cl.username, scenario_update.name);
                     object result = Database.ExecuteScalar("SELECT ID FROM kmpScenarios WHERE PlayerID = @playerID AND Name = @name;",
-                        "playerID", cl.playerID,
-                        "name", scenario_update.name);
+                                                           "playerID", cl.playerID,
+                                                           "name", scenario_update.name);
                     if (result == null)
                     {
                         Database.ExecuteNonQuery("INSERT INTO kmpScenarios (PlayerID, Name, Tick, UpdateMessage)" +
                             " VALUES (@playerID, @name, @tick, @updateMessage);",
-                        "playerID", cl.playerID,
-                        "name", scenario_update.name,
-                        "tick", scenario_update.tick.ToString("0.0").Replace(",", "."),
-                        "updateMessage", data);
+                                                 "playerID", cl.playerID,
+                                                 "name", scenario_update.name,
+                                                 "tick", scenario_update.tick.ToString("0.0").Replace(",", "."),
+                                                 "updateMessage", data);
                     }
                     else
                     {
                         Database.ExecuteNonQuery("UPDATE kmpScenarios SET Tick = @tick, UpdateMessage = @updateMessage WHERE ID = @id",
-                            "id", Convert.ToInt32(result),
-                            "tick", scenario_update.tick.ToString("0.0").Replace(",", "."),
-                            "updateMessage", data);
+                                                 "id", Convert.ToInt32(result),
+                                                 "tick", scenario_update.tick.ToString("0.0").Replace(",", "."),
+                                                 "updateMessage", data);
                     }
+                }
+                else
+                {
+                    Log.Debug("Malformed SCENARIO_UPDATE message from player " + cl.playerID + ", check 2");
                 }
             }
         }
 
         private void HandleHandshake(Client cl, byte[] data, UnicodeEncoding encoder)
         {
+            //Message format: 
+            if (data != null ? data.Length < 4 : true)
+            {
+                Log.Debug("Malformed HANDSHAKE message from player " + cl.playerID + ", check 1");
+                return;
+            }
+
             StringBuilder sb = new StringBuilder();
 
             //Read username
             Int32 username_length = KMPCommon.intFromBytes(data, 0);
+
+            if (data != null ? data.Length < (4 + username_length + 4) : true)
+            {
+                Log.Debug("Malformed HANDSHAKE message from player " + cl.playerID + ", check 2");
+                return;
+            }
+
             String username = encoder.GetString(data, 4, username_length);
 
             Guid guid = Guid.Empty;
             Int32 guid_length = KMPCommon.intFromBytes(data, 4 + username_length);
             int offset = 4 + username_length + 4;
+
+            if (data != null ? data.Length < (offset + guid_length) : true)
+            {
+                Log.Debug("Malformed HANDSHAKE message from player " + cl.playerID + ", check 3");
+                return;
+            }
+
             try
             {
                 guid = new Guid(encoder.GetString(data, offset, guid_length));
@@ -2295,8 +2376,10 @@ namespace KMPServer
             {
                 markClientForDisconnect(cl, "You're authentication token is not valid.");
                 Log.Info("Rejected client due to invalid guid: {0}", encoder.GetString(data, offset, guid_length));
+                return;
             }
             offset = 4 + username_length + 4 + guid_length;
+
             String version = encoder.GetString(data, offset, data.Length - offset);
 
             String username_lower = username.ToLower();
@@ -2328,7 +2411,9 @@ namespace KMPServer
             }
 
             if (!accepted)
+            {
                 return;
+            }
 
             //Check if this player is new to universe
             int name_taken = Convert.ToInt32(
