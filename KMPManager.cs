@@ -6,6 +6,7 @@ using UnityEngine;
 using System.Xml.Serialization;
 using System.Collections;
 using System.Threading;
+using System.Reflection;
 
 namespace KMP
 {
@@ -283,9 +284,12 @@ namespace KMP
         private IButton KMPToggleButton;
 		private bool KMPToggleButtonState = true;
 		private bool KMPToggleButtonInitialized;
+        
+        private delegate bool AddCrewMemberToRosterDelegate(ProtoCrewMember pcm);
+        private AddCrewMemberToRosterDelegate AddCrewMemberToRoster;
 		
 		public static bool showConnectionWindow = false;
-		
+
 		public bool globalUIToggle
 		{
 			get
@@ -2005,7 +2009,6 @@ namespace KMP
                 {
                     ScenarioDiscoverableObjects sdo = (ScenarioDiscoverableObjects) newScenario.moduleRef;
                     sdo.spawnInterval *= (playerStatus.Count()+1); //Throttle spawn rate based on number of players (at connection time)
-                    sdo.debugSpawnProbability();
                     sdoReceived = true;
                 }
             }
@@ -2672,7 +2675,7 @@ namespace KMP
                             }
                             partNode.SetValue("crew", freeKerbal.ToString(), currentCrewIndex);
                             CheckCrewMemberExists(freeKerbal);
-                            HighLogic.CurrentGame.CrewRoster[freeKerbal].rosterStatus = ProtoCrewMember.RosterStatus.ASSIGNED;
+                            HighLogic.CurrentGame.CrewRoster[freeKerbal].rosterStatus = ProtoCrewMember.RosterStatus.Assigned;
                             HighLogic.CurrentGame.CrewRoster[freeKerbal].seatIdx = currentCrewIndex;
                             Log.Debug("Fixing duplicate kerbal reference, changing kerbal " + currentCrewIndex + " to " + freeKerbal);
                             crewValue = freeKerbal;
@@ -2684,7 +2687,7 @@ namespace KMP
                     {
                         serverKerbals_AssignedKerbals[crewValue] = protoVesselID;
                         CheckCrewMemberExists(crewValue);
-                        HighLogic.CurrentGame.CrewRoster[crewValue].rosterStatus = ProtoCrewMember.RosterStatus.ASSIGNED;
+                        HighLogic.CurrentGame.CrewRoster[crewValue].rosterStatus = ProtoCrewMember.RosterStatus.Assigned;
                         HighLogic.CurrentGame.CrewRoster[crewValue].seatIdx = currentCrewIndex;
                     }
 					crewValue++;
@@ -2694,13 +2697,7 @@ namespace KMP
 
         private void CheckCrewMemberExists(int kerbalID)
         {
-            IEnumerator<ProtoCrewMember> crewEnum = HighLogic.CurrentGame.CrewRoster.GetEnumerator();
-            int applicants = 0;
-            while (crewEnum.MoveNext())
-            {
-                if (crewEnum.Current.rosterStatus == ProtoCrewMember.RosterStatus.AVAILABLE)
-                    applicants++;
-            }
+            int applicants = HighLogic.CurrentGame.CrewRoster.Applicants.Count();
 
             if (kerbalID > applicants)
             {
@@ -2708,9 +2705,19 @@ namespace KMP
                 for (int i = 0; i < (kerbalID - applicants);)
                 {
                     ProtoCrewMember protoCrew = CrewGenerator.RandomCrewMemberPrototype();
-                    if (!HighLogic.CurrentGame.CrewRoster.ExistsInRoster(protoCrew.name))
+                    if (!HighLogic.CurrentGame.CrewRoster.Exists(protoCrew.name))
                     {
-                        HighLogic.CurrentGame.CrewRoster.AddCrewMember(protoCrew);
+                        if (AddCrewMemberToRoster == null)
+                        {
+                            MethodInfo addMemberToCrewRosterMethod = typeof(KerbalRoster).GetMethod("AddCrewMember", BindingFlags.NonPublic | BindingFlags.Instance);
+                            AddCrewMemberToRoster = (AddCrewMemberToRosterDelegate)Delegate.CreateDelegate(typeof(AddCrewMemberToRosterDelegate), HighLogic.CurrentGame.CrewRoster, addMemberToCrewRosterMethod);
+                        }
+                        if (AddCrewMemberToRoster == null)
+                        {
+                            throw new Exception("Failed to initialize AddCrewMemberToRoster.");
+                        }
+                        ProtoCrewMember pcm = CrewGenerator.RandomCrewMemberPrototype(ProtoCrewMember.KerbalType.Crew);
+                        AddCrewMemberToRoster(pcm);
                         i++;
                     }
                 }
@@ -3899,6 +3906,7 @@ namespace KMP
                     }
                     clearEditorPartList = true;
                 }
+                if (gameMode == 1) CreateMissingKerbalsInProgressTrackingSoTheGameDoesntBugOut();
 				StartCoroutine(returnToSpaceCenter());
 			}
 		}
@@ -4983,9 +4991,18 @@ namespace KMP
 					for (int i=0; i<50;)
 					{
 						ProtoCrewMember protoCrew = CrewGenerator.RandomCrewMemberPrototype();
-						if (!HighLogic.CurrentGame.CrewRoster.ExistsInRoster(protoCrew.name))
+						if (!HighLogic.CurrentGame.CrewRoster.Exists(protoCrew.name))
 						{
-							HighLogic.CurrentGame.CrewRoster.AddCrewMember(protoCrew);
+    						if (AddCrewMemberToRoster == null)
+                            {
+                                MethodInfo addMemberToCrewRosterMethod = typeof(KerbalRoster).GetMethod("AddCrewMember", BindingFlags.NonPublic | BindingFlags.Instance);
+                                AddCrewMemberToRoster = (AddCrewMemberToRosterDelegate)Delegate.CreateDelegate(typeof(AddCrewMemberToRosterDelegate), HighLogic.CurrentGame.CrewRoster, addMemberToCrewRosterMethod);
+                            }
+                            if (AddCrewMemberToRoster == null)
+                            {
+                                throw new Exception("Failed to initialize AddCrewMemberToRoster.");
+                            }
+                            AddCrewMemberToRoster(protoCrew);
 							i++;
 						}
 					}
@@ -5887,6 +5904,48 @@ namespace KMP
         {
 			if (krakensbane == null) krakensbane = (Krakensbane)FindObjectOfType(typeof(Krakensbane));
 			return krakensbane;
+        }
+
+        private void CreateMissingKerbalsInProgressTrackingSoTheGameDoesntBugOut(ConfigNode progressTrackingNode = null)
+        {
+            if (progressTrackingNode == null)
+            {
+                progressTrackingNode = new ConfigNode();
+                HighLogic.CurrentGame.scenarios.First(psm => psm.moduleName == "ProgressTracking").Save(progressTrackingNode);
+            }
+            foreach (ConfigNode possibleNode in progressTrackingNode.nodes)
+            {
+                //Recursion (noun): See Recursion.
+                CreateMissingKerbalsInProgressTrackingSoTheGameDoesntBugOut(possibleNode);
+            }
+            //The kerbals are kept in a ConfigNode named 'crew', with 'crews' as a comma space delimited array of names.
+            if (progressTrackingNode.name == "crew")
+            {
+                string kerbalNames = progressTrackingNode.GetValue("crews");
+                if (!String.IsNullOrEmpty(kerbalNames))
+                {
+                    string[] kerbalNamesSplit = kerbalNames.Split(new string[] { ", " }, StringSplitOptions.RemoveEmptyEntries);
+                    foreach (string kerbalName in kerbalNamesSplit)
+                    {
+                        if (!HighLogic.CurrentGame.CrewRoster.Exists(kerbalName))
+                        {
+                            if (AddCrewMemberToRoster == null)
+                            {
+                                MethodInfo addMemberToCrewRosterMethod = typeof(KerbalRoster).GetMethod("AddCrewMember", BindingFlags.NonPublic | BindingFlags.Instance);
+                                AddCrewMemberToRoster = (AddCrewMemberToRosterDelegate)Delegate.CreateDelegate(typeof(AddCrewMemberToRosterDelegate), HighLogic.CurrentGame.CrewRoster, addMemberToCrewRosterMethod);
+                            }
+                            if (AddCrewMemberToRoster == null)
+                            {
+                                throw new Exception("Failed to initialize AddCrewMemberToRoster.");
+                            }
+                            Log.Debug("Generating missing kerbal from ProgressTracking: " + kerbalName);
+                            ProtoCrewMember pcm = CrewGenerator.RandomCrewMemberPrototype(ProtoCrewMember.KerbalType.Crew);
+                            pcm.name = kerbalName;
+                            AddCrewMemberToRoster(pcm);
+                        }
+                    }
+                }
+            }
         }
 	}
 }
