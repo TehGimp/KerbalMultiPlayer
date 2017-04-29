@@ -1957,20 +1957,24 @@ namespace KMP
         {
             try
             {
+                string client_token_file = getKMPDirectory() + "/PluginData/KerbalMultiPlayer/" + CLIENT_TOKEN_FILENAME;
                 //Get the player's token if available
-                KSP.IO.TextReader reader = KSP.IO.File.OpenText<KMPClientMain>(CLIENT_TOKEN_FILENAME);
-                String line = reader.ReadLine();
-                reader.Close();
-                playerGuid = new Guid(line);
+                if (System.IO.File.Exists(client_token_file)) {
+                    System.IO.TextReader reader = System.IO.File.OpenText(client_token_file);
+                    String line = reader.ReadLine();
+                    reader.Close();
+                    playerGuid = new Guid(line);
+                } else {
+                    Log.Debug("Generating a new token for server authentication");
+                    playerGuid = Guid.NewGuid();
+                    System.IO.TextWriter writer = System.IO.File.CreateText(client_token_file);
+                    writer.WriteLine(playerGuid.ToString());
+                    writer.Close();
+                }
             }
             catch (Exception e)
             {
                 Log.Debug("Exception thrown in readTokenFile(), catch 1, Exception: {0}", e.ToString());
-                //Generate a new token for server authentication
-                playerGuid = Guid.NewGuid();
-                KSP.IO.TextWriter writer = KSP.IO.File.CreateText<KMPClientMain>(CLIENT_TOKEN_FILENAME);
-                writer.WriteLine(playerGuid.ToString());
-                writer.Close();
             }
         }
 
